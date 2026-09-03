@@ -1,0 +1,18 @@
+flowchart TB
+    MAP["map<br/>global, origin pending"] --> ODOM["odom<br/>continuous local"]
+    ODOM --> BASE["base_link<br/>x forward / y left / z up"]
+
+    BASE --> CAM_F["camera_front_link"]
+    CAM_F --> CAM_FO["camera_front_optical_frame"]
+    BASE --> CAM_L["camera_left_link"]
+    CAM_L --> CAM_LO["camera_left_optical_frame"]
+    BASE --> CAM_R["camera_right_link"]
+    CAM_R --> CAM_RO["camera_right_optical_frame"]
+    BASE --> LIDAR["lidar_link"]
+    BASE --> GPS["gps_link"]
+    BASE --> IMU["imu_link"]
+
+    classDef dynamic fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
+    classDef static fill:#fef3c7,stroke:#d97706,color:#78350f;
+    class MAP,ODOM,BASE dynamic;
+    class CAM_F,CAM_FO,CAM_L,CAM_LO,CAM_R,CAM_RO,LIDAR,GPS,IMU static;

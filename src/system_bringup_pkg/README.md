@@ -14,9 +14,11 @@
 - 개별 패키지 launch는 해당 기능만 시작한다.
 - MORAI와 rosbag/replay 공급자를 동시에 시작하지 않는다.
 - Safety Supervisor가 준비되기 전에 주행 명령을 활성화하지 않는다.
+- `ros_architecture_pkg/config/tf/`에서 `publish_enabled: true`로 승인된 정적 TF만 단일 publisher로 시작한다.
+- Live MORAI와 rosbag replay의 `use_sim_time` 정책을 섞지 않는다.
 - 실행 이후 Operator 조작 없이 상태 확인과 fail-closed 종료가 가능해야 한다.
 
-현재 launch 파일은 중앙 node/topic 계약이 아직 없어서 의도적으로 비어 있다.
+현재 launch 파일은 중앙 node/topic 계약이 아직 없고 모든 정적 TF 발행도 잠겨 있어서 의도적으로 비어 있다.
 
 ## 디렉터리
 

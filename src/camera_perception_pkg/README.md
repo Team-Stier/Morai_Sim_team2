@@ -29,6 +29,8 @@
 
 World Model이 관측 시각의 pose를 사용해 좌표를 통합하므로 이 패키지는 최신 Localization pose로 검출 결과를 임의 투영하지 않는다.
 
+Camera mount/optical frame은 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)을 따르고, MORAI의 `Camera-1/2/3` 문자열을 새 중앙 frame 이름으로 사용하지 않는다. Detection은 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)에 따라 원본 영상의 측정시각을 유지하며 inference 완료 시각으로 덮어쓰지 않는다.
+
 ## 디렉터리
 
 - `config/`: 모델·전처리·threshold 등 패키지 로컬 파라미터

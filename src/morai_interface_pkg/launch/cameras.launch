@@ -1,0 +1,24 @@
+<launch>
+  <!-- 여러 카메라(Front/Left/Right)를 한 번에 실행한다.
+       각 노드는 같은 camera_receiver_node를 다른 name/port/topic으로 띄운 인스턴스.
+       포트/카메라 이름은 제공 센서셋 기준 placeholder이며 대회 센서셋에서 재확인. -->
+
+  <arg name="front_config" default="$(find morai_interface_pkg)/config/camera_front.yaml"/>
+  <arg name="left_config"  default="$(find morai_interface_pkg)/config/camera_left.yaml"/>
+  <arg name="right_config" default="$(find morai_interface_pkg)/config/camera_right.yaml"/>
+
+  <node pkg="morai_interface_pkg" type="camera_receiver_node"
+        name="morai_camera_front" output="screen" required="true">
+    <rosparam command="load" file="$(arg front_config)"/>
+  </node>
+
+  <node pkg="morai_interface_pkg" type="camera_receiver_node"
+        name="morai_camera_left" output="screen" required="true">
+    <rosparam command="load" file="$(arg left_config)"/>
+  </node>
+
+  <node pkg="morai_interface_pkg" type="camera_receiver_node"
+        name="morai_camera_right" output="screen" required="true">
+    <rosparam command="load" file="$(arg right_config)"/>
+  </node>
+</launch>

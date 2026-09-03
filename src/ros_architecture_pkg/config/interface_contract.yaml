@@ -1,6 +1,6 @@
 schema_version: 1
-contract_version: 0.0.0
-status: draft
+contract_version: 0.2.0
+status: partially_approved
 
 authority:
   package: ros_architecture_pkg
@@ -8,14 +8,233 @@ authority:
     Empty lists mean that no public ROS interface has been approved yet.
     They do not authorize packages to invent temporary public names.
 
-# Populate these lists only after the producer-consumer contract is reviewed.
-nodes: []
-topics: []
-messages: []
+contract_modules:
+  tf:
+    frame_contract: tf/frame_contract.yaml
+    sensor_extrinsics: tf/sensor_extrinsics.yaml
+  timestamp:
+    timestamp_contract: timestamp/timestamp_contract.yaml
+  morai_interface:
+    udp_ros_bridge: morai_interface/udp_ros_bridge.yaml
+
+# Populate interface lists only after the producer-consumer contract is reviewed.
+nodes:
+  - name: morai_camera_front
+    owner_package: morai_interface_pkg
+    executable: camera_receiver_node
+    status: development_live_transport_verified
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_camera_left
+    owner_package: morai_interface_pkg
+    executable: camera_receiver_node
+    status: development_live_transport_verified
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_camera_right
+    owner_package: morai_interface_pkg
+    executable: camera_receiver_node
+    status: development_live_transport_verified
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_gps_bridge
+    owner_package: morai_interface_pkg
+    executable: gps_receiver_node
+    status: development_live_transport_verified
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_imu_bridge
+    owner_package: morai_interface_pkg
+    executable: imu_receiver_node
+    status: provisional_disabled
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_vehicle_status_bridge
+    owner_package: morai_interface_pkg
+    executable: vehicle_status_receiver_node
+    status: prohibited_until_competition_packet_verified
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_velodyne_manager
+    owner_package: morai_interface_pkg
+    implementation_package: nodelet
+    status: provisional_disabled
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_velodyne_driver
+    owner_package: morai_interface_pkg
+    implementation_package: velodyne_driver
+    status: provisional_disabled
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_velodyne_cloud
+    owner_package: morai_interface_pkg
+    implementation_package: velodyne_pointcloud
+    status: provisional_disabled
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_lidar_watchdog
+    owner_package: morai_interface_pkg
+    executable: lidar_watchdog_node
+    status: development_diagnostic_disabled
+    details: morai_interface/udp_ros_bridge.yaml
+topics:
+  - name: /molit/sensors/camera/front/image/compressed
+    owner_package: morai_interface_pkg
+    producers: [morai_camera_front]
+    consumers: [camera_perception_pkg]
+    data_meaning: Front camera JPEG image observation
+    data_type: sensor_msgs/CompressedImage
+    unit: encoded_jpeg_bytes
+    frame: camera_front_optical_frame
+    timestamp_source: source_measurement_packet
+    expected_rate_hz: 20.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: discard_incomplete_or_invalid_jpeg_frame
+  - name: /molit/sensors/camera/left/image/compressed
+    owner_package: morai_interface_pkg
+    producers: [morai_camera_left]
+    consumers: [camera_perception_pkg]
+    data_meaning: Left camera JPEG image observation
+    data_type: sensor_msgs/CompressedImage
+    unit: encoded_jpeg_bytes
+    frame: camera_left_optical_frame
+    timestamp_source: source_measurement_packet
+    expected_rate_hz: 20.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: discard_incomplete_or_invalid_jpeg_frame
+  - name: /molit/sensors/camera/right/image/compressed
+    owner_package: morai_interface_pkg
+    producers: [morai_camera_right]
+    consumers: [camera_perception_pkg]
+    data_meaning: Right camera JPEG image observation
+    data_type: sensor_msgs/CompressedImage
+    unit: encoded_jpeg_bytes
+    frame: camera_right_optical_frame
+    timestamp_source: source_measurement_packet
+    expected_rate_hz: 20.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: discard_incomplete_or_invalid_jpeg_frame
+  - name: /molit/sensors/gps/fix
+    owner_package: morai_interface_pkg
+    producers: [morai_gps_bridge]
+    consumers: [localization_pkg]
+    data_meaning: One GGA-derived GPS geodetic fix per MORAI measurement epoch
+    data_type: sensor_msgs/NavSatFix
+    unit: deg_deg_m
+    frame: gps_link
+    timestamp_source: morai_interface_ingress_time
+    expected_rate_hz: 5.0
+    queue_policy: publisher_queue_10
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: publish_no_fix_with_nan_position_when_missing
+  - name: /molit/internal/morai_interface/lidar/packets
+    owner_package: morai_interface_pkg
+    producers: [morai_velodyne_driver]
+    consumers: [morai_velodyne_cloud]
+    runtime_graph_caller: morai_velodyne_manager
+    data_meaning: Package-internal decoded VLP16 UDP packet scan
+    data_type: velodyne_msgs/VelodyneScan
+    unit: raw_velodyne_packet_bytes
+    frame: lidar_link
+    timestamp_source: source_measurement_packet
+    expected_rate_hz: packet_level_pending_live_measurement
+    queue_policy: velodyne_driver_internal
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: disabled_until_live_packet_port_axis_and_driver_verified
+  - name: /molit/sensors/imu/data
+    owner_package: morai_interface_pkg
+    producers: [morai_imu_bridge]
+    consumers: [localization_pkg]
+    data_meaning: IMU orientation angular velocity and linear acceleration
+    data_type: sensor_msgs/Imu
+    unit: quaternion_rad_per_sec_m_per_sec2_pending_live_verification
+    frame: imu_link
+    timestamp_source: morai_interface_ingress_time
+    expected_rate_hz: 50.0
+    queue_policy: publisher_queue_10
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: disabled_until_axis_unit_covariance_and_port_verified
+  - name: /molit/vehicle/twist
+    owner_package: morai_interface_pkg
+    producers: [morai_vehicle_status_bridge]
+    consumers: [localization_pkg]
+    data_meaning: Competition-allowed ego body twist only
+    data_type: geometry_msgs/TwistWithCovarianceStamped
+    unit: pending_competition_packet_spec
+    frame: base_link
+    timestamp_source: morai_interface_ingress_time
+    expected_rate_hz: pending_competition_packet_spec
+    queue_policy: publisher_queue_10
+    timeout_sec: pending_competition_packet_spec
+    invalid_data_policy: do_not_publish_legacy_ego_vehicle_status
+  - name: /molit/sensors/lidar/points
+    owner_package: morai_interface_pkg
+    producers: [morai_velodyne_cloud]
+    consumers: [morai_lidar_watchdog, lidar_perception_pkg]
+    runtime_graph_caller: morai_velodyne_manager
+    data_meaning: VLP16 point cloud observation
+    data_type: sensor_msgs/PointCloud2
+    unit: m_and_sensor_fields
+    frame: lidar_link
+    timestamp_source: source_measurement_packet
+    expected_rate_hz: 10.0
+    queue_policy: external_driver_default_pending_measurement
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: disabled_until_live_packet_port_axis_and_driver_verified
+  - name: /molit/sensors/lidar/status
+    owner_package: morai_interface_pkg
+    producers: [morai_lidar_watchdog]
+    consumers: [system_bringup_pkg]
+    data_meaning: Development-only recent LiDAR points received flag
+    data_type: std_msgs/Bool
+    unit: boolean
+    frame: not_applicable
+    timestamp_source: steady_watchdog_time
+    expected_rate_hz: 2.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: 1.0
+    invalid_data_policy: false_when_no_points_after_timeout
+messages:
+  - type: sensor_msgs/CompressedImage
+    status: approved_standard_type
+  - type: sensor_msgs/NavSatFix
+    status: approved_standard_type
+  - type: sensor_msgs/Imu
+    status: provisional_standard_type_pending_units
+  - type: geometry_msgs/TwistWithCovarianceStamped
+    status: provisional_disabled_pending_competition_packet
+  - type: sensor_msgs/PointCloud2
+    status: provisional_standard_type_pending_live_lidar
+  - type: velodyne_msgs/VelodyneScan
+    status: package_internal_provisional_pending_live_lidar
+  - type: std_msgs/Bool
+    status: development_diagnostic_only
 services: []
 actions: []
-frames: []
-parameters: []
+frames:
+  - name: map
+    details: tf/frame_contract.yaml
+  - name: odom
+    details: tf/frame_contract.yaml
+  - name: base_link
+    details: tf/frame_contract.yaml
+  - name: camera_front_link
+    details: tf/frame_contract.yaml
+  - name: camera_front_optical_frame
+    details: tf/frame_contract.yaml
+  - name: camera_left_link
+    details: tf/frame_contract.yaml
+  - name: camera_left_optical_frame
+    details: tf/frame_contract.yaml
+  - name: camera_right_link
+    details: tf/frame_contract.yaml
+  - name: camera_right_optical_frame
+    details: tf/frame_contract.yaml
+  - name: lidar_link
+    details: tf/frame_contract.yaml
+  - name: gps_link
+    details: tf/frame_contract.yaml
+  - name: imu_link
+    details: tf/frame_contract.yaml
+parameters:
+  - owner_package: morai_interface_pkg
+    scope: private_node_parameters
+    details: morai_interface/udp_ros_bridge.yaml
 
 required_interface_fields:
   - owner_package

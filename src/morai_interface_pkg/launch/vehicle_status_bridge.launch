@@ -1,0 +1,13 @@
+<launch>
+  <!-- Vehicle Status UDP Bridge: MORAI EgoVehicleStatus UDP(229B)
+       -> geometry_msgs/TwistWithCovarianceStamped.
+       Competition Vehicle Status 명세와 불일치하므로 기본 실행 금지. -->
+  <arg name="allow_legacy" default="false"/>
+  <arg name="config" default="$(find morai_interface_pkg)/config/vehicle_status_bridge.yaml"/>
+
+  <node pkg="morai_interface_pkg" type="vehicle_status_receiver_node"
+        name="morai_vehicle_status_bridge" output="screen" required="true"
+        if="$(arg allow_legacy)">
+    <rosparam command="load" file="$(arg config)"/>
+  </node>
+</launch>

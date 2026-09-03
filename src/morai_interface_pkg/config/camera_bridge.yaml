@@ -1,0 +1,20 @@
+# morai_udp_bridge - Camera UDP Bridge 파라미터 (private ~ namespace)
+# 단일 카메라 실행용 템플릿. 여러 카메라는 camera_front/left/right.yaml 참고.
+#
+# 주의: port와 카메라 이름/frame_id는 아직 확정이 아니다.
+#   port는 제공 센서셋(2026_molit_comp_cam_set.json)의 destinationPort 기준이며
+#   대회 센서셋에서 반드시 재확인한다. 코드에 port를 하드코딩하지 않는다.
+
+bind_ip: "0.0.0.0"
+port: 9291                  # <PLACEHOLDER> 제공 센서셋 Front destPort 기준
+topic: "/molit/sensors/camera/front/image/compressed"
+frame_id: "camera_front_optical_frame"
+
+timestamp_source: "packet"           # 현재 MORAI에서 Unix epoch sec/nsec 실측 완료
+max_frame_bytes: 2000000             # 프레임 최대 크기(초과 시 폐기)
+frame_timeout_sec: 0.5               # 프레임 완성 대기 timeout(초과 시 폐기)
+check_chunk_index: true           # live 확인: 프레임은 index 0부터 시작하고 +1 증가
+
+receive_buffer_bytes: 65536
+socket_timeout_sec: 0.5
+stats_log_period_sec: 5.0

@@ -1,0 +1,16 @@
+# morai_udp_bridge - GPS UDP Bridge 파라미터
+# launch에서 노드의 private namespace(~)로 로드된다.
+#
+# 2026-09-03 현재 실행 중 MORAI에서 9090 -> 7801 GPRMC 패킷을 확인했다.
+# 본선 네트워크 설정이 바뀌면 중앙 계약과 이 파일을 함께 변경한다.
+
+bind_ip: "0.0.0.0"          # 수신 NIC. 모든 인터페이스에서 받으려면 0.0.0.0
+port: 7801
+topic: "/molit/sensors/gps/fix"
+frame_id: "gps_link"
+
+require_checksum: true      # NMEA '*' checksum 검증 여부
+sentence_policy: "gga_only" # 같은 epoch의 RMC/GGA 중 고도·quality가 있는 GGA만 발행
+receive_buffer_bytes: 2048  # 한 datagram 최대 수신 크기
+socket_timeout_sec: 0.5     # recv 대기 시간(종료 반응성)
+stats_log_period_sec: 5.0   # 수신/파싱 통계 로그 주기(0이면 끔)

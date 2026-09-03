@@ -1,0 +1,10 @@
+<launch>
+  <!-- LiDAR watchdog: points 수신 감시(자체 파서 없음, velodyne 드라이버 상태를 출력 토픽으로 판정) -->
+  <arg name="enable" default="false"/>
+  <arg name="config" default="$(find morai_interface_pkg)/config/lidar_watchdog.yaml"/>
+  <node pkg="morai_interface_pkg" type="lidar_watchdog_node"
+        name="morai_lidar_watchdog" output="screen" required="true"
+        if="$(arg enable)">
+    <rosparam command="load" file="$(arg config)"/>
+  </node>
+</launch>

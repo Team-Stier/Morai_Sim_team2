@@ -1,0 +1,184 @@
+schema_version: 1
+contract_version: 0.1.0
+status: approved_names_provisional_geometry
+
+authority:
+  package: ros_architecture_pkg
+  detailed_extrinsics: sensor_extrinsics.yaml
+  rule: >-
+    Frame names and parent-child relationships are centrally approved here.
+    A transform must not be published while publish_enabled is false.
+
+conventions:
+  body_and_world_standard: REP-103
+  navigation_standard: REP-105
+  transform_direction: parent_to_child
+  linear_unit: m
+  angular_unit: rad
+  handedness: right_handed
+  body_axes:
+    x: forward
+    y: left
+    z: up
+  world_axes:
+    x: east
+    y: north
+    z: up
+  camera_optical_axes:
+    x: right
+    y: down
+    z: forward
+
+root_frame: map
+
+frames:
+  - name: map
+    category: global
+    semantic: Locally translated global map frame aligned ENU.
+    semantic_owner: hd_map_pkg
+    origin_status: pending_official_hd_map_verification
+  - name: odom
+    category: local_continuous
+    semantic: Continuous local motion frame that may drift over time.
+    semantic_owner: localization_pkg
+    origin_status: set_at_localization_initialization
+  - name: base_link
+    category: vehicle_body
+    semantic: Ego vehicle body reference using REP-103 body axes.
+    semantic_owner: localization_pkg
+    origin_status: provisional_morai_sensor_target_pivot
+  - name: camera_front_link
+    category: sensor_mount
+    semantic: Front camera mounting frame before optical-axis conversion.
+    semantic_owner: camera_perception_pkg
+  - name: camera_front_optical_frame
+    category: sensor_measurement
+    semantic: Front image measurement frame using REP-103 optical axes.
+    semantic_owner: camera_perception_pkg
+  - name: camera_left_link
+    category: sensor_mount
+    semantic: Left camera mounting frame before optical-axis conversion.
+    semantic_owner: camera_perception_pkg
+  - name: camera_left_optical_frame
+    category: sensor_measurement
+    semantic: Left image measurement frame using REP-103 optical axes.
+    semantic_owner: camera_perception_pkg
+  - name: camera_right_link
+    category: sensor_mount
+    semantic: Right camera mounting frame before optical-axis conversion.
+    semantic_owner: camera_perception_pkg
+  - name: camera_right_optical_frame
+    category: sensor_measurement
+    semantic: Right image measurement frame using REP-103 optical axes.
+    semantic_owner: camera_perception_pkg
+  - name: lidar_link
+    category: sensor_measurement
+    semantic: LiDAR frame normalized to REP-103 body-style axes.
+    semantic_owner: lidar_perception_pkg
+  - name: gps_link
+    category: sensor_measurement
+    semantic: GPS antenna phase-center candidate frame.
+    semantic_owner: localization_pkg
+  - name: imu_link
+    category: sensor_measurement
+    semantic: IMU measurement frame using x-forward, y-left and z-up axes.
+    semantic_owner: localization_pkg
+
+transforms:
+  - parent: map
+    child: odom
+    type: dynamic
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: localization_pkg
+    source: global_localization_correction
+    verification_status: pending_localization_implementation
+    publish_enabled: false
+  - parent: odom
+    child: base_link
+    type: dynamic
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: localization_pkg
+    source: continuous_ego_motion_estimate
+    verification_status: pending_localization_implementation
+    publish_enabled: false
+  - parent: base_link
+    child: camera_front_link
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#camera_front
+    verification_status: source_verified_axis_mapping_pending
+    publish_enabled: false
+  - parent: camera_front_link
+    child: camera_front_optical_frame
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#camera_optical_convention
+    verification_status: convention_defined_runtime_pending
+    publish_enabled: false
+  - parent: base_link
+    child: camera_left_link
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#camera_left
+    verification_status: source_verified_axis_mapping_pending
+    publish_enabled: false
+  - parent: camera_left_link
+    child: camera_left_optical_frame
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#camera_optical_convention
+    verification_status: convention_defined_runtime_pending
+    publish_enabled: false
+  - parent: base_link
+    child: camera_right_link
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#camera_right
+    verification_status: source_verified_axis_mapping_pending
+    publish_enabled: false
+  - parent: camera_right_link
+    child: camera_right_optical_frame
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#camera_optical_convention
+    verification_status: convention_defined_runtime_pending
+    publish_enabled: false
+  - parent: base_link
+    child: lidar_link
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#lidar
+    verification_status: saved_profile_only_axis_mapping_pending
+    publish_enabled: false
+  - parent: base_link
+    child: gps_link
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#gps
+    verification_status: saved_profile_only
+    publish_enabled: false
+  - parent: base_link
+    child: imu_link
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#imu
+    verification_status: saved_profile_only
+    publish_enabled: false
+
+publication_gate:
+  required_before_enabling:
+    - Confirm the active MORAI sensor loadout and its file hash.
+    - Confirm that the MORAI sensor target pivot equals the chosen base_link origin.
+    - Verify translation axes and roll-pitch-yaw signs with asymmetric poses.
+    - Verify raw Camera and LiDAR measurement-axis mappings.
+    - Add a single static-transform publisher through system_bringup_pkg.
+    - Pass frame uniqueness, acyclic graph and live tf2 checks.
