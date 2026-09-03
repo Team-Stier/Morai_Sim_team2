@@ -1,0 +1,62 @@
+schema_version: 1
+status: approved_package_boundaries
+
+dependency_layers:
+  - governance
+  - shared_types
+  - external_interface_and_static_data
+  - estimation_and_perception
+  - world_model_and_route
+  - planning
+  - control_and_safety
+  - bringup_and_evaluation
+
+packages:
+  - name: ros_architecture_pkg
+    layer: governance
+    owns: central ROS contracts and architecture governance
+  - name: common_msgs_pkg
+    layer: shared_types
+    owns: centrally approved shared ROS data types
+  - name: morai_interface_pkg
+    layer: external_interface_and_static_data
+    owns: competition-allowed MORAI UDP boundary
+  - name: hd_map_pkg
+    layer: external_interface_and_static_data
+    owns: versioned static HD map products and validation
+  - name: camera_perception_pkg
+    layer: estimation_and_perception
+    owns: timestamped camera observations
+  - name: lidar_perception_pkg
+    layer: estimation_and_perception
+    owns: timestamped LiDAR observations
+  - name: localization_pkg
+    layer: estimation_and_perception
+    owns: ego state estimate and localization quality
+  - name: global_route_manager_pkg
+    layer: world_model_and_route
+    owns: route progress and high-level route context
+  - name: world_model_pkg
+    layer: world_model_and_route
+    owns: time-aligned map, ego and dynamic scene fusion
+  - name: path_planning_pkg
+    layer: planning
+    owns: behavior decision and feasible local trajectory
+  - name: vehicle_control_pkg
+    layer: control_and_safety
+    owns: nominal trajectory tracking command
+  - name: safety_supervisor_pkg
+    layer: control_and_safety
+    owns: final command gate and fail-closed decision
+  - name: runtime_evaluation_pkg
+    layer: bringup_and_evaluation
+    owns: read-only competition and runtime metrics
+  - name: system_bringup_pkg
+    layer: bringup_and_evaluation
+    owns: full-system launch composition and readiness order
+
+rules:
+  - Dependencies must not point from a lower layer back to a higher runtime layer.
+  - Runtime evaluation is read-only and must never affect the command path.
+  - Only the safety supervisor output may enter the final MORAI command path.
+  - Only the MORAI interface may communicate with the simulator network.

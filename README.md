@@ -220,77 +220,94 @@ ROS 토픽 이름, ROS 메시지 타입, UDP 포트와 바이너리 패킷 레�
 
 예제 시나리오는 현재 9대의 일반 차량, 보행자 1명, 정적 객체 1개, spawn point 4개, 신호등 상태 16개, shaded area 1개와 waypoint data 2개를 포함한다. 이는 제공된 **sample**의 구성일 뿐, 본선의 랜덤 미션 위치나 최종 객체 수를 보장하지 않는다.
 
-## 11. 전체 아키텍처 설계의 시작점
+## 11. 전체 시스템 아키텍처
 
-아래 그림은 세부 구현이 아니라 책임 분리를 위한 초안이다. UDP 패킷과 ROS 인터페이스를 검증한 뒤 각 경계의 토픽, 메시지, 주기, 좌표계와 timeout을 확정한다.
+시스템의 핵심 흐름은 다음과 같다.
 
-```mermaid
-flowchart LR
-    SIM[MORAI Client PC]
-    GW[UDP Gateway]
-    BUS[Normalized sensor and vehicle state]
-    LOC[Localization]
-    ROUTE[Global Route Manager]
-    E2E[Route-conditioned temporal E2E Planner]
-    SAFE[Safety Supervisor]
-    CTRL[Controller]
-    EVAL[Runtime monitor and evaluator]
+`HD Map + Localization + Camera/LiDAR observations → time-aligned World Model → Path Planning → Vehicle Control → Safety Gate → MORAI`
 
-    SIM -->|Camera / GPS / IMU / LiDAR / Status / Collision| GW
-    GW --> BUS
-    BUS --> LOC
-    BUS --> E2E
-    BUS --> SAFE
-    LOC --> ROUTE
-    LOC --> E2E
-    ROUTE -->|RouteCommand / progress / local reference| E2E
-    E2E -->|Nominal command or waypoint| SAFE
-    SAFE --> CTRL
-    CTRL -->|bounded accel / brake / steer| GW
-    GW -->|Ego Ctrl Cmd UDP| SIM
-    BUS --> EVAL
-    ROUTE --> EVAL
-    SAFE --> EVAL
+Camera와 LiDAR 결과를 각 인식 패키지가 직접 전역좌표로 변환하여 Planner에 넘기지 않는다. `world_model_pkg`가 관측 시각의 pose history와 승인된 calibration을 사용해 좌표 변환, 시간 동기화, cross-sensor fusion과 tracking을 전담한다.
+
+![MORAI 자율주행 전체 아키텍처](src/ros_architecture_pkg/docs/system_architecture.png)
+
+- [상세 아키텍처 설명](src/ros_architecture_pkg/docs/system_architecture.md)
+- [편집 가능한 Mermaid 원본](src/ros_architecture_pkg/docs/system_architecture.mmd)
+- [SVG 벡터 이미지](src/ros_architecture_pkg/docs/system_architecture.svg)
+- [파트 배분 및 소유권](src/ros_architecture_pkg/docs/part_ownership.md)
+
+### 패키지 구조
+
+| 패키지 | 단일 소유 책임 |
+|---|---|
+| `ros_architecture_pkg` | 모든 공개 ROS 계약, frame/time/unit, 의존성 및 변경 절차 |
+| `common_msgs_pkg` | 중앙 승인을 받은 공유 ROS 데이터 타입 구현 |
+| `system_bringup_pkg` | 전체 시스템 launch 조합과 readiness 순서 |
+| `morai_interface_pkg` | 허용된 MORAI UDP 송수신과 정규화의 유일한 경계 |
+| `camera_perception_pkg` | 객체·차선·신호·주행 가능 영역의 timestamped 영상 관측 |
+| `lidar_perception_pkg` | 지면·3D 객체·장애물·free-space의 timestamped LiDAR 관측 |
+| `hd_map_pkg` | version/hash가 있는 정적 HD Map layer와 검증 |
+| `localization_pkg` | ego pose·velocity·pose history·uncertainty와 quality |
+| `global_route_manager_pkg` | 전역경로, 체크포인트 순서, 진행도와 route context |
+| `world_model_pkg` | 지도·ego·Camera/LiDAR 관측의 시간·좌표 정렬과 tracking |
+| `path_planning_pkg` | behavior decision과 실행 가능한 local trajectory |
+| `vehicle_control_pkg` | trajectory tracking과 nominal actuator command |
+| `safety_supervisor_pkg` | Controller 뒤 최종 fail-closed command gate |
+| `runtime_evaluation_pkg` | 주행에 영향을 주지 않는 규정·지연·성능 지표 기록 |
+
+모든 패키지는 `src/<package_name>/` 아래에 있으며 다음 기본 구조를 지킨다.
+
+```text
+<package_name>/
+├── README.md
+├── package.xml
+├── CMakeLists.txt
+├── config/     # 패키지 로컬 런타임 파라미터
+├── docs/       # 상세 설계와 검증 근거
+├── launch/     # 해당 패키지 단독 실행
+└── src/        # 실제 구현
 ```
 
-책임은 다음처럼 분리한다.
+공개 인터페이스는 [`interface_contract.yaml`](src/ros_architecture_pkg/config/interface_contract.yaml)만 원본으로 사용한다. 현재 목록이 비어 있는 것은 아직 이름이 승인되지 않았기 때문이며, 각 패키지가 임시 ROS 이름을 만들어도 된다는 의미가 아니다.
 
-- **UDP Gateway**: 허용된 UDP 송수신, 패킷 검증, timestamp와 연결 상태 제공
-- **Localization**: GPS·IMU·LiDAR·차량 상태 융합, GPS blackout 시 연속 위치 추정과 품질 상태 제공
-- **Global Route Manager**: 원본 전역경로 로드, 경로 진행도, 다음 구간과 `RouteCommand` 제공
-- **E2E Planner**: 카메라 시계열, 경로 조건, 속도와 Ego 상태를 이용해 국소 주행 행동 생성
-- **Safety Supervisor**: stale/누락/NaN 입력, 경로 이탈, 제한속도와 모델 오류를 감시하고 명령을 제한하거나 안전 정지
-- **Controller**: 최종 명령의 범위 제한, rate limit, watchdog 적용
-- **Runtime monitor**: 체크포인트, 지연, 제어 진동, 미션 이벤트와 예상 패널티 기록
+### HD Map에 대한 현재 판단
 
-전역경로는 고수준 조건과 진행도를 제공하고 E2E 모델은 국소 행동을 생성한다. E2E 모델이 전역경로 모듈이나 독립적인 안전 계층을 무조건 대체한다고 가정하지 않는다.
+현재 4,430점 전역경로 TXT는 HD Map이 아니다. 차선 경계·종류, 도로 topology, 정지선·신호 연결, drivable area, 속도 규칙과 Localization landmark 원본이 확보되고 시뮬레이터와 정합된 뒤에만 HD Map 완료를 선언한다.
+
+전역경로는 `global_route_manager_pkg`, 정적 지도는 `hd_map_pkg`, 동적 객체가 결합된 현재 장면은 `world_model_pkg`가 각각 소유한다. 이 세 가지를 하나의 파일이나 패키지로 합치지 않는다.
 
 ## 12. AI 및 개발자 작업 규칙
 
 이 저장소에서 설계나 코드를 생성하는 AI와 개발자는 다음 규칙을 지켜야 한다.
 
-1. 작업 전에 이 README, 최신 공식 규정, 현재 브랜치와 실제 파일을 확인한다.
-2. 답변과 문서에서 `[규정]`, `[파일]`, `[설계]`, `[미확정]`을 구분한다.
-3. 공식 링크에 없는 토픽, 포트, 패킷 필드, noise 범위와 채점 임계값을 만들지 않는다.
-4. `참고파일들/`의 원본 경로·카메라·시나리오 파일을 명시적 승인 없이 수정하지 않는다.
-5. 시뮬레이터 외부 통신은 허용된 UDP 계약만 사용한다. 내부 ROS 통신과 외부 MORAI 통신을 혼동하지 않는다.
-6. 제어 출력은 `cmd type = 1`, `ctrl mode = 2`, 물리 범위, rate limit와 watchdog을 만족해야 한다.
-7. GPS blackout을 정상 입력 조건으로 다루며 GPS가 끊겼다는 이유로 오래된 절대 위치를 계속 사용하지 않는다.
-8. 센서 timestamp, frame ID, 좌표계, 단위, 주기와 timeout을 인터페이스마다 명시한다.
-9. 센서 누락·지연, NaN, 잘못된 경로 인덱스, UDP 단절과 모델 로드 실패를 테스트 가능한 오류 경로로 처리한다.
-10. 성능 보고에는 완주율, 출발 성공, 체크포인트 달성도, 충돌, 신호·차로·속도 위반, 경로 이탈, 제어 진동, 추론 지연과 패널티 포함 주행 시간을 포함한다.
-11. 학습 데이터와 평가는 시나리오·주행·날씨·시간·미션 단위로 분리하고 seed, 데이터 버전, 전처리, 모델 설정과 체크포인트를 기록한다.
-12. launch 성공이나 토픽 존재만으로 완주 가능성을 주장하지 않는다. 단위 테스트, rosbag replay, 패킷 연동, MORAI closed-loop 결과를 구분해 보고한다.
+1. 작업 전에 루트 [`AGENTS.md`](AGENTS.md), 이 README, `ros_architecture_pkg`, 중앙 계약과 대상 패키지 README를 순서대로 읽는다.
+2. node, topic, message, service, action, TF frame, 단위, timestamp, 주기와 timeout은 `ros_architecture_pkg`만 정의한다.
+3. 중앙 계약에 필요한 인터페이스가 없으면 임시 공개 이름을 만들지 않고 계약 변경을 먼저 제안한다.
+4. 각 기능 패키지는 공개 계약의 복사본을 새 원본처럼 관리하지 않고 중앙 계약을 직접 따른다.
+5. 공개 계약 변경 시 producer, 모든 consumer, 공유 타입, launch, config, 문서와 통합 테스트를 함께 변경한다.
+6. 답변과 문서에서 `[규정]`, `[파일]`, `[설계]`, `[미확정]`을 구분한다.
+7. 공식 링크에 없는 포트, 패킷 필드, noise 범위와 채점 임계값을 만들지 않는다.
+8. `참고파일들/` 원본을 명시적 승인 없이 수정·이름변경·정규화하지 않는다.
+9. MORAI 외부 통신은 `morai_interface_pkg`의 허용 UDP 경계만 사용한다.
+10. Camera/LiDAR 패키지는 관측만 제공하고, 전역 좌표 융합은 `world_model_pkg`만 수행한다.
+11. Planner는 actuator/UDP 명령을 직접 출력하지 않고 Controller와 Safety 최종 gate를 반드시 거친다.
+12. 제어 출력은 `cmd type = 1`, `ctrl mode = 2`, 물리 범위, rate limit와 watchdog을 만족해야 한다.
+13. GPS blackout을 정상 입력 조건으로 다루며 마지막 GPS나 체크포인트를 현재 위치 정답처럼 사용하지 않는다.
+14. 센서 누락·지연, NaN, 잘못된 경로 인덱스, UDP 단절과 모델 실패를 테스트 가능한 오류 경로로 처리한다.
+15. 성능 보고에는 완주율, 출발 성공, 체크포인트, 충돌, 신호·차로·속도 위반, 경로 이탈, 제어 진동, 추론 지연과 패널티 포함 시간을 포함한다.
+16. 학습 데이터와 평가는 시나리오·주행·날씨·시간·미션 단위로 분리하고 재현 정보를 기록한다.
+17. launch 성공이나 토픽 존재만으로 완주 가능성을 주장하지 않는다. build, unit/contract test, replay, 실제 UDP와 MORAI closed-loop 증거를 구분한다.
 
 ## 13. 다음 설계 작업
 
-1. MORAI 대회용 UDP 패킷 명세와 실제 송수신 샘플 확보
-2. 센서·차량 상태의 정규화된 ROS 토픽 및 메시지 계약 정의
-3. 좌표계(`UTM52N`, ENU, `map`, `odom`, `base_link`)와 시간 동기화 정책 확정
-4. GPS 정상·noise·blackout 상태를 포함한 Localization 상태 머신 설계
-5. 전역경로 진행도와 `RouteCommand` 생성 규칙 설계
-6. E2E 입력 시계열, 출력 형식, Controller 연결 방식 결정
-7. Safety Supervisor의 제한속도·stale·rate-limit·정지 조건 정의
-8. 대회 패널티를 그대로 재현하는 offline 및 closed-loop 평가기 설계
+1. 대회용 UDP 명세와 실제 packet capture를 확보하고 `morai_interface_pkg` 논리 I/O를 확정한다.
+2. 중앙 ROS 계약의 node/topic/message/frame/time/unit/timeout을 producer-consumer 단위로 승인한다.
+3. 공유 타입을 `common_msgs_pkg`에 정의하고 자동 contract test를 만든다.
+4. 공식 HD Map 원본·맵명·좌표계·Link 대응을 확인하고 HD Map 완료 기준을 검증한다.
+5. sensor calibration/time offset과 GPS blackout을 포함한 Localization 상태 머신을 설계한다.
+6. Camera/LiDAR observation schema와 독립 perception baseline을 만든다.
+7. 관측시각 pose 보간, uncertainty 전파와 tracking을 포함한 World Model을 구현한다.
+8. route context와 World Model을 사용하는 Path Planning 및 Controller open-loop를 검증한다.
+9. Safety Supervisor fault-injection과 최종 단일 command path를 검증한다.
+10. 전체 bringup, runtime evaluation, rosbag replay와 MORAI closed-loop 검증을 수행한다.
 
-세부 아키텍처 문서가 추가되기 전까지 이 README의 규정 제약을 구현의 상위 계약으로 사용한다.
+상세 node/topic 이름이 승인되기 전까지 현재 골격은 **빌드 가능한 책임 경계**만 제공하며 실제 주행 기능이 구현되었다는 뜻이 아니다.

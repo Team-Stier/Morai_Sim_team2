@@ -1,0 +1,63 @@
+flowchart LR
+    SIM["MORAI Simulator<br/>allowed UDP only"]
+    IFACE["morai_interface_pkg<br/>validate and normalize UDP"]
+
+    subgraph SENSE["Perception and ego state"]
+        CAM["camera_perception_pkg<br/>objects / lanes / signals"]
+        LIDAR["lidar_perception_pkg<br/>3D objects / free-space"]
+        LOC["localization_pkg<br/>ego state / pose history / quality"]
+    end
+
+    subgraph MAP["Static map and mission route"]
+        HDMAP["hd_map_pkg<br/>versioned static HD map"]
+        ROUTE["global_route_manager_pkg<br/>route / checkpoints / progress"]
+    end
+
+    WORLD["world_model_pkg<br/>time-aligned map + ego + tracked objects"]
+    PLAN["path_planning_pkg<br/>behavior + feasible trajectory"]
+    CONTROL["vehicle_control_pkg<br/>nominal trajectory tracking"]
+    SAFETY["safety_supervisor_pkg<br/>final fail-closed command gate"]
+
+    ARCH["ros_architecture_pkg + common_msgs_pkg<br/>all public names and schemas"]
+    BRINGUP["system_bringup_pkg<br/>launch and readiness"]
+    EVAL["runtime_evaluation_pkg<br/>read-only metrics"]
+
+    SIM -->|"sensor / status / collision"| IFACE
+    IFACE --> CAM
+    IFACE --> LIDAR
+    IFACE --> LOC
+
+    HDMAP --> LOC
+    HDMAP --> ROUTE
+    HDMAP --> WORLD
+    LOC --> ROUTE
+    CAM -->|"timestamped observations"| WORLD
+    LIDAR -->|"timestamped observations"| WORLD
+    LOC -->|"pose history + uncertainty"| WORLD
+
+    WORLD --> PLAN
+    ROUTE --> PLAN
+    PLAN --> CONTROL
+    CONTROL -->|"nominal command"| SAFETY
+    SAFETY -->|"validated final command"| IFACE
+    IFACE -->|"Ego Ctrl Cmd"| SIM
+
+    ARCH -. "governs every arrow" .-> WORLD
+    BRINGUP -. "starts in safe order" .-> IFACE
+    SAFETY -. "observed only" .-> EVAL
+
+    classDef external fill:#2d3748,color:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef interface fill:#dbeafe,color:#172554,stroke:#2563eb,stroke-width:2px;
+    classDef perception fill:#dcfce7,color:#14532d,stroke:#16a34a;
+    classDef map fill:#e0f2fe,color:#0c4a6e,stroke:#0284c7;
+    classDef fusion fill:#fef3c7,color:#78350f,stroke:#d97706,stroke-width:2px;
+    classDef decision fill:#fee2e2,color:#7f1d1d,stroke:#dc2626;
+    classDef system fill:#ede9fe,color:#4c1d95,stroke:#7c3aed;
+
+    class SIM external;
+    class IFACE interface;
+    class CAM,LIDAR,LOC perception;
+    class HDMAP,ROUTE map;
+    class WORLD fusion;
+    class PLAN,CONTROL,SAFETY decision;
+    class ARCH,BRINGUP,EVAL system;
