@@ -8,5 +8,8 @@
   <buildtool_depend>catkin</buildtool_depend>
   <depend>common_msgs_pkg</depend>
   <depend>ros_architecture_pkg</depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>python3-rospkg</exec_depend>
+  <test_depend>python3-nose</test_depend>
   <export />
 </package>

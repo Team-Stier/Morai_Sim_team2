@@ -271,7 +271,13 @@ Camera와 LiDAR 결과를 각 인식 패키지가 직접 전역좌표로 변환�
 
 ### HD Map에 대한 현재 판단
 
-현재 4,430점 전역경로 TXT는 HD Map이 아니다. 차선 경계·종류, 도로 topology, 정지선·신호 연결, drivable area, 속도 규칙과 Localization landmark 원본이 확보되고 시뮬레이터와 정합된 뒤에만 HD Map 완료를 선언한다.
+4,430점 전역경로 TXT 자체는 HD Map이 아니다. 다만 MORAI 공식 조직의 `verdict-sdk`
+KATRI MGeo 3.0 데이터를 commit/tree로 고정한 immutable 후보를 확보했고,
+`hd_map_pkg`가 차선 중심·좌우 경계, 선 종류·색, 정지선, 횡단보도, 신호 연계,
+교차로 보조 영역, 속도·방향 및 routing topology를 Lanelet2 OSM으로 변환·검증한다.
+제공 전역경로와의 좌표 정합은 자동 검사하지만 실행 중인 simulator 내부 지도와
+byte-identical하다는 보장은 아직 없으므로 후보 상태를 유지한다. 상세 내용과 실행법은
+[`hd_map_pkg/README.md`](src/hd_map_pkg/README.md)를 따른다.
 
 전역경로는 `global_route_manager_pkg`, 정적 지도는 `hd_map_pkg`, 동적 객체가 결합된 현재 장면은 `world_model_pkg`가 각각 소유한다. 이 세 가지를 하나의 파일이나 패키지로 합치지 않는다.
 
