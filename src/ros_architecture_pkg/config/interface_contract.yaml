@@ -1,0 +1,47 @@
+schema_version: 1
+contract_version: 0.0.0
+status: draft
+
+authority:
+  package: ros_architecture_pkg
+  rule: >-
+    Empty lists mean that no public ROS interface has been approved yet.
+    They do not authorize packages to invent temporary public names.
+
+# Populate these lists only after the producer-consumer contract is reviewed.
+nodes: []
+topics: []
+messages: []
+services: []
+actions: []
+frames: []
+parameters: []
+
+required_interface_fields:
+  - owner_package
+  - producers
+  - consumers
+  - data_meaning
+  - data_type
+  - unit
+  - frame
+  - timestamp_source
+  - expected_rate_hz
+  - queue_policy
+  - timeout_sec
+  - invalid_data_policy
+
+external_transport:
+  owner_package: morai_interface_pkg
+  policy: official_competition_allowlist_only
+  allowed_logical_channels:
+    - Ego Ctrl Cmd
+    - CollisionData
+    - Competition Vehicle Status
+    - GPS sensor
+    - IMU sensor
+    - Camera sensor
+    - 3D LiDAR sensor
+  control_constraints:
+    command_type: 1
+    control_mode: 2

@@ -1,0 +1,13 @@
+# Catkin workspace outputs
+/build/
+/devel/
+/install/
+/logs/
+/.catkin_tools/
+/.catkin_workspace
+
+# Python/editor artifacts
+__pycache__/
+*.py[cod]
+.vscode/
+.idea/

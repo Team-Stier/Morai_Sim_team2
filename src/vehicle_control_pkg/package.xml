@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>vehicle_control_pkg</name>
+  <version>0.0.0</version>
+  <description>Nominal trajectory tracking and bounded vehicle control generation.</description>
+  <maintainer email="simonpaik04@gmail.com">Team Stier</maintainer>
+  <license>TODO</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>common_msgs_pkg</depend>
+  <depend>ros_architecture_pkg</depend>
+  <export />
+</package>
