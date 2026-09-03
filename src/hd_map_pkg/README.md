@@ -9,6 +9,8 @@ WGS84 기반 Lanelet2 OSM으로 변환·검증하며 브라우저에서 시각 �
 > 따른다. 현재 계약에 node/topic/frame이 없으므로 ROS publisher나 임의의 `map`
 > frame을 만들지 않는다. 미리보기는 ROS와 독립된 로컬 HTML Canvas이다.
 
+![KATRI HD Map 미리보기](docs/katri_hd_map_preview.png)
+
 ## 현재 산출물
 
 `hd_map_tool build-all`은 다음 파일을 `data/derived/`에 재현 가능하게 생성한다.

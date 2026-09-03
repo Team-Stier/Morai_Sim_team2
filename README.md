@@ -279,6 +279,8 @@ KATRI MGeo 3.0 데이터를 commit/tree로 고정한 immutable 후보를 확보�
 byte-identical하다는 보장은 아직 없으므로 후보 상태를 유지한다. 상세 내용과 실행법은
 [`hd_map_pkg/README.md`](src/hd_map_pkg/README.md)를 따른다.
 
+![KATRI HD Map 미리보기](src/hd_map_pkg/docs/katri_hd_map_preview.png)
+
 전역경로는 `global_route_manager_pkg`, 정적 지도는 `hd_map_pkg`, 동적 객체가 결합된 현재 장면은 `world_model_pkg`가 각각 소유한다. 이 세 가지를 하나의 파일이나 패키지로 합치지 않는다.
 
 ## 12. AI 및 개발자 작업 규칙
