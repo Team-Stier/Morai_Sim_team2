@@ -45,6 +45,9 @@ packages:
   - name: vehicle_control_pkg
     layer: control_and_safety
     owns: nominal trajectory tracking command
+  - name: morai_path_tracking
+    layer: control_and_safety
+    owns: filtered pinned Team1 path-tracking implementation for the isolated control test
   - name: safety_supervisor_pkg
     layer: control_and_safety
     owns: final command gate and fail-closed decision

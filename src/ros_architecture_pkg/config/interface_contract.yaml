@@ -1,12 +1,13 @@
 schema_version: 1
-contract_version: 0.1.0
-status: approved_path_planning_baseline
+contract_version: 0.2.0
+status: approved_path_planning_and_team1_control_test
 
 authority:
   package: ros_architecture_pkg
   rule: >-
     This file is the sole authority for public ROS interfaces. A name absent
-    from this file is not approved, including temporary and visualization names.
+    from this file or an explicitly scoped vendor runtime profile is not
+    approved, including temporary and visualization names.
 
 nodes:
   - name: /hd_map/rviz_map
@@ -24,12 +25,18 @@ nodes:
   - name: /planning/rviz
     owner_package: system_bringup_pkg
     responsibility: optional visualization-only RViz process with no command-path output
+  - name: /control_test/team1/trajectory_adapter
+    owner_package: vehicle_control_pkg
+    responsibility: convert fresh valid canonical trajectory and odometry into isolated Team1 compatibility inputs and fail closed otherwise
+  - name: /control_test/team1/path_tracking_controller_node
+    owner_package: morai_path_tracking
+    responsibility: run the pinned Team1 path tracker for isolated open-loop comparison without UDP transmission
 
 topics:
   - name: /localization/odometry
     owner_package: localization_pkg
     producers: [localization_pkg]
-    consumers: [global_route_manager_pkg, path_planning_pkg, runtime_evaluation_pkg]
+    consumers: [global_route_manager_pkg, path_planning_pkg, vehicle_control_pkg, runtime_evaluation_pkg]
     data_meaning: rear-axle-centred ego pose and twist estimate in the MORAI scene ENU map frame
     data_type: nav_msgs/Odometry
     unit: position=m; linear_velocity=m/s; angular_velocity=rad/s; covariance=SI
@@ -110,6 +117,104 @@ topics:
     timeout_sec: 0.75
     invalid_data_policy: publish an empty path when trajectory is invalid; never use for control
 
+  - name: /control_test/team1/local_path
+    owner_package: vehicle_control_pkg
+    producers: [vehicle_control_pkg]
+    consumers: [morai_path_tracking, rviz]
+    data_meaning: Team1-only path projection of a still-valid canonical planned trajectory synchronized to accepted odometry
+    data_type: nav_msgs/Path
+    unit: position=m; orientation=quaternion
+    frame: map
+    timestamp_source: timestamp of the accepted canonical odometry sample used for this projection
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.20
+    invalid_data_policy: publish an empty synchronized path for invalid, empty, expired, future, stale, wrong-frame, or non-finite input and require safe brake
+
+  - name: /control_test/team1/odometry
+    owner_package: vehicle_control_pkg
+    producers: [vehicle_control_pkg]
+    consumers: [morai_path_tracking]
+    data_meaning: controller-only copy of accepted canonical rear-axle odometry paired exactly with the compatibility path
+    data_type: nav_msgs/Odometry
+    unit: position=m; linear_velocity=m/s; angular_velocity=rad/s; covariance=SI
+    frame: map -> base_link
+    timestamp_source: unchanged timestamp of the accepted canonical odometry sample
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.20
+    invalid_data_policy: suppress non-finite, wrong-frame, future, or stale input; republish only the latest still-fresh accepted sample with an empty path to request safe brake
+
+  - name: /control_test/team1/vehicle_status
+    owner_package: vehicle_control_pkg
+    producers: [vehicle_control_pkg]
+    consumers: [morai_path_tracking]
+    data_meaning: test-only base-link longitudinal speed projection from canonical odometry and not simulator Competition Vehicle Status
+    data_type: common_msgs_pkg/ControllerVehicleState
+    unit: linear_velocity=m/s
+    frame: base_link
+    timestamp_source: timestamp of the accepted canonical odometry sample
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.20
+    invalid_data_policy: suppress non-finite, wrong-frame, future, or stale odometry and require safe brake without reusing prior speed
+
+  - name: /control_test/team1/raw_actuator_command
+    owner_package: morai_path_tracking
+    producers: [morai_path_tracking]
+    consumers: [vehicle_control_pkg]
+    data_meaning: unsupervised Team1 nominal command for isolated open-loop comparison and never a final or MORAI-transmittable command
+    data_type: common_msgs_pkg/RawActuatorCommand
+    unit: accel=normalized_ratio; brake=normalized_ratio; steering_angle=rad
+    frame: base_link
+    timestamp_source: Team1 controller execution time in ROS time
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.20
+    invalid_data_policy: reject missing, future, stale, non-finite, out-of-range, or simultaneous positive accel and brake and never forward to the MORAI command path
+
+  - name: /control_test/team1/controller_status
+    owner_package: morai_path_tracking
+    producers: [morai_path_tracking]
+    consumers: [rostopic]
+    data_meaning: Team1 controller state, tracking errors, model diagnostics, targets, and emitted actuator values for isolated evaluation
+    data_type: common_msgs_pkg/Team1ControllerStatus
+    unit: position=m; angle=rad; speed=m/s; yaw_rate=rad/s; curvature=1/m; probability=ratio; actuator=normalized_ratio
+    frame: base_link
+    timestamp_source: Team1 controller execution time in ROS time
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_10_drop_oldest
+    timeout_sec: 0.20
+    invalid_data_policy: stale, malformed, or non-finite diagnostics have no command authority and mark the comparison invalid
+
+  - name: /control_test/team1/lookahead_point
+    owner_package: morai_path_tracking
+    producers: [morai_path_tracking]
+    consumers: [rviz]
+    data_meaning: visualization-only Team1 Pure Pursuit lookahead point in the ego body frame
+    data_type: geometry_msgs/PointStamped
+    unit: position=m
+    frame: base_link
+    timestamp_source: Team1 controller execution time in ROS time
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_10_drop_oldest
+    timeout_sec: 0.20
+    invalid_data_policy: suppress when control is inactive or the target is invalid and never use for command generation
+
+  - name: /control_test/team1/stanley_projection_point
+    owner_package: morai_path_tracking
+    producers: [morai_path_tracking]
+    consumers: [rviz]
+    data_meaning: visualization-only Team1 Stanley front-axle projection point in the ego body frame
+    data_type: geometry_msgs/PointStamped
+    unit: position=m
+    frame: base_link
+    timestamp_source: Team1 controller execution time in ROS time
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_10_drop_oldest
+    timeout_sec: 0.20
+    invalid_data_policy: suppress when control is inactive or the projection is invalid and never use for command generation
+
   - name: /hd_map/markers
     owner_package: hd_map_pkg
     producers: [hd_map_pkg]
@@ -183,6 +288,18 @@ messages:
     owner_package: common_msgs_pkg
     meaning: expiring local trajectory plus fail-closed status, reason, and minimum wheel-to-map-boundary clearance
     invalid_representation: status other than STATUS_VALID or current time after valid_until
+  - name: common_msgs_pkg/ControllerVehicleState
+    owner_package: common_msgs_pkg
+    meaning: Team1 compatibility input carrying base-link longitudinal speed derived from accepted canonical odometry
+    invalid_representation: zero, future, stale, wrong-frame, non-finite, or non-canonical-source data
+  - name: common_msgs_pkg/RawActuatorCommand
+    owner_package: common_msgs_pkg
+    meaning: raw unsupervised Team1 acceleration, brake, and steering-angle output used only inside the isolated test profile
+    invalid_representation: zero, future, stale, wrong-frame, non-finite, out-of-range, or simultaneous positive acceleration and brake
+  - name: common_msgs_pkg/Team1ControllerStatus
+    owner_package: common_msgs_pkg
+    meaning: diagnostic state and intermediate values from the pinned Team1 tracking controller
+    invalid_representation: inactive, zero, future, stale, wrong-frame, malformed, or non-finite data
 
 services: []
 actions: []
@@ -234,6 +351,20 @@ parameters:
     data_type: string
     unit: filesystem_path
     default: hd_map_pkg config/map_conversion.yaml
+  - name: /control_test/team1/trajectory_adapter/adapter_config_file
+    owner_package: vehicle_control_pkg
+    data_type: string
+    unit: filesystem_path
+    default: vehicle_control_pkg config/team1_adapter.yaml
+
+vendor_runtime_profiles:
+  - name: /control_test/team1/path_tracking_controller_node
+    owner_package: vehicle_control_pkg
+    source_package: morai_path_tracking
+    source_revision: 11c076b2e464697d86c76f968999cec58d0ffd69
+    config_file: vehicle_control_pkg/config/team1_molit_2026_path_tracking.yaml
+    private_parameter_policy: exact pinned upstream YAML plus launch-time safety and topic overrides; no downstream package may depend on these private names
+    network_policy: no vendored UDP receiver or sender may run in this profile
 
 required_interface_fields:
   - owner_package

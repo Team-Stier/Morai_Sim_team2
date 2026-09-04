@@ -1,0 +1,163 @@
+path_tracking_controller_node:
+  local_path_topic: /local_path
+  odometry_topic: /localization/odometry
+  vehicle_status_topic: /vehicle/competition_status
+  command_topic: /control/actuator_command
+  controller_status_topic: /control/controller_status
+  lookahead_point_topic: /control/lookahead_point
+  stanley_projection_point_topic: /control/stanley_projection_point
+  expected_frame_id: map
+  expected_velocity_frame_id: base_link
+  control_rate_hz: 30.0
+  path_timeout_sec: 0.25
+  odometry_timeout_sec: 0.25
+  vehicle_status_timeout_sec: 0.25
+  # local_path와 odometry는 동일 localization generation stamp를 사용한다.
+  maximum_input_skew_sec: 0.0
+  input_sync_queue_size: 10
+  minimum_control_dt_sec: 0.005
+  maximum_control_dt_sec: 0.10
+  safe_brake_command: 0.50
+  wheelbase_m: 3.0
+  # Supplied MGeo link widths are uniformly 3.5 m and do not describe the
+  # reported tight painted corridor. The route reaches about 0.104 1/m;
+  # 3.0 m is the narrowest validated corridor with positive measured clearance;
+  # 2.6 m, 2.8 m, and 2.9 m produced overlap on the tightest curve.
+  vehicle_width_m: 1.892
+  lane_half_width_m: 1.50
+  # Preserve the native IMM blend above the start margin. Between these
+  # margins, continuously prefer the stronger valid CTE-recovery candidate.
+  lane_clearance_recovery_start_m: 0.18
+  lane_clearance_recovery_full_m: 0.05
+  # Operator-facing speed unit is km/h; the controller converts at load time.
+  lane_clearance_recovery_speed_kph: 10.0
+  # S커브에서 CTE보다 먼저 커지는 헤딩 지연을 이용해 전륜 차선 접근 전에만
+  # 곡률 목표속도를 추가로 낮춘다. 정렬된 커브의 속도는 제한하지 않는다.
+  heading_error_speed_limit_start_deg: 14.0
+  heading_error_speed_limit_full_deg: 20.0
+  heading_error_recovery_speed_kph: 10.0
+  lookahead_base_m: 4.0
+  lookahead_speed_gain_sec: 0.75
+  lookahead_curvature_gain_m: 8.0
+  lookahead_min_m: 4.0
+  lookahead_max_m: 16.0
+  minimum_target_distance_m: 0.5
+  maximum_steering_angle_deg: 40.0
+  # pure_pursuit, stanley, hybrid 중 하나. 변경 후 노드를 재시작해야 한다.
+  lateral_controller: hybrid
+  # 58 km/h에서 횡오차 1 m당 약 6.3 deg를 보정해 지속적인 우측 편향을 줄인다.
+  stanley_gain: 2.0
+  stanley_softening_speed_mps: 2.0
+  stanley_minimum_control_speed_mps: 1.0
+  # 앞차축 투영점 전후 총 4 m chord로 경로 heading을 공간 평활화한다.
+  stanley_heading_window_m: 4.0
+  # 지연된 heading feedback의 비중을 낮춰 고속 좌우 진동을 억제한다.
+  stanley_heading_error_gain: 0.6
+  # 경로 곡률에 필요한 정상상태 조향을 앞서 공급한다.
+  stanley_curvature_feedforward_gain: 1.0
+  # 앞차축 투영점부터 전방 8 m의 세 점으로 signed curvature를 계산한다.
+  stanley_curvature_preview_distance_m: 8.0
+  # measured yaw rate - speed * reference curvature에 대한 감쇠 gain [s].
+  stanley_yaw_rate_damping_gain_sec: 0.1
+  # 회전이 큰 S커브 진입/탈출에서만 감쇠 gain을 연속적으로 강화한다 [s^2].
+  stanley_yaw_rate_damping_nonlinear_gain_sec2: 0.4
+  # 30 Hz 기준 주기당 최대 2 deg 변화, 0 -> 40 deg 약 0.67 s.
+  stanley_maximum_steering_rate_deg_per_sec: 60.0
+  # IMM bicycle model. IONIQ 5에서 확인되지 않은 동역학 값은 MORAI 검증 논문의
+  # 3 m wheelbase 승용차 초기값이며 rosbag innovation으로 조정한다.
+  hybrid_mass_kg: 2000.0
+  hybrid_yaw_inertia_kgm2: 4000.0
+  hybrid_front_cornering_stiffness_n_per_rad: 60000.0
+  hybrid_rear_cornering_stiffness_n_per_rad: 60000.0
+  hybrid_front_axle_to_cg_m: 1.5
+  hybrid_rear_axle_to_cg_m: 1.5
+  hybrid_process_noise_sideslip: 0.1
+  hybrid_process_noise_yaw_rate: 0.01
+  hybrid_measurement_noise_sideslip: 0.001
+  hybrid_measurement_noise_yaw_rate: 0.001
+  hybrid_initial_covariance_sideslip: 0.1
+  hybrid_initial_covariance_yaw_rate: 0.01
+  hybrid_initial_pure_pursuit_probability: 0.8
+  hybrid_initial_stanley_probability: 0.2
+  # CTE 직접 복귀가 완전히 사라지거나 Stanley로 고착되지 않도록 연속 확률 제한.
+  hybrid_stanley_probability_min: 0.15
+  hybrid_stanley_probability_max: 0.90
+  # source controller -> destination model Markov transition probability.
+  hybrid_transition_pure_pursuit_to_pure_pursuit: 0.9
+  hybrid_transition_pure_pursuit_to_stanley: 0.1
+  hybrid_transition_stanley_to_pure_pursuit: 0.95
+  hybrid_transition_stanley_to_stanley: 0.05
+  # 기준 속도까지 올라갈수록 Stanley destination 확률에 최대 0.1을 연속 가산.
+  hybrid_transition_speed_gain: 0.1
+  hybrid_transition_reference_speed_kph: 60.0
+  hybrid_minimum_model_speed_mps: 1.0
+  # PP가 우세해도 횡오차 복귀가 남도록 Stanley CTE feedback의 일부만 더한다.
+  # 0.0은 native PP, 1.0은 CTE feedback 전량이며 standalone PP에는 영향이 없다.
+  hybrid_pure_pursuit_cross_track_correction_gain: 0.60
+  # 급커브 진입에서 corrected PP와 Stanley가 같은 방향이고 Stanley가 더 강하면
+  # 곡률에 따라 Stanley 최소 비중을 연속적으로 높여 heading 지연을 예방한다.
+  hybrid_curve_preview_stanley_weight_start_m_inv: 0.02
+  hybrid_curve_preview_stanley_weight_full_m_inv: 0.06
+  # Live narrow-lane trials regressed the validated IMM trajectory, so keep
+  # this experimental override available but disabled by default.
+  hybrid_curve_preview_stanley_minimum_weight: 0.0
+  # 곡률만으로 Stanley를 강제하지 않고, 두 후보가 같은 방향이며 Stanley가
+  # 실제 헤딩 지연을 더 강하게 줄이는 순간에만 최소 비중을 올린다.
+  hybrid_heading_lag_stanley_weight_start_deg: 8.0
+  hybrid_heading_lag_stanley_weight_full_deg: 14.0
+  hybrid_heading_lag_stanley_minimum_weight: 0.55
+  # 급커브/S커브에서 두 후보 조향 부호가 반대면, 기하학적으로 전방 경로를 보는
+  # corrected PP를 우선해 IMM 동역학 likelihood의 순간적인 오선택을 제한한다.
+  hybrid_candidate_conflict_curvature_threshold_m_inv: 0.015
+  hybrid_candidate_conflict_cross_track_threshold_m: 0.45
+  # CTE가 이 값의 절반을 넘으면 PP 복귀 비중을 부드럽게 높이고 전량 적용한다.
+  hybrid_cross_track_recovery_full_scale_m: 0.55
+  # 큰 heading 오차는 전륜 CTE를 부풀리므로 이 구간에서만 PP 강제 복귀를 줄인다.
+  hybrid_cross_track_recovery_heading_error_suppression_start_deg: 15.0
+  hybrid_cross_track_recovery_heading_error_suppression_full_deg: 17.5
+  hybrid_cross_track_recovery_heading_error_maximum_suppression_ratio: 0.30
+  # 두 후보를 혼합한 뒤 한 번만 적용하는 최종 조향 변화율.
+  hybrid_maximum_steering_rate_deg_per_sec: 60.0
+  # 저곡률에서는 짧은 CTE 변화에 대한 좌우 조향 반전을 줄이고, 아래 곡률까지
+  # 연속적으로 60 deg/s로 복원해 급커브 진입 응답은 유지한다.
+  hybrid_low_curvature_maximum_steering_rate_deg_per_sec: 45.0
+  hybrid_full_steering_rate_curvature_m_inv: 0.015
+  # 커브 탈출 시 같은 방향에서 조향 절대값을 줄이는 복귀율 배수.
+  hybrid_steering_return_rate_multiplier: 2.0
+  # 운전자 설정 단위는 km/h, 제어기 내부와 상태 토픽은 m/s를 사용한다.
+  target_speed_kph: 58.0
+  minimum_curve_speed_kph: 15.0
+  maximum_lateral_acceleration_mps2: 1.9
+  # 클수록 곡률 증가에 따른 추가 감속이 강해진다. 0.0이면 기존 횡가속도 식만 사용한다.
+  curvature_speed_reduction_gain_m: 4.0
+  curvature_preview_distance_m: 45.0
+  lookahead_curvature_preview_distance_m: 8.0
+  curvature_sample_spacing_m: 2.0
+  curve_approach_deceleration_mps2: 1.0
+  curvature_epsilon_m_inv: 0.001
+  target_speed_acceleration_limit_mps2: 2.0
+  # 전방 곡률이 목표속도를 제한하는 동안 S커브 사이 재가속을 억제한다.
+  curve_target_speed_acceleration_limit_mps2: 0.2
+  target_speed_deceleration_limit_mps2: 5.0
+  # 곡률 raw 목표속도 LPF. 0.0이면 비활성.
+  target_speed_filter_time_constant_sec: 0.35
+  # Simulator 무노이즈 가정에서는 0.0(필터 비활성).
+  speed_filter_time_constant_sec: 0.0
+  speed_kp: 0.18
+  speed_ki: 0.02
+  speed_kd: 0.0
+  speed_integral_limit: 1.0
+  speed_integral_unwind_rate_per_sec: 0.5
+  speed_error_deadband_mps: 0.10
+  speed_accel_feedforward_gain_per_mps: 0.008
+  # 목표속도를 이만큼만 넘으면 제동 대신 타력주행한다.
+  speed_coast_overspeed_kph: 0.2
+  # 목표속도를 이만큼 넘을 때부터 정상 PID 제동을 허용한다.
+  speed_brake_overspeed_kph: 1.8
+  # 대회 제한 60 km/h보다 1 km/h 낮은 독립 안전제동 경계.
+  hard_brake_activation_speed_kph: 59.0
+  minimum_hard_brake_command: 0.25
+  maximum_accel_command: 0.40
+  maximum_brake_command: 0.60
+  # 정상 PID signed effort(accel-brake)의 초당 최대 변화량. 0.0이면 비활성.
+  longitudinal_command_rate_limit_per_sec: 2.0

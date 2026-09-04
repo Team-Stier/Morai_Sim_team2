@@ -1,0 +1,228 @@
+#!/usr/bin/env python3
+
+"""Fail-closed bridge from PlannedTrajectory to the pinned Team1 controller."""
+
+import math
+import threading
+
+from common_msgs_pkg.msg import (
+    ControllerVehicleState,
+    PlannedTrajectory,
+    RawActuatorCommand,
+)
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry, Path
+import rospy
+import yaml
+
+from vehicle_control_pkg.team1_adapter_core import (
+    AdapterConfig,
+    quaternion_from_yaw,
+    validate_odometry,
+    validate_raw_command,
+    validate_trajectory,
+)
+
+
+TRAJECTORY_TOPIC = "/planning/trajectory"
+ODOMETRY_TOPIC = "/localization/odometry"
+CONTROL_PATH_TOPIC = "/control_test/team1/local_path"
+CONTROL_ODOMETRY_TOPIC = "/control_test/team1/odometry"
+VEHICLE_STATUS_TOPIC = "/control_test/team1/vehicle_status"
+RAW_COMMAND_TOPIC = "/control_test/team1/raw_actuator_command"
+MAP_FRAME = "map"
+BASE_FRAME = "base_link"
+
+
+def _load_config(path):
+    if not path:
+        raise ValueError("~adapter_config_file must be a non-empty path")
+    with open(path, "r", encoding="utf-8") as stream:
+        values = yaml.safe_load(stream)
+    return AdapterConfig.from_mapping(values)
+
+
+class Team1TrajectoryAdapter:
+    def __init__(self):
+        self._config = _load_config(rospy.get_param("~adapter_config_file", ""))
+        self._output_lock = threading.RLock()
+        self._trajectory = None
+        self._trajectory_reason = "trajectory_not_received"
+        self._latest_odometry = None
+
+        self._path_publisher = rospy.Publisher(
+            CONTROL_PATH_TOPIC, Path, queue_size=1
+        )
+        self._status_publisher = rospy.Publisher(
+            VEHICLE_STATUS_TOPIC, ControllerVehicleState, queue_size=1
+        )
+        self._odometry_publisher = rospy.Publisher(
+            CONTROL_ODOMETRY_TOPIC, Odometry, queue_size=1
+        )
+        self._trajectory_subscriber = rospy.Subscriber(
+            TRAJECTORY_TOPIC,
+            PlannedTrajectory,
+            self._on_trajectory,
+            queue_size=self._config.queue_size,
+        )
+        self._odometry_subscriber = rospy.Subscriber(
+            ODOMETRY_TOPIC,
+            Odometry,
+            self._on_odometry,
+            queue_size=self._config.queue_size,
+        )
+        self._raw_command_subscriber = rospy.Subscriber(
+            RAW_COMMAND_TOPIC,
+            RawActuatorCommand,
+            self._on_raw_command,
+            queue_size=self._config.queue_size,
+        )
+        rospy.loginfo(
+            "Team1 controller adapter ready; raw commands stay isolated from "
+            "Safety Supervisor and MORAI UDP"
+        )
+
+    def _on_trajectory(self, message):
+        result = validate_trajectory(
+            message, rospy.Time.now().to_sec(), self._config, MAP_FRAME
+        )
+        with self._output_lock:
+            self._trajectory = message if result.valid else None
+            self._trajectory_reason = result.reason
+            if not result.valid and self._latest_odometry is not None:
+                odometry_result = validate_odometry(
+                    self._latest_odometry,
+                    rospy.Time.now().to_sec(),
+                    self._config,
+                    MAP_FRAME,
+                    BASE_FRAME,
+                )
+                if odometry_result.valid:
+                    self._publish_synchronized_inputs(
+                        self._latest_odometry, trajectory=None
+                    )
+        if not result.valid:
+            rospy.logwarn_throttle(
+                1.0, "Team1 adapter rejected trajectory: %s", result.reason
+            )
+
+    def _empty_path(self, stamp):
+        message = Path()
+        message.header.stamp = stamp
+        message.header.frame_id = MAP_FRAME
+        return message
+
+    def _controller_path(self, trajectory, stamp):
+        message = self._empty_path(stamp)
+        for point in trajectory.points:
+            pose = PoseStamped()
+            pose.header.stamp = stamp
+            pose.header.frame_id = MAP_FRAME
+            pose.pose.position.x = point.x_m
+            pose.pose.position.y = point.y_m
+            pose.pose.position.z = point.z_m
+            quaternion = quaternion_from_yaw(point.yaw_rad)
+            pose.pose.orientation.x = quaternion[0]
+            pose.pose.orientation.y = quaternion[1]
+            pose.pose.orientation.z = quaternion[2]
+            pose.pose.orientation.w = quaternion[3]
+            message.poses.append(pose)
+        return message
+
+    def _publish_vehicle_status(self, odometry):
+        status = ControllerVehicleState()
+        status.header.stamp = odometry.header.stamp
+        status.header.frame_id = BASE_FRAME
+        status.velocity_x_mps = odometry.twist.twist.linear.x
+        self._status_publisher.publish(status)
+
+    def _publish_synchronized_inputs(self, odometry, trajectory):
+        self._publish_vehicle_status(odometry)
+        if trajectory is None:
+            path = self._empty_path(odometry.header.stamp)
+        else:
+            path = self._controller_path(trajectory, odometry.header.stamp)
+        self._path_publisher.publish(path)
+        self._odometry_publisher.publish(odometry)
+
+    def _on_odometry(self, odometry):
+        with self._output_lock:
+            now_sec = rospy.Time.now().to_sec()
+            odometry_result = validate_odometry(
+                odometry, now_sec, self._config, MAP_FRAME, BASE_FRAME
+            )
+            if not odometry_result.valid:
+                self._latest_odometry = None
+                rospy.logwarn_throttle(
+                    1.0,
+                    "Team1 adapter rejected odometry: %s",
+                    odometry_result.reason,
+                )
+                return
+
+            self._latest_odometry = odometry
+            trajectory = self._trajectory
+            stored_reason = self._trajectory_reason
+            if trajectory is None:
+                rospy.logwarn_throttle(
+                    1.0,
+                    "Team1 adapter is publishing an empty control path: %s",
+                    stored_reason,
+                )
+                self._publish_synchronized_inputs(odometry, trajectory=None)
+                return
+
+            trajectory_result = validate_trajectory(
+                trajectory, now_sec, self._config, MAP_FRAME
+            )
+            if not trajectory_result.valid:
+                if self._trajectory is trajectory:
+                    self._trajectory = None
+                    self._trajectory_reason = trajectory_result.reason
+                rospy.logwarn_throttle(
+                    1.0,
+                    "Team1 adapter invalidated trajectory: %s",
+                    trajectory_result.reason,
+                )
+                self._publish_synchronized_inputs(odometry, trajectory=None)
+                return
+
+            self._publish_synchronized_inputs(odometry, trajectory)
+
+    def _on_raw_command(self, command):
+        result = validate_raw_command(
+            command, rospy.Time.now().to_sec(), self._config
+        )
+        if not result.valid:
+            rospy.logerr_throttle(
+                1.0, "Team1 raw command is invalid: %s", result.reason
+            )
+            return
+
+        with self._output_lock:
+            trajectory = self._trajectory
+            trajectory_valid = (
+                trajectory is not None
+                and validate_trajectory(
+                    trajectory, rospy.Time.now().to_sec(), self._config, MAP_FRAME
+                ).valid
+            )
+        if not trajectory_valid and (
+            command.accel > 0.0
+            or abs(command.steering_angle_rad) > 1.0e-6
+            or not math.isfinite(command.brake)
+        ):
+            rospy.logerr_throttle(
+                1.0,
+                "Team1 controller produced motion command without an accepted trajectory",
+            )
+
+
+def main():
+    rospy.init_node("trajectory_adapter")
+    Team1TrajectoryAdapter()
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()

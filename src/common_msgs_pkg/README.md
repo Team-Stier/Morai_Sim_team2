@@ -21,6 +21,15 @@
 - `TrajectoryPoint`: rear-axle 기준 경로 pose, 곡률, 누적거리, 목표속도와 선택 Link
 - `PlannedTrajectory`: 유효기간, fail-closed 상태, 벽 개방 여부와 최소 경계 clearance를 포함한 조밀 경로
 
+## 임시 Team1 제어 시험 타입
+
+- `ControllerVehicleState`: canonical odometry에서 검증·복사한 제어기용 종방향 속도
+- `RawActuatorCommand`: Safety 승인을 받지 않은 격리 시험용 accel, brake와 조향각
+- `Team1ControllerStatus`: 고정된 Team1 제어기의 상태·추종 오차·중간 계산 진단값
+
+세 타입은 `/control_test/team1` profile에서만 사용한다. 특히
+`RawActuatorCommand`는 최종 차량 명령이 아니며 MORAI UDP로 전달할 수 없다.
+
 정확한 topic, frame, timestamp, timeout과 invalid 정책은 이 README가 아니라 중앙 계약이 원본이다. 숫자 필드는 NaN을 invalid sentinel로 사용하지 않으며, `valid=false` 또는 trajectory status/expiry를 확인해야 한다.
 
 ## 디렉터리

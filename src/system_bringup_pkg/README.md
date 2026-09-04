@@ -61,6 +61,20 @@ roslaunch system_bringup_pkg planning_stack.launch \
 heartbeat를 발행해야 하며 topic 미수신은 빈 도로가 아니라 정지 요구다. 실행 구성과 제한은
 [`docs/planning_bringup.md`](docs/planning_bringup.md)에 기록한다.
 
+## 임시 Team1 제어기 시험 profile
+
+기존 planning profile을 바꾸지 않고 격리된 제어기 출력까지 확인하려면 다음을
+사용한다.
+
+```bash
+roslaunch system_bringup_pkg path_control_test.launch
+```
+
+이 profile은 `/control_test/team1` 아래에만 제어기 입력·출력을 만들고 RViz에서
+adapter path, Pure Pursuit lookahead와 Stanley projection을 planning 결과와 함께
+표시하며 MORAI UDP sender를 시작하지 않는다. 상세한 범위와 한계는
+[`docs/path_control_test.md`](docs/path_control_test.md)에서 확인한다.
+
 ## 디렉터리
 
 - `config/`: 시스템 조합과 모드별 파라미터

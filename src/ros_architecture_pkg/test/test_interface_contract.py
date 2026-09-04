@@ -158,6 +158,7 @@ class InterfaceContractTest(unittest.TestCase):
             "actions",
             "frames",
             "parameters",
+            "vendor_runtime_profiles",
             "required_interface_fields",
             "external_transport",
         }
@@ -245,6 +246,24 @@ class InterfaceContractTest(unittest.TestCase):
                 self.assertIsNone(
                     forbidden.search(config_path.read_text(encoding="utf-8"))
                 )
+
+    def test_vendor_runtime_profile_is_pinned_scoped_and_network_isolated(self):
+        profiles = self.contract.records("vendor_runtime_profiles")
+        self.assertEqual(len(profiles), 1)
+        profile = profiles[0]
+        self.assertEqual(
+            profile["name"],
+            "/control_test/team1/path_tracking_controller_node",
+        )
+        self.assertEqual(profile["owner_package"], "vehicle_control_pkg")
+        self.assertEqual(profile["source_package"], "morai_path_tracking")
+        self.assertRegex(profile["source_revision"], re.compile(r"^[0-9a-f]{40}$"))
+        self.assertEqual(
+            profile["config_file"],
+            "vehicle_control_pkg/config/team1_molit_2026_path_tracking.yaml",
+        )
+        self.assertIn("exact pinned upstream YAML", profile["private_parameter_policy"])
+        self.assertIn("no vendored UDP", profile["network_policy"])
 
     def test_planner_valid_publication_is_revision_gated_and_serialized(self):
         source_root = pathlib.Path(__file__).resolve().parents[2]

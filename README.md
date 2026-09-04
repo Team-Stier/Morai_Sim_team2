@@ -254,7 +254,9 @@ Camera와 LiDAR 결과를 각 인식 패키지가 직접 전역좌표로 변환�
 | `safety_supervisor_pkg` | Controller 뒤 최종 fail-closed command gate |
 | `runtime_evaluation_pkg` | 주행에 영향을 주지 않는 규정·지연·성능 지표 기록 |
 
-모든 패키지는 `src/<package_name>/` 아래에 있으며 다음 기본 구조를 지킨다.
+프로젝트가 직접 소유하는 패키지는 `src/<package_name>/` 아래에 있으며 다음 기본
+구조를 지킨다. 고정 외부 구현에서 필요한 부분만 노출하는 임시 runtime snapshot은
+`src/vendor/` 아래에 두고 출처·revision·로컬 patch를 별도 문서와 테스트로 고정한다.
 
 ```text
 <package_name>/
@@ -267,7 +269,7 @@ Camera와 LiDAR 결과를 각 인식 패키지가 직접 전역좌표로 변환�
 └── src/        # 실제 구현
 ```
 
-공개 인터페이스는 [`interface_contract.yaml`](src/ros_architecture_pkg/config/interface_contract.yaml)만 원본으로 사용한다. 현재 파일에는 planning 개발 baseline만 승인되어 있으며, 목록에 없는 기능을 위해 각 패키지가 임시 ROS 이름을 만들어도 된다는 의미가 아니다.
+공개 인터페이스는 [`interface_contract.yaml`](src/ros_architecture_pkg/config/interface_contract.yaml)만 원본으로 사용한다. 현재 파일에는 planning 개발 baseline과 격리된 Team1 controller 시험 profile만 승인되어 있으며, 목록에 없는 기능을 위해 각 패키지가 임시 ROS 이름을 만들어도 된다는 의미가 아니다.
 
 ### HD Map에 대한 현재 판단
 
@@ -282,6 +284,23 @@ byte-identical하다는 보장은 아직 없으므로 후보 상태를 유지한
 ![KATRI HD Map 미리보기](src/hd_map_pkg/docs/katri_hd_map_preview.png)
 
 전역경로는 `global_route_manager_pkg`, 정적 지도는 `hd_map_pkg`, 동적 객체가 결합된 현재 장면은 `world_model_pkg`가 각각 소유한다. 이 세 가지를 하나의 파일이나 패키지로 합치지 않는다.
+
+### 임시 Team1 제어기 시험
+
+`vendor/team1_mpc_controller`에는 Team1 제어기 저장소를 특정 commit으로
+고정한 Git submodule이 있다. 저장소 이름과 달리 실제 구현은 MPC가 아니라 Pure
+Pursuit·Stanley·IMM 횡제어와 PID 종제어다. 기존 planning launch를 바꾸지 않고
+다음 시험 profile에서만 연결한다.
+
+```bash
+git submodule update --init --recursive
+roslaunch system_bringup_pkg path_control_test.launch
+```
+
+이 profile의 raw command는 `/control_test/team1` 안에 격리되며 Safety Supervisor나
+MORAI UDP로 전달되지 않는다. 상세한 제약과 실행 전제는
+[`vehicle_control_pkg` 통합 문서](src/vehicle_control_pkg/docs/team1_temporary_integration.md)를
+따른다.
 
 ## 12. AI 및 개발자 작업 규칙
 
@@ -318,4 +337,6 @@ byte-identical하다는 보장은 아직 없으므로 후보 상태를 유지한
 9. Safety Supervisor fault-injection과 최종 단일 command path를 검증한다.
 10. 전체 bringup, runtime evaluation, rosbag replay와 MORAI closed-loop 검증을 수행한다.
 
-상세 node/topic 이름이 승인되기 전까지 현재 골격은 **빌드 가능한 책임 경계**만 제공하며 실제 주행 기능이 구현되었다는 뜻이 아니다.
+현재 HD-map, route와 planning 구현 및 격리된 controller 시험은 실제 Safety 승인·MORAI
+closed loop가 아니다. 나머지 골격 패키지와 최종 command path가 구현되고 위 검증
+단계를 통과하기 전에는 완주 가능한 시스템이라고 판단하지 않는다.

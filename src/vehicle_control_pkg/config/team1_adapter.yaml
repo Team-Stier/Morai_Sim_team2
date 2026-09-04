@@ -1,0 +1,10 @@
+# Public ROS names and frames are fixed by the central interface contract.
+trajectory_timeout_sec: 0.75
+odometry_timeout_sec: 0.20
+raw_command_timeout_sec: 0.20
+minimum_path_points: 2
+queue_size: 10
+maximum_accel_command: 0.40
+maximum_brake_command: 0.60
+maximum_steering_angle_rad: 0.6981317007977318
+controller_target_speed_mps: 2.7777777777777777

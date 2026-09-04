@@ -7,7 +7,22 @@ import re
 import unittest
 
 
+def _fields(schema):
+    return tuple(
+        tuple(line.split())
+        for line in schema.strip().splitlines()
+        if line.strip()
+    )
+
+
 EXPECTED_SCHEMAS = {
+    "ControllerVehicleState.msg": {
+        "constants": (),
+        "fields": _fields("""
+std_msgs/Header header
+float32 velocity_x_mps
+"""),
+    },
     "LeadVehicleState.msg": {
         "constants": (),
         "fields": (
@@ -40,6 +55,15 @@ EXPECTED_SCHEMAS = {
             ("common_msgs_pkg/TrajectoryPoint[]", "points"),
         ),
     },
+    "RawActuatorCommand.msg": {
+        "constants": (),
+        "fields": _fields("""
+std_msgs/Header header
+float32 accel
+float32 brake
+float32 steering_angle_rad
+"""),
+    },
     "RouteContext.msg": {
         "constants": (),
         "fields": (
@@ -53,6 +77,75 @@ EXPECTED_SCHEMAS = {
             ("string[]", "horizon_link_ids"),
             ("bool", "speed_limit_exempt_zone"),
         ),
+    },
+    "Team1ControllerStatus.msg": {
+        "constants": (),
+        "fields": _fields("""
+std_msgs/Header header
+bool active
+string state
+string lateral_controller
+float64 cross_track_error_m
+float64 heading_error_rad
+float64 reference_curvature_m_inv
+float64 reference_yaw_rate_radps
+float64 measured_yaw_rate_radps
+float64 yaw_rate_error_radps
+float64 curvature_feedforward_steering_rad
+float64 heading_feedback_steering_rad
+float64 cross_track_feedback_steering_rad
+float64 applied_yaw_rate_damping_gain_sec
+float64 yaw_rate_damping_steering_rad
+float64 requested_steering_angle_rad
+float64 pure_pursuit_steering_angle_rad
+float64 hybrid_corrected_pure_pursuit_steering_angle_rad
+float64 stanley_steering_angle_rad
+float64 hybrid_pure_pursuit_probability
+float64 hybrid_stanley_probability
+float64 hybrid_effective_pure_pursuit_weight
+float64 hybrid_effective_stanley_weight
+bool hybrid_candidate_conflict_guard_active
+bool hybrid_candidate_conflict_stanley_override_active
+bool hybrid_cross_track_recovery_active
+float64 hybrid_cross_track_recovery_weight
+bool hybrid_cross_track_recovery_heading_suppression_active
+float64 hybrid_cross_track_recovery_heading_suppression_weight
+bool hybrid_lane_clearance_recovery_active
+float64 lane_clearance_recovery_urgency
+bool hybrid_curve_preview_stanley_recovery_active
+float64 hybrid_curve_preview_stanley_recovery_weight
+bool hybrid_heading_lag_stanley_recovery_active
+float64 hybrid_heading_lag_stanley_recovery_weight
+float64 hybrid_applied_maximum_steering_rate_rad_per_sec
+float64 measured_sideslip_angle_rad
+float64 pure_pursuit_innovation_norm
+float64 stanley_innovation_norm
+geometry_msgs/Point stanley_projection_point_base
+float64 configured_target_speed_mps
+float64 raw_target_speed_mps
+float64 filtered_target_speed_mps
+float64 target_speed_mps
+float64 measured_velocity_x_mps
+float64 speed_error_mps
+float64 speed_overshoot_mps
+string longitudinal_state
+float64 preview_curvature_m_inv
+float64 speed_limiting_curve_distance_m
+float64 lookahead_curvature_m_inv
+float64 curvature_speed_limit_mps
+float64 lane_half_width_m
+float64 vehicle_width_m
+float64 wheel_outer_offset_m
+float64 wheel_minimum_clearance_m
+float64 lane_clearance_speed_limit_mps
+float64 heading_error_speed_limit_urgency
+float64 heading_error_speed_limit_mps
+float64 lookahead_distance_m
+geometry_msgs/Point lookahead_point_base
+float64 steering_angle_rad
+float64 accel
+float64 brake
+"""),
     },
     "TrajectoryPoint.msg": {
         "constants": (),
@@ -70,10 +163,13 @@ EXPECTED_SCHEMAS = {
 }
 
 EXPECTED_CONTRACT_MESSAGES = frozenset((
+    "common_msgs_pkg/ControllerVehicleState",
     "common_msgs_pkg/RouteContext",
     "common_msgs_pkg/LeadVehicleState",
     "common_msgs_pkg/TrajectoryPoint",
     "common_msgs_pkg/PlannedTrajectory",
+    "common_msgs_pkg/RawActuatorCommand",
+    "common_msgs_pkg/Team1ControllerStatus",
 ))
 
 MESSAGE_LINE_PATTERN = re.compile(
@@ -145,9 +241,12 @@ class PlanningMessageSchemaTest(unittest.TestCase):
         self.assertEqual(
             topic_types,
             {
+                "common_msgs_pkg/ControllerVehicleState",
                 "common_msgs_pkg/LeadVehicleState",
                 "common_msgs_pkg/PlannedTrajectory",
+                "common_msgs_pkg/RawActuatorCommand",
                 "common_msgs_pkg/RouteContext",
+                "common_msgs_pkg/Team1ControllerStatus",
             },
         )
 

@@ -8,6 +8,9 @@ Panels:
         - /HD Map1
         - /Global Path1
         - /Local Path1
+        - /Team1 Controller Path1
+        - /Team1 Lookahead1
+        - /Team1 Stanley Projection1
         - /Ego Trace1
       Splitter Ratio: 0.5
     Tree Height: 650
@@ -94,6 +97,49 @@ Visualization Manager:
       Shaft Diameter: 0.1
       Shaft Length: 0.1
       Topic: /planning/local_path
+      Unreliable: false
+      Value: true
+    - Alpha: 0.9
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 255; 80; 220
+      Enabled: true
+      Head Diameter: 0.3
+      Head Length: 0.2
+      Length: 0.3
+      Line Style: Billboards
+      Line Width: 0.14
+      Name: Team1 Controller Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0.20
+      Pose Color: 255; 80; 220
+      Pose Style: None
+      Radius: 0.03
+      Shaft Diameter: 0.1
+      Shaft Length: 0.1
+      Topic: /control_test/team1/local_path
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Class: rviz/PointStamped
+      Color: 80; 255; 80
+      Enabled: true
+      History Length: 1
+      Name: Team1 Lookahead
+      Radius: 0.30
+      Topic: /control_test/team1/lookahead_point
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Class: rviz/PointStamped
+      Color: 255; 80; 80
+      Enabled: true
+      History Length: 1
+      Name: Team1 Stanley Projection
+      Radius: 0.25
+      Topic: /control_test/team1/stanley_projection_point
       Unreliable: false
       Value: true
     - Alpha: 0.9

@@ -11,9 +11,12 @@ find_package(
 
 add_message_files(
   FILES
+  ControllerVehicleState.msg
   LeadVehicleState.msg
   PlannedTrajectory.msg
+  RawActuatorCommand.msg
   RouteContext.msg
+  Team1ControllerStatus.msg
   TrajectoryPoint.msg
 )
 

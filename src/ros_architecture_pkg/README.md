@@ -17,12 +17,14 @@
 
 ## 현재 상태
 
-`config/interface_contract.yaml`은 현재 `approved_path_planning_baseline`이며 HD Map
-시각화, global route context, Hybrid A* trajectory와 planning RViz에 필요한
-node/topic/message/frame/parameter를 승인한다. 이 목록은 전체 자율주행
-스택이 완성됐다는 뜻이 아니다. 현재 계약에 없는 공개 이름은 여전히
-사용할 수 없으며, MORAI UDP·localization·world model·control 인터페이스는
-해당 producer/consumer 구현과 함께 별도 승인해야 한다.
+`config/interface_contract.yaml`은 현재
+`approved_path_planning_and_team1_control_test`이며 HD Map 시각화, global route
+context, Hybrid A* trajectory, planning RViz와 UDP 송신이 없는 격리된 Team1
+controller 시험 profile에 필요한 node/topic/message/frame/parameter를 승인한다.
+이 목록은 전체 자율주행 스택이나 MORAI closed loop가 완성됐다는 뜻이 아니다.
+계약에 적힌 localization·world-model 입력에는 실제 producer가 별도로 필요하며,
+최종 Safety command와 MORAI UDP 제어 경계는 구현·검증과 함께 별도 승인해야 한다.
+현재 계약에 없는 공개 이름은 여전히 사용할 수 없다.
 
 다른 패키지를 구현하다 공개 인터페이스가 필요하면 다음 순서로 진행한다.
 

@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="use_rviz" default="true" />
+  <arg name="rviz_config"
+       default="$(find system_bringup_pkg)/rviz/planning_stack.rviz" />
+  <arg name="map_source_directory"
+       default="$(find hd_map_pkg)/vendor/verdict_sdk/map-data/KATRI" />
+  <arg name="map_config_file"
+       default="$(find hd_map_pkg)/config/map_conversion.yaml" />
+  <arg name="route_file" default="reference_file_from_hd_map_config" />
+  <arg name="route_config_file"
+       default="$(find global_route_manager_pkg)/config/competition_route.yaml" />
+  <arg name="planner_config_file"
+       default="$(find path_planning_pkg)/config/hybrid_astar.yaml" />
+  <arg name="adapter_config_file"
+       default="$(find vehicle_control_pkg)/config/team1_adapter.yaml" />
+
+  <include file="$(find system_bringup_pkg)/launch/planning_stack.launch">
+    <arg name="use_rviz" value="$(arg use_rviz)" />
+    <arg name="rviz_config" value="$(arg rviz_config)" />
+    <arg name="map_source_directory" value="$(arg map_source_directory)" />
+    <arg name="map_config_file" value="$(arg map_config_file)" />
+    <arg name="route_file" value="$(arg route_file)" />
+    <arg name="route_config_file" value="$(arg route_config_file)" />
+    <arg name="planner_config_file" value="$(arg planner_config_file)" />
+  </include>
+
+  <include file="$(find vehicle_control_pkg)/launch/team1_controller_test.launch">
+    <arg name="adapter_config_file" value="$(arg adapter_config_file)" />
+  </include>
+
+  <!-- This test profile intentionally has no Safety output or MORAI UDP sender. -->
+</launch>

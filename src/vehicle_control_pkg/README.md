@@ -30,6 +30,24 @@
 
 Safety Supervisor가 Controller 뒤에서 최종 gate를 수행하므로 이 출력은 아직 MORAI 송신 승인을 의미하지 않는다.
 
+## 임시 Team1 제어기 시험
+
+`team1_controller_test.launch`는 고정 submodule의 Team1 Pure
+Pursuit/Stanley/IMM + PID 제어기를 격리해 실행한다. 이름과 달리 upstream
+저장소에는 MPC 구현이 없다.
+
+Adapter는 권위 있는 `/planning/trajectory`의 상태, 만료시각, map frame,
+point와 boundary clearance를 검사한 뒤 fresh odometry stamp에 동기화된 제어기
+전용 Path를 만든다. 기존 `/planning/local_path`는 계속 시각화 전용이다.
+
+```bash
+roslaunch vehicle_control_pkg team1_controller_test.launch
+```
+
+결과는 `/control_test/team1` namespace에만 남고 MORAI UDP로 전달되지 않는다.
+출처, 제한, 실행 전제와 제거 방법은
+[`docs/team1_temporary_integration.md`](docs/team1_temporary_integration.md)에 있다.
+
 ## 디렉터리
 
 - `config/`: gain, saturation, rate, watchdog과 차량 모델 파라미터

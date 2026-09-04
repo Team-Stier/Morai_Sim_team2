@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="adapter_config_file"
+       default="$(find vehicle_control_pkg)/config/team1_adapter.yaml" />
+  <arg name="team1_controller_config"
+       default="$(find vehicle_control_pkg)/config/team1_molit_2026_path_tracking.yaml" />
+
+  <node pkg="vehicle_control_pkg"
+        type="team1_trajectory_adapter"
+        name="trajectory_adapter"
+        ns="control_test/team1"
+        output="screen"
+        required="true">
+    <param name="adapter_config_file" value="$(arg adapter_config_file)" />
+  </node>
+
+  <group ns="control_test/team1">
+    <rosparam command="load" file="$(arg team1_controller_config)" />
+    <node pkg="morai_path_tracking"
+          type="path_tracking_controller_node"
+          name="path_tracking_controller_node"
+          output="screen"
+          required="true">
+      <param name="local_path_topic" value="/control_test/team1/local_path" />
+      <param name="odometry_topic" value="/control_test/team1/odometry" />
+      <param name="vehicle_status_topic" value="/control_test/team1/vehicle_status" />
+      <param name="command_topic" value="/control_test/team1/raw_actuator_command" />
+      <param name="controller_status_topic" value="/control_test/team1/controller_status" />
+      <param name="lookahead_point_topic" value="/control_test/team1/lookahead_point" />
+      <param name="stanley_projection_point_topic" value="/control_test/team1/stanley_projection_point" />
+      <param name="expected_frame_id" value="map" />
+      <param name="expected_velocity_frame_id" value="base_link" />
+      <param name="path_timeout_sec" value="0.20" />
+      <param name="odometry_timeout_sec" value="0.20" />
+      <param name="vehicle_status_timeout_sec" value="0.20" />
+      <param name="maximum_input_skew_sec" value="0.0" />
+
+      <!-- Conservative geometry-only test speed. Per-point planner speed is not
+           consumed by the pinned upstream controller, so this output is not
+           authorized for Safety/MORAI actuation. -->
+      <param name="target_speed_kph" value="10.0" />
+      <param name="minimum_curve_speed_kph" value="5.0" />
+      <param name="lane_clearance_recovery_speed_kph" value="5.0" />
+      <param name="heading_error_recovery_speed_kph" value="5.0" />
+      <param name="hard_brake_activation_speed_kph" value="12.0" />
+    </node>
+  </group>
+
+  <!-- Deliberately no vendored UDP sender or vehicle-status receiver. -->
+</launch>
