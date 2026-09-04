@@ -1,4 +1,13 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Runtime entities will be added after central contract approval. -->
+  <arg name="map_source_directory"
+       default="$(find hd_map_pkg)/vendor/verdict_sdk/map-data/KATRI" />
+  <arg name="map_config_file"
+       default="$(find hd_map_pkg)/config/map_conversion.yaml" />
+
+  <node pkg="hd_map_pkg" type="hd_map_rviz_node" name="rviz_map"
+        ns="hd_map" output="screen" required="false">
+    <param name="map_source_directory" value="$(arg map_source_directory)" />
+    <param name="map_config_file" value="$(arg map_config_file)" />
+  </node>
 </launch>

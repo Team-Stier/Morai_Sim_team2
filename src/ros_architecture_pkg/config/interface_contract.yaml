@@ -1,21 +1,239 @@
 schema_version: 1
-contract_version: 0.0.0
-status: draft
+contract_version: 0.1.0
+status: approved_path_planning_baseline
 
 authority:
   package: ros_architecture_pkg
   rule: >-
-    Empty lists mean that no public ROS interface has been approved yet.
-    They do not authorize packages to invent temporary public names.
+    This file is the sole authority for public ROS interfaces. A name absent
+    from this file is not approved, including temporary and visualization names.
 
-# Populate these lists only after the producer-consumer contract is reviewed.
-nodes: []
-topics: []
-messages: []
+nodes:
+  - name: /hd_map/rviz_map
+    owner_package: hd_map_pkg
+    responsibility: publish immutable MGeo lane-boundary visualization
+  - name: /planning/global_route_manager
+    owner_package: global_route_manager_pkg
+    responsibility: publish the official route and monotonic ego route context
+  - name: /planning/hybrid_astar
+    owner_package: path_planning_pkg
+    responsibility: publish a fail-closed local trajectory inside the selected map corridor
+  - name: /runtime/planning_visualizer
+    owner_package: runtime_evaluation_pkg
+    responsibility: visualize ego footprint and bounded odometry history without affecting planning
+  - name: /planning/rviz
+    owner_package: system_bringup_pkg
+    responsibility: optional visualization-only RViz process with no command-path output
+
+topics:
+  - name: /localization/odometry
+    owner_package: localization_pkg
+    producers: [localization_pkg]
+    consumers: [global_route_manager_pkg, path_planning_pkg, runtime_evaluation_pkg]
+    data_meaning: rear-axle-centred ego pose and twist estimate in the MORAI scene ENU map frame
+    data_type: nav_msgs/Odometry
+    unit: position=m; linear_velocity=m/s; angular_velocity=rad/s; covariance=SI
+    frame: map -> base_link
+    timestamp_source: localization estimate time in ROS time
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_5_drop_oldest
+    timeout_sec: 0.20
+    invalid_data_policy: reject non-finite, wrong-frame, future, or stale samples and require stop
+
+  - name: /world_model/lead_vehicle
+    owner_package: world_model_pkg
+    producers: [world_model_pkg]
+    consumers: [path_planning_pkg]
+    data_meaning: fused same-lane leading vehicle and bumper-to-bumper longitudinal gap
+    data_type: common_msgs_pkg/LeadVehicleState
+    unit: pose=m,rad; twist=m/s,rad/s; dimensions=m; gap=m; confidence=ratio
+    frame: map
+    timestamp_source: time-aligned world-model estimate time in ROS time
+    expected_rate_hz: 20.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.30
+    invalid_data_policy: missing, malformed, future, stale, odometry-skewed, or current-link-mismatched input requires stop; a fresh finite valid=false heartbeat is the only no-lead representation; never authorize a new lane change from invalid data, and an active crossing must finish or request stop
+
+  - name: /planning/global_path
+    owner_package: global_route_manager_pkg
+    producers: [global_route_manager_pkg]
+    consumers: [path_planning_pkg, runtime_evaluation_pkg, rviz]
+    data_meaning: immutable ordered competition reference route for navigation and visualization, not localization ground truth
+    data_type: nav_msgs/Path
+    unit: position=m; orientation=quaternion
+    frame: map
+    timestamp_source: publication time in ROS time
+    expected_rate_hz: 0.0
+    queue_policy: latched_keep_last_1
+    timeout_sec: 0.0
+    invalid_data_policy: missing, malformed, or mismatched-frame route makes route context invalid
+
+  - name: /planning/route_context
+    owner_package: global_route_manager_pkg
+    producers: [global_route_manager_pkg]
+    consumers: [path_planning_pkg, runtime_evaluation_pkg]
+    data_meaning: ego progress and ordered MGeo link horizon on the approved global route
+    data_type: common_msgs_pkg/RouteContext
+    unit: progress=m; route_length=m; route_index=count
+    frame: map
+    timestamp_source: timestamp of the accepted odometry sample when valid=true; publication time in ROS time when valid=false
+    expected_rate_hz: 20.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.25
+    invalid_data_policy: publish valid=false and require downstream stop; never reuse stale progress as current
+
+  - name: /planning/trajectory
+    owner_package: path_planning_pkg
+    producers: [path_planning_pkg]
+    consumers: [vehicle_control_pkg, safety_supervisor_pkg, runtime_evaluation_pkg]
+    data_meaning: dense constant-curvature samples of the currently validated local motion plan
+    data_type: common_msgs_pkg/PlannedTrajectory
+    unit: position=m; yaw=rad; curvature=1/m; arc_length=m; speed=m/s
+    frame: map
+    timestamp_source: time the planner accepted its input snapshot and started the search; fail-closed publication time when no result is exposed
+    expected_rate_hz: 2.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.75
+    invalid_data_policy: non-VALID status, empty points, expiry, wrong frame, or stale data requires stop
+
+  - name: /planning/local_path
+    owner_package: path_planning_pkg
+    producers: [path_planning_pkg]
+    consumers: [runtime_evaluation_pkg, rviz]
+    data_meaning: visualization-only pose projection of the validated local trajectory
+    data_type: nav_msgs/Path
+    unit: position=m; orientation=quaternion
+    frame: map
+    timestamp_source: same snapshot anchor as /planning/trajectory
+    expected_rate_hz: 2.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.75
+    invalid_data_policy: publish an empty path when trajectory is invalid; never use for control
+
+  - name: /hd_map/markers
+    owner_package: hd_map_pkg
+    producers: [hd_map_pkg]
+    consumers: [rviz]
+    data_meaning: visualization-only source solid, dashed, mixed, road-border, and other map boundary geometry
+    data_type: visualization_msgs/MarkerArray
+    unit: position=m; line_width=m; color=normalized_rgba
+    frame: map
+    timestamp_source: publication time in ROS time
+    expected_rate_hz: 0.0
+    queue_policy: latched_keep_last_1
+    timeout_sec: 0.0
+    invalid_data_policy: suppress incomplete marker set and log an error; planning reads validated static map data directly
+
+  - name: /planning/corridor_markers
+    owner_package: path_planning_pkg
+    producers: [path_planning_pkg]
+    consumers: [rviz]
+    data_meaning: visualization-only active hard walls, conditionally opened walls, and corridor polygons
+    data_type: visualization_msgs/MarkerArray
+    unit: position=m; line_width=m; color=normalized_rgba
+    frame: map
+    timestamp_source: same snapshot anchor as /planning/trajectory
+    expected_rate_hz: 2.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.75
+    invalid_data_policy: clear dynamic markers when planner snapshot is invalid
+
+  - name: /planning/ego_trace
+    owner_package: runtime_evaluation_pkg
+    producers: [runtime_evaluation_pkg]
+    consumers: [rviz]
+    data_meaning: bounded visualization-only history of accepted ego odometry poses
+    data_type: nav_msgs/Path
+    unit: position=m; orientation=quaternion
+    frame: map
+    timestamp_source: timestamp of newest accepted odometry sample
+    expected_rate_hz: 20.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.25
+    invalid_data_policy: stop extending the trace and clear the vehicle marker after timeout
+
+  - name: /planning/vehicle_marker
+    owner_package: runtime_evaluation_pkg
+    producers: [runtime_evaluation_pkg]
+    consumers: [rviz]
+    data_meaning: visualization-only IONIQ 5 body envelope at the rear-axle-centred odometry pose
+    data_type: visualization_msgs/Marker
+    unit: position=m; dimensions=m; color=normalized_rgba
+    frame: map
+    timestamp_source: timestamp of the accepted odometry sample
+    expected_rate_hz: 20.0
+    queue_policy: keep_last_1_drop_oldest
+    timeout_sec: 0.25
+    invalid_data_policy: publish DELETE after timeout; never feed the planning or command path
+
+messages:
+  - name: common_msgs_pkg/RouteContext
+    owner_package: common_msgs_pkg
+    meaning: validity, monotonic route progress, current MGeo link horizon, and speed-exception context
+    invalid_representation: valid=false with no usable current or horizon link
+  - name: common_msgs_pkg/LeadVehicleState
+    owner_package: common_msgs_pkg
+    meaning: fused leading-vehicle pose, size, velocity, lane identity, confidence, and longitudinal gap
+    invalid_representation: valid=false; NaN is never an invalid sentinel
+  - name: common_msgs_pkg/TrajectoryPoint
+    owner_package: common_msgs_pkg
+    meaning: one rear-axle-centred dense trajectory sample in map coordinates
+    invalid_representation: enclosing trajectory status is non-VALID
+  - name: common_msgs_pkg/PlannedTrajectory
+    owner_package: common_msgs_pkg
+    meaning: expiring local trajectory plus fail-closed status, reason, and minimum wheel-to-map-boundary clearance
+    invalid_representation: status other than STATUS_VALID or current time after valid_until
+
 services: []
 actions: []
-frames: []
-parameters: []
+frames:
+  - name: map
+    owner_package: localization_pkg
+    parent: null
+    convention: MORAI scene-local ENU; x=east, y=north, z=up; yaw=0 east and positive counter-clockwise
+    unit: m,rad
+  - name: base_link
+    owner_package: localization_pkg
+    parent: map
+    convention: origin at rear-wheel midpoint; x=forward, y=left, z=up
+    unit: m,rad
+
+parameters:
+  - name: /hd_map/rviz_map/map_source_directory
+    owner_package: hd_map_pkg
+    data_type: string
+    unit: filesystem_path
+    default: vendor/verdict_sdk/map-data/KATRI
+  - name: /hd_map/rviz_map/map_config_file
+    owner_package: hd_map_pkg
+    data_type: string
+    unit: filesystem_path
+    default: config/map_conversion.yaml
+  - name: /planning/global_route_manager/route_file
+    owner_package: global_route_manager_pkg
+    data_type: string
+    unit: filesystem_path
+    default: reference_file_from_hd_map_config
+  - name: /planning/global_route_manager/route_config_file
+    owner_package: global_route_manager_pkg
+    data_type: string
+    unit: filesystem_path
+    default: config/competition_route.yaml
+  - name: /planning/hybrid_astar/planner_config_file
+    owner_package: path_planning_pkg
+    data_type: string
+    unit: filesystem_path
+    default: config/hybrid_astar.yaml
+  - name: /planning/hybrid_astar/map_source_directory
+    owner_package: path_planning_pkg
+    data_type: string
+    unit: filesystem_path
+    default: hd_map_pkg KATRI MGeo source
+  - name: /planning/hybrid_astar/map_config_file
+    owner_package: path_planning_pkg
+    data_type: string
+    unit: filesystem_path
+    default: hd_map_pkg config/map_conversion.yaml
 
 required_interface_fields:
   - owner_package

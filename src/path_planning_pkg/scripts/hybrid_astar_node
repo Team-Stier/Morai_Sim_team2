@@ -1,0 +1,1512 @@
+#!/usr/bin/env python3
+"""ROS1 adapter for the fail-closed KATRI Hybrid A* local planner."""
+
+import math
+import os
+import threading
+import time
+from dataclasses import dataclass, replace
+
+import rospy
+import yaml
+from common_msgs_pkg.msg import (
+    LeadVehicleState,
+    PlannedTrajectory,
+    RouteContext,
+    TrajectoryPoint,
+)
+from geometry_msgs.msg import Point as RosPoint
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry, Path
+from visualization_msgs.msg import Marker, MarkerArray
+
+from path_planning_pkg import (
+    BoundaryMarking,
+    BoxObstacle,
+    CorridorMode,
+    CorridorPolicyInput,
+    DrivingCorridor,
+    HybridAStarConfig,
+    HybridAStarPlanner,
+    PlanningRequest,
+    Point2D,
+    Pose2D,
+    VehicleGeometry,
+)
+from path_planning_pkg.geometry import polygon_edges
+from path_planning_pkg.mgeo_adapter import MGeoPlannerMap, parse_lane_change_pairs
+from path_planning_pkg.node_safety import (
+    aligned_path_index,
+    finite as _finite,
+    lane_change_reference,
+    lead_fault_reason,
+    lead_reason,
+    nearest_lane_id,
+    odometry_payload_reason,
+    observation_reason,
+    select_forward_valid_goal,
+    same_route_snapshot,
+    yaw_from_quaternion as _yaw,
+)
+
+
+ODOMETRY_TOPIC = "/localization/odometry"
+LEAD_VEHICLE_TOPIC = "/world_model/lead_vehicle"
+GLOBAL_PATH_TOPIC = "/planning/global_path"
+ROUTE_CONTEXT_TOPIC = "/planning/route_context"
+TRAJECTORY_TOPIC = "/planning/trajectory"
+LOCAL_PATH_TOPIC = "/planning/local_path"
+CORRIDOR_MARKERS_TOPIC = "/planning/corridor_markers"
+FRAME_ID = "map"
+BASE_FRAME_ID = "base_link"
+
+
+@dataclass(frozen=True)
+class _PublicationContext:
+    initial_route: object
+    initial_lead_present: bool
+    planning_phase: str
+    planning_active_pair: object
+    pending_pair: object
+    initial_phase: str
+    proposed_phase: str
+    initial_pair: object
+    proposed_pair: object
+    validated_odometry: object
+    validated_route: object
+    validated_lead_message: object
+    expected_fault_revision: int
+    wall_deadline_monotonic: float
+
+
+@dataclass(frozen=True)
+class _PublicationGuardResult:
+    status: object
+    reason: str
+    request: object
+    z_value: float
+    high_speed_zone: bool
+
+
+def _load_yaml(path):
+    expanded = os.path.expandvars(os.path.expanduser(str(path)))
+    with open(expanded, "r", encoding="utf-8") as stream:
+        value = yaml.safe_load(stream)
+    if not isinstance(value, dict):
+        raise ValueError("planner config root must be a mapping")
+    return value
+
+
+def _observation_reason(message, now, timeout_sec, frame_id):
+    return observation_reason(message, now.to_sec(), timeout_sec, frame_id)
+
+
+class HybridAStarNode(object):
+    def __init__(self):
+        config = _load_yaml(rospy.get_param("~planner_config_file"))
+        # Public frame IDs are locked by the central interface contract and
+        # deliberately cannot be changed through a package-local config file.
+        self._frame_id = FRAME_ID
+        self._base_frame_id = BASE_FRAME_ID
+        self._watchdog_rate = float(config["input_watchdog_rate_hz"])
+        self._validity_sec = float(config["trajectory_validity_sec"])
+        self._odom_timeout = float(config["odometry_timeout_sec"])
+        self._route_timeout = float(config["route_context_timeout_sec"])
+        self._lead_timeout = float(config["lead_vehicle_timeout_sec"])
+        self._input_skew = float(config["maximum_input_skew_sec"])
+        self._minimum_lead_confidence = float(
+            config["safety"]["minimum_lead_confidence"]
+        )
+        behavior = config["behavior"]
+        self._goal_distance = float(behavior["local_goal_distance_m"])
+        self._lane_change_goal_distance = float(
+            behavior["lane_change_goal_distance_m"]
+        )
+        self._lc_start_margin = float(
+            behavior["minimum_lane_change_start_margin_m"]
+        )
+        self._lc_end_margin = float(
+            behavior["minimum_lane_change_end_margin_m"]
+        )
+        self._lc_complete_distance = float(
+            behavior["lane_change_complete_distance_m"]
+        )
+        self._minimum_published_path_length = float(
+            behavior["minimum_published_path_length_m"]
+        )
+        self._route_end_margin = float(behavior["route_horizon_end_margin_m"])
+        self._lc_trigger_gap = float(behavior["lane_change_trigger_gap_m"])
+        self._urban_speed = float(behavior["urban_target_speed_mps"])
+        self._high_speed = float(behavior["high_speed_target_speed_mps"])
+        self._lateral_acceleration = float(
+            behavior["maximum_lateral_acceleration_mps2"]
+        )
+        for value, label in (
+            (self._validity_sec, "trajectory_validity_sec"),
+            (self._odom_timeout, "odometry_timeout_sec"),
+            (self._route_timeout, "route_context_timeout_sec"),
+            (self._lead_timeout, "lead_vehicle_timeout_sec"),
+            (self._watchdog_rate, "input_watchdog_rate_hz"),
+            (self._goal_distance, "local_goal_distance_m"),
+            (self._lane_change_goal_distance, "lane_change_goal_distance_m"),
+            (self._lc_complete_distance, "lane_change_complete_distance_m"),
+            (
+                self._minimum_published_path_length,
+                "minimum_published_path_length_m",
+            ),
+            (self._route_end_margin, "route_horizon_end_margin_m"),
+            (self._lateral_acceleration, "maximum_lateral_acceleration_mps2"),
+        ):
+            if not _finite(value) or value <= 0.0:
+                raise ValueError("{} must be finite and positive".format(label))
+        for value, label in (
+            (self._input_skew, "maximum_input_skew_sec"),
+            (self._lc_start_margin, "minimum_lane_change_start_margin_m"),
+            (self._lc_end_margin, "minimum_lane_change_end_margin_m"),
+            (self._urban_speed, "urban_target_speed_mps"),
+            (self._high_speed, "high_speed_target_speed_mps"),
+        ):
+            if not _finite(value) or value < 0.0:
+                raise ValueError("{} must be finite and non-negative".format(label))
+        if not 0.0 <= self._minimum_lead_confidence <= 1.0:
+            raise ValueError("minimum_lead_confidence must be within 0..1")
+        if self._lc_trigger_gap != 10.0:
+            raise ValueError("competition lane-change trigger must remain exactly 10.0 m")
+
+        vehicle_values = config["vehicle"]
+        vehicle = VehicleGeometry(
+            wheelbase_m=float(vehicle_values["wheelbase_m"]),
+            length_m=float(vehicle_values["length_m"]),
+            width_m=float(vehicle_values["width_m"]),
+            front_overhang_m=float(vehicle_values["front_overhang_m"]),
+            rear_overhang_m=float(vehicle_values["rear_overhang_m"]),
+            wheel_track_m=float(vehicle_values["conservative_wheel_track_m"]),
+            minimum_turning_radius_m=float(
+                vehicle_values["minimum_turning_radius_m"]
+            ),
+        )
+        planner_values = config["planner"]
+        maximum_steering = vehicle.maximum_kinematic_steering_rad
+        planner_config = HybridAStarConfig(
+            xy_resolution_m=float(planner_values["xy_resolution_m"]),
+            yaw_resolution_rad=math.radians(
+                float(planner_values["yaw_resolution_deg"])
+            ),
+            primitive_length_m=float(planner_values["primitive_length_m"]),
+            collision_check_step_m=float(
+                planner_values["collision_check_step_m"]
+            ),
+            steering_candidates_rad=tuple(
+                maximum_steering * float(value)
+                for value in planner_values["steering_fractions"]
+            ),
+            goal_position_tolerance_m=float(
+                planner_values["goal_position_tolerance_m"]
+            ),
+            goal_yaw_tolerance_rad=math.radians(
+                float(planner_values["goal_yaw_tolerance_deg"])
+            ),
+            steering_cost_weight=float(
+                planner_values["steering_cost_weight"]
+            ),
+            steering_change_cost_weight=float(
+                planner_values["steering_change_cost_weight"]
+            ),
+            boundary_cost_weight=float(
+                planner_values["boundary_cost_weight"]
+            ),
+            preferred_boundary_clearance_m=float(
+                planner_values["preferred_boundary_clearance_m"]
+            ),
+            bearing_heuristic_weight_m_per_rad=float(
+                planner_values["bearing_heuristic_weight_m_per_rad"]
+            ),
+            yaw_heuristic_weight_m_per_rad=float(
+                planner_values["yaw_heuristic_weight_m_per_rad"]
+            ),
+            reference_lateral_heuristic_weight=float(
+                planner_values["reference_lateral_heuristic_weight"]
+            ),
+            reference_lookahead_m=float(
+                planner_values["reference_lookahead_m"]
+            ),
+            maximum_steering_expansions=int(
+                planner_values["maximum_steering_expansions"]
+            ),
+            max_search_nodes=int(planner_values["max_search_nodes"]),
+            maximum_planning_time_sec=float(
+                planner_values["maximum_planning_time_sec"]
+            ),
+            maximum_collision_evaluations_per_primitive=planner_values[
+                "maximum_collision_evaluations_per_primitive"
+            ],
+        )
+        if planner_config.maximum_planning_time_sec >= self._validity_sec:
+            raise ValueError(
+                "maximum_planning_time_sec must be below trajectory_validity_sec"
+            )
+        self._planner = HybridAStarPlanner(
+            vehicle=vehicle,
+            config=planner_config,
+            boundary_clearance_m=float(
+                config["safety"]["boundary_clearance_m"]
+            ),
+            obstacle_clearance_m=float(
+                config["safety"]["obstacle_clearance_m"]
+            ),
+        )
+        safety_values = config["safety"]
+        self._publication_guard_budget = float(
+            safety_values["maximum_locked_validation_time_sec"]
+        )
+        self._result_alignment_position = float(
+            safety_values["maximum_result_alignment_position_error_m"]
+        )
+        self._result_alignment_yaw = math.radians(
+            float(safety_values["maximum_result_alignment_yaw_error_deg"])
+        )
+        if (
+            not _finite(
+                self._result_alignment_position,
+                self._result_alignment_yaw,
+                self._publication_guard_budget,
+            )
+            or self._result_alignment_position <= 0.0
+            or self._result_alignment_yaw <= 0.0
+            or self._publication_guard_budget <= 0.0
+        ):
+            raise ValueError("publication safety limits must be finite and positive")
+        if self._publication_guard_budget > 1.0 / self._watchdog_rate + 1.0e-9:
+            raise ValueError(
+                "maximum_locked_validation_time_sec must not exceed one watchdog period"
+            )
+        expected_clearance = (
+            float(safety_values["lane_marking_half_width_m"])
+            + float(safety_values["map_simplification_error_m"])
+            + float(safety_values["operational_boundary_margin_m"])
+        )
+        if abs(
+            expected_clearance - float(safety_values["boundary_clearance_m"])
+        ) > 1.0e-9:
+            raise ValueError("boundary clearance must equal line + map + operational margins")
+        self._map = MGeoPlannerMap.from_files(
+            rospy.get_param("~map_source_directory"),
+            rospy.get_param("~map_config_file"),
+            simplification_tolerance_m=float(
+                safety_values["map_simplification_error_m"]
+            ),
+        )
+        self._pairs = parse_lane_change_pairs(
+            behavior.get("highway_lane_change_pairs")
+        )
+
+        self._state_lock = threading.Lock()
+        # All trajectory/path/marker publications are ordered through this
+        # lock. The final input-revision check and a VALID publication are
+        # therefore atomic with respect to watchdog failure publications.
+        self._output_lock = threading.RLock()
+        self._planning_lock = threading.Lock()
+        self._odometry = None
+        self._route_context = None
+        self._lead_vehicle = None
+        self._global_path_valid = False
+        self._last_route_link = ""
+        self._previous_route_link = ""
+        self._maneuver_phase = "idle"
+        self._active_pair = None
+        self._trajectory_live = False
+        self._input_fault_revision = 0
+
+        self._trajectory_publisher = rospy.Publisher(
+            TRAJECTORY_TOPIC, PlannedTrajectory, queue_size=1
+        )
+        self._path_publisher = rospy.Publisher(
+            LOCAL_PATH_TOPIC, Path, queue_size=1
+        )
+        self._marker_publisher = rospy.Publisher(
+            CORRIDOR_MARKERS_TOPIC, MarkerArray, queue_size=1
+        )
+        self._odom_subscriber = rospy.Subscriber(
+            ODOMETRY_TOPIC, Odometry, self._on_odometry, queue_size=5
+        )
+        self._route_subscriber = rospy.Subscriber(
+            ROUTE_CONTEXT_TOPIC,
+            RouteContext,
+            self._on_route_context,
+            queue_size=1,
+        )
+        self._lead_subscriber = rospy.Subscriber(
+            LEAD_VEHICLE_TOPIC,
+            LeadVehicleState,
+            self._on_lead_vehicle,
+            queue_size=1,
+        )
+        self._global_path_subscriber = rospy.Subscriber(
+            GLOBAL_PATH_TOPIC, Path, self._on_global_path, queue_size=1
+        )
+        rate = float(config["planning_rate_hz"])
+        if not _finite(rate) or rate <= 0.0:
+            raise ValueError("planning_rate_hz must be positive")
+        self._timer = rospy.Timer(
+            rospy.Duration.from_sec(1.0 / rate), self._on_timer
+        )
+        self._watchdog_timer = rospy.Timer(
+            rospy.Duration.from_sec(1.0 / self._watchdog_rate),
+            self._on_input_watchdog,
+        )
+        rospy.loginfo(
+            "KATRI Hybrid A* ready with %d conditionally enabled lane-change pairs",
+            len(self._pairs),
+        )
+
+    def _on_odometry(self, message):
+        with self._output_lock:
+            with self._state_lock:
+                self._odometry = message
+            self._invalidate_live_trajectory_if_inputs_fault("input_update")
+
+    def _on_route_context(self, message):
+        with self._output_lock:
+            with self._state_lock:
+                if message.valid and message.current_link_id:
+                    if (
+                        self._last_route_link
+                        and message.current_link_id != self._last_route_link
+                    ):
+                        self._previous_route_link = self._last_route_link
+                    self._last_route_link = message.current_link_id
+                self._route_context = message
+            self._invalidate_live_trajectory_if_inputs_fault("input_update")
+
+    def _on_lead_vehicle(self, message):
+        with self._output_lock:
+            with self._state_lock:
+                self._lead_vehicle = message
+            self._invalidate_live_trajectory_if_inputs_fault("input_update")
+
+    def _on_global_path(self, message):
+        valid = message.header.frame_id == self._frame_id and len(message.poses) >= 2
+        if valid:
+            for pose in message.poses:
+                position = pose.pose.position
+                if (
+                    pose.header.frame_id != self._frame_id
+                    or not _finite(position.x, position.y, position.z)
+                ):
+                    valid = False
+                    break
+                try:
+                    _yaw(pose.pose.orientation)
+                except ValueError:
+                    valid = False
+                    break
+        with self._output_lock:
+            with self._state_lock:
+                self._global_path_valid = valid
+            self._invalidate_live_trajectory_if_inputs_fault("input_update")
+
+    def _snapshot(self):
+        with self._state_lock:
+            return (
+                self._odometry,
+                self._route_context,
+                self._lead_vehicle,
+                self._global_path_valid,
+                self._previous_route_link,
+                self._maneuver_phase,
+                self._active_pair,
+                self._input_fault_revision,
+            )
+
+    def _valid_lead(self, lead, now, route_link_id):
+        if lead_reason(
+            lead,
+            now.to_sec(),
+            self._lead_timeout,
+            self._frame_id,
+            route_link_id,
+            self._minimum_lead_confidence,
+        ):
+            return None
+        return lead
+
+    def _lead_fault_reason(self, lead, now, route_link_id, odometry):
+        """Distinguish a trustworthy no-lead state from a bad observation."""
+
+        reason = lead_fault_reason(
+            lead,
+            now.to_sec(),
+            self._lead_timeout,
+            self._frame_id,
+            route_link_id,
+            self._minimum_lead_confidence,
+        )
+        if reason:
+            return reason
+        if abs(
+            lead.header.stamp.to_sec() - odometry.header.stamp.to_sec()
+        ) > self._input_skew:
+            return "lead_odometry_timestamp_skew"
+        return ""
+
+    @staticmethod
+    def _obstacle_from_lead(lead):
+        if lead is None:
+            return ()
+        obstacle_yaw = _yaw(lead.pose.orientation)
+        return (
+            BoxObstacle(
+                Pose2D(
+                    float(lead.pose.position.x),
+                    float(lead.pose.position.y),
+                    obstacle_yaw,
+                ),
+                float(lead.length_m),
+                float(lead.width_m),
+                obstacle_id="lead_vehicle",
+            ),
+        )
+
+    def _route_sequence(self, route, previous, active_pair=None):
+        branch = (
+            active_pair.branch_by_route_link
+            if active_pair is not None
+            else {}
+        )
+
+        def mapped(identifier):
+            return branch.get(identifier, identifier)
+
+        source = mapped(route.current_link_id)
+        forward = []
+        for route_id in route.horizon_link_ids:
+            value = mapped(route_id)
+            if not forward or forward[-1] != value:
+                forward.append(value)
+        if not forward or forward[0] != source:
+            raise ValueError("mapped route horizon does not start at source")
+        forward = forward[:3]
+        for first, second in zip(forward, forward[1:]):
+            if not self._map.topology_has_successor(first, second):
+                raise ValueError(
+                    "unverified mapped route transition {} -> {}".format(
+                        first, second
+                    )
+                )
+
+        selected = list(forward)
+        if previous and previous != route.current_link_id:
+            mapped_previous = mapped(previous)
+            if (
+                mapped_previous != source
+                and self._map.topology_has_successor(mapped_previous, source)
+            ):
+                selected.insert(0, mapped_previous)
+        return selected, source
+
+    def _goal_on_route(self, selected_ids, source_id, ego, effective, obstacles):
+        source_index = selected_ids.index(source_id)
+        source_lane = self._map.lane(source_id)
+        progress, _ = source_lane.nearest_progress(Point2D(ego.x, ego.y))
+        forward_lanes = tuple(
+            self._map.lane(identifier)
+            for identifier in selected_ids[source_index:]
+        )
+        return select_forward_valid_goal(
+            forward_lanes,
+            start_progress_m=progress,
+            preferred_distance_m=self._goal_distance,
+            minimum_distance_m=self._minimum_published_path_length,
+            final_end_margin_m=self._route_end_margin,
+            scan_step_m=self._planner.config.collision_check_step_m,
+            pose_is_valid=lambda pose: self._planner.checker.check_pose(
+                pose, effective, obstacles
+            ).valid,
+        )
+
+    def _standard_request(self, ego, route, previous, active_pair, obstacles):
+        selected, source = self._route_sequence(route, previous, active_pair)
+        corridor = self._map.build_route_corridor(selected, source)
+        mode = (
+            CorridorMode.TURN_CONNECTOR
+            if corridor.open_boundary_ids
+            else CorridorMode.KEEP_LANE
+        )
+        policy = CorridorPolicyInput(
+            mode=mode,
+            current_lane_id=source,
+            requested_open_boundary_ids=frozenset(corridor.open_boundary_ids),
+            turn_connector_verified=bool(corridor.topology_verified),
+        )
+        effective = self._planner.policy.apply(corridor.corridor, policy)
+        if effective.decision.fail_closed:
+            raise ValueError("route corridor policy rejected")
+        goal, lane_id = self._goal_on_route(
+            selected, source, ego, effective, obstacles
+        )
+        return (
+            PlanningRequest(
+                ego,
+                goal,
+                corridor.corridor,
+                policy,
+                obstacles,
+                reference_path=corridor.guidance_points,
+            ),
+            corridor,
+            lane_id,
+        )
+
+    def _lane_change_request(
+        self, ego, route, pair, lead, obstacles, lane_change_latched=False
+    ):
+        corridor = self._map.build_lane_change_corridor(pair)
+        progress, lateral = corridor.current_lane.nearest_progress(
+            Point2D(ego.x, ego.y)
+        )
+        remaining = corridor.current_lane.length_m - progress
+        if not lane_change_latched and lateral > 2.5:
+            raise ValueError("ego_is_not_in_lane_change_source_corridor")
+        if progress < self._lc_start_margin:
+            raise ValueError("lane_change_source_margin_too_small")
+        if remaining < self._lc_end_margin:
+            raise ValueError("lane_change_cannot_finish_before_boundary_end")
+        target_progress, _ = corridor.target_lane.nearest_progress(
+            Point2D(ego.x, ego.y)
+        )
+        target_goal_progress = min(
+            target_progress + self._lane_change_goal_distance,
+            corridor.target_lane.length_m - self._route_end_margin,
+        )
+        goal = corridor.target_lane.pose_at(target_goal_progress)
+        policy = CorridorPolicyInput(
+            mode=CorridorMode.HIGHWAY_OVERTAKE,
+            current_lane_id=corridor.current_lane.link_id,
+            requested_open_boundary_ids=frozenset(corridor.open_boundary_ids),
+            overtake_requested=True,
+            high_speed_zone=bool(route.speed_limit_exempt_zone),
+            adjacent_lane_verified=bool(corridor.topology_verified),
+            adjacent_lane_id=corridor.target_lane.link_id,
+            lead_vehicle_distance_m=(
+                float(lead.longitudinal_distance_m) if lead is not None else None
+            ),
+            lane_change_latched=bool(lane_change_latched),
+        )
+        reference = lane_change_reference(ego, goal)
+        return (
+            PlanningRequest(
+                ego,
+                goal,
+                corridor.corridor,
+                policy,
+                obstacles,
+                reference_path=reference,
+            ),
+            corridor,
+            corridor.target_lane.link_id,
+        )
+
+    def _crossing_complete(self, ego, pair):
+        corridor = self._map.build_lane_change_corridor(pair)
+        _, current_distance = corridor.current_lane.nearest_progress(
+            Point2D(ego.x, ego.y)
+        )
+        _, target_distance = corridor.target_lane.nearest_progress(
+            Point2D(ego.x, ego.y)
+        )
+        target_only = DrivingCorridor.from_polygon(
+            corridor.target_lane.link_id,
+            corridor.target_lane.link_id,
+            corridor.target_lane.polygon().vertices,
+        )
+        target_effective = self._planner.policy.apply(
+            target_only,
+            CorridorPolicyInput(
+                mode=CorridorMode.KEEP_LANE,
+                current_lane_id=corridor.target_lane.link_id,
+            ),
+        )
+        target_pose_valid = self._planner.checker.check_pose(
+            ego, target_effective
+        ).valid
+        return (
+            target_distance <= self._lc_complete_distance
+            and target_distance + 0.30 < current_distance
+            and target_pose_valid
+        )
+
+    def _merge_complete(self, ego, route, pair):
+        if route.current_link_id != pair.merge_route_link_id:
+            return False
+        merge_lane = self._map.lane(route.current_link_id)
+        _, merge_distance = merge_lane.nearest_progress(
+            Point2D(ego.x, ego.y)
+        )
+        return merge_distance <= self._lc_complete_distance
+
+    def _input_reason(self, odometry, route, now):
+        reason = _observation_reason(
+            odometry, now, self._odom_timeout, self._frame_id
+        )
+        if not reason and odometry.child_frame_id != self._base_frame_id:
+            reason = "base_frame_mismatch"
+        route_reason = _observation_reason(
+            route, now, self._route_timeout, self._frame_id
+        )
+        if not route_reason and (
+            not route.valid
+            or not route.current_link_id
+            or not route.horizon_link_ids
+            or route.horizon_link_ids[0] != route.current_link_id
+        ):
+            route_reason = "invalid_route_context"
+        if reason or route_reason:
+            return reason or route_reason
+        if abs(
+            odometry.header.stamp.to_sec() - route.header.stamp.to_sec()
+        ) > self._input_skew:
+            return "input_timestamp_skew"
+        return odometry_payload_reason(odometry)
+
+    def _on_timer(self, _event):
+        if not self._planning_lock.acquire(False):
+            return
+        try:
+            self._plan_once()
+        finally:
+            self._planning_lock.release()
+
+    def _on_input_watchdog(self, _event):
+        """Invalidate a live result as soon as a required input expires."""
+
+        self._invalidate_live_trajectory_if_inputs_fault("watchdog")
+
+    def _invalidate_live_trajectory_if_inputs_fault(self, source):
+        """Publish a fault after an invalid input, ordered after any success.
+
+        Input callbacks invoke this immediately after storing their message;
+        the periodic watchdog invokes it as a backstop for expirations. The
+        output lock makes a failure the final publication whenever it races a
+        planner result.
+        """
+
+        with self._output_lock:
+            with self._state_lock:
+                trajectory_live = self._trajectory_live
+                odometry = self._odometry
+                route = self._route_context
+                lead_message = self._lead_vehicle
+                global_path_valid = self._global_path_valid
+            now = rospy.Time.now()
+            status = None
+            reason = ""
+            if not global_path_valid:
+                status = PlannedTrajectory.STATUS_INPUT_STALE
+                reason = "missing_global_path"
+            else:
+                reason = self._input_reason(odometry, route, now)
+                if reason:
+                    status = PlannedTrajectory.STATUS_INPUT_STALE
+                else:
+                    lead_fault = self._lead_fault_reason(
+                        lead_message,
+                        now,
+                        route.current_link_id,
+                        odometry,
+                    )
+                    if lead_fault:
+                        status = PlannedTrajectory.STATUS_STOP_REQUIRED
+                        reason = "lead_input_rejected:{}".format(lead_fault)
+            if status is None:
+                return
+            # This epoch advances only for a safety-invalid snapshot. Normal
+            # 20--30 Hz pose/route/lead updates therefore do not starve the
+            # 2 Hz planner, while an invalid update can never be overwritten
+            # by a result that started before the fault was observed.
+            with self._state_lock:
+                self._input_fault_revision += 1
+            if trajectory_live:
+                self._publish_failure(
+                    status,
+                    "{}:{}".format(source, reason),
+                    now,
+                )
+
+    def _plan_once(self):
+        now = rospy.Time.now()
+        wall_deadline = time.monotonic() + self._validity_sec
+        (
+            odometry,
+            route,
+            lead_message,
+            global_path_valid,
+            previous,
+            phase,
+            active_pair,
+            _initial_fault_revision,
+        ) = self._snapshot()
+        if not global_path_valid:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_INPUT_STALE, "missing_global_path", now
+            )
+            return
+        reason = self._input_reason(odometry, route, now)
+        if reason:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                reason,
+                now,
+            )
+            return
+        position = odometry.pose.pose.position
+        ego = Pose2D(
+            float(position.x),
+            float(position.y),
+            _yaw(odometry.pose.pose.orientation),
+        )
+
+        lead_fault = self._lead_fault_reason(
+            lead_message, now, route.current_link_id, odometry
+        )
+        if lead_fault:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "lead_input_rejected:{}".format(lead_fault),
+                now,
+            )
+            return
+        lead = self._valid_lead(lead_message, now, route.current_link_id)
+        obstacles = self._obstacle_from_lead(lead)
+        pending_pair = None
+        initial_phase = phase
+        initial_pair = active_pair
+        proposed_phase = phase
+        proposed_pair = active_pair
+        try:
+            if phase == "crossing" and active_pair is not None:
+                if route.current_link_id != active_pair.route_link_id:
+                    raise ValueError("lane_change_not_completed_before_link_end")
+                if self._crossing_complete(ego, active_pair):
+                    phase = "follow_adjacent"
+                    proposed_phase = phase
+                else:
+                    if lead is None:
+                        raise ValueError("active_lane_change_lead_input_unavailable")
+                    request, corridor, output_lane_id = self._lane_change_request(
+                        ego,
+                        route,
+                        active_pair,
+                        lead,
+                        obstacles,
+                        lane_change_latched=True,
+                    )
+            if phase == "follow_adjacent" and active_pair is not None:
+                if self._merge_complete(ego, route, active_pair):
+                    phase = "idle"
+                    active_pair = None
+                    proposed_phase = phase
+                    proposed_pair = None
+                if phase == "follow_adjacent":
+                    request, corridor, output_lane_id = self._standard_request(
+                        ego, route, previous, active_pair, obstacles
+                    )
+            if phase == "idle":
+                candidate = self._pairs.get(route.current_link_id)
+                trigger = (
+                    candidate is not None
+                    and lead is not None
+                    and route.speed_limit_exempt_zone
+                    and 0.0 <= lead.longitudinal_distance_m <= self._lc_trigger_gap
+                )
+                if trigger:
+                    request, corridor, output_lane_id = self._lane_change_request(
+                        ego, route, candidate, lead, obstacles
+                    )
+                    pending_pair = candidate
+                    proposed_phase = "crossing"
+                    proposed_pair = candidate
+                else:
+                    request, corridor, output_lane_id = self._standard_request(
+                        ego, route, previous, None, obstacles
+                    )
+        except (KeyError, TypeError, ValueError) as error:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "corridor_rejected:{}".format(error),
+                now,
+            )
+            return
+
+        result = self._planner.plan(
+            request, deadline_monotonic=wall_deadline
+        )
+        if not result.is_valid:
+            if result.status.value == "invalid_start":
+                status = PlannedTrajectory.STATUS_INVALID_START
+            elif result.status.value == "time_limit":
+                status = PlannedTrajectory.STATUS_INPUT_STALE
+            else:
+                status = PlannedTrajectory.STATUS_NO_PATH
+            self._publish_failure(
+                status,
+                "{}:{}".format(result.status.value, result.diagnostics.message),
+                rospy.Time.now(),
+            )
+            return
+
+        finished = rospy.Time.now()
+        deadline = now + rospy.Duration.from_sec(self._validity_sec)
+        if finished >= deadline:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "planning_result_expired_before_publication",
+                finished,
+            )
+            return
+        (
+            newest_odometry,
+            newest_route,
+            newest_lead_message,
+            newest_global_path_valid,
+            _newest_previous,
+            _newest_phase,
+            _newest_active_pair,
+            newest_fault_revision,
+        ) = self._snapshot()
+        newest_reason = self._input_reason(
+            newest_odometry, newest_route, finished
+        )
+        if not newest_global_path_valid:
+            newest_reason = newest_reason or "missing_global_path_after_search"
+        if not newest_reason and not same_route_snapshot(route, newest_route):
+            newest_reason = "route_changed_during_search"
+        if newest_reason:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "postplan_input_rejected:{}".format(newest_reason),
+                finished,
+            )
+            return
+
+        newest_lead = self._valid_lead(
+            newest_lead_message, finished, newest_route.current_link_id
+        )
+        newest_lead_fault = self._lead_fault_reason(
+            newest_lead_message,
+            finished,
+            newest_route.current_link_id,
+            newest_odometry,
+        )
+        if newest_lead_fault:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "postplan_lead_input_rejected:{}".format(newest_lead_fault),
+                finished,
+            )
+            return
+        if lead is not None and newest_lead is None:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "observed_lead_disappeared_during_search",
+                finished,
+            )
+            return
+        if phase == "crossing" and active_pair is not None and newest_lead is None:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "active_lane_change_lead_input_lost_during_search",
+                finished,
+            )
+            return
+        if pending_pair is not None and (
+            newest_lead is None
+            or not newest_route.speed_limit_exempt_zone
+            or newest_lead.longitudinal_distance_m > self._lc_trigger_gap
+            or self._pairs.get(newest_route.current_link_id) != pending_pair
+        ):
+            self._publish_failure(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "lane_change_trigger_invalid_after_search",
+                finished,
+            )
+            return
+
+        newest_obstacles = self._obstacle_from_lead(newest_lead)
+        newest_policy = request.policy
+        if newest_policy.mode is CorridorMode.HIGHWAY_OVERTAKE:
+            newest_policy = replace(
+                newest_policy,
+                lead_vehicle_distance_m=(
+                    float(newest_lead.longitudinal_distance_m)
+                    if newest_lead is not None
+                    else None
+                ),
+            )
+        newest_position = newest_odometry.pose.pose.position
+        newest_ego = Pose2D(
+            float(newest_position.x),
+            float(newest_position.y),
+            _yaw(newest_odometry.pose.pose.orientation),
+        )
+        newest_effective = self._planner.policy.apply(
+            request.corridor, newest_policy
+        )
+        if not self._planner.checker.check_pose(
+            newest_ego, newest_effective, newest_obstacles
+        ).valid:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "latest_ego_pose_outside_validated_corridor",
+                finished,
+            )
+            return
+
+        if aligned_path_index(
+            result.path,
+            newest_ego,
+            self._result_alignment_position,
+            self._result_alignment_yaw,
+            self._minimum_published_path_length,
+        ) is None:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "latest_ego_pose_not_aligned_with_planned_path",
+                finished,
+            )
+            return
+        if not self._planner.validate_path(
+            result.path,
+            request.corridor,
+            newest_policy,
+            newest_obstacles,
+            deadline_monotonic=wall_deadline,
+        ):
+            validation_timed_out = time.monotonic() >= wall_deadline
+            self._publish_failure(
+                (
+                    PlannedTrajectory.STATUS_INPUT_STALE
+                    if validation_timed_out
+                    else PlannedTrajectory.STATUS_STOP_REQUIRED
+                ),
+                (
+                    "continuous_validation_time_limit"
+                    if validation_timed_out
+                    else "path_invalid_against_latest_obstacle_snapshot"
+                ),
+                finished,
+            )
+            return
+
+        if (
+            initial_phase == "crossing"
+            and proposed_phase == "follow_adjacent"
+            and not self._crossing_complete(newest_ego, initial_pair)
+        ):
+            self._publish_failure(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "lane_change_completion_changed_during_search",
+                rospy.Time.now(),
+            )
+            return
+        if (
+            initial_phase == "follow_adjacent"
+            and proposed_phase == "idle"
+            and not self._merge_complete(newest_ego, newest_route, initial_pair)
+        ):
+            self._publish_failure(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "lane_change_merge_changed_during_search",
+                rospy.Time.now(),
+            )
+            return
+
+        publication_time = rospy.Time.now()
+        final_reason = self._input_reason(
+            newest_odometry, newest_route, publication_time
+        )
+        if publication_time >= deadline:
+            final_reason = final_reason or "planning_result_expired_after_validation"
+        final_lead = self._valid_lead(
+            newest_lead_message, publication_time, newest_route.current_link_id
+        )
+        final_lead_fault = self._lead_fault_reason(
+            newest_lead_message,
+            publication_time,
+            newest_route.current_link_id,
+            newest_odometry,
+        )
+        if final_lead_fault:
+            final_reason = final_reason or "lead_input_rejected_after_validation:{}".format(
+                final_lead_fault
+            )
+        if newest_lead is not None and final_lead is None:
+            final_reason = final_reason or "lead_input_expired_after_validation"
+        if final_reason:
+            self._publish_failure(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "final_publication_gate_rejected:{}".format(final_reason),
+                publication_time,
+            )
+            return
+
+        validated_request = replace(
+            request,
+            policy=newest_policy,
+            obstacles=newest_obstacles,
+        )
+        publication_context = _PublicationContext(
+            initial_route=route,
+            initial_lead_present=lead is not None,
+            planning_phase=phase,
+            planning_active_pair=active_pair,
+            pending_pair=pending_pair,
+            initial_phase=initial_phase,
+            proposed_phase=proposed_phase,
+            initial_pair=initial_pair,
+            proposed_pair=proposed_pair,
+            validated_odometry=newest_odometry,
+            validated_route=newest_route,
+            validated_lead_message=newest_lead_message,
+            expected_fault_revision=newest_fault_revision,
+            wall_deadline_monotonic=wall_deadline,
+        )
+        self._publish_success(
+            result,
+            validated_request,
+            corridor,
+            output_lane_id,
+            now,
+            deadline,
+            publication_context,
+        )
+
+    def _guard_publication(self, result, request, context, valid_until):
+        """Recheck the newest processed inputs in the publication lock epoch."""
+
+        def rejected(status, reason):
+            return _PublicationGuardResult(
+                status=status,
+                reason="publication_guard:{}".format(reason),
+                request=None,
+                z_value=0.0,
+                high_speed_zone=False,
+            )
+
+        now = rospy.Time.now()
+        if now >= valid_until:
+            return rejected(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "trajectory_expired_before_locked_validation",
+            )
+        (
+            current_odometry,
+            current_route,
+            current_lead_message,
+            current_global_path_valid,
+            _current_previous,
+            _current_phase,
+            _current_active_pair,
+            current_fault_revision,
+        ) = self._snapshot()
+        if current_fault_revision != context.expected_fault_revision:
+            return rejected(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "input_fault_observed_after_validation",
+            )
+        if not current_global_path_valid:
+            return rejected(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "missing_global_path",
+            )
+        input_reason = self._input_reason(current_odometry, current_route, now)
+        if input_reason:
+            return rejected(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                input_reason,
+            )
+        if not same_route_snapshot(context.initial_route, current_route):
+            return rejected(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "route_changed_after_validation",
+            )
+
+        lead_fault = self._lead_fault_reason(
+            current_lead_message,
+            now,
+            current_route.current_link_id,
+            current_odometry,
+        )
+        if lead_fault:
+            return rejected(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "lead_input_rejected:{}".format(lead_fault),
+            )
+        current_lead = self._valid_lead(
+            current_lead_message,
+            now,
+            current_route.current_link_id,
+        )
+        if context.initial_lead_present and current_lead is None:
+            return rejected(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "observed_lead_disappeared_after_validation",
+            )
+        if (
+            context.planning_phase == "crossing"
+            and context.planning_active_pair is not None
+            and current_lead is None
+        ):
+            return rejected(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "active_lane_change_lead_input_lost_after_validation",
+            )
+        if context.pending_pair is not None and (
+            current_lead is None
+            or not current_route.speed_limit_exempt_zone
+            or current_lead.longitudinal_distance_m > self._lc_trigger_gap
+            or self._pairs.get(current_route.current_link_id)
+            != context.pending_pair
+        ):
+            return rejected(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "lane_change_trigger_changed_after_validation",
+            )
+
+        current_obstacles = self._obstacle_from_lead(current_lead)
+        current_policy = request.policy
+        if current_policy.mode is CorridorMode.HIGHWAY_OVERTAKE:
+            current_policy = replace(
+                current_policy,
+                lead_vehicle_distance_m=(
+                    float(current_lead.longitudinal_distance_m)
+                    if current_lead is not None
+                    else None
+                ),
+            )
+        current_effective = self._planner.policy.apply(
+            request.corridor, current_policy
+        )
+        if current_effective.decision.fail_closed:
+            return rejected(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "corridor_policy_changed_after_validation",
+            )
+
+        current_position = current_odometry.pose.pose.position
+        current_ego = Pose2D(
+            float(current_position.x),
+            float(current_position.y),
+            _yaw(current_odometry.pose.pose.orientation),
+        )
+        if not self._planner.checker.check_pose(
+            current_ego, current_effective, current_obstacles
+        ).valid:
+            return rejected(
+                PlannedTrajectory.STATUS_STOP_REQUIRED,
+                "current_ego_pose_outside_validated_corridor",
+            )
+        if aligned_path_index(
+            result.path,
+            current_ego,
+            self._result_alignment_position,
+            self._result_alignment_yaw,
+            self._minimum_published_path_length,
+        ) is None:
+            return rejected(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "current_ego_pose_not_aligned_with_planned_path",
+            )
+
+        snapshot_changed = any(
+            current is not validated
+            for current, validated in (
+                (current_odometry, context.validated_odometry),
+                (current_route, context.validated_route),
+                (current_lead_message, context.validated_lead_message),
+            )
+        )
+        if snapshot_changed:
+            guard_started = time.monotonic()
+            guard_deadline = min(
+                context.wall_deadline_monotonic,
+                guard_started + self._publication_guard_budget,
+            )
+            if guard_deadline <= guard_started:
+                return rejected(
+                    PlannedTrajectory.STATUS_INPUT_STALE,
+                    "locked_validation_time_unavailable",
+                )
+            path_valid = self._planner.validate_path(
+                result.path,
+                request.corridor,
+                current_policy,
+                current_obstacles,
+                deadline_monotonic=guard_deadline,
+            )
+            guard_finished = time.monotonic()
+            if guard_finished >= guard_deadline:
+                return rejected(
+                    PlannedTrajectory.STATUS_INPUT_STALE,
+                    "locked_validation_time_limit",
+                )
+            if not path_valid:
+                return rejected(
+                    PlannedTrajectory.STATUS_STOP_REQUIRED,
+                    "path_invalid_against_current_snapshot",
+                )
+
+        if (
+            context.initial_phase == "crossing"
+            and context.proposed_phase == "follow_adjacent"
+            and not self._crossing_complete(current_ego, context.initial_pair)
+        ):
+            return rejected(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "lane_change_completion_changed_after_validation",
+            )
+        if (
+            context.initial_phase == "follow_adjacent"
+            and context.proposed_phase == "idle"
+            and not self._merge_complete(
+                current_ego, current_route, context.initial_pair
+            )
+        ):
+            return rejected(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "lane_change_merge_changed_after_validation",
+            )
+        if rospy.Time.now() >= valid_until:
+            return rejected(
+                PlannedTrajectory.STATUS_INPUT_STALE,
+                "trajectory_expired_during_locked_validation",
+            )
+
+        return _PublicationGuardResult(
+            status=None,
+            reason="",
+            request=replace(
+                request,
+                policy=current_policy,
+                obstacles=current_obstacles,
+            ),
+            z_value=float(current_position.z),
+            high_speed_zone=bool(current_route.speed_limit_exempt_zone),
+        )
+
+    def _target_speed(self, curvature, high_speed_zone):
+        cruise = self._high_speed if high_speed_zone else self._urban_speed
+        if abs(curvature) <= 1.0e-6:
+            return cruise
+        return min(cruise, math.sqrt(self._lateral_acceleration / abs(curvature)))
+
+    def _publish_success(
+        self,
+        result,
+        request,
+        corridor,
+        lane_id,
+        stamp,
+        valid_until,
+        context,
+    ):
+        with self._output_lock:
+            guarded = self._guard_publication(
+                result,
+                request,
+                context,
+                valid_until,
+            )
+            if guarded.status is not None:
+                self._publish_failure(
+                    guarded.status,
+                    guarded.reason,
+                    rospy.Time.now(),
+                )
+                return False
+
+            message = PlannedTrajectory()
+            message.header.stamp = stamp
+            message.header.frame_id = self._frame_id
+            message.valid_until = valid_until
+            message.status = PlannedTrajectory.STATUS_VALID
+            message.reason = "valid"
+            message.lane_change_authorized = bool(
+                result.diagnostics.policy.lane_change_enabled
+            )
+            message.minimum_boundary_clearance_m = float(
+                result.diagnostics.minimum_wheel_boundary_clearance_m
+            )
+            local_path = Path()
+            local_path.header = message.header
+            for point in result.path:
+                trajectory_point = TrajectoryPoint()
+                trajectory_point.x_m = point.pose.x
+                trajectory_point.y_m = point.pose.y
+                trajectory_point.z_m = guarded.z_value
+                trajectory_point.yaw_rad = point.pose.yaw
+                trajectory_point.curvature_1pm = point.curvature_per_m
+                trajectory_point.s_m = point.distance_from_start_m
+                trajectory_point.target_speed_mps = self._target_speed(
+                    point.curvature_per_m, guarded.high_speed_zone
+                )
+                trajectory_point.lane_link_id = nearest_lane_id(
+                    Point2D(point.pose.x, point.pose.y),
+                    corridor.map_lanes,
+                    fallback=lane_id,
+                )
+                message.points.append(trajectory_point)
+                pose = PoseStamped()
+                pose.header = local_path.header
+                pose.pose.position.x = point.pose.x
+                pose.pose.position.y = point.pose.y
+                pose.pose.position.z = guarded.z_value
+                pose.pose.orientation.z = math.sin(0.5 * point.pose.yaw)
+                pose.pose.orientation.w = math.cos(0.5 * point.pose.yaw)
+                local_path.poses.append(pose)
+
+            publication_time = rospy.Time.now()
+            if publication_time >= valid_until:
+                self._publish_failure(
+                    PlannedTrajectory.STATUS_INPUT_STALE,
+                    "trajectory_expired_while_serializing",
+                    publication_time,
+                )
+                return False
+            with self._state_lock:
+                # Holding the output lock prevents a callback from making the
+                # guarded snapshot stale while STATUS_VALID is published, and
+                # prevents a watchdog failure from being overwritten.
+                self._trajectory_publisher.publish(message)
+                self._path_publisher.publish(local_path)
+                remaining_lifetime = max(
+                    0.0, (valid_until - rospy.Time.now()).to_sec()
+                )
+                self._publish_corridor(
+                    corridor,
+                    guarded.request.policy,
+                    stamp,
+                    guarded.z_value,
+                    remaining_lifetime,
+                )
+                self._trajectory_live = True
+                # Maneuver state changes are committed only with the
+                # corresponding successful trajectory publication.
+                self._maneuver_phase = context.proposed_phase
+                self._active_pair = context.proposed_pair
+            return True
+
+    def _publish_failure(self, status, reason, stamp, corridor=None, policy=None):
+        with self._output_lock:
+            with self._state_lock:
+                self._trajectory_live = False
+            message = PlannedTrajectory()
+            message.header.stamp = stamp
+            message.header.frame_id = self._frame_id
+            message.valid_until = rospy.Time.now()
+            message.status = status
+            message.reason = str(reason)[:240]
+            message.lane_change_authorized = False
+            message.minimum_boundary_clearance_m = -1.0
+            self._trajectory_publisher.publish(message)
+            empty = Path()
+            empty.header = message.header
+            self._path_publisher.publish(empty)
+            self._clear_markers(stamp)
+            rospy.logwarn_throttle(
+                1.0, "Hybrid A* fail-closed: %s" % message.reason
+            )
+
+    @staticmethod
+    def _ros_point(point, z_value=0.10):
+        result = RosPoint()
+        result.x = point.x
+        result.y = point.y
+        result.z = z_value
+        return result
+
+    def _clear_markers(self, stamp):
+        marker = Marker()
+        marker.header.frame_id = self._frame_id
+        marker.header.stamp = stamp
+        marker.action = Marker.DELETEALL
+        self._marker_publisher.publish(MarkerArray(markers=[marker]))
+
+    def _publish_corridor(self, build, policy, stamp, z_value, lifetime_sec):
+        if lifetime_sec <= 0.0:
+            self._clear_markers(rospy.Time.now())
+            return
+        effective = self._planner.policy.apply(build.corridor, policy)
+        clear = Marker()
+        clear.header.frame_id = self._frame_id
+        clear.header.stamp = stamp
+        clear.action = Marker.DELETEALL
+        hard = self._line_marker(
+            "hard_walls", 1, stamp, (1.0, 0.1, 0.1, 0.95), 0.14, lifetime_sec
+        )
+        for edge in effective.hard_edges:
+            hard.points.extend(
+                (
+                    self._ros_point(edge.start, z_value + 0.10),
+                    self._ros_point(edge.finish, z_value + 0.10),
+                )
+            )
+        opened = self._line_marker(
+            "opened_walls", 2, stamp, (0.1, 1.0, 0.25, 0.95), 0.20, lifetime_sec
+        )
+        by_id = {
+            boundary.boundary_id: boundary
+            for boundary in build.corridor.boundaries
+        }
+        for boundary_id in effective.decision.opened_boundary_ids:
+            boundary = by_id[boundary_id]
+            for start, finish in zip(boundary.points, boundary.points[1:]):
+                opened.points.extend(
+                    (
+                        self._ros_point(start, z_value + 0.12),
+                        self._ros_point(finish, z_value + 0.12),
+                    )
+                )
+        outline = self._line_marker(
+            "corridor", 3, stamp, (0.1, 0.65, 1.0, 0.45), 0.05, lifetime_sec
+        )
+        for lane in build.corridor.lanes:
+            for start, finish in polygon_edges(lane.vertices):
+                outline.points.extend(
+                    (
+                        self._ros_point(start, z_value + 0.08),
+                        self._ros_point(finish, z_value + 0.08),
+                    )
+                )
+        self._marker_publisher.publish(
+            MarkerArray(markers=[clear, outline, hard, opened])
+        )
+
+    def _line_marker(
+        self, namespace, marker_id, stamp, color, width, lifetime_sec
+    ):
+        marker = Marker()
+        marker.header.frame_id = self._frame_id
+        marker.header.stamp = stamp
+        marker.ns = namespace
+        marker.id = marker_id
+        marker.type = Marker.LINE_LIST
+        marker.action = Marker.ADD
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = width
+        marker.color.r, marker.color.g, marker.color.b, marker.color.a = color
+        marker.lifetime = rospy.Duration.from_sec(max(0.0, lifetime_sec))
+        return marker
+
+
+def main():
+    rospy.init_node("hybrid_astar")
+    try:
+        HybridAStarNode()
+    except Exception as error:
+        rospy.logfatal("Hybrid A* initialization failed: %s", error)
+        raise SystemExit(2)
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()

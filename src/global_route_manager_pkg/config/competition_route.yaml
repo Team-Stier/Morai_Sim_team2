@@ -1,0 +1,72 @@
+# Runtime values only. Public node/topic/frame names are owned by the central
+# ros_architecture_pkg interface contract and are not overrideable here.
+expected_source_point_count: 4430
+expected_sha256: 50658991e607d9339d76e4cd6cb169dfc733ea53b93de2c3e222460bb497cc05
+expected_length_m: 2184.612
+length_tolerance_m: 0.1
+closure_tolerance_m: 0.05
+require_closed_route: true
+
+publish_rate_hz: 20.0
+odometry_timeout_sec: 0.20
+horizon_link_count: 6
+
+matcher:
+  # Adjacent-lane driving can be about 3.5 m from the official reference path,
+  # while larger jumps are rejected instead of globally reacquiring mid-run.
+  max_lateral_distance_m: 6.0
+  search_backward_segments: 20
+  search_forward_segments: 200
+  max_heading_error_deg: 100.0
+  heading_weight_m2_per_rad2: 1.0
+
+# Link intervals were audited by projecting the immutable 4,430-point route onto
+# the canonical KATRI MGeo link centerlines. Sub-metre gaps/overlaps are rounding
+# artifacts; RouteTopology resolves them to the closest edge without guessing a
+# different link sequence.
+link_span_continuity_tolerance_m: 1.0
+link_spans:
+  - {id: A2256W000751, start_m: 0.0, end_m: 0.0}
+  - {id: A2256W000748, start_m: 0.5, end_m: 72.6}
+  - {id: A2256W000182, start_m: 73.1, end_m: 95.0}
+  - {id: A2256W000329, start_m: 95.5, end_m: 160.0}
+  - {id: A2256W000236, start_m: 160.5, end_m: 186.3}
+  - {id: A2256W000219, start_m: 186.8, end_m: 208.5}
+  - {id: A2256W000215, start_m: 209.0, end_m: 237.4}
+  - {id: A2256W000213, start_m: 237.9, end_m: 315.4}
+  - {id: A2256W000222, start_m: 315.9, end_m: 346.7}
+  - {id: A2256W000220, start_m: 347.2, end_m: 365.7}
+  - {id: A2256W000202, start_m: 365.8, end_m: 427.8}
+  - {id: A2256W000728, start_m: 427.9, end_m: 436.4}
+  - {id: A2256W000599, start_m: 436.8, end_m: 462.9}
+  - {id: A2256W000207, start_m: 463.4, end_m: 470.9}
+  - {id: A2256W000205, start_m: 471.1, end_m: 482.8}
+  - {id: A2256W000315, start_m: 483.3, end_m: 550.6}
+  - {id: A2256W000318, start_m: 550.6, end_m: 580.9}
+  - {id: A2256W000308, start_m: 581.4, end_m: 609.9}
+  - {id: A2256W000083, start_m: 609.9, end_m: 635.1}
+  - {id: A2256W000304, start_m: 635.6, end_m: 858.5}
+  - {id: A2256W000148, start_m: 859.0, end_m: 885.1}
+  - {id: A2256W000146, start_m: 885.6, end_m: 903.1}
+  - {id: A2256W000151, start_m: 903.1, end_m: 914.8}
+  - {id: A2256W000866, start_m: 915.3, end_m: 930.3}
+  - {id: A2256W000054, start_m: 930.6, end_m: 984.6}
+  - {id: A2256W000846, start_m: 984.7, end_m: 1118.7}
+  - {id: A2256W000411, start_m: 1118.7, end_m: 1285.7}
+  - {id: A2256W000420, start_m: 1286.2, end_m: 1368.7}
+  - {id: A2256W000408, start_m: 1368.7, end_m: 1518.2}
+  - {id: A2256W000445, start_m: 1518.7, end_m: 1593.6}
+  - {id: A2256W000153, start_m: 1593.6, end_m: 1741.6}
+  - {id: A2256W000451, start_m: 1741.7, end_m: 1781.6}
+  - {id: A2256W000446, start_m: 1782.1, end_m: 1859.6}
+  - {id: A2256W000448, start_m: 1860.1, end_m: 1877.6}
+  - {id: A2256W000126, start_m: 1877.7, end_m: 1996.7}
+  - {id: A2256W000128, start_m: 1997.2, end_m: 2109.7}
+  - {id: A2256W000333, start_m: 2109.8, end_m: 2121.0}
+  - {id: A2256W000154, start_m: 2121.0, end_m: 2132.2}
+  - {id: A2256W000332, start_m: 2132.7, end_m: 2165.8}
+  - {id: A2256W000751, start_m: 2166.3, end_m: 2184.612}
+
+high_speed_exception:
+  start_link_id: A2256W000411
+  end_link_id: A2256W000153

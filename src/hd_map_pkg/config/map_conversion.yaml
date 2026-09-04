@@ -33,6 +33,10 @@ conversion:
   # immutable source ways remain exported at their exact coordinates.
   boundary_event_merge_tolerance_m: 0.50
   boundary_stitch_tolerance_m: 0.50
+  # Never average separate branch boundaries merely because their Link
+  # endpoints share a routing node. Larger gaps remain explicit for the route
+  # planner to bridge with hard lateral walls.
+  routing_endpoint_merge_tolerance_m: 0.50
   minimum_lanelet_segment_length_m: 0.50
   endpoint_snap_taper_m: 10.0
 

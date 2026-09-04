@@ -1,0 +1,324 @@
+#!/usr/bin/env python3
+
+"""ROS1 wrapper for the official-route progress core."""
+
+import math
+import os
+import threading
+
+import rospkg
+import rospy
+import yaml
+from common_msgs_pkg.msg import RouteContext
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry, Path
+
+from global_route_manager_pkg.reference_route import (
+    RouteFormatError,
+    RouteMatcher,
+    RouteTopology,
+    gate_observation_stamp,
+    load_reference_route,
+    odometry_payload_invalid_reason,
+    observation_invalid_reason,
+)
+
+
+ODOMETRY_TOPIC = "/localization/odometry"
+GLOBAL_PATH_TOPIC = "/planning/global_path"
+ROUTE_CONTEXT_TOPIC = "/planning/route_context"
+HD_MAP_REFERENCE_SENTINEL = "reference_file_from_hd_map_config"
+FRAME_ID = "map"
+BASE_FRAME_ID = "base_link"
+
+
+def _load_yaml_mapping(path, label):
+    try:
+        with open(path, "r", encoding="utf-8") as stream:
+            value = yaml.safe_load(stream)
+    except (OSError, yaml.YAMLError) as exc:
+        raise RouteFormatError("cannot load {}: {}".format(label, exc))
+    if not isinstance(value, dict):
+        raise RouteFormatError("{} root must be a mapping".format(label))
+    return value
+
+
+def _resolve_route_file(configured_value):
+    value = os.path.expandvars(os.path.expanduser(str(configured_value)))
+    if value != HD_MAP_REFERENCE_SENTINEL:
+        return value
+    try:
+        package_root = rospkg.RosPack().get_path("hd_map_pkg")
+    except rospkg.ResourceNotFound as exc:
+        raise RouteFormatError("cannot locate hd_map_pkg: {}".format(exc))
+    map_config_path = os.path.join(package_root, "config", "map_conversion.yaml")
+    map_config = _load_yaml_mapping(map_config_path, "HD-map config")
+    try:
+        relative_path = map_config["references"]["simulator_global_path"]
+    except (KeyError, TypeError):
+        raise RouteFormatError(
+            "HD-map config has no references.simulator_global_path")
+    return os.path.normpath(os.path.join(package_root, str(relative_path)))
+
+
+def _yaw_from_quaternion(quaternion):
+    values = (quaternion.x, quaternion.y, quaternion.z, quaternion.w)
+    if not all(math.isfinite(value) for value in values):
+        raise ValueError("non_finite_orientation")
+    norm = math.sqrt(sum(value * value for value in values))
+    if norm <= 1.0e-9:
+        raise ValueError("invalid_orientation")
+    x, y, z, w = (value / norm for value in values)
+    return math.atan2(
+        2.0 * (w * z + x * y),
+        1.0 - 2.0 * (y * y + z * z),
+    )
+
+
+def _odometry_invalid_reason(
+        message, now_sec, timeout_sec, frame_id, base_frame_id):
+    """Validate one ROS odometry message without mutating accepted state."""
+    try:
+        stamp_sec = float(message.header.stamp.to_sec())
+        reason = observation_invalid_reason(
+            stamp_sec=stamp_sec,
+            now_sec=now_sec,
+            timeout_sec=timeout_sec,
+            actual_frame=message.header.frame_id,
+            expected_frame=frame_id,
+            actual_child_frame=message.child_frame_id,
+            expected_child_frame=base_frame_id,
+        )
+        if reason:
+            return reason, stamp_sec
+
+        pose = message.pose.pose
+        twist = message.twist.twist
+        reason = odometry_payload_invalid_reason(
+            position_xyz=(
+                pose.position.x,
+                pose.position.y,
+                pose.position.z,
+            ),
+            orientation_xyzw=(
+                pose.orientation.x,
+                pose.orientation.y,
+                pose.orientation.z,
+                pose.orientation.w,
+            ),
+            linear_velocity_xyz=(
+                twist.linear.x,
+                twist.linear.y,
+                twist.linear.z,
+            ),
+            angular_velocity_xyz=(
+                twist.angular.x,
+                twist.angular.y,
+                twist.angular.z,
+            ),
+            pose_covariance=message.pose.covariance,
+            twist_covariance=message.twist.covariance,
+        )
+        return reason, stamp_sec
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return "malformed_odometry", float("nan")
+
+
+class GlobalRouteManagerNode(object):
+    def __init__(self):
+        config_path = os.path.expandvars(os.path.expanduser(
+            str(rospy.get_param("~route_config_file"))))
+        config = _load_yaml_mapping(config_path, "route config")
+
+        # Public frame IDs are locked by the central interface contract and
+        # deliberately cannot be changed through a package-local config file.
+        self._frame_id = FRAME_ID
+        self._base_frame_id = BASE_FRAME_ID
+        self._odometry_timeout_sec = float(config["odometry_timeout_sec"])
+        self._horizon_link_count = int(config["horizon_link_count"])
+        publish_rate_hz = float(config["publish_rate_hz"])
+        if publish_rate_hz <= 0.0:
+            raise ValueError("publish_rate_hz must be positive")
+
+        route_path = _resolve_route_file(rospy.get_param("~route_file"))
+        self._route = load_reference_route(
+            route_path,
+            expected_point_count=config.get("expected_source_point_count"),
+            expected_sha256=config.get("expected_sha256"),
+            expected_length_m=config.get("expected_length_m"),
+            length_tolerance_m=float(config.get("length_tolerance_m", 0.1)),
+            closure_tolerance_m=float(config.get("closure_tolerance_m", 0.05)),
+        )
+        if bool(config.get("require_closed_route", True)) and not self._route.closed:
+            raise RouteFormatError("configured competition route is not closed")
+
+        matcher_config = config["matcher"]
+        self._matcher = RouteMatcher(
+            route=self._route,
+            max_lateral_distance_m=float(
+                matcher_config["max_lateral_distance_m"]),
+            search_backward_segments=int(
+                matcher_config["search_backward_segments"]),
+            search_forward_segments=int(
+                matcher_config["search_forward_segments"]),
+            max_heading_error_rad=math.radians(float(
+                matcher_config["max_heading_error_deg"])),
+            heading_weight_m2_per_rad2=float(
+                matcher_config["heading_weight_m2_per_rad2"]),
+        )
+        high_speed = config["high_speed_exception"]
+        self._topology = RouteTopology.from_dicts(
+            link_dicts=config["link_spans"],
+            route_length_m=self._route.length_m,
+            high_speed_start_link_id=str(high_speed["start_link_id"]),
+            high_speed_end_link_id=str(high_speed["end_link_id"]),
+            continuity_tolerance_m=float(config.get(
+                "link_span_continuity_tolerance_m", 1.0)),
+        )
+
+        self._lock = threading.Lock()
+        self._latest_odometry = None
+        self._latest_rejection_reason = ""
+        self._last_accepted_observation_stamp_sec = None
+
+        self._global_path_publisher = rospy.Publisher(
+            GLOBAL_PATH_TOPIC, Path, queue_size=1, latch=True)
+        self._context_publisher = rospy.Publisher(
+            ROUTE_CONTEXT_TOPIC, RouteContext, queue_size=1)
+        self._odometry_subscriber = rospy.Subscriber(
+            ODOMETRY_TOPIC,
+            Odometry,
+            self._odometry_callback,
+            queue_size=5,
+        )
+
+        self._global_path_publisher.publish(self._build_global_path())
+        self._timer = rospy.Timer(
+            rospy.Duration.from_sec(1.0 / publish_rate_hz),
+            self._publish_context,
+        )
+        rospy.loginfo(
+            "global route ready: %d source points, %d duplicate XY points, "
+            "%.3f m, sha256=%s",
+            self._route.source_point_count,
+            self._route.duplicate_count,
+            self._route.length_m,
+            self._route.source_sha256,
+        )
+
+    def _odometry_callback(self, message):
+        reason, stamp_sec = _odometry_invalid_reason(
+            message=message,
+            now_sec=rospy.Time.now().to_sec(),
+            timeout_sec=self._odometry_timeout_sec,
+            frame_id=self._frame_id,
+            base_frame_id=self._base_frame_id,
+        )
+        with self._lock:
+            reason, accepted_stamp_sec = gate_observation_stamp(
+                self._last_accepted_observation_stamp_sec,
+                stamp_sec,
+                reason,
+            )
+            if not reason:
+                self._latest_odometry = message
+                self._latest_rejection_reason = ""
+                self._last_accepted_observation_stamp_sec = accepted_stamp_sec
+            elif reason != "out_of_order_odometry":
+                # Preserve the last accepted message/progress for recovery, but
+                # fail closed until a new valid observation is accepted.
+                self._latest_rejection_reason = reason
+        if reason:
+            if reason == "out_of_order_odometry":
+                detail = (
+                    "out-of-order odometry rejected; restart the node after a "
+                    "deliberate simulation clock reset")
+            else:
+                detail = "odometry rejected before acceptance: {}".format(reason)
+            rospy.logwarn_throttle(2.0, detail)
+
+    def _build_global_path(self):
+        message = Path()
+        message.header.stamp = rospy.Time.now()
+        message.header.frame_id = self._frame_id
+        headings = self._route.raw_headings()
+        for point, heading in zip(self._route.raw_points, headings):
+            pose = PoseStamped()
+            pose.header = message.header
+            pose.pose.position.x = point.x_m
+            pose.pose.position.y = point.y_m
+            pose.pose.position.z = point.z_m
+            pose.pose.orientation.z = math.sin(0.5 * heading)
+            pose.pose.orientation.w = math.cos(0.5 * heading)
+            message.poses.append(pose)
+        return message
+
+    def _publish_context(self, _event):
+        now = rospy.Time.now()
+        with self._lock:
+            odometry = self._latest_odometry
+            rejection_reason = self._latest_rejection_reason
+            if rejection_reason:
+                state = self._topology.invalid_context(
+                    self._matcher, rejection_reason)
+            elif odometry is None:
+                state = self._topology.invalid_context(
+                    self._matcher, "missing_odometry")
+            else:
+                reason, _stamp_sec = _odometry_invalid_reason(
+                    message=odometry,
+                    now_sec=now.to_sec(),
+                    timeout_sec=self._odometry_timeout_sec,
+                    frame_id=self._frame_id,
+                    base_frame_id=self._base_frame_id,
+                )
+                position = odometry.pose.pose.position
+                yaw_rad = None
+                if not reason:
+                    try:
+                        yaw_rad = _yaw_from_quaternion(
+                            odometry.pose.pose.orientation)
+                    except ValueError as exc:
+                        reason = str(exc)
+                if reason:
+                    state = self._topology.invalid_context(self._matcher, reason)
+                else:
+                    match = self._matcher.match(
+                        position.x, position.y, yaw_rad=yaw_rad)
+                    state = self._topology.context_for_match(
+                        match, horizon_link_count=self._horizon_link_count)
+
+            # A valid context is anchored to the odometry estimate it describes.
+            # Invalid output has no accepted observation anchor and is stamped at
+            # publication so every downstream consumer sees one clear convention.
+            stamp = odometry.header.stamp if state.valid else now
+
+        message = RouteContext()
+        message.header.stamp = stamp
+        message.header.frame_id = self._frame_id
+        message.valid = state.valid
+        message.reason = state.reason
+        message.progress_m = state.progress_m
+        message.route_length_m = state.route_length_m
+        message.nearest_route_index = state.nearest_route_index
+        message.current_link_id = state.current_link_id
+        message.horizon_link_ids = list(state.horizon_link_ids)
+        message.speed_limit_exempt_zone = state.speed_limit_exempt_zone
+        self._context_publisher.publish(message)
+        if not state.valid:
+            rospy.logwarn_throttle(
+                2.0, "route context invalid (fail closed): %s" % state.reason)
+
+
+def main():
+    rospy.init_node("global_route_manager")
+    try:
+        GlobalRouteManagerNode()
+    except (KeyError, TypeError, ValueError, RouteFormatError) as exc:
+        rospy.logfatal("global route manager initialization failed: %s", exc)
+        raise SystemExit(2)
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()

@@ -36,7 +36,7 @@ catkin_package(
 
 install(FILES README.md DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 install(
-  DIRECTORY config docs launch
+  DIRECTORY config docs launch rviz
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   PATTERN ".gitkeep" EXCLUDE
 )

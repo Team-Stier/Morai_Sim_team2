@@ -570,6 +570,26 @@ class Lanelet2Exporter(object):
             plans[link_id] = segments
         return plans
 
+    def build_lanelet_segment_geometry(self):
+        """Materialize validated lane-side geometry without writing OSM.
+
+        Runtime consumers such as a rolling local planner need the same source
+        boundary clipping, synthetic-gap policy, and routing-endpoint treatment
+        as the authoritative Lanelet2 export.  This public entry point prevents
+        those consumers from reimplementing a subtly different map converter.
+
+        The returned mapping is read-only by convention and belongs to this
+        exporter instance.  Create a fresh exporter if a subsequent full export
+        is required, because source-boundary OSM primitives are initialized as
+        part of this operation.
+        """
+        if self.boundary_geometries:
+            raise RuntimeError("lanelet segment geometry was already initialized")
+        self._add_source_boundaries()
+        plans = self._plan_lanelet_segments()
+        self._resolve_lanelet_endpoints(plans)
+        return plans
+
     @staticmethod
     def _endpoint_token(link_id, segment_index, side, position):
         return link_id, int(segment_index), side, position
@@ -632,6 +652,20 @@ class Lanelet2Exporter(object):
         opposites = {}
         threshold = float(self.config.get("validation", {}).get(
             "max_successor_endpoint_gap_m", 5.0))
+        # Routing connectivity does not authorize averaging physically
+        # different lane boundaries.  In particular, a fork can place two
+        # successor sides several metres apart while both remain below the
+        # broader validation threshold.  Use the boundary stitching tolerance
+        # for geometry unification and retain the wider threshold only for
+        # reporting source-map topology gaps.
+        merge_threshold = float(self.config.get("conversion", {}).get(
+            "routing_endpoint_merge_tolerance_m",
+            self.config.get("conversion", {}).get(
+                "boundary_stitch_tolerance_m", 0.50)))
+        if merge_threshold < 0.0 or merge_threshold > threshold:
+            raise ValueError(
+                "routing endpoint merge tolerance must be within the "
+                "successor validation tolerance")
         for link_id, segments in plans.items():
             for segment in segments:
                 for side in ("left", "right"):
@@ -720,7 +754,7 @@ class Lanelet2Exporter(object):
                     for side in ("left", "right")]
                 safe = all(endpoints.can_union_without_opposites(
                     first, second, opposites) for first, second in pairs)
-                if max(gaps.values()) <= threshold and safe:
+                if max(gaps.values()) <= merge_threshold and safe:
                     for first, second in pairs:
                         endpoints.union(first, second)
                 else:
@@ -729,8 +763,13 @@ class Lanelet2Exporter(object):
                         "to": successor_id,
                         "left_gap_m": round(gaps["left"], 6),
                         "right_gap_m": round(gaps["right"], 6),
-                        "reason": ("endpoint_gap" if max(gaps.values()) > threshold
-                                   else "would_collapse_lane_bound"),
+                        "reason": (
+                            "endpoint_gap"
+                            if max(gaps.values()) > threshold
+                            else "routing_boundary_misalignment"
+                            if max(gaps.values()) > merge_threshold
+                            else "would_collapse_lane_bound"
+                        ),
                     })
 
         members = defaultdict(list)

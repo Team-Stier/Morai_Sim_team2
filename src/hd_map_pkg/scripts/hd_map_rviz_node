@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Publish the validated KATRI MGeo lane boundaries as latched RViz markers."""
+
+from pathlib import Path
+
+import rospy
+import yaml
+from geometry_msgs.msg import Point
+from visualization_msgs.msg import Marker, MarkerArray
+
+from hd_map_pkg.coordinates import CoordinateTransformer
+from hd_map_pkg.mgeo_v3 import MGeoV3Dataset
+from hd_map_pkg.rviz_geometry import LAYER_NAMES, build_boundary_layers
+
+
+FRAME_ID = "map"
+MAP_MARKER_TOPIC = "/hd_map/markers"
+MAP_LINE_WIDTH_M = 0.12
+
+COLORS = {
+    "solid": (0.95, 0.20, 0.18, 0.95),
+    "dashed": (1.00, 0.68, 0.10, 0.95),
+    "mixed": (0.94, 0.33, 0.75, 0.95),
+    "road_border": (0.48, 0.35, 0.92, 0.95),
+    "other": (0.55, 0.62, 0.68, 0.70),
+}
+
+
+def _load_context(map_source_directory, config_file):
+    with Path(config_file).open("r", encoding="utf-8") as stream:
+        config = yaml.safe_load(stream)
+    dataset = MGeoV3Dataset(
+        map_source_directory,
+        expected_major=int(config["source"]["expected_mgeo_major"]),
+        deduplicate_verified_suffix_clones=bool(
+            config.get("conversion", {}).get(
+                "deduplicate_verified_suffix_clones", True
+            )
+        ),
+    )
+    coordinates = config["coordinates"]
+    transformer = CoordinateTransformer(
+        dataset.local_origin_utm,
+        coordinates["simulator_scene_origin_utm"],
+        int(coordinates["utm_zone"]),
+        bool(coordinates["northern_hemisphere"]),
+    )
+    return config, dataset, transformer
+
+
+def _marker(layer, marker_id, points, stamp):
+    marker = Marker()
+    marker.header.frame_id = FRAME_ID
+    marker.header.stamp = stamp
+    marker.ns = "mgeo_lane_boundaries"
+    marker.id = marker_id
+    marker.type = Marker.LINE_LIST
+    marker.action = Marker.ADD
+    marker.pose.orientation.w = 1.0
+    marker.scale.x = MAP_LINE_WIDTH_M
+    red, green, blue, alpha = COLORS[layer]
+    marker.color.r = red
+    marker.color.g = green
+    marker.color.b = blue
+    marker.color.a = alpha
+    for x_value, y_value, z_value in points:
+        point = Point()
+        point.x = float(x_value)
+        point.y = float(y_value)
+        point.z = float(z_value) + 0.03
+        marker.points.append(point)
+    return marker
+
+
+def main():
+    rospy.init_node("rviz_map")
+    source = rospy.get_param("~map_source_directory")
+    config_file = rospy.get_param("~map_config_file")
+    publisher = rospy.Publisher(
+        MAP_MARKER_TOPIC, MarkerArray, queue_size=1, latch=True
+    )
+    try:
+        config, dataset, transformer = _load_context(source, config_file)
+        layers = build_boundary_layers(dataset, transformer, config)
+    except Exception as error:  # ROS startup must expose an unusable map loudly.
+        rospy.logfatal("HD-map RViz publisher rejected its source: %s", error)
+        raise
+    stamp = rospy.Time.now()
+    array = MarkerArray()
+    for marker_id, layer in enumerate(LAYER_NAMES):
+        array.markers.append(
+            _marker(
+                layer,
+                marker_id,
+                layers[layer],
+                stamp,
+            )
+        )
+    publisher.publish(array)
+    rospy.loginfo(
+        "Published %d KATRI lane-boundary line segments from %s",
+        sum(len(points) // 2 for points in layers.values()),
+        source,
+    )
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()

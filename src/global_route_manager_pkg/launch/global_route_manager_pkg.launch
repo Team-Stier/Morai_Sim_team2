@@ -1,4 +1,20 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Runtime entities will be added after central contract approval. -->
+  <!-- This resolves to the immutable repository reference file in a source
+       workspace. Override it when running from an installed deployment. -->
+  <arg name="route_file"
+       default="reference_file_from_hd_map_config" />
+  <arg name="route_config_file"
+       default="$(find global_route_manager_pkg)/config/competition_route.yaml" />
+
+  <group ns="planning">
+    <node pkg="global_route_manager_pkg"
+          type="global_route_manager_node"
+          name="global_route_manager"
+          output="screen"
+          required="true">
+      <param name="route_file" value="$(arg route_file)" />
+      <param name="route_config_file" value="$(arg route_config_file)" />
+    </node>
+  </group>
 </launch>

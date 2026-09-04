@@ -14,7 +14,14 @@
 - 기능 알고리즘, UDP 송수신, launch 조합
 - 패키지 한 곳에서만 쓰는 내부 자료구조의 무조건적인 공용화
 
-현재 중앙 계약이 draft이므로 승인된 공유 타입은 없다. 빈 `msg/`, `srv/`, `action/` 디렉터리는 임의 정의 권한이 아니라 향후 승인 타입의 위치다.
+## 승인된 planning baseline 타입
+
+- `RouteContext`: 유효성·사유, 단조 route progress, 현재/전방 MGeo Link와 고주로 규정 context
+- `LeadVehicleState`: World Model이 산출한 동일 차로 선행차 중심 pose, 크기, 속도, confidence와 bumper gap
+- `TrajectoryPoint`: rear-axle 기준 경로 pose, 곡률, 누적거리, 목표속도와 선택 Link
+- `PlannedTrajectory`: 유효기간, fail-closed 상태, 벽 개방 여부와 최소 경계 clearance를 포함한 조밀 경로
+
+정확한 topic, frame, timestamp, timeout과 invalid 정책은 이 README가 아니라 중앙 계약이 원본이다. 숫자 필드는 NaN을 invalid sentinel로 사용하지 않으며, `valid=false` 또는 trajectory status/expiry를 확인해야 한다.
 
 ## 디렉터리
 

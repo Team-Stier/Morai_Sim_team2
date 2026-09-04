@@ -7,6 +7,11 @@
   <license>TODO</license>
   <buildtool_depend>catkin</buildtool_depend>
   <depend>common_msgs_pkg</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
   <depend>ros_architecture_pkg</depend>
+  <depend>rospy</depend>
+  <depend>visualization_msgs</depend>
+  <test_depend>python3-nose</test_depend>
   <export />
 </package>

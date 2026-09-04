@@ -30,6 +30,34 @@
 
 이 패키지는 command path와 독립된 read-only observer여야 한다.
 
+## 현재 구현: planning RViz observer
+
+`planning_visualizer_node`는 중앙 계약의 `/localization/odometry`를 읽어
+RViz 전용 ego trace와 IONIQ 5 body-envelope marker를 발행한다. 공개 node,
+topic, frame과 timeout의 원본 정의는 이 문서가 아니라
+[`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)이다.
+
+- `map` parent frame과 `base_link` child frame만 수용한다.
+- 위치, 자세, 속도와 covariance에 NaN/Inf가 있으면 표본을 거부한다.
+- 단위 quaternion, 양의 timestamp, 엄격히 증가하는 표본만 trace에 추가한다.
+- odometry가 계약 age를 넘거나 미래 시각이면 현재 vehicle marker를 삭제한다.
+  marker lifetime은 매 발행에서 새로 0.25 s를 부여하지 않고 accepted
+  odometry timestamp의 절대 만료 시각까지 남은 시간으로 설정한다.
+  따라서 node가 예기치 않게 종료되어도 stale 차량이 남지 않는다.
+- trace는 최근 2,000개 accepted pose로 제한하여 RViz 메모리와 전송량을 제한한다.
+- 차량 cube는 4.635 m x 1.892 m x 2.434 m이고 rear-axle origin에서 body
+  center까지 차량 x축으로 1.5275 m 이동한다.
+
+이 출력은 시각화 전용이며 planner, controller 또는 safety 결정을 변경하지 않는다.
+상세 reject 조건과 검증 범위는
+[`docs/planning_visualization.md`](docs/planning_visualization.md)에 기록한다.
+
+단독 실행:
+
+```bash
+roslaunch runtime_evaluation_pkg runtime_evaluation_pkg.launch
+```
+
 ## 디렉터리
 
 - `config/`: 규정 버전별 metric과 report 설정

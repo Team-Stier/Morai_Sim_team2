@@ -20,6 +20,7 @@
   <depend>safety_supervisor_pkg</depend>
   <depend>vehicle_control_pkg</depend>
   <depend>world_model_pkg</depend>
+  <exec_depend>rviz</exec_depend>
 
   <export />
 </package>

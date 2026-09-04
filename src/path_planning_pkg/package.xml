@@ -2,11 +2,18 @@
 <package format="2">
   <name>path_planning_pkg</name>
   <version>0.0.0</version>
-  <description>Behavior planning and feasible time-parameterized local trajectory generation.</description>
+  <description>Fail-closed map-corridor Hybrid A* path and target-speed generation.</description>
   <maintainer email="simonpaik04@gmail.com">Team Stier</maintainer>
   <license>TODO</license>
   <buildtool_depend>catkin</buildtool_depend>
   <depend>common_msgs_pkg</depend>
+  <depend>geometry_msgs</depend>
+  <depend>hd_map_pkg</depend>
+  <depend>nav_msgs</depend>
   <depend>ros_architecture_pkg</depend>
+  <depend>rospy</depend>
+  <depend>visualization_msgs</depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <test_depend>python3-nose</test_depend>
   <export />
 </package>

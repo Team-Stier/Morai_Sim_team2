@@ -17,7 +17,12 @@
 
 ## 현재 상태
 
-현재 `config/interface_contract.yaml`의 공개 계약 목록은 비어 있다. 이는 자유롭게 이름을 정해도 된다는 뜻이 아니라, UDP 패킷 명세와 설계 검토 전까지 **아직 승인된 공개 ROS 이름이 없다는 뜻**이다.
+`config/interface_contract.yaml`은 현재 `approved_path_planning_baseline`이며 HD Map
+시각화, global route context, Hybrid A* trajectory와 planning RViz에 필요한
+node/topic/message/frame/parameter를 승인한다. 이 목록은 전체 자율주행
+스택이 완성됐다는 뜻이 아니다. 현재 계약에 없는 공개 이름은 여전히
+사용할 수 없으며, MORAI UDP·localization·world model·control 인터페이스는
+해당 producer/consumer 구현과 함께 별도 승인해야 한다.
 
 다른 패키지를 구현하다 공개 인터페이스가 필요하면 다음 순서로 진행한다.
 
@@ -42,3 +47,4 @@
 - `docs/`: 아키텍처, ADR, 책임 경계와 통합 근거
 - `launch/`: 이 패키지만 독립 확인할 때 사용하는 launch. 전체 시스템 bringup은 `system_bringup_pkg`가 소유
 - `src/`: 향후 계약 검사 도구만 허용. 기능 알고리즘은 두지 않음
+- `test/`: 외부 YAML 라이브러리 없이 필수 스키마·중복 공개 이름·message/frame 참조를 검사

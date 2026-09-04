@@ -6,8 +6,9 @@ WGS84 기반 Lanelet2 OSM으로 변환·검증하며 브라우저에서 시각 �
 
 > **INTERFACE LOCK:** 이 패키지는
 > [`ros_architecture_pkg`](../ros_architecture_pkg/README.md)의 중앙 ROS 계약을
-> 따른다. 현재 계약에 node/topic/frame이 없으므로 ROS publisher나 임의의 `map`
-> frame을 만들지 않는다. 미리보기는 ROS와 독립된 로컬 HTML Canvas이다.
+> 따른다. ROS1 RViz 미리보기는 계약에 등록된 HD-map node,
+> marker topic과 `map` frame을 사용하며 이 문서에서 새 공개 이름을
+> 정의하지 않는다. 로컬 HTML Canvas 미리보기는 ROS와 독립적이다.
 
 ![KATRI HD Map 미리보기](docs/katri_hd_map_preview.png)
 
@@ -73,6 +74,27 @@ rosrun hd_map_pkg hd_map_tool build-all --open
 ```bash
 hd_map_tool --output-dir /tmp/katri_lanelet build-all
 ```
+
+ROS1 RViz에서 정적 차선 경계를 확인할 때는:
+
+```bash
+roslaunch hd_map_pkg hd_map_pkg.launch
+```
+
+source workspace의 기본 `map_source_directory`는 고정된 submodule의
+`vendor/verdict_sdk/map-data/KATRI`를 가리킨다. 원본 데이터는 재배포 권한이
+확정되지 않아 catkin install 대상이 아니므로, install/deploy workspace에서는
+다음처럼 외부 데이터의 절대경로를 넘겨야 한다.
+
+```bash
+roslaunch hd_map_pkg hd_map_pkg.launch \
+  map_source_directory:=/absolute/path/to/KATRI
+```
+
+`map_config_file`은 설치된 패키지의 config로 기본 해석된다. RViz marker의
+frame은 `map`, 선 두께는 0.12 m로 고정된 구현 상수이며 ROS parameter로
+변경할 수 없다. marker는 latched 시각화 출력일 뿐 planner의 map 입력이
+아니다.
 
 ## 좌표계
 

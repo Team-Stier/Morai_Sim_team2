@@ -1,4 +1,16 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Runtime entities will be added after central contract approval. -->
+  <arg name="planner_config_file"
+       default="$(find path_planning_pkg)/config/hybrid_astar.yaml" />
+  <arg name="map_source_directory"
+       default="$(find hd_map_pkg)/vendor/verdict_sdk/map-data/KATRI" />
+  <arg name="map_config_file"
+       default="$(find hd_map_pkg)/config/map_conversion.yaml" />
+
+  <node pkg="path_planning_pkg" type="hybrid_astar_node"
+        name="hybrid_astar" ns="planning" output="screen" required="true">
+    <param name="planner_config_file" value="$(arg planner_config_file)" />
+    <param name="map_source_directory" value="$(arg map_source_directory)" />
+    <param name="map_config_file" value="$(arg map_config_file)" />
+  </node>
 </launch>

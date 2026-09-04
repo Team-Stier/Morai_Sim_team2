@@ -1,4 +1,9 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Runtime entities will be added after central contract approval. -->
+  <node pkg="runtime_evaluation_pkg"
+        type="planning_visualizer_node"
+        name="planning_visualizer"
+        ns="runtime"
+        output="screen"
+        required="false" />
 </launch>

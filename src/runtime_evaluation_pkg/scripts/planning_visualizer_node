@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""Publish a read-only ego envelope and bounded odometry trace for RViz."""
+
+import threading
+
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry, Path
+import rospy
+from visualization_msgs.msg import Marker
+
+from runtime_evaluation_pkg.planning_visualization import (
+    EXPECTED_FRAME,
+    IONIQ5_HEIGHT_M,
+    IONIQ5_LENGTH_M,
+    IONIQ5_WIDTH_M,
+    PoseSample,
+    Quaternion,
+    TraceHistory,
+    marker_center,
+    remaining_marker_lifetime_sec,
+    validate_pose_sample,
+)
+
+
+ODOMETRY_TOPIC = "/localization/odometry"
+TRACE_TOPIC = "/planning/ego_trace"
+VEHICLE_MARKER_TOPIC = "/planning/vehicle_marker"
+TRACE_MAX_SAMPLES = 2000
+PUBLISH_PERIOD_SEC = 0.05
+VEHICLE_MARKER_NAMESPACE = "ego_vehicle"
+VEHICLE_MARKER_ID = 0
+
+
+def _sample_from_odometry(message):
+    pose = message.pose.pose
+    twist = message.twist.twist
+    return PoseSample(
+        stamp_sec=message.header.stamp.to_sec(),
+        frame_id=message.header.frame_id,
+        child_frame_id=message.child_frame_id,
+        position=(pose.position.x, pose.position.y, pose.position.z),
+        orientation=Quaternion(
+            pose.orientation.x,
+            pose.orientation.y,
+            pose.orientation.z,
+            pose.orientation.w,
+        ),
+        linear_velocity=(twist.linear.x, twist.linear.y, twist.linear.z),
+        angular_velocity=(twist.angular.x, twist.angular.y, twist.angular.z),
+        pose_covariance=tuple(message.pose.covariance),
+        twist_covariance=tuple(message.twist.covariance),
+    )
+
+
+class PlanningVisualizer:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._trace = TraceHistory(TRACE_MAX_SAMPLES)
+        self._latest_sample = None
+        self._latest_valid = False
+
+        self._trace_publisher = rospy.Publisher(TRACE_TOPIC, Path, queue_size=1)
+        self._marker_publisher = rospy.Publisher(
+            VEHICLE_MARKER_TOPIC, Marker, queue_size=1
+        )
+        self._odometry_subscriber = rospy.Subscriber(
+            ODOMETRY_TOPIC,
+            Odometry,
+            self._on_odometry,
+            queue_size=5,
+            tcp_nodelay=True,
+        )
+        self._timer = rospy.Timer(
+            rospy.Duration.from_sec(PUBLISH_PERIOD_SEC), self._on_publish_timer
+        )
+
+    def _on_odometry(self, message):
+        try:
+            sample = _sample_from_odometry(message)
+        except (AttributeError, TypeError, ValueError) as error:
+            self._reject("malformed_message: {}".format(error))
+            return
+
+        result = validate_pose_sample(sample, rospy.Time.now().to_sec())
+        if not result.valid:
+            self._reject(result.reason)
+            return
+
+        with self._lock:
+            if not self._trace.append(sample):
+                self._latest_valid = False
+                reason = "non_monotonic_timestamp"
+            else:
+                self._latest_sample = sample
+                self._latest_valid = True
+                reason = None
+        if reason is not None:
+            rospy.logwarn_throttle(
+                2.0, "planning visualizer rejected odometry: %s", reason
+            )
+
+    def _reject(self, reason):
+        with self._lock:
+            self._latest_valid = False
+        rospy.logwarn_throttle(
+            2.0, "planning visualizer rejected odometry: %s", reason
+        )
+
+    def _on_publish_timer(self, _event):
+        now = rospy.Time.now()
+        now_sec = now.to_sec()
+        with self._lock:
+            sample = self._latest_sample
+            sample_is_current = self._latest_valid
+            trace = self._trace.snapshot()
+
+        if trace:
+            self._trace_publisher.publish(self._make_trace(trace))
+
+        if sample is None:
+            self._marker_publisher.publish(self._delete_marker(now))
+            return
+
+        lifetime_sec = remaining_marker_lifetime_sec(sample.stamp_sec, now_sec)
+        if not sample_is_current or lifetime_sec <= 0.0:
+            self._marker_publisher.publish(self._delete_marker(now))
+            return
+        self._marker_publisher.publish(
+            self._make_vehicle_marker(sample, lifetime_sec)
+        )
+
+    @staticmethod
+    def _make_trace(trace):
+        message = Path()
+        message.header.frame_id = EXPECTED_FRAME
+        message.header.stamp = rospy.Time.from_sec(trace[-1].stamp_sec)
+        for trace_pose in trace:
+            pose = PoseStamped()
+            pose.header.frame_id = EXPECTED_FRAME
+            pose.header.stamp = rospy.Time.from_sec(trace_pose.stamp_sec)
+            pose.pose.position.x = trace_pose.position[0]
+            pose.pose.position.y = trace_pose.position[1]
+            pose.pose.position.z = trace_pose.position[2]
+            pose.pose.orientation.x = trace_pose.orientation.x
+            pose.pose.orientation.y = trace_pose.orientation.y
+            pose.pose.orientation.z = trace_pose.orientation.z
+            pose.pose.orientation.w = trace_pose.orientation.w
+            message.poses.append(pose)
+        return message
+
+    @staticmethod
+    def _make_vehicle_marker(sample, lifetime_sec):
+        marker = Marker()
+        marker.header.frame_id = EXPECTED_FRAME
+        marker.header.stamp = rospy.Time.from_sec(sample.stamp_sec)
+        marker.ns = VEHICLE_MARKER_NAMESPACE
+        marker.id = VEHICLE_MARKER_ID
+        marker.type = Marker.CUBE
+        marker.action = Marker.ADD
+        center = marker_center(sample)
+        marker.pose.position.x = center[0]
+        marker.pose.position.y = center[1]
+        marker.pose.position.z = center[2]
+        marker.pose.orientation.x = sample.orientation.x
+        marker.pose.orientation.y = sample.orientation.y
+        marker.pose.orientation.z = sample.orientation.z
+        marker.pose.orientation.w = sample.orientation.w
+        marker.scale.x = IONIQ5_LENGTH_M
+        marker.scale.y = IONIQ5_WIDTH_M
+        marker.scale.z = IONIQ5_HEIGHT_M
+        marker.color.r = 0.05
+        marker.color.g = 0.70
+        marker.color.b = 1.00
+        marker.color.a = 0.45
+        # Lifetime is the time remaining to sample_stamp + timeout, not a new
+        # full timeout from each publication.  A crash therefore cannot keep
+        # an already-aged pose visible for another complete timeout window.
+        marker.lifetime = rospy.Duration.from_sec(lifetime_sec)
+        return marker
+
+    @staticmethod
+    def _delete_marker(stamp):
+        marker = Marker()
+        marker.header.frame_id = EXPECTED_FRAME
+        marker.header.stamp = stamp
+        marker.ns = VEHICLE_MARKER_NAMESPACE
+        marker.id = VEHICLE_MARKER_ID
+        marker.action = Marker.DELETE
+        return marker
+
+
+def main():
+    rospy.init_node("planning_visualizer")
+    PlanningVisualizer()
+    rospy.loginfo(
+        "planning visualizer observes %s and publishes %s plus %s",
+        ODOMETRY_TOPIC,
+        TRACE_TOPIC,
+        VEHICLE_MARKER_TOPIC,
+    )
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()

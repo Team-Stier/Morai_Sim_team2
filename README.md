@@ -267,7 +267,7 @@ Camera와 LiDAR 결과를 각 인식 패키지가 직접 전역좌표로 변환�
 └── src/        # 실제 구현
 ```
 
-공개 인터페이스는 [`interface_contract.yaml`](src/ros_architecture_pkg/config/interface_contract.yaml)만 원본으로 사용한다. 현재 목록이 비어 있는 것은 아직 이름이 승인되지 않았기 때문이며, 각 패키지가 임시 ROS 이름을 만들어도 된다는 의미가 아니다.
+공개 인터페이스는 [`interface_contract.yaml`](src/ros_architecture_pkg/config/interface_contract.yaml)만 원본으로 사용한다. 현재 파일에는 planning 개발 baseline만 승인되어 있으며, 목록에 없는 기능을 위해 각 패키지가 임시 ROS 이름을 만들어도 된다는 의미가 아니다.
 
 ### HD Map에 대한 현재 판단
 

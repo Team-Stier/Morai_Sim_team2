@@ -1,0 +1,125 @@
+# Runtime values only. Public ROS names and frames are owned by
+# ros_architecture_pkg/config/interface_contract.yaml and are not overrideable here.
+planning_rate_hz: 2.0
+# A lightweight timer invalidates an already-published trajectory promptly if
+# any required input expires between expensive planning ticks.
+input_watchdog_rate_hz: 50.0
+trajectory_validity_sec: 0.75
+odometry_timeout_sec: 0.20
+route_context_timeout_sec: 0.25
+lead_vehicle_timeout_sec: 0.30
+maximum_input_skew_sec: 0.10
+
+vehicle:
+  wheelbase_m: 3.000
+  length_m: 4.635
+  width_m: 1.892
+  front_overhang_m: 0.845
+  rear_overhang_m: 0.790
+  # The official specification does not provide track width. Body width is a
+  # deliberately conservative wheel-contact proxy until measured calibration.
+  conservative_wheel_track_m: 1.892
+  minimum_turning_radius_m: 5.87
+
+safety:
+  # If a plan-relevant input changes after the normal post-search validation,
+  # one final continuous check runs while input/output publication is frozen.
+  # Keep this no longer than one 50 Hz watchdog period.
+  maximum_locked_validation_time_sec: 0.020
+  # Map audit found only about 0.426 m center-on-route residual clearance at
+  # the narrowest measured route location (excluding the unresolved A411
+  # merge). This initial hard margin is separate from localization/control
+  # uncertainty and must be retuned only with an explicit error budget.
+  lane_marking_half_width_m: 0.075
+  map_simplification_error_m: 0.020
+  operational_boundary_margin_m: 0.200
+  boundary_clearance_m: 0.295
+  obstacle_clearance_m: 0.50
+  minimum_lead_confidence: 0.50
+  # A slow plan is exposed only while newest-pose tracking error remains near
+  # its snapshot path. The original path is retained; this gate does not prove
+  # a new ego-to-path connector. This tolerance is below the 0.295 m wall margin.
+  maximum_result_alignment_position_error_m: 0.25
+  maximum_result_alignment_yaw_error_deg: 5.0
+
+planner:
+  # Must remain below trajectory_validity_sec so a pathological search fails
+  # closed while there is still time to publish the invalid status.
+  maximum_planning_time_sec: 0.60
+  # Stops pathological near-clearance adaptive subdivision independently of
+  # wall-clock scheduling. Exhaustion rejects the primitive; it never accepts
+  # an incompletely proved interval.
+  maximum_collision_evaluations_per_primitive: 4096
+  xy_resolution_m: 1.00
+  yaw_resolution_deg: 15.0
+  primitive_length_m: 3.00
+  collision_check_step_m: 0.20
+  # The full fine lattice handles the narrow curved KATRI links.  Per node the
+  # planner expands a goal-guided bounded subset plus neutral/current/extremes.
+  steering_fractions: [-1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+  maximum_steering_expansions: 7
+  goal_position_tolerance_m: 1.75
+  goal_yaw_tolerance_deg: 20.0
+  steering_cost_weight: 0.20
+  steering_change_cost_weight: 0.35
+  boundary_cost_weight: 1.50
+  preferred_boundary_clearance_m: 0.75
+  bearing_heuristic_weight_m_per_rad: 3.0
+  yaw_heuristic_weight_m_per_rad: 4.0
+  # MGeo centerlines guide search ordering only. Hard-wall collision checks
+  # remain the sole authority for whether a primitive can be used.
+  reference_lateral_heuristic_weight: 1.5
+  reference_lookahead_m: 7.0
+  max_search_nodes: 20000
+
+behavior:
+  local_goal_distance_m: 18.0
+  lane_change_goal_distance_m: 10.0
+  minimum_lane_change_start_margin_m: 4.5
+  minimum_lane_change_end_margin_m: 25.0
+  lane_change_complete_distance_m: 0.65
+  minimum_published_path_length_m: 6.0
+  route_horizon_end_margin_m: 5.0
+  lane_change_trigger_gap_m: 10.0
+  urban_target_speed_mps: 8.0
+  high_speed_target_speed_mps: 13.0
+  maximum_lateral_acceleration_mps2: 2.0
+
+  # Only measured, pure-dashed shared boundaries are enabled. The two disabled
+  # entries are retained as an auditable map finding, not as permissions.
+  highway_lane_change_pairs:
+    A2256W000411:
+      enabled: false
+      adjacent_link_id: A2256W000409
+      direction: left
+      shared_boundary_id: B2256W000038
+      merge_route_link_id: A2256W000420
+      reason: mixed_solid_dashed_boundary_and_route_geometry_conflict
+      branch_by_route_link: {A2256W000411: A2256W000409}
+    A2256W000420:
+      enabled: true
+      adjacent_link_id: A2256W000430
+      direction: left
+      shared_boundary_id: B2256W000034
+      merge_route_link_id: A2256W000153
+      branch_by_route_link:
+        A2256W000420: A2256W000430
+        A2256W000408: A2256W000434
+        A2256W000445: A2256W000422
+    A2256W000408:
+      enabled: true
+      adjacent_link_id: A2256W000434
+      direction: left
+      shared_boundary_id: B2256W000044
+      merge_route_link_id: A2256W000153
+      branch_by_route_link:
+        A2256W000408: A2256W000434
+        A2256W000445: A2256W000422
+    A2256W000445:
+      enabled: false
+      adjacent_link_id: A2256W000422
+      direction: left
+      shared_boundary_id: ""
+      merge_route_link_id: A2256W000153
+      reason: shared_boundary_is_synthetic_and_not_safe_to_erase
+      branch_by_route_link: {A2256W000445: A2256W000422}
