@@ -20,6 +20,13 @@ conversion:
   # Authoritative OSM keeps every source vertex; only the browser preview is simplified.
   geometry_simplification_m: 0.0
   viewer_simplification_m: 0.20
+  # Keep nearby lanes available for on-site route adjustments while excluding
+  # the rest of the K-City map from the browser preview.
+  # This does not crop the authoritative Lanelet2 OSM or routing graph.
+  viewer_route_crop_margin_m: 30.0
+  # Preserve the continuous preview area from the route to these requested
+  # northern road-border landmarks without changing their source geometry.
+  viewer_crop_anchor_boundary_ids: [B2256W001824, B2256W000157]
   default_lane_width_m: 3.5
   traffic_light_bar_width_m: 0.6
   stop_line_search_radius_m: 40.0

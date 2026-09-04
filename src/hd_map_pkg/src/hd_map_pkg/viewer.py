@@ -60,6 +60,28 @@ def load_global_route(path):
     }
 
 
+def _bounds(points, margin=0.0):
+    """Return an axis-aligned SIM-local extent around a point sequence."""
+    return {
+        "min_x": min(point[0] for point in points) - margin,
+        "min_y": min(point[1] for point in points) - margin,
+        "max_x": max(point[0] for point in points) + margin,
+        "max_y": max(point[1] for point in points) + margin,
+    }
+
+
+def _intersects_bounds(points, bounds):
+    """Keep preview geometry whose own extent overlaps the route extent."""
+    if not points:
+        return False
+    return not (
+        max(point[0] for point in points) < bounds["min_x"] or
+        min(point[0] for point in points) > bounds["max_x"] or
+        max(point[1] for point in points) < bounds["min_y"] or
+        min(point[1] for point in points) > bounds["max_y"]
+    )
+
+
 def build_viewer_data(dataset, transformer, config, exporter=None,
                       reference_path=None):
     tolerance = float(config.get("conversion", {}).get("viewer_simplification_m", 0.2))
@@ -148,14 +170,45 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
         if len(transformed) >= 3:
             intersections.append({"id": junction_id, "p": transformed})
     global_route = load_global_route(reference_path)
-    all_points = ([point for item in centerlines for point in item["p"]] +
-                  list(global_route["p"]))
-    bounds = {
-        "min_x": min(point[0] for point in all_points),
-        "min_y": min(point[1] for point in all_points),
-        "max_x": max(point[0] for point in all_points),
-        "max_y": max(point[1] for point in all_points),
-    }
+    crop_applied = bool(global_route["p"])
+    crop_anchor_boundary_ids = []
+    if crop_applied:
+        margin = float(config.get("conversion", {}).get(
+            "viewer_route_crop_margin_m", 0.0))
+        bounds = _bounds(global_route["p"], margin=max(0.0, margin))
+        requested_anchors = {
+            str(value) for value in config.get("conversion", {}).get(
+                "viewer_crop_anchor_boundary_ids", [])
+        }
+        anchor_boundaries = [item for item in boundaries
+                             if item["id"] in requested_anchors]
+        crop_anchor_boundary_ids = [item["id"] for item in anchor_boundaries]
+        anchor_points = [point for item in anchor_boundaries for point in item["p"]]
+        if anchor_points:
+            anchor_bounds = _bounds(anchor_points)
+            bounds = {
+                "min_x": min(bounds["min_x"], anchor_bounds["min_x"]),
+                "min_y": min(bounds["min_y"], anchor_bounds["min_y"]),
+                "max_x": max(bounds["max_x"], anchor_bounds["max_x"]),
+                "max_y": max(bounds["max_y"], anchor_bounds["max_y"]),
+            }
+        centerlines = [item for item in centerlines
+                       if _intersects_bounds(item["p"], bounds)]
+        boundaries = [item for item in boundaries
+                      if _intersects_bounds(item["p"], bounds)]
+        crosswalks = [item for item in crosswalks
+                      if _intersects_bounds(item["p"], bounds)]
+        surface_markings = [item for item in surface_markings
+                            if _intersects_bounds(item["p"], bounds)]
+        signals = [item for item in signals
+                   if _intersects_bounds([item["p"]], bounds)]
+        intersections = [item for item in intersections
+                         if _intersects_bounds(item["p"], bounds)]
+    else:
+        all_points = [point for item in centerlines for point in item["p"]]
+        if not all_points:
+            all_points = [[0.0, 0.0], [1.0, 1.0]]
+        bounds = _bounds(all_points)
     return {
         "metadata": {
             "title": "KATRI MGeo 3.0 → Lanelet2",
@@ -164,6 +217,8 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
             "scene": config.get("coordinates", {}).get("simulator_scene"),
             "coordinate_frame": "MORAI SIM local ENU (metres)",
             "bounds": bounds,
+            "route_crop_applied": crop_applied,
+            "crop_anchor_boundary_ids": crop_anchor_boundary_ids,
             "counts": {
                 "centerlines": len(centerlines),
                 "boundaries": len(boundaries),
