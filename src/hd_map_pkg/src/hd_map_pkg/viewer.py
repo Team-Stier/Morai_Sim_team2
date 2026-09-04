@@ -82,6 +82,16 @@ def _intersects_bounds(points, bounds):
     )
 
 
+def _signal_category(signal_id, signal):
+    """Separate KATRI tunnel lane-control heads from junction signals."""
+    if (str(signal_id).upper() in ("LCS01", "LCS02") and
+            str(signal.get("type_def", "")).lower() == "mgeo"):
+        return "tunnel_lane_control"
+    if str(signal.get("type", "")).lower() == "pedestrian":
+        return "pedestrian"
+    return "vehicle"
+
+
 def build_viewer_data(dataset, transformer, config, exporter=None,
                       reference_path=None):
     tolerance = float(config.get("conversion", {}).get("viewer_simplification_m", 0.2))
@@ -152,6 +162,10 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
             "p": [round(point[0], 3), round(point[1], 3)],
             "links": signal_links.get(signal_id, []),
             "kind": signal.get("type", ""),
+            "category": _signal_category(signal_id, signal),
+            "source_type_def": signal.get("type_def", ""),
+            "source_sub_type": signal.get("sub_type") or [],
+            "dynamic": bool(signal.get("dynamic", False)),
             "heading": signal.get("heading", 0.0),
         })
     intersections = []
@@ -226,6 +240,8 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
                 "crosswalks": len(crosswalks),
                 "road_markings": len(surface_markings),
                 "traffic_lights": len(signals),
+                "tunnel_lane_control_signals": sum(
+                    item["category"] == "tunnel_lane_control" for item in signals),
                 "intersections": len(intersections),
                 "global_route_points": global_route["point_count"],
             },
@@ -266,6 +282,8 @@ input { accent-color: #32d3a2; }
 .swatch.blue { border-color:#39a9ff; }.swatch.cyan { border-color:#3ce5e7; }
 .swatch.red { border-color:#ff5c72; }.swatch.purple { border-color:#b88cff; }
 .swatch.green { border-color:#39ff88; box-shadow:0 0 5px rgba(57,255,136,.65); }
+.signal-icon { display:inline-grid; width:22px; place-items:center; font-size:14px; }
+.signal-icon.lcs { color:#ffb347; text-shadow:0 0 6px rgba(255,179,71,.75); }
 .stats { display:grid; grid-template-columns:1fr 1fr; gap:7px; font-size:12px; }
 .stat { background:#102432; padding:8px; border-radius:6px; }.stat b { display:block; font-size:17px; color:#f5fbff; }
 #inspect { min-height:100px; padding:10px; border:1px solid #294655; background:#091721; border-radius:7px;
@@ -289,7 +307,8 @@ input { accent-color: #32d3a2; }
   <label><input data-layer="stopLines" type="checkbox" checked><span class="swatch red"></span>정지선</label>
   <label><input data-layer="crosswalks" type="checkbox" checked><span class="swatch blue"></span>횡단보도</label>
   <label><input data-layer="surfaceMarkings" type="checkbox"><span class="swatch cyan"></span>방향 화살표/노면표시</label>
-  <label><input data-layer="signals" type="checkbox" checked>🚦 신호등 + ID</label>
+  <label><input data-layer="signals" type="checkbox" checked><span class="signal-icon">🚦</span>일반 신호등 + ID</label>
+  <label><input data-layer="laneControlSignals" type="checkbox" checked><span class="signal-icon lcs">◆</span>터널 차로제어신호(LCS) + ID</label>
   <label><input data-layer="topology" type="checkbox">→ 선행/후행 연결</label>
   <label><input data-layer="labels" type="checkbox">50 속도/방향 라벨</label>
   <h2>Counts</h2><div class="stats" id="stats"></div>
@@ -313,6 +332,7 @@ function path(points,close=false){if(!points.length)return;let q=s(points[0]);ct
 function stroke(item,color,width,dash=[]){path(item.p);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.stroke();ctx.setLineDash([]);}
 function boundaryColor(item){if(item.color==='yellow')return '#ffd84e';if(item.color==='blue')return '#39a9ff';return '#edf5f7';}
 function arrow(a,b){const p=s(a),q=s(b),ang=Math.atan2(q[1]-p[1],q[0]-p[0]);ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(q[0],q[1]);ctx.lineTo(q[0]-5*Math.cos(ang-.6),q[1]-5*Math.sin(ang-.6));ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]-5*Math.cos(ang+.6),q[1]-5*Math.sin(ang+.6));ctx.stroke();}
+function laneControlSignal(item){const p=s(item.p),r=5;ctx.save();ctx.translate(p[0],p[1]);ctx.rotate(Math.PI/4);ctx.fillStyle='#ffb347';ctx.fillRect(-r,-r,r*2,r*2);ctx.strokeStyle='#3b2205';ctx.lineWidth=1.4;ctx.strokeRect(-r,-r,r*2,r*2);ctx.beginPath();ctx.moveTo(-2.8,-2.8);ctx.lineTo(2.8,2.8);ctx.moveTo(2.8,-2.8);ctx.lineTo(-2.8,2.8);ctx.stroke();ctx.restore();ctx.font='bold 10px ui-monospace';ctx.fillStyle='#ffe0ad';ctx.fillText(item.id,p[0]+8,p[1]-7);}
 const centers=Object.fromEntries(MAP.centerlines.map(v=>[v.id,v]));
 function draw(){const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0,0,w,h);ctx.fillStyle='#071018';ctx.fillRect(0,0,w,h);ctx.lineJoin='round';ctx.lineCap='round';
  if(enabled.intersections){ctx.fillStyle='rgba(184,140,255,.12)';ctx.strokeStyle='rgba(184,140,255,.5)';ctx.lineWidth=1;MAP.intersections.forEach(x=>{path(x.p,true);ctx.fill();ctx.stroke();});}
@@ -322,7 +342,8 @@ function draw(){const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0
  if(enabled.surfaceMarkings){ctx.fillStyle='rgba(60,229,231,.30)';ctx.strokeStyle='#3ce5e7';ctx.lineWidth=.8;MAP.surfaceMarkings.forEach(x=>{path(x.p,true);ctx.fill();ctx.stroke();});}
  if(enabled.topology){ctx.strokeStyle='rgba(255,143,77,.42)';ctx.lineWidth=.8;MAP.centerlines.forEach(x=>x.successors.forEach(id=>{const y=centers[id];if(y)arrow(x.p[x.p.length-1],y.p[0]);}));}
  if(enabled.globalRoute&&MAP.globalRoute.p.length){stroke(MAP.globalRoute,'rgba(2,9,12,.92)',5.4);stroke(MAP.globalRoute,'#39ff88',2.8);}
- if(enabled.signals){ctx.font='10px ui-monospace';MAP.signals.forEach(x=>{const p=s(x.p);ctx.fillStyle=x.kind==='pedestrian'?'#55b7ff':'#ff5f65';ctx.beginPath();ctx.arc(p[0],p[1],3.3,0,Math.PI*2);ctx.fill();if(scale>.55){ctx.fillStyle='#f6d9dc';ctx.fillText(x.id,p[0]+5,p[1]-5);}});}
+ if(enabled.signals){ctx.font='10px ui-monospace';MAP.signals.filter(x=>x.category!=='tunnel_lane_control').forEach(x=>{const p=s(x.p);ctx.fillStyle=x.category==='pedestrian'?'#55b7ff':'#ff5f65';ctx.beginPath();ctx.arc(p[0],p[1],3.3,0,Math.PI*2);ctx.fill();if(scale>.55){ctx.fillStyle='#f6d9dc';ctx.fillText(x.id,p[0]+5,p[1]-5);}});}
+ if(enabled.laneControlSignals)MAP.signals.filter(x=>x.category==='tunnel_lane_control').forEach(laneControlSignal);
  if(enabled.labels&&scale>.12){ctx.font='9px ui-monospace';ctx.fillStyle='#b8f3d0';MAP.centerlines.forEach(x=>{const p=s(x.p[Math.floor(x.p.length/2)]);ctx.fillText(`${x.speed||'?'} ${x.direction||''}`,p[0]+3,p[1]-3);});}
 }
 canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,wx=(mx-ox)/scale,wy=-(my-oy)/scale,f=Math.exp(-e.deltaY*.001);scale*=f;ox=mx-wx*scale;oy=my+wy*scale;draw();},{passive:false});
@@ -333,7 +354,7 @@ canvas.addEventListener('dblclick',fit);
 function segDist(p,a,b){const vx=b[0]-a[0],vy=b[1]-a[1],wx=p[0]-a[0],wy=p[1]-a[1],d=vx*vx+vy*vy,t=d?Math.max(0,Math.min(1,(wx*vx+wy*vy)/d)):0;return Math.hypot(p[0]-a[0]-t*vx,p[1]-a[1]-t*vy);}
 canvas.addEventListener('click',e=>{if(last&&Math.hypot(e.clientX-last[0],e.clientY-last[1])>3)return;const r=canvas.getBoundingClientRect(),p=[e.clientX-r.left,e.clientY-r.top];let best=null,dist=12;
  const consider=(kind,item,points)=>{for(let i=1;i<points.length;i++){const d=segDist(p,s(points[i-1]),s(points[i]));if(d<dist){dist=d;best={kind,...item};}}};
- if(enabled.globalRoute&&MAP.globalRoute.p.length)consider('global_route',MAP.globalRoute,MAP.globalRoute.p);MAP.boundaries.forEach(x=>consider('boundary',x,x.p));MAP.centerlines.forEach(x=>consider('lane/link',x,x.p));MAP.crosswalks.forEach(x=>consider('crosswalk',x,x.p));MAP.surfaceMarkings.forEach(x=>consider('surface_marking',x,x.p));MAP.signals.forEach(x=>{const d=Math.hypot(p[0]-s(x.p)[0],p[1]-s(x.p)[1]);if(d<dist){dist=d;best={kind:'traffic_light',...x};}});
+ if(enabled.globalRoute&&MAP.globalRoute.p.length)consider('global_route',MAP.globalRoute,MAP.globalRoute.p);MAP.boundaries.forEach(x=>consider('boundary',x,x.p));MAP.centerlines.forEach(x=>consider('lane/link',x,x.p));MAP.crosswalks.forEach(x=>consider('crosswalk',x,x.p));MAP.surfaceMarkings.forEach(x=>consider('surface_marking',x,x.p));MAP.signals.forEach(x=>{if((x.category==='tunnel_lane_control'&&!enabled.laneControlSignals)||(x.category!=='tunnel_lane_control'&&!enabled.signals))return;const d=Math.hypot(p[0]-s(x.p)[0],p[1]-s(x.p)[1]);if(d<dist){dist=d;best={kind:x.category==='tunnel_lane_control'?'tunnel_lane_control_signal':'traffic_light',...x};}});
  document.getElementById('inspect').textContent=best?JSON.stringify(best,(k,v)=>k==='p'?undefined:v,2):'선택된 객체가 없습니다.';});
 window.addEventListener('resize',resize);resize();
 </script>

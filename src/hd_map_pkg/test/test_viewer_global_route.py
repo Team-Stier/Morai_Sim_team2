@@ -178,6 +178,47 @@ class ViewerGlobalRouteTest(unittest.TestCase):
         self.assertEqual([item["id"] for item in data["boundaries"]],
                          ["anchor"])
 
+    def test_viewer_classifies_tunnel_lane_control_signals_separately(self):
+        class SignalDataset(_Dataset):
+            traffic_lights = {
+                "LCS01": {
+                    "point": [2, 2, 0], "type": "car", "type_def": "mgeo",
+                    "sub_type": [[5, 2], [5, 0]], "dynamic": True,
+                },
+                "C1": {
+                    "point": [3, 3, 0], "type": "car",
+                    "type_def": "ngii_model2",
+                },
+            }
+
+            @staticmethod
+            def traffic_light_link_ids():
+                return {"LCS01": [], "C1": ["L1"]}
+
+        with tempfile.TemporaryDirectory(prefix="hd-map-lcs-") as directory:
+            root = pathlib.Path(directory)
+            route_path = root / "route.txt"
+            route_path.write_text("0 0 0\n10 10 0\n", encoding="utf-8")
+            data = build_viewer_data(
+                SignalDataset(), _IdentityTransformer(), {
+                    "conversion": {"viewer_simplification_m": 0.2},
+                    "source": {}, "coordinates": {}, "lane_boundary": {},
+                }, reference_path=route_path)
+            html = write_viewer(data, root / "preview.html").read_text(
+                encoding="utf-8")
+
+        signals = {item["id"]: item for item in data["signals"]}
+        self.assertEqual(signals["LCS01"]["category"],
+                         "tunnel_lane_control")
+        self.assertEqual(signals["C1"]["category"], "vehicle")
+        self.assertEqual(signals["LCS01"]["source_sub_type"],
+                         [[5, 2], [5, 0]])
+        self.assertEqual(
+            data["metadata"]["counts"]["tunnel_lane_control_signals"], 1)
+        self.assertIn('data-layer="laneControlSignals"', html)
+        self.assertIn("터널 차로제어신호(LCS)", html)
+        self.assertIn("function laneControlSignal", html)
+
 
 if __name__ == "__main__":
     unittest.main()
