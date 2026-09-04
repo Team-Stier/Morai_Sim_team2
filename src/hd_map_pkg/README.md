@@ -11,6 +11,9 @@ WGS84 기반 Lanelet2 OSM으로 변환·검증하며 브라우저에서 시각 �
 
 ![KATRI HD Map 미리보기](docs/katri_hd_map_preview.png)
 
+[최신 독립 HTML 뷰어 다운로드](docs/KATRI_hd_map_preview.html) — GitHub에서는 보안상
+HTML을 페이지 안에서 실행하지 않으므로 파일을 내려받아 브라우저로 연다.
+
 ## 현재 산출물
 
 `hd_map_tool build-all`은 다음 파일을 `data/derived/`에 재현 가능하게 생성한다.
