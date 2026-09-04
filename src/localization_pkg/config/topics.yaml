@@ -1,0 +1,22 @@
+topics:
+  input_gps_fix: &input_gps_fix /sensors/gps/fix
+  input_imu: &input_imu /sensors/imu/data
+  input_vehicle_twist: &input_vehicle_twist /vehicle/twist
+  gps_map_pose: &gps_map_pose /localization/gps/map_pose
+  gps_state: &gps_state /localization/gps/state
+  local_filtered_odometry: &local_filtered_odometry /localization/local/odometry
+  global_filtered_odometry: &global_filtered_odometry /localization/global/odometry
+  output_odometry: &output_odometry /localization/odometry
+  status: &status /localization/status
+
+/molit_local_ekf:
+  imu0: *input_imu
+  twist0: *input_vehicle_twist
+
+/molit_global_ekf:
+  imu0: *input_imu
+  twist0: *input_vehicle_twist
+  pose0: *gps_map_pose
+
+services:
+  global_set_pose: /molit_global_ekf/set_pose

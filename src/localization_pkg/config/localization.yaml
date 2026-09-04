@@ -1,0 +1,43 @@
+frames:
+  map: map
+  odom: odom
+  base_link: base_link
+
+sensor_frames:
+  imu: base_link
+  vehicle_twist: base_link
+
+projection:
+  utm_zone: 52
+  north_hemisphere: true
+  origin_easting_m: 302595.0
+  origin_northing_m: 4124145.0
+  origin_altitude_m: 0.0
+
+runtime:
+  publish_rate_hz: 20.0
+  sensor_timeout_sec: 0.5
+  gps_timeout_sec: 0.75
+  gps_message_max_age_sec: 0.75
+  gps_state_timeout_sec: 0.5
+  global_odometry_timeout_sec: 0.5
+  max_future_stamp_sec: 0.2
+  timeout_check_period_sec: 0.05
+
+gps_covariance:
+  fallback_xy_variance_m2: 25.0
+  unobserved_variance: 1000000.0
+
+validation:
+  min_quaternion_norm: 1.0e-12
+  quaternion_unit_norm_tolerance: 1.0e-3
+  global_anchor_max_error_m: 2.0
+
+reacquisition:
+  required_consecutive_fixes: 3
+  max_innovation_m: 10.0
+  stable_return_radius_m: 2.0
+  reset_xy_variance_m2: 100.0
+  reset_unobserved_variance: 1000000.0
+  set_pose_call_timeout_sec: 0.3
+

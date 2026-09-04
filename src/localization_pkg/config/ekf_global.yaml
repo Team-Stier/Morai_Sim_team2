@@ -1,0 +1,38 @@
+/molit_global_ekf:
+  frequency: 20.0
+  sensor_timeout: 0.5
+  two_d_mode: true
+  publish_tf: true
+  map_frame: map
+  odom_frame: odom
+  base_link_frame: base_link
+  world_frame: map
+
+  imu0_config: [false, false, false, false, false, true, false, false, false, false, false, true, false, false, false]
+  imu0_differential: false
+  imu0_relative: false
+
+  twist0_config: [false, false, false, false, false, false, true, true, false, false, false, false, false, false, false]
+
+  pose0_config: [true, true, false, false, false, false, false, false, false, false, false, false, false, false, false]
+
+  # Absolute map position is unknown before the first GPS pose. Large X/Y
+  # variance lets that direct measurement establish the map anchor promptly;
+  # directly measured yaw/velocity states use 1.0 and unmeasured 2D-disabled
+  # states remain tightly constrained.
+  initial_estimate_covariance: [100.0, 0,     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+                                0,     100.0, 0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+                                0,     0,     1.0e-9, 0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+                                0,     0,     0,    1.0e-9, 0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+                                0,     0,     0,    0,    1.0e-9, 0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+                                0,     0,     0,    0,    0,    1.0,  0,    0,    0,    0,    0,    0,    0,    0,    0,
+                                0,     0,     0,    0,    0,    0,    1.0,  0,    0,    0,    0,    0,    0,    0,    0,
+                                0,     0,     0,    0,    0,    0,    0,    1.0,  0,    0,    0,    0,    0,    0,    0,
+                                0,     0,     0,    0,    0,    0,    0,    0,    1.0e-9, 0,    0,    0,    0,    0,    0,
+                                0,     0,     0,    0,    0,    0,    0,    0,    0,    1.0e-9, 0,    0,    0,    0,    0,
+                                0,     0,     0,    0,    0,    0,    0,    0,    0,    0,    1.0e-9, 0,    0,    0,    0,
+                                0,     0,     0,    0,    0,    0,    0,    0,    0,    0,    0,    1.0,  0,    0,    0,
+                                0,     0,     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    1.0e-9, 0,    0,
+                                0,     0,     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    1.0e-9, 0,
+                                0,     0,     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    1.0e-9]
+

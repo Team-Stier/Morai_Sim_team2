@@ -10,6 +10,27 @@
 - 최종 승인된 차량 명령을 대회 패킷으로 직렬화하여 송신
 - 연결 여부, 수신 age, packet drop과 decode 오류 상태 제공
 
+## 현재 통합 상태
+
+Team-Stier `Morai_Sim-Stier-Team2` revision
+`f889f7f5ae47b51c4c5c0211c6a92a62398ca269`의 UDP bridge 구현을 이 패키지
+경계로 가져와 현재 MORAI 센서 설정에 맞췄다. GPS `9301`, IMU `9303`, 카메라
+`9291/9293/9295`는 실제 Simulator 패킷 수신을 확인했다.
+
+가져온 vehicle-status decoder는 이전 EgoVehicleStatus 229-byte/`7803`
+규격이다. 현재 Simulator의 `CompetitionInfoPublisher`는 152-byte/`9094`
+규격이므로 호환되지 않으며 기본 bringup에서 비활성이다. 두 패킷을 같은
+상태로 간주하거나 잘못 파싱하지 않는다.
+
+경로 생성 및 제어 구현은 가져오기 대상에서 제외했으며, 현재 브랜치의
+`path_control_test.launch` 구현을 그대로 사용한다. `ctrl_cmd_bridge.launch`는
+Safety Supervisor가 승인한 최종 명령만 입력할 수 있으므로 통합 launch에서
+자동 실행하지 않는다. 검증된 센서만 실행하려면 다음 명령을 사용한다.
+
+```bash
+roslaunch system_bringup_pkg morai_sensor_localization.launch
+```
+
 ## 대회 규정상 유의사항
 
 - 허용 항목은 Ego 제어, CollisionData, Competition Vehicle Status, GPS, IMU, Camera와 3D LiDAR뿐이다.
@@ -22,7 +43,7 @@
 - 입력: Safety Supervisor가 승인한 최종 제어 명령
 - 출력: 검증된 센서 관측, 차량 상태, 충돌 이벤트와 통신 health
 
-패킷 명세가 확보되기 전에는 포트나 필드 구조를 추측해 구현하지 않는다. stale 패킷을 새 데이터처럼 재발행하지 않으며 연결 상실 시 명시적인 invalid 상태를 제공한다.
+stale 패킷을 새 데이터처럼 재발행하지 않으며 연결 상실 시 명시적인 invalid 상태를 제공한다.
 
 ## 디렉터리
 

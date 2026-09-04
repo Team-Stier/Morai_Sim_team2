@@ -1,0 +1,26 @@
+<launch>
+  <!-- Localization 입력 Bridge 통합: GPS + IMU + Vehicle Status를 함께 실행한다.
+       Camera/LiDAR는 포함하지 않는다. -->
+
+  <arg name="gps_config"
+       default="$(find morai_interface_pkg)/config/gps_bridge.yaml"/>
+  <arg name="imu_config"
+       default="$(find morai_interface_pkg)/config/imu_bridge.yaml"/>
+  <arg name="vehicle_status_config"
+       default="$(find morai_interface_pkg)/config/vehicle_status_bridge.yaml"/>
+
+  <node pkg="morai_interface_pkg" type="gps_receiver_node"
+        name="morai_gps_bridge" output="screen" required="true">
+    <rosparam command="load" file="$(arg gps_config)"/>
+  </node>
+
+  <node pkg="morai_interface_pkg" type="imu_receiver_node"
+        name="morai_imu_bridge" output="screen" required="true">
+    <rosparam command="load" file="$(arg imu_config)"/>
+  </node>
+
+  <node pkg="morai_interface_pkg" type="vehicle_status_receiver_node"
+        name="morai_vehicle_status_bridge" output="screen" required="true">
+    <rosparam command="load" file="$(arg vehicle_status_config)"/>
+  </node>
+</launch>

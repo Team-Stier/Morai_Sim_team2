@@ -10,6 +10,16 @@
 - smooth local motion과 globally referenced pose 관계 유지
 - pose history, velocity, covariance, freshness와 localization quality 제공
 
+## 현재 통합 상태
+
+Team-Stier `Morai_Sim-Stier-Team2` revision
+`f889f7f5ae47b51c4c5c0211c6a92a62398ca269`의 dual-EKF localization 구현을
+이 패키지 경계로 가져왔다. GPS, IMU와 차량 twist가 모두 계약에 맞을 때 최종
+`/localization/odometry`를 발행한다. 현재 Simulator의 152-byte Competition
+Vehicle Status와 링크 레포의 229-byte decoder가 호환되지 않으므로 기본
+bringup에서는 localization을 실행하지 않는다. 호환 입력이 검증된 경우에만
+`use_legacy_vehicle_status_and_localization:=true`로 명시적으로 활성화한다.
+
 ## 담당하지 않는 범위
 
 - 동적 객체 tracking, 경로 진행도, 행동 결정과 제어

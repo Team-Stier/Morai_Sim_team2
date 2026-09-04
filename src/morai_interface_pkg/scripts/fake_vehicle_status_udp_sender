@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+fake_vehicle_status_udp_sender
+- 역할: 실제 MORAI 없이 localhost로 229바이트 EgoVehicleStatus 바이너리 패킷을
+        UDP로 보내 Vehicle Status Bridge를 테스트한다. ROS에 의존하지 않는다.
+
+사용 예:
+    ./fake_vehicle_status_udp_sender --ip 127.0.0.1 --port 7803 --rate 30 --vx 3.0
+"""
+
+import argparse
+import socket
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from morai_interface_pkg.protocol import ego_status_packet  # noqa: E402
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Fake MORAI EgoVehicleStatus UDP sender")
+    parser.add_argument("--ip", default="127.0.0.1")
+    parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--rate", type=float, default=30.0)
+    parser.add_argument("--vx", type=float, default=3.0, help="vel_x (raw 값)")
+    parser.add_argument("--vy", type=float, default=0.0, help="vel_y (raw 값)")
+    parser.add_argument("--signed-vel", type=float, default=3.0,
+                        help="signed_vel (raw scalar)")
+    parser.add_argument("--yaw-rate", type=float, default=0.05, help="ang_vel_z (raw)")
+    parser.add_argument("--count", type=int, default=0, help="0이면 무한")
+    parser.add_argument("--corrupt-every", type=int, default=0,
+                        help="N번째마다 짧은(깨진) 패킷 삽입")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    period = 1.0 / args.rate if args.rate > 0 else 0.0
+    iteration = 0
+    print("[fake_vehicle_status_udp_sender] -> %s:%d @ %.1f Hz"
+          % (args.ip, args.port, args.rate))
+    try:
+        while args.count == 0 or iteration < args.count:
+            iteration += 1
+            packet = ego_status_packet.build_ego_status_packet(
+                sec=0, nsec=0, signed_vel=args.signed_vel,
+                vel=(args.vx, args.vy, 0.0),
+                ang_vel=(0.0, 0.0, args.yaw_rate),
+                pos=(0.0, 0.0, 0.0), yaw=0.0)
+            sock.sendto(packet, (args.ip, args.port))
+            if args.corrupt_every and iteration % args.corrupt_every == 0:
+                sock.sendto(b"\x01\x02\x03", (args.ip, args.port))
+                print("[fake_vehicle_status_udp_sender] 깨진 패킷 1개 전송")
+            if period > 0.0:
+                time.sleep(period)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        sock.close()
+    print("[fake_vehicle_status_udp_sender] 종료 (%d회 전송)" % iteration)
+
+
+if __name__ == "__main__":
+    main()
+

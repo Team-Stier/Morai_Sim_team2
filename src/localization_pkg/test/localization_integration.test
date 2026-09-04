@@ -1,0 +1,7 @@
+<launch>
+  <include file="$(find localization_pkg)/launch/localization.launch" />
+
+  <test test-name="localization_integration" pkg="localization_pkg"
+        type="test_localization_integration.py" time-limit="35.0" />
+</launch>
+

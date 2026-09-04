@@ -1,0 +1,18 @@
+# morai_interface_pkg - Camera UDP Bridge 파라미터 (private ~ namespace)
+# 단일 카메라 실행용 템플릿. 여러 카메라는 camera_front/left/right.yaml 참고.
+#
+# 현재 실행 중인 Simulator Camera-1 destination port와 실측 확인했다.
+
+bind_ip: "0.0.0.0"
+port: 9291
+topic: "/sensors/camera/front/image/compressed"
+frame_id: "camera_front"
+
+timestamp_source: "receive"          # receive(수신시각) | packet(청크 sec/nsec)
+max_frame_bytes: 2000000             # 프레임 최대 크기(초과 시 폐기)
+frame_timeout_sec: 0.5               # 프레임 완성 대기 timeout(초과 시 폐기)
+check_chunk_index: false          # 공식 예제는 EI만으로 프레임 종료. index 규칙 미확정이라 기본 off (실측 후 +1 확인 시 true)
+
+receive_buffer_bytes: 65536
+socket_timeout_sec: 0.5
+stats_log_period_sec: 5.0

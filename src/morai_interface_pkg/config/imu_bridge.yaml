@@ -1,0 +1,26 @@
+# morai_interface_pkg - IMU UDP Bridge 파라미터 (private ~ namespace)
+#
+# 주의: port는 placeholder다. 실제 MORAI IMU UDP destination port로 교체한다.
+#       코드에는 어떤 port도 하드코딩하지 않는다.
+
+bind_ip: "0.0.0.0"
+port: 9303                  # running MORAI sensor destination port (2026-09-04)
+topic: "/sensors/imu/data"
+frame_id: "base_link"
+
+# --- 미확정 항목(실측 전까지 기본값, 하드코딩 아님) ---
+timestamp_source: "receive"          # receive(수신시각) | packet(sec/nsec)
+angular_velocity_scale: 1.0          # 단위 미확정. rad/s면 1.0
+linear_acceleration_scale: 1.0       # 단위 미확정. m/s²면 1.0
+
+# 공분산은 placeholder다(실제 센서 정확도 아님). 길이 9(3x3 row-major).
+# 대각 양수여야 localization supervisor 검증을 통과한다.
+orientation_covariance:          [0.01, 0.0, 0.0,  0.0, 0.01, 0.0,  0.0, 0.0, 0.01]
+angular_velocity_covariance:     [0.01, 0.0, 0.0,  0.0, 0.01, 0.0,  0.0, 0.0, 0.01]
+linear_acceleration_covariance:  [0.1,  0.0, 0.0,  0.0, 0.1,  0.0,  0.0, 0.0, 0.1]
+
+receive_buffer_bytes: 2048
+socket_timeout_sec: 0.5
+stats_log_period_sec: 5.0
+log_raw: false                       # true면 raw 값을 주기적으로 로그
+log_raw_period_sec: 2.0

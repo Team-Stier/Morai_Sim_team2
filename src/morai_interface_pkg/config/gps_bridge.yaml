@@ -1,0 +1,14 @@
+# morai_interface_pkg - GPS UDP Bridge 파라미터
+# launch에서 노드의 private namespace(~)로 로드된다.
+#
+# 현재 실행 중인 Simulator GPS destination port와 실측 확인했다.
+
+bind_ip: "0.0.0.0"          # 수신 NIC. 모든 인터페이스에서 받으려면 0.0.0.0
+port: 9301                  # running MORAI sensor destination port (2026-09-04)
+topic: "/sensors/gps/fix"
+frame_id: "gps_link"        # NavSatFix header.frame_id
+
+require_checksum: true      # NMEA '*' checksum 검증 여부
+receive_buffer_bytes: 2048  # 한 datagram 최대 수신 크기
+socket_timeout_sec: 0.5     # recv 대기 시간(종료 반응성)
+stats_log_period_sec: 5.0   # 수신/파싱 통계 로그 주기(0이면 끔)

@@ -1,0 +1,13 @@
+# Camera Left (제공 센서셋 Camera-2: pos 1.15/0.65/1.2, pitch 10 yaw 70, destPort 9293)
+# 현재 실행 중인 Simulator 설정과 실측 확인.
+bind_ip: "0.0.0.0"
+port: 9293
+topic: "/sensors/camera/left/image/compressed"
+frame_id: "camera_left"
+timestamp_source: "receive"
+max_frame_bytes: 2000000
+frame_timeout_sec: 0.5
+check_chunk_index: false          # 공식 예제는 EI만으로 프레임 종료. index 규칙 미확정이라 기본 off (실측 후 +1 확인 시 true)
+receive_buffer_bytes: 65536
+socket_timeout_sec: 0.5
+stats_log_period_sec: 5.0

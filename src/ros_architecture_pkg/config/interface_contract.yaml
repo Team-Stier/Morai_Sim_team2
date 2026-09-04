@@ -1,6 +1,6 @@
 schema_version: 1
-contract_version: 0.2.0
-status: approved_path_planning_and_team1_control_test
+contract_version: 0.3.0
+status: approved_morai_sensor_localization_and_path_control_test
 
 authority:
   package: ros_architecture_pkg
@@ -10,6 +10,36 @@ authority:
     approved, including temporary and visualization names.
 
 nodes:
+  - name: /morai_gps_bridge
+    owner_package: morai_interface_pkg
+    responsibility: validate MORAI GPS NMEA UDP and publish canonical fixes
+  - name: /morai_imu_bridge
+    owner_package: morai_interface_pkg
+    responsibility: validate MORAI IMU UDP and publish canonical inertial observations
+  - name: /morai_vehicle_status_bridge
+    owner_package: morai_interface_pkg
+    responsibility: validate MORAI Competition Vehicle Status UDP and publish canonical ego twist
+  - name: /morai_camera_front
+    owner_package: morai_interface_pkg
+    responsibility: reassemble front MORAI camera UDP chunks into compressed images
+  - name: /morai_camera_left
+    owner_package: morai_interface_pkg
+    responsibility: reassemble left MORAI camera UDP chunks into compressed images
+  - name: /morai_camera_right
+    owner_package: morai_interface_pkg
+    responsibility: reassemble right MORAI camera UDP chunks into compressed images
+  - name: /molit_local_ekf
+    owner_package: localization_pkg
+    responsibility: estimate continuous odom-frame ego motion from IMU and vehicle twist
+  - name: /molit_global_ekf
+    owner_package: localization_pkg
+    responsibility: estimate map-referenced ego state from GPS pose, IMU, and vehicle twist
+  - name: /molit_gps_projector
+    owner_package: localization_pkg
+    responsibility: validate GPS fixes and project them into the approved map frame
+  - name: /molit_localization_supervisor
+    owner_package: localization_pkg
+    responsibility: gate localization freshness and publish the canonical fail-closed ego estimate
   - name: /hd_map/rviz_map
     owner_package: hd_map_pkg
     responsibility: publish immutable MGeo lane-boundary visualization
@@ -33,6 +63,132 @@ nodes:
     responsibility: run the pinned Team1 path tracker for isolated open-loop comparison without UDP transmission
 
 topics:
+  - name: /sensors/gps/fix
+    owner_package: morai_interface_pkg
+    producers: [morai_interface_pkg]
+    consumers: [localization_pkg]
+    data_meaning: validated MORAI GPS fix without route or ground-truth substitution
+    data_type: sensor_msgs/NavSatFix
+    unit: latitude=deg; longitude=deg; altitude=m; covariance=m2
+    frame: gps_link
+    timestamp_source: local ROS receipt time after complete UDP packet validation
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_10_drop_oldest
+    timeout_sec: 0.75
+    invalid_data_policy: reject malformed or non-finite packets and expose loss through freshness timeout
+
+  - name: /sensors/imu/data
+    owner_package: morai_interface_pkg
+    producers: [morai_interface_pkg]
+    consumers: [localization_pkg]
+    data_meaning: validated MORAI body-frame orientation, angular velocity, and linear acceleration
+    data_type: sensor_msgs/Imu
+    unit: orientation=quaternion; angular_velocity=rad/s; linear_acceleration=m/s2
+    frame: base_link
+    timestamp_source: local ROS receipt time after complete UDP packet validation
+    expected_rate_hz: 50.0
+    queue_policy: keep_last_20_drop_oldest
+    timeout_sec: 0.50
+    invalid_data_policy: reject malformed, non-finite, or non-unit orientation samples and require localization degradation on timeout
+
+  - name: /vehicle/twist
+    owner_package: morai_interface_pkg
+    producers: [morai_interface_pkg]
+    consumers: [localization_pkg]
+    data_meaning: validated ego linear and angular velocity from Competition Vehicle Status
+    data_type: geometry_msgs/TwistWithCovarianceStamped
+    unit: linear_velocity=m/s; angular_velocity=rad/s; covariance=SI
+    frame: base_link
+    timestamp_source: local ROS receipt time after complete UDP packet validation
+    expected_rate_hz: 50.0
+    queue_policy: keep_last_10_drop_oldest
+    timeout_sec: 0.50
+    invalid_data_policy: reject wrong-size, malformed, or non-finite packets and require localization degradation on timeout
+
+  - name: /sensors/camera/front/image/compressed
+    owner_package: morai_interface_pkg
+    producers: [morai_interface_pkg]
+    consumers: [camera_perception_pkg, rosbag]
+    data_meaning: reassembled compressed image from the front competition camera
+    data_type: sensor_msgs/CompressedImage
+    unit: JPEG byte stream
+    frame: camera_front
+    timestamp_source: local ROS completion time of the validated UDP frame
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_2_drop_oldest
+    timeout_sec: 0.50
+    invalid_data_policy: discard incomplete, stale, out-of-order, or malformed frame chunks
+
+  - name: /sensors/camera/left/image/compressed
+    owner_package: morai_interface_pkg
+    producers: [morai_interface_pkg]
+    consumers: [camera_perception_pkg, rosbag]
+    data_meaning: reassembled compressed image from the left competition camera
+    data_type: sensor_msgs/CompressedImage
+    unit: JPEG byte stream
+    frame: camera_left
+    timestamp_source: local ROS completion time of the validated UDP frame
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_2_drop_oldest
+    timeout_sec: 0.50
+    invalid_data_policy: discard incomplete, stale, out-of-order, or malformed frame chunks
+
+  - name: /sensors/camera/right/image/compressed
+    owner_package: morai_interface_pkg
+    producers: [morai_interface_pkg]
+    consumers: [camera_perception_pkg, rosbag]
+    data_meaning: reassembled compressed image from the right competition camera
+    data_type: sensor_msgs/CompressedImage
+    unit: JPEG byte stream
+    frame: camera_right
+    timestamp_source: local ROS completion time of the validated UDP frame
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_2_drop_oldest
+    timeout_sec: 0.50
+    invalid_data_policy: discard incomplete, stale, out-of-order, or malformed frame chunks
+
+  - name: /localization/gps/map_pose
+    owner_package: localization_pkg
+    producers: [localization_pkg]
+    consumers: [localization_pkg]
+    data_meaning: gated GPS position projected into the MORAI scene ENU map frame
+    data_type: geometry_msgs/PoseWithCovarianceStamped
+    unit: position=m; orientation=quaternion; covariance=SI
+    frame: map
+    timestamp_source: accepted GPS fix timestamp
+    expected_rate_hz: 30.0
+    queue_policy: keep_last_5_drop_oldest
+    timeout_sec: 0.75
+    invalid_data_policy: suppress invalid or unstable reacquisition fixes and never replay the last fix as current
+
+  - name: /localization/local/odometry
+    owner_package: localization_pkg
+    producers: [localization_pkg]
+    consumers: [localization_pkg]
+    data_meaning: continuous local EKF motion estimate used only inside localization supervision
+    data_type: nav_msgs/Odometry
+    unit: position=m; linear_velocity=m/s; angular_velocity=rad/s; covariance=SI
+    frame: odom -> base_link
+    timestamp_source: robot_localization filter time in ROS time
+    expected_rate_hz: 20.0
+    queue_policy: keep_last_5_drop_oldest
+    timeout_sec: 0.50
+    invalid_data_policy: supervisor rejects missing, stale, future, non-finite, or wrong-frame samples
+
+  - name: /localization/global/odometry
+    owner_package: localization_pkg
+    producers: [localization_pkg]
+    consumers: [localization_pkg]
+    data_meaning: map-referenced global EKF estimate used only inside localization supervision
+    data_type: nav_msgs/Odometry
+    unit: position=m; linear_velocity=m/s; angular_velocity=rad/s; covariance=SI
+    frame: map -> base_link
+    timestamp_source: robot_localization filter time in ROS time
+    expected_rate_hz: 20.0
+    queue_policy: keep_last_5_drop_oldest
+    timeout_sec: 0.50
+    invalid_data_policy: supervisor rejects missing, stale, future, non-finite, or wrong-frame samples
+
   - name: /localization/odometry
     owner_package: localization_pkg
     producers: [localization_pkg]
@@ -309,10 +465,35 @@ frames:
     parent: null
     convention: MORAI scene-local ENU; x=east, y=north, z=up; yaw=0 east and positive counter-clockwise
     unit: m,rad
-  - name: base_link
+  - name: odom
     owner_package: localization_pkg
     parent: map
+    convention: locally continuous ENU frame whose map relation may be corrected by global localization
+    unit: m,rad
+  - name: base_link
+    owner_package: localization_pkg
+    parent: odom
     convention: origin at rear-wheel midpoint; x=forward, y=left, z=up
+    unit: m,rad
+  - name: gps_link
+    owner_package: morai_interface_pkg
+    parent: base_link
+    convention: GPS measurement frame fixed to the competition sensor mounting point
+    unit: m,rad
+  - name: camera_front
+    owner_package: morai_interface_pkg
+    parent: base_link
+    convention: front competition camera optical mounting frame
+    unit: m,rad
+  - name: camera_left
+    owner_package: morai_interface_pkg
+    parent: base_link
+    convention: left competition camera optical mounting frame
+    unit: m,rad
+  - name: camera_right
+    owner_package: morai_interface_pkg
+    parent: base_link
+    convention: right competition camera optical mounting frame
     unit: m,rad
 
 parameters:

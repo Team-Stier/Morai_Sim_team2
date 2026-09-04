@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="use_cameras" default="true" />
+  <arg name="use_legacy_vehicle_status_and_localization" default="false" />
+
+  <include file="$(find morai_interface_pkg)/launch/gps_bridge.launch" />
+  <include file="$(find morai_interface_pkg)/launch/imu_bridge.launch" />
+
+  <group if="$(arg use_cameras)">
+    <include file="$(find morai_interface_pkg)/launch/cameras.launch" />
+  </group>
+
+  <group if="$(arg use_legacy_vehicle_status_and_localization)">
+    <include file="$(find morai_interface_pkg)/launch/vehicle_status_bridge.launch" />
+    <include file="$(find localization_pkg)/launch/localization.launch" />
+  </group>
+
+  <!-- LiDAR remains separate until ros-noetic-velodyne is installed. -->
+  <!-- The linked repository's 229-byte status decoder is not compatible with
+       this Simulator's 152-byte CompetitionInfoPublisher, so localization is
+       fail-closed and opt-in until a contract-approved adapter is available. -->
+</launch>

@@ -1,0 +1,34 @@
+# morai_interface_pkg - Ego Ctrl Cmd 송신 Bridge 파라미터 (private ~ namespace)
+# ROS morai_msgs/CtrlCmd -> MORAI EgoCtrlCmd UDP(55B) 송신.
+#
+# 현재 실행 중인 Simulator EgoCtrlCmd host port와 일치시킨 값이다.
+
+destination_ip: "127.0.0.1"   # MORAI(시뮬레이터 PC) IP
+destination_port: 9093        # running MORAI EgoCtrlCmd host port (2026-09-04)
+
+topic: "/control/final_command"
+publish_rate_hz: 30.0         # 송신 주기
+command_timeout_sec: 0.5      # 이 시간 이상 명령 없으면 안전 명령 송신
+
+# 규정: 기본 제어모드 longi type 1 (필요 시 변경). 안전 명령/기본값에 사용.
+default_cmd_type: 1
+# ctrl_mode/gear: MORAI NetworkModule 공식 예제 기준.
+#   ctrl_mode 1=Keyboard, 2=AutoMode
+#   gear 0=M,1=P,2=R,3=N,4=D,5=L
+# 자율 전진 주행 기본값: AutoMode(2) + Drive(4).
+default_ctrl_mode: 2          # CtrlCmd에는 ctrl_mode 필드가 없어 이 기본값 사용
+default_gear: 4               # CtrlCmd에는 gear 필드가 없어 이 기본값 사용
+
+# 안전 명령: accel=0, brake=safe_brake, steer=0
+safe_brake: 1.0
+
+# 범위 검증/clamp (단위·범위 미확정이라 기본 off. 필요 시 true로 켬)
+clamp_enabled: false
+accel_min: 0.0
+accel_max: 1.0
+brake_min: 0.0
+brake_max: 1.0
+steer_min: -1.0               # steer 단위(rad/정규화) 미확정 — 실측 확인 후 조정
+steer_max: 1.0
+
+stats_log_period_sec: 5.0

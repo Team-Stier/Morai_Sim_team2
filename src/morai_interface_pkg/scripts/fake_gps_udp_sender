@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+fake_gps_udp_sender
+- 역할: 실제 MORAI 없이 localhost로 샘플 NMEA($GPGGA/$GPRMC) 문장을 UDP로 보내
+        GPS Bridge를 테스트한다. ROS에 의존하지 않는다.
+- 좌표 기본값은 K-City 부근(대략 위도 37.39, 경도 126.77)이다.
+
+사용 예:
+    ./fake_gps_udp_sender --ip 127.0.0.1 --port 9301 --rate 10
+"""
+
+import argparse
+import socket
+import sys
+import time
+from pathlib import Path
+
+# 빌드 전에도 단독 실행되도록 패키지 src 경로를 추가한다.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from morai_interface_pkg.protocol import nmea_gps  # noqa: E402
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Fake MORAI GPS NMEA UDP sender")
+    parser.add_argument("--ip", default="127.0.0.1", help="목적지 IP")
+    parser.add_argument("--port", type=int, required=True, help="목적지 UDP port")
+    parser.add_argument("--rate", type=float, default=10.0, help="문장 전송 Hz")
+    parser.add_argument("--lat", type=float, default=37.3874583, help="위도(도)")
+    parser.add_argument("--lon", type=float, default=126.7751283, help="경도(도)")
+    parser.add_argument("--alt", type=float, default=28.5, help="고도(m)")
+    parser.add_argument("--count", type=int, default=0,
+                        help="보낼 왕복(GGA+RMC) 횟수, 0이면 무한")
+    parser.add_argument("--drift", type=float, default=1e-5,
+                        help="매 반복 위경도에 더할 변화량(이동 흉내)")
+    parser.add_argument("--corrupt-every", type=int, default=0,
+                        help="N번째마다 깨진 패킷 1개 삽입(0이면 안 함)")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    period = 1.0 / args.rate if args.rate > 0 else 0.0
+    lat, lon = args.lat, args.lon
+    iteration = 0
+    print("[fake_gps_udp_sender] -> %s:%d @ %.1f Hz" % (args.ip, args.port, args.rate))
+    try:
+        while args.count == 0 or iteration < args.count:
+            iteration += 1
+            gga = nmea_gps.build_gga(lat, lon, args.alt)
+            rmc = nmea_gps.build_rmc(lat, lon)
+            for sentence in (gga, rmc):
+                sock.sendto(sentence.encode("ascii"), (args.ip, args.port))
+            if args.corrupt_every and iteration % args.corrupt_every == 0:
+                sock.sendto(b"$GPGGA,BROKEN,,,*ZZ", (args.ip, args.port))
+                print("[fake_gps_udp_sender] 깨진 패킷 1개 전송")
+            lat += args.drift
+            lon += args.drift
+            if period > 0.0:
+                time.sleep(period)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        sock.close()
+    print("[fake_gps_udp_sender] 종료 (%d회 전송)" % iteration)
+
+
+if __name__ == "__main__":
+    main()
+
+

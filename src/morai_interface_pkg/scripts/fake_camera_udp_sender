@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+fake_camera_udp_sender
+- 역할: 실제 MORAI 없이 localhost로 MOR 카메라 청크를 UDP로 보내 Camera Bridge를
+        테스트한다. ROS에 의존하지 않는다.
+- 실제 이미지가 아니라 SOI(FFD8)~EOI(FFD9)를 가진 더미 JPEG bytes를 여러 청크로
+  나눠 보낸다(재조립/발행 경로 검증용).
+
+사용 예:
+    ./fake_camera_udp_sender --ip 127.0.0.1 --port 9291 --rate 30 --chunk-bytes 4000
+"""
+
+import argparse
+import socket
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from morai_interface_pkg.protocol import camera_packet  # noqa: E402
+
+
+def make_dummy_jpeg(payload_bytes):
+    body = bytes(bytearray((i % 251) for i in range(payload_bytes)))
+    return b"\xff\xd8" + body + b"\xff\xd9"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Fake MORAI Camera UDP sender")
+    parser.add_argument("--ip", default="127.0.0.1")
+    parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--rate", type=float, default=30.0, help="프레임 Hz")
+    parser.add_argument("--jpeg-bytes", type=int, default=9000,
+                        help="한 프레임 더미 JPEG 크기")
+    parser.add_argument("--chunk-bytes", type=int, default=4000,
+                        help="청크당 jpeg bytes")
+    parser.add_argument("--count", type=int, default=0, help="0이면 무한")
+    parser.add_argument("--drop-every", type=int, default=0,
+                        help="N번째 프레임에서 중간 청크 1개 누락(유실 흉내)")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    period = 1.0 / args.rate if args.rate > 0 else 0.0
+    frame = 0
+    print("[fake_camera_udp_sender] -> %s:%d @ %.1f Hz" % (args.ip, args.port, args.rate))
+    try:
+        while args.count == 0 or frame < args.count:
+            frame += 1
+            jpeg = make_dummy_jpeg(args.jpeg_bytes)
+            chunks = [jpeg[i:i + args.chunk_bytes]
+                      for i in range(0, len(jpeg), args.chunk_bytes)]
+            drop_this = args.drop_every and frame % args.drop_every == 0
+            for index, piece in enumerate(chunks):
+                if drop_this and index == 1 and len(chunks) > 2:
+                    continue  # 중간 청크 1개 누락
+                is_end = index == len(chunks) - 1
+                packet = camera_packet.build_camera_packet(
+                    jpeg_chunk=piece, sec=0, nsec=0, index=index,
+                    size=len(jpeg), is_end=is_end)
+                sock.sendto(packet, (args.ip, args.port))
+            if drop_this:
+                print("[fake_camera_udp_sender] 프레임 %d 중간 청크 누락" % frame)
+            if period > 0.0:
+                time.sleep(period)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        sock.close()
+    print("[fake_camera_udp_sender] 종료 (%d 프레임 전송)" % frame)
+
+
+if __name__ == "__main__":
+    main()
+

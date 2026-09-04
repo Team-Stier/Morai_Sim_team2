@@ -1,0 +1,27 @@
+<launch>
+  <rosparam command="load" file="$(find localization_pkg)/config/topics.yaml" />
+  <rosparam command="load" file="$(find localization_pkg)/config/localization.yaml" />
+  <rosparam command="load" file="$(find localization_pkg)/config/ekf_local.yaml" />
+  <rosparam command="load" file="$(find localization_pkg)/config/ekf_global.yaml" />
+
+  <node pkg="robot_localization" type="ekf_localization_node"
+        name="molit_local_ekf" output="screen" required="true">
+    <remap from="odometry/filtered"
+           to="/localization/local/odometry" />
+    <remap from="set_pose" to="/molit_local_ekf/set_pose" />
+  </node>
+
+  <node pkg="robot_localization" type="ekf_localization_node"
+        name="molit_global_ekf" output="screen" required="true">
+    <remap from="odometry/filtered"
+           to="/localization/global/odometry" />
+    <remap from="set_pose" to="/molit_global_ekf/set_pose" />
+  </node>
+
+  <node pkg="localization_pkg" type="gps_projector_node"
+        name="molit_gps_projector" output="screen" required="true" />
+
+  <node pkg="localization_pkg" type="localization_supervisor_node"
+        name="molit_localization_supervisor" output="screen"
+        required="true" />
+</launch>

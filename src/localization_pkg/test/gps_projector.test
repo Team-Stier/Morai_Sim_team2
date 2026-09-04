@@ -1,0 +1,11 @@
+<launch>
+  <rosparam command="load" file="$(find localization_pkg)/config/topics.yaml" />
+  <rosparam command="load" file="$(find localization_pkg)/config/localization.yaml" />
+
+  <node pkg="localization_pkg" type="gps_projector_node"
+        name="molit_gps_projector" output="screen" required="true" />
+
+  <test test-name="gps_projector" pkg="localization_pkg"
+        type="test_gps_projector.py" time-limit="45.0" />
+</launch>
+

@@ -1,0 +1,85 @@
+---
+config:
+  theme: neutral
+  flowchart:
+    curve: basis
+---
+%% 현재 localization.launch와 config/*.yaml 기준
+%% 실선: ROS topic, 점선: ROS service
+flowchart TB
+  subgraph ROS["ROS 데이터 및 서비스"]
+    direction TB
+
+    subgraph INPUT["정규화 입력"]
+      direction LR
+      gps_fix["/sensors/gps/fix<br/>sensor_msgs/NavSatFix"]
+      imu["/sensors/imu/data<br/>sensor_msgs/Imu<br/>frame: base_link"]
+      twist["/vehicle/twist<br/>geometry_msgs/TwistWithCovarianceStamped<br/>frame: base_link"]
+    end
+
+    subgraph NODES["실행 노드"]
+      direction LR
+      gps_projector("molit_gps_projector<br/>GPS 검증 · UTM/map 투영 · 재수신 gate")
+      local_ekf("molit_local_ekf<br/>robot_localization/ekf_localization_node")
+      global_ekf("molit_global_ekf<br/>robot_localization/ekf_localization_node")
+      supervisor("molit_localization_supervisor<br/>유효성 · freshness · 상태 gate")
+    end
+
+    subgraph INTERNAL["내부 토픽"]
+      direction LR
+      gps_pose["/localization/gps/map_pose<br/>geometry_msgs/PoseWithCovarianceStamped"]
+      gps_state["/localization/gps/state<br/>std_msgs/String"]
+      local_odom["/localization/local/odometry<br/>nav_msgs/Odometry<br/>내부 · 관찰용"]
+      global_odom["/localization/global/odometry<br/>nav_msgs/Odometry"]
+    end
+
+    subgraph OUTPUT["외부 출력"]
+      direction LR
+      final_odom["/localization/odometry<br/>nav_msgs/Odometry<br/>map → base_link"]
+      status["/localization/status<br/>diagnostic_msgs/DiagnosticArray"]
+    end
+
+    gps_fix --> gps_projector
+    imu --> local_ekf
+    imu --> global_ekf
+    imu --> supervisor
+    twist --> local_ekf
+    twist --> global_ekf
+    twist --> supervisor
+
+    gps_projector --> gps_pose
+    gps_pose --> global_ekf
+    gps_pose --> supervisor
+    gps_projector --> gps_state
+    gps_state --> supervisor
+
+    local_ekf --> local_odom
+    global_ekf --> global_odom
+    global_odom --> gps_projector
+    global_odom --> supervisor
+    gps_projector -. "/molit_global_ekf/set_pose<br/>robot_localization/SetPose" .-> global_ekf
+
+    supervisor --> final_odom
+    supervisor --> status
+  end
+
+  subgraph TF["TF 구조"]
+    direction LR
+    map_frame["map"]
+    odom_frame["odom"]
+    base_frame["base_link"]
+    map_frame -->|"molit_global_ekf<br/>map → odom"| odom_frame
+    odom_frame -->|"molit_local_ekf<br/>odom → base_link"| base_frame
+  end
+
+  classDef topic fill:#ffffff,stroke:#555555,color:#111111,stroke-width:1px;
+  classDef node fill:#e8e8e8,stroke:#222222,color:#111111,stroke-width:1.5px;
+  classDef output fill:#d8d8d8,stroke:#222222,color:#111111,stroke-width:1.5px;
+  classDef frame fill:#ffffff,stroke:#111111,color:#111111,stroke-width:2px;
+
+  class gps_fix,imu,twist,gps_pose,gps_state,local_odom,global_odom topic;
+  class gps_projector,local_ekf,global_ekf,supervisor node;
+  class final_odom,status output;
+  class map_frame,odom_frame,base_frame frame;
+
+

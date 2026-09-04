@@ -1,0 +1,11 @@
+<launch>
+  <!-- Vehicle Status UDP Bridge: MORAI EgoVehicleStatus UDP(229B)
+       -> geometry_msgs/TwistWithCovarianceStamped -->
+  <arg name="config" default="$(find morai_interface_pkg)/config/vehicle_status_bridge.yaml"/>
+
+  <node pkg="morai_interface_pkg" type="vehicle_status_receiver_node"
+        name="morai_vehicle_status_bridge" output="screen" required="true">
+    <rosparam command="load" file="$(arg config)"/>
+  </node>
+</launch>
+

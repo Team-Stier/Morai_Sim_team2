@@ -1,0 +1,18 @@
+<launch>
+  <!-- Ego Ctrl Cmd 송신 Bridge: morai_msgs/CtrlCmd -> MORAI EgoCtrlCmd UDP(55B) -->
+  <arg name="config" default="$(find morai_interface_pkg)/config/ctrl_cmd_bridge.yaml"/>
+
+  <!-- destination_ip/port는 launch argument로도 덮어쓸 수 있다(비우면 YAML 사용). -->
+  <arg name="destination_ip" default=""/>
+  <arg name="destination_port" default=""/>
+
+  <node pkg="morai_interface_pkg" type="ctrl_cmd_sender_node"
+        name="morai_ctrl_cmd_bridge" output="screen" required="true">
+    <rosparam command="load" file="$(arg config)"/>
+    <param name="destination_ip" value="$(arg destination_ip)"
+           if="$(eval arg('destination_ip') != '')"/>
+    <param name="destination_port" value="$(arg destination_port)"
+           if="$(eval arg('destination_port') != '')"/>
+  </node>
+</launch>
+
