@@ -30,6 +30,18 @@ source_import:
     - udp_sender
   reason: This import is limited to MORAI-to-ROS sensor adapters.
 
+runtime_timestamp_parameter_mapping:
+  packet:
+    central_timestamp_source: morai_camera_packet_frame_time
+    allowed_channels: [camera_front, camera_left, camera_right]
+  receive:
+    central_timestamp_source: morai_interface_ingress_time
+    allowed_channels: [gps, imu, vehicle_status]
+  external_velodyne_driver:
+    central_timestamp_source: morai_interface_ingress_time
+    allowed_channels: [lidar]
+    status: fallback_contract_until_live_packet_timestamp_is_verified
+
 live_observation:
   observed_at: "2026-09-03T13:36:24+09:00"
   simulator_version: 25.S4.251001.MolitComp03_Linux
@@ -119,7 +131,7 @@ channels:
     message_type: sensor_msgs/CompressedImage
     frame_id: camera_front_optical_frame
     queue_size: 2
-    timestamp_source: source_measurement_packet
+    timestamp_source: morai_camera_packet_frame_time
     timestamp_validation: reject_invalid_future_duplicate_or_regressing_stamp
     chunk_validation: require_index_zero_then_contiguous_and_valid_jpeg_markers
     configured_rate_hz: 20.0
@@ -135,7 +147,7 @@ channels:
     message_type: sensor_msgs/CompressedImage
     frame_id: camera_left_optical_frame
     queue_size: 2
-    timestamp_source: source_measurement_packet
+    timestamp_source: morai_camera_packet_frame_time
     timestamp_validation: reject_invalid_future_duplicate_or_regressing_stamp
     chunk_validation: require_index_zero_then_contiguous_and_valid_jpeg_markers
     configured_rate_hz: 20.0
@@ -151,7 +163,7 @@ channels:
     message_type: sensor_msgs/CompressedImage
     frame_id: camera_right_optical_frame
     queue_size: 2
-    timestamp_source: source_measurement_packet
+    timestamp_source: morai_camera_packet_frame_time
     timestamp_validation: reject_invalid_future_duplicate_or_regressing_stamp
     chunk_validation: require_index_zero_then_contiguous_and_valid_jpeg_markers
     configured_rate_hz: 20.0
@@ -217,7 +229,7 @@ channels:
     message_type: sensor_msgs/PointCloud2
     frame_id: lidar_link
     queue_size: external_driver_default_pending_measurement
-    timestamp_source: source_measurement_packet
+    timestamp_source: morai_interface_ingress_time
     configured_rate_hz: 10.0
   lidar_status:
     runtime_activation_allowed: false
@@ -232,10 +244,47 @@ channels:
     configured_rate_hz: 2.0
     timeout_sec: 1.0
     limitation: Boolean status does not replace a structured transport health contract.
+  collision:
+    runtime_activation_allowed: false
+    competition_runtime_status: reserved_pending_official_packet_and_port
+    transport: competition_collision_data_udp_pending_spec
+    bind_ip: pending_competition_network_spec
+    port: pending_competition_packet_spec
+    port_evidence: not_available
+    node_name: morai_collision_bridge
+    topic: /molit/events/collision
+    message_type: common_msgs_pkg/CollisionEvent
+    frame_id: pending_competition_packet_spec
+    queue_size: 10
+    timestamp_source: morai_interface_ingress_time
+    configured_rate_hz: event_driven
+    restriction: >-
+      Reserve the ROS boundary only. Do not implement or launch a parser until
+      the official CollisionData byte layout, port and timestamp semantics are verified.
+  control:
+    runtime_activation_allowed: false
+    competition_runtime_status: reserved_pending_official_packet_port_and_watchdog
+    transport: competition_ego_ctrl_cmd_udp_pending_spec
+    destination_ip: pending_competition_network_spec
+    port: pending_competition_packet_spec
+    port_evidence: not_available
+    node_name: morai_control_sender
+    input_topic: /molit/safety/final_command
+    message_type: common_msgs_pkg/ActuatorCommand
+    frame_id: base_link
+    timestamp_source: command_generation_time
+    configured_rate_hz: 50.0
+    command_type: 1
+    control_mode: 2
+    watchdog_timeout_sec: pending_safety_loop_jitter_measurement
+    timeout_policy: >-
+      Never repeat the last nonzero command. Do not serialize even a stop packet
+      until the official packet and fail-closed stop encoding are verified.
 
 global_rules:
   - Bounding-box UDP packets are not published or used.
   - Static sensor TF remains disabled until the TF activation gates pass.
   - Receive-time fallback is captured immediately after recvfrom, not after parsing.
+  - Runtime timestamp_source values packet and receive map through runtime_timestamp_parameter_mapping and are not new central clock names.
   - No ROS-to-MORAI control sender is part of this import.
   - No channel with runtime_activation_allowed false belongs in system bringup.

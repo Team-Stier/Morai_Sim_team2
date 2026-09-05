@@ -4,7 +4,8 @@
 #
 # 이 파일은 두 노드(velodyne_driver_node, velodyne_pointcloud/cloud_node)에 함께
 # 로드된다. 각 노드는 자신이 모르는 키는 무시한다.
-# lidar_bridge.launch의 인자로도 port/rpm/frame_id/device_ip를 덮어쓸 수 있다.
+# lidar_bridge.launch의 인자로 port/rpm/device_ip를 덮어쓸 수 있다.
+# 공개 frame_id는 중앙 계약의 lidar_link로 고정하며 launch override를 허용하지 않는다.
 
 # --- velodyne_driver_node 파라미터 ---
 device_ip: ""            # MORAI 송신 IP로 필터. ""=모든 소스 허용

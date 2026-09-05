@@ -56,11 +56,32 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
                 self.assertEqual(local["topic"], channel["topic"], channel_name)
 
     def test_camera_measurement_stamp_is_selected(self):
+        mapping = self.contract["runtime_timestamp_parameter_mapping"]["packet"]
         for role in ("front", "left", "right"):
             local = load_yaml(os.path.join(
                 PACKAGE_ROOT, "config", "camera_%s.yaml" % role))
             self.assertEqual(local["timestamp_source"], "packet")
             self.assertTrue(local["check_chunk_index"])
+            channel_name = "camera_%s" % role
+            self.assertIn(channel_name, mapping["allowed_channels"])
+            self.assertEqual(
+                self.contract["channels"][channel_name]["timestamp_source"],
+                mapping["central_timestamp_source"],
+            )
+
+    def test_receive_timestamp_runtime_enum_maps_to_central_source(self):
+        mapping = self.contract["runtime_timestamp_parameter_mapping"]["receive"]
+        for channel_name, filename in (
+            ("imu", "imu_bridge.yaml"),
+            ("vehicle_status", "vehicle_status_bridge.yaml"),
+        ):
+            local = load_yaml(os.path.join(PACKAGE_ROOT, "config", filename))
+            self.assertEqual(local["timestamp_source"], "receive")
+            self.assertIn(channel_name, mapping["allowed_channels"])
+            self.assertEqual(
+                self.contract["channels"][channel_name]["timestamp_source"],
+                mapping["central_timestamp_source"],
+            )
 
     def test_gps_filters_duplicate_epoch_rmc(self):
         local = load_yaml(os.path.join(
@@ -105,6 +126,27 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
                          for remap in root.iter("remap")]
         self.assertGreaterEqual(remap_targets.count("$(arg packets_topic)"), 2)
 
+    def test_public_launch_node_and_points_topic_are_not_remappable(self):
+        camera_root = ET.parse(os.path.join(
+            PACKAGE_ROOT, "launch", "camera_bridge.launch")).getroot()
+        camera_args = {arg.attrib["name"] for arg in camera_root.findall("arg")}
+        self.assertNotIn("name", camera_args)
+        camera_nodes = list(camera_root.iter("node"))
+        self.assertEqual(len(camera_nodes), 1)
+        self.assertEqual(camera_nodes[0].attrib["name"], "morai_camera_front")
+
+        lidar_root = ET.parse(os.path.join(
+            PACKAGE_ROOT, "launch", "lidar_bridge.launch")).getroot()
+        lidar_args = {arg.attrib["name"] for arg in lidar_root.findall("arg")}
+        self.assertNotIn("points_topic", lidar_args)
+        self.assertNotIn("frame_id", lidar_args)
+        point_targets = [
+            remap.attrib.get("to")
+            for remap in lidar_root.iter("remap")
+            if remap.attrib.get("from") == "velodyne_points"
+        ]
+        self.assertEqual(point_targets, ["/molit/sensors/lidar/points"])
+
     def test_detail_and_top_level_topic_contracts_match(self):
         topics = {item["name"]: item
                   for item in self.top_level_contract["topics"]}
@@ -118,6 +160,8 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
             self.assertEqual(topic["data_type"], channel["message_type"],
                              channel_name)
             self.assertEqual(topic["frame"], channel["frame_id"], channel_name)
+            self.assertEqual(topic["timestamp_source"],
+                             channel["timestamp_source"], channel_name)
             self.assertEqual(topic["expected_rate_hz"],
                              channel["configured_rate_hz"], channel_name)
 

@@ -5,6 +5,10 @@
 이 문서는 live MORAI, rosbag replay와 offline 처리에서 같은 데이터가 서로 다른 시각으로
 해석되지 않도록 적용 방법을 설명한다.
 
+모든 공개 topic의 `timestamp_source`는 위 파일의
+`timestamp_source_registry`에 등록되어야 한다. 등록되지 않았거나 허용 topic/owner
+범위를 벗어난 이름은 중앙 계약 검사에서 거부한다.
+
 ## 핵심 규칙
 
 ```text
@@ -27,10 +31,22 @@ world_model_pkg
 planner/controller/safety age checks
 ```
 
-원본 데이터에 사용할 수 있는 측정시각이 없으면 `morai_interface_pkg`가 데이터를 받은
+개발 환경에서 packet frame time과 host ROS time의 정합을 확인한 Camera 3개만
+`morai_camera_packet_frame_time`을 사용한다. 이 확인은 본선 최종 packet 검증을
+대체하지 않는다. 아직 packet time을 확인하지 못한 LiDAR·Collision을 포함해 원본
+데이터에 사용할 수 있는 측정시각이 없으면 `morai_interface_pkg`가 데이터를 받은
 즉시 기록한 ROS ingress time을 fallback으로 사용한다. 이 경우 timestamp provenance는
-`ingress_fallback`, 품질은 `degraded`로 표시해야 한다. 각 메시지에 provenance를 어떻게
-담을지는 `common_msgs_pkg` 메시지 계약을 만들 때 확정한다.
+`ingress_fallback`, 품질은 `degraded`로 해석한다. GPS처럼 한 topic의 timestamp source가
+항상 ingress fallback으로 고정된 표준 ROS 메시지는 중앙 topic 계약 자체가 provenance다.
+표준 메시지에 임의 field를 덧붙이지 않는다. 한 topic에서 source measurement와 ingress
+fallback을 섞어야 한다면 per-sample provenance를 담는 custom field 또는 companion status
+계약을 먼저 승인해야 하며, 전체 채널 품질은 향후 `/molit/interface/status` schema에서
+노출한다. 현재 그 custom schema는 아직 구현되지 않았다.
+
+MORAI adapter의 로컬 YAML 값 `packet`·`receive`는 코드가 읽는 실행 enum이고
+새 중앙 timestamp 이름이 아니다. 두 값과 중앙 registry 이름의 대응은
+`config/morai_interface/udp_ros_bridge.yaml`의
+`runtime_timestamp_parameter_mapping`에서 단일 관리한다.
 
 ## 실행 모드별 clock
 
@@ -87,5 +103,7 @@ time을 함께 기록하여 period, jitter, transport delay와 processing latenc
 - 미래 timestamp: 측정으로 허용 오차를 승인하기 전 reject 또는 degraded
 - 중복 timestamp: source sequence나 동일 payload 정책이 있을 때만 허용
 
-구체적인 topic, message 필드와 timeout 수치는 아직 승인되지 않았다. 다른 패키지가 임시
-이름이나 임계값을 만들지 말고 중앙 계약 변경을 먼저 제안해야 한다.
+공개 topic과 message type **이름**은 `interface_contract.yaml` v1.0.0으로
+승인됐다. 다만 custom message의 실제 field schema와 timeout 수치는 아직
+승인되지 않았다. 다른 패키지가 임시 field나 임계값을 만들지 말고 중앙 계약
+변경을 먼저 제안해야 한다.

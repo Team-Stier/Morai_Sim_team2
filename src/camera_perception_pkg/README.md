@@ -1,6 +1,8 @@
 # camera_perception_pkg
 
-> **INTERFACE LOCK:** 이 패키지는 [`ros_architecture_pkg`](../ros_architecture_pkg/README.md)의 중앙 ROS 계약을 따른다. 구체 node/topic/message/frame 이름은 여기서 정의하지 않는다.
+> **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
+> [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
+> 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
 
 ## 담당 범위
 
@@ -22,14 +24,41 @@
 - Ground Truth와 2D/3D Bounding Box를 사용할 수 없다.
 - 허용 UDP에 신호등 정답 전용 채널이 없으므로 sample scene의 신호 상태를 런타임 인식 대신 사용하지 않는다.
 
-## 논리 입출력
+## 공개 ROS 입출력
 
-- 입력: 정규화된 카메라 프레임과 중앙에서 승인한 calibration 정보
-- 출력: 센서 관측 좌표의 timestamped detection, lane/signal/free-space 관측과 품질 상태
+현재 상태는 **이름 승인, 구현 예약**이다. 내부 모델, 전처리와 보조 노드는
+자유롭게 구성하되 공개 경계는 `camera_perception_node` 하나로 유지한다.
+
+![Camera Perception 공개 입출력](docs/interface_io.svg)
+
+- [Mermaid 원본](docs/interface_io.mmd)
+- [PNG 이미지](docs/interface_io.png)
+
+**공개 node (exact):** `camera_perception_node`
+
+| 구분 | Topic | Type |
+|---|---|---|
+| 입력 | `/molit/sensors/camera/front/image/compressed` | `sensor_msgs/CompressedImage` |
+| 입력 | `/molit/sensors/camera/left/image/compressed` | `sensor_msgs/CompressedImage` |
+| 입력 | `/molit/sensors/camera/right/image/compressed` | `sensor_msgs/CompressedImage` |
+| 출력 | `/molit/perception/camera/front/observations` | `common_msgs_pkg/CameraObservationArray` |
+| 출력 | `/molit/perception/camera/left/observations` | `common_msgs_pkg/CameraObservationArray` |
+| 출력 | `/molit/perception/camera/right/observations` | `common_msgs_pkg/CameraObservationArray` |
+| 출력 | `/molit/perception/camera/status` | `common_msgs_pkg/ComponentStatus` |
+
+`CameraObservationArray`와 `ComponentStatus`는 이름만 예약됐고 실제 `.msg`
+schema는 아직 구현되지 않았다.
 
 World Model이 관측 시각의 pose를 사용해 좌표를 통합하므로 이 패키지는 최신 Localization pose로 검출 결과를 임의 투영하지 않는다.
 
 Camera mount/optical frame은 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)을 따르고, MORAI의 `Camera-1/2/3` 문자열을 새 중앙 frame 이름으로 사용하지 않는다. Detection은 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)에 따라 원본 영상의 측정시각을 유지하며 inference 완료 시각으로 덮어쓰지 않는다.
+
+## 통합 전 자체 확인
+
+- 노드의 통합 실행 이름이 정확히 `camera_perception_node`인지 확인한다.
+- 위 입력만 구독하고 위 출력의 topic/type/frame/stamp를 그대로 발행한다.
+- 내부 topic은 `/molit/internal/camera_perception/...` 또는 private name만 사용한다.
+- 공개 이름을 remap하지 않고 중앙 계약 생성 검사를 통과시킨다.
 
 ## 디렉터리
 

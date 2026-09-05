@@ -7,6 +7,7 @@ catkin_package()
 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_tf_timestamp_contract.py)
+  catkin_add_nosetests(test/test_public_interface_contract.py)
 endif()
 
 install(
