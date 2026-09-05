@@ -1,0 +1,146 @@
+{
+  "artifacts": [
+    {
+      "png": "src/camera_perception_pkg/docs/interface_io.png",
+      "png_sha256": "518d9bb3017eaca6f8877a22bb32db6b61f0a6cca034bb8cb26692d47516818f",
+      "source": "src/camera_perception_pkg/docs/interface_io.mmd",
+      "source_sha256": "9e1ae50e9d58a2a190b41dbcdddf8fe37c3d01abb9064db6edcaa39dba7dcada",
+      "svg": "src/camera_perception_pkg/docs/interface_io.svg",
+      "svg_sha256": "175d2fd93ca5471031e73281da7a20203c8bd17a9149440914f28fcace341e40"
+    },
+    {
+      "png": "src/common_msgs_pkg/docs/interface_io.png",
+      "png_sha256": "55593b3cd416b06efeb40974e09cdb4d3e5ed6d404af9a0eae947411a29fb85b",
+      "source": "src/common_msgs_pkg/docs/interface_io.mmd",
+      "source_sha256": "06567d8176ed68208fd974c2f9f77cfe68ec94b06fe13c5d1a942e3b230e74ac",
+      "svg": "src/common_msgs_pkg/docs/interface_io.svg",
+      "svg_sha256": "e2f603b7a171a7eb112173ae629e9c1a72b85dee07fe90e01423773851555a52"
+    },
+    {
+      "png": "src/global_route_manager_pkg/docs/interface_io.png",
+      "png_sha256": "bd66ecb91bf39ed5a6f550d8e56cc384248fdba32f473cfd2d58ea7e3e13f766",
+      "source": "src/global_route_manager_pkg/docs/interface_io.mmd",
+      "source_sha256": "593927185300cb5bd4736d4c4d49612548e3313c24f128797e790d287aebda17",
+      "svg": "src/global_route_manager_pkg/docs/interface_io.svg",
+      "svg_sha256": "c6db66ce0383494b48c0bd91cf3d69fcfde0918fd8370db799809fb1cc740778"
+    },
+    {
+      "png": "src/hd_map_pkg/docs/interface_io.png",
+      "png_sha256": "3dbc0ae928a18c71fc718a5ea5b673ccff0d405bcf598f0b4ef2071715ccc2d6",
+      "source": "src/hd_map_pkg/docs/interface_io.mmd",
+      "source_sha256": "940f4dbd21ce528da74dd129d23275c06f730210091c50797901cab7f8fa1cc4",
+      "svg": "src/hd_map_pkg/docs/interface_io.svg",
+      "svg_sha256": "1a68947b36703ccaddc98bd76598f2dc50b1797903ebc9d30aad78e2ece614cf"
+    },
+    {
+      "png": "src/lidar_perception_pkg/docs/interface_io.png",
+      "png_sha256": "95791a8c07e1e2f7877fb8f60523bb6e24bf751da1a7c1e0ec2338598fa88edf",
+      "source": "src/lidar_perception_pkg/docs/interface_io.mmd",
+      "source_sha256": "77931e9778d8c562d3b606ef55fe265b3daefa3bbaec2c3b6671ad0f5b9ee870",
+      "svg": "src/lidar_perception_pkg/docs/interface_io.svg",
+      "svg_sha256": "25a48d556c61ad94d058f08ed4461f10f65e7237dacf17d30b9d55f4b034bacc"
+    },
+    {
+      "png": "src/localization_pkg/docs/interface_io.png",
+      "png_sha256": "feddc9642bda184443a369e9e014fdb11741e4e5fcbc51d4ba63390f075c569e",
+      "source": "src/localization_pkg/docs/interface_io.mmd",
+      "source_sha256": "bd4469b87cfc47646d355bdfb59cf0fa738f924010feaf83565d40af97859ffd",
+      "svg": "src/localization_pkg/docs/interface_io.svg",
+      "svg_sha256": "52774814ad28a04aa2bf65533f61808e7174d7336c3a18afb07b6efb7b3f3d7f"
+    },
+    {
+      "png": "src/morai_interface_pkg/docs/interface_io.png",
+      "png_sha256": "36416ab448ab1b12f13bf15ce0f51c4cd09345442d95e716f491bf96b3e6ab82",
+      "source": "src/morai_interface_pkg/docs/interface_io.mmd",
+      "source_sha256": "84090bd027b8895972b41c97fbf8dcc9b32fb1b006fa547706a2a04bcbb7e166",
+      "svg": "src/morai_interface_pkg/docs/interface_io.svg",
+      "svg_sha256": "969237f038105e14ba224fd7dcd4a6bf04d2091d2ba3e7dab818c6b22d95d4bf"
+    },
+    {
+      "png": "src/path_planning_pkg/docs/interface_io.png",
+      "png_sha256": "9b47e33efded1bbe3da56db7518c602086961aa0c5ba3b0e694451c2e22a2826",
+      "source": "src/path_planning_pkg/docs/interface_io.mmd",
+      "source_sha256": "8b020fa505c947487d255b72caa6323f04e530813955b5305dbd5387da792518",
+      "svg": "src/path_planning_pkg/docs/interface_io.svg",
+      "svg_sha256": "a08ab99b3abae94704276aa8e8ed0c791d1064c292e13eab4759d7a5bfa04c25"
+    },
+    {
+      "png": "src/ros_architecture_pkg/docs/interface_io.png",
+      "png_sha256": "8f67af69bdab84b35ef5ac3f34fa984efdeab1bb1c43439354bd3ab9197b4621",
+      "source": "src/ros_architecture_pkg/docs/interface_io.mmd",
+      "source_sha256": "934b22e78ba8bb04523570d9f9fa8eedbf13f3435c095a72d592de8d999e8a8c",
+      "svg": "src/ros_architecture_pkg/docs/interface_io.svg",
+      "svg_sha256": "5fad6d38bb65597463196107a164e17f43edc9dd6086e19cd6c5fe9733c72cd0"
+    },
+    {
+      "png": "src/ros_architecture_pkg/docs/system_architecture.png",
+      "png_sha256": "91cdea5d9f92008a73c82bcda58496eeff0e5e4b8e17cb579645770ec9d6f523",
+      "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
+      "source_sha256": "2233b0a8f17fd3bb6b95c332c55e6b773c36f056523bbcaa2c6b915cffbf66c7",
+      "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
+      "svg_sha256": "f93cb3919e2057c1171270e0a18ea577f161a73e3defb2cb728006300faceddb"
+    },
+    {
+      "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
+      "png_sha256": "034dd554c375e2e99f4eb77c5c9cf583efcc166b08d2cf5cc92e3069eca75296",
+      "source": "src/ros_architecture_pkg/docs/system_health_safety_flow.mmd",
+      "source_sha256": "de488490ef2a5c38f4cd37dd272d06d396bb65c40f9d1afa9d260ae70cc9c149",
+      "svg": "src/ros_architecture_pkg/docs/system_health_safety_flow.svg",
+      "svg_sha256": "30ff9dd1cef0ef7bde56763a6516fdd2966d523c3d1022927d2a625a8c9b7241"
+    },
+    {
+      "png": "src/ros_architecture_pkg/docs/system_nominal_flow.png",
+      "png_sha256": "c80be693d44de399a28de9af91678267d241f8abb4db72be93359810fe76fa30",
+      "source": "src/ros_architecture_pkg/docs/system_nominal_flow.mmd",
+      "source_sha256": "ccd586971168d7c49d305773aa55f83b532a7e8b31cd14f44c5aaacceb8f4c00",
+      "svg": "src/ros_architecture_pkg/docs/system_nominal_flow.svg",
+      "svg_sha256": "9e8872bb0466d3674e7a28598656c14aef95f5d22a156dc121f7e57e32ec11ae"
+    },
+    {
+      "png": "src/runtime_evaluation_pkg/docs/interface_io.png",
+      "png_sha256": "b16c21272f964fe871eb501c64c7769130464651368267ae46eaf27347dfd123",
+      "source": "src/runtime_evaluation_pkg/docs/interface_io.mmd",
+      "source_sha256": "61add819a3d98050b20f1a4da83398f51cdb60b7ff1cbfb9b901834533de22f8",
+      "svg": "src/runtime_evaluation_pkg/docs/interface_io.svg",
+      "svg_sha256": "13696744dc2694ce940492f98ab882fda5797d837393173eb2c042dc00748db4"
+    },
+    {
+      "png": "src/safety_supervisor_pkg/docs/interface_io.png",
+      "png_sha256": "50a8eebd373bc2d4d211a1c4b374baf9efa56da0a63d1e549c0513a097623fa9",
+      "source": "src/safety_supervisor_pkg/docs/interface_io.mmd",
+      "source_sha256": "58300288bfb76051a367edb8be58fc92a4b70fc7e804877bc7bfdd3a88d7a30d",
+      "svg": "src/safety_supervisor_pkg/docs/interface_io.svg",
+      "svg_sha256": "6169a888974ac039c6f9d14618ef8d8e4c3011bb16ee5c38cb30fdce9561a93d"
+    },
+    {
+      "png": "src/system_bringup_pkg/docs/interface_io.png",
+      "png_sha256": "d939a0bb2b2916ad2b8bb6f4f0afcde52dffb6a7a3d795918654aba1e78dba8e",
+      "source": "src/system_bringup_pkg/docs/interface_io.mmd",
+      "source_sha256": "b269f6115bf3865b4d1422a1bceb460d4e7e50bb79bffe186812cd0687fd536d",
+      "svg": "src/system_bringup_pkg/docs/interface_io.svg",
+      "svg_sha256": "67f2c92464eb79c9b441e8cc7d7fabb2b16669248eac971f3ffb0474ee9e4c2f"
+    },
+    {
+      "png": "src/vehicle_control_pkg/docs/interface_io.png",
+      "png_sha256": "68c3d46677e3c4ff3b8fd358c5fe3712fdcf3f66de4a4222a12f6a0ab7a7c4ff",
+      "source": "src/vehicle_control_pkg/docs/interface_io.mmd",
+      "source_sha256": "f1602b0dfa0145cbac9d47a83eda44795b636e6ac2cdf9dd02fe6f1f30da7967",
+      "svg": "src/vehicle_control_pkg/docs/interface_io.svg",
+      "svg_sha256": "c5238fcf300a75dfc4415005bddf631422db83c85b87cb04933bda4270b373ef"
+    },
+    {
+      "png": "src/world_model_pkg/docs/interface_io.png",
+      "png_sha256": "c920289c6e44ee60d5ec91e929c42e43aa2061b32665941ef630051f755fbc35",
+      "source": "src/world_model_pkg/docs/interface_io.mmd",
+      "source_sha256": "03dffc88d42a234427d9cf798efe0d8d1391aa8daf2d061592fcb68cfa0923f2",
+      "svg": "src/world_model_pkg/docs/interface_io.svg",
+      "svg_sha256": "d259a44b324132011bace1e659481d629a6140f0017ae4952ffaff5a0e1dd812"
+    }
+  ],
+  "renderer": "@mermaid-js/mermaid-cli@11.16.0",
+  "renderer_config": "src/ros_architecture_pkg/config/mermaid_renderer.json",
+  "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
+  "schema_version": 1,
+  "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
+  "source_of_truth_sha256": "f68cb6fa0de0e15fe38e49d599faadf5d516f4a2df5f04d38c85a820d22bd497"
+}

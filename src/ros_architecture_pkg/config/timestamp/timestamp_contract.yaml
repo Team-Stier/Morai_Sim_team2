@@ -14,6 +14,116 @@ definitions:
   publication_time: Time at which a producer publishes its processed output.
   steady_watchdog_time: Monotonic wall time used only to detect a frozen ROS clock or transport.
 
+timestamp_source_registry:
+  morai_camera_packet_frame_time:
+    kind: verified_external_raw
+    canonical_semantic: source_sensor_measurement_time
+    clock_domain: ros_time
+    message_stamp_carried: true
+    verification_scope: development_live_2026_09_03_not_competition_final
+    allowed_topics:
+      - /molit/sensors/camera/front/image/compressed
+      - /molit/sensors/camera/left/image/compressed
+      - /molit/sensors/camera/right/image/compressed
+  morai_interface_ingress_time:
+    kind: canonical_ingress_fallback
+    canonical_semantic: measurement_time
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    provenance: ingress_fallback
+    quality_effect: degraded
+    allowed_owner_packages: [morai_interface_pkg]
+    allowed_topics:
+      - /molit/sensors/gps/fix
+      - /molit/internal/morai_interface/lidar/packets
+      - /molit/sensors/imu/data
+      - /molit/vehicle/twist
+      - /molit/sensors/lidar/points
+      - /molit/events/collision
+  source_sensor_measurement_time:
+    kind: canonical_derived
+    canonical_semantic: measurement_time
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    downstream_overwrite_allowed: false
+    allowed_topics:
+      - /molit/perception/camera/front/observations
+      - /molit/perception/camera/left/observations
+      - /molit/perception/camera/right/observations
+      - /molit/perception/lidar/observations
+  estimate_valid_time:
+    kind: canonical_derived
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    allowed_topics:
+      - /molit/localization/local/odometry
+      - /molit/localization/ego_state
+  fusion_reference_time:
+    kind: canonical_derived
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    allowed_topics:
+      - /molit/world_model/scene
+  ego_pose_time_used_for_route_matching:
+    kind: canonical_derived
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    allowed_topics:
+      - /molit/route/context
+  planning_reference_time:
+    kind: canonical_derived
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    allowed_topics:
+      - /molit/planning/trajectory
+  command_generation_time:
+    kind: canonical_derived
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    allowed_topics:
+      - /molit/control/nominal_command
+      - /molit/safety/final_command
+  status_evaluation_time:
+    kind: canonical_status
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    allowed_topics:
+      - /molit/interface/status
+      - /molit/map/status
+      - /molit/perception/camera/status
+      - /molit/perception/lidar/status
+      - /molit/localization/status
+      - /molit/route/status
+      - /molit/world_model/status
+      - /molit/planning/status
+      - /molit/control/status
+      - /molit/system/readiness
+      - /molit/safety/state
+  map_version_load_time:
+    kind: canonical_static_data
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    allowed_topics:
+      - /molit/map/hd_map
+  route_activation_time:
+    kind: canonical_static_data
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    allowed_topics:
+      - /molit/route/global_path
+  metric_evaluation_time:
+    kind: canonical_observer
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    allowed_topics:
+      - /molit/evaluation/metrics
+  steady_watchdog_time:
+    kind: watchdog_only
+    clock_domain: monotonic_wall
+    message_stamp_carried: false
+    allowed_topics:
+      - /molit/sensors/lidar/status
+
 clock_modes:
   live_morai:
     ros_use_sim_time: false
@@ -52,6 +162,27 @@ header_stamp_contract:
     - ingress_fallback
     - recorded_measurement
 
+provenance_transport_policy:
+  fixed_source_topic_rule: >-
+    When one topic has exactly one approved timestamp source, the topic contract
+    is the authoritative provenance and a standard ROS sensor message does not
+    need a non-standard per-sample field.
+  fixed_ingress_fallback_topics:
+    - /molit/sensors/gps/fix
+    - /molit/internal/morai_interface/lidar/packets
+    - /molit/sensors/imu/data
+    - /molit/vehicle/twist
+    - /molit/sensors/lidar/points
+    - /molit/events/collision
+  mixed_source_rule: >-
+    A topic must not mix source-measurement and ingress-fallback stamps until an
+    approved custom message field or companion status contract carries per-sample provenance.
+  aggregate_runtime_quality_topic: /molit/interface/status
+  aggregate_runtime_quality_status: reserved_schema_not_implemented
+  consumer_rule: >-
+    Consumers must treat fixed ingress-fallback topics as degraded timing evidence
+    even when the standard message itself has no provenance field.
+
 derived_message_contract:
   localization:
     stamp: estimate_valid_time
@@ -70,7 +201,19 @@ derived_message_contract:
     rule: A separate validity horizon must be added when the trajectory message is approved.
   control_and_safety:
     stamp: command_generation_time
-    rule: Input measurement stamps remain available for end-to-end age checks.
+    rule: Input measurement stamps remain available for full-pipeline age checks.
+  status:
+    stamp: status_evaluation_time
+    rule: Status age fields refer to their monitored data, not merely publication time.
+  hd_map:
+    stamp: map_version_load_time
+    rule: Static map identity and source hash remain the primary version evidence.
+  global_route:
+    stamp: route_activation_time
+    rule: Route activation time does not replace the ego pose time used by route context.
+  runtime_metrics:
+    stamp: metric_evaluation_time
+    rule: Metric time is observer output time and never enters the command path.
 
 ordering_and_reset_policy:
   per_source_regression: reject_and_report

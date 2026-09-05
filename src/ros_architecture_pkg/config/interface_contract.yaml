@@ -1,84 +1,275 @@
-schema_version: 1
-contract_version: 0.2.0
-status: partially_approved
+schema_version: 2
+contract_version: 1.0.0
+status: public_names_approved_runtime_implementation_partial
 
 authority:
   package: ros_architecture_pkg
   rule: >-
-    Empty lists mean that no public ROS interface has been approved yet.
-    They do not authorize packages to invent temporary public names.
+    This file is the single source of truth for every public ROS node, topic,
+    message type, producer and consumer. Package READMEs and diagrams are
+    projections of this contract and must not redefine it.
+
+public_interface_policy:
+  topic_namespace: /molit
+  internal_topic_namespace_template: /molit/internal/<package_name_without_pkg>/...
+  integrated_launch_node_namespace: /
+  node_entries_are_basenames_under_integrated_namespace: true
+  integrated_launch_node_names_are_exact: true
+  public_topic_remap_allowed: false
+  public_node_remap_allowed: false
+  single_producer_per_topic: true
+  package_internal_implementation: free_within_owned_internal_namespace
+  rules:
+    - External packages connect only through topics listed in package_boundaries.
+    - Internal nodes and topics must not be consumed directly by another package.
+    - A public name or type change starts here and updates every producer and consumer together.
+    - Only safety_supervisor_node may produce /molit/safety/final_command.
+    - Only morai_control_sender may send the approved final command to MORAI.
+    - Runtime evaluation is read-only and cannot appear in a command-producing path.
+
+runtime_evidence_policy:
+  expected_rate_hz: design_or_configured_target_until_runtime_measured
+  numeric_rate_is_not_live_rate_evidence: true
+  pending_timeout_rule: measure_source_period_jitter_and_processing_latency_before_approval
+  reserved_name_is_not_implementation_evidence: true
+
+planning_policy:
+  planner_class: modular_behavior_and_motion_planner
+  owner_package: path_planning_pkg
+  public_boundary_node: path_planner_node
+  implementation_status: reserved_not_implemented
+  input_groups:
+    localization:
+      - /molit/localization/local/odometry
+      - /molit/localization/ego_state
+      - /molit/localization/status
+    route:
+      - /molit/route/context
+      - /molit/route/status
+    world_model:
+      - /molit/world_model/scene
+      - /molit/world_model/status
+  approved_public_outputs:
+    trajectory:
+      topic: /molit/planning/trajectory
+      frame: odom
+    status:
+      topic: /molit/planning/status
+      frame: not_applicable
+  direct_actuator_output_allowed: false
+  rules:
+    - Path Planning consumes only approved Localization, Route and World Model public topics.
+    - Raw Camera and LiDAR inputs remain owned by their sensor and perception packages.
+    - Planning reports input validity, replanning state and trajectory validity on planning status.
+    - Path Planning never bypasses vehicle_controller_node or safety_supervisor_node.
+
+runtime_readiness_policy:
+  status: semantics_approved_required_channel_sets_pending_runtime_validation
+  rules:
+    - A channel with runtime_activation_allowed false cannot be required by an active bringup profile.
+    - Required and optional channel sets must be explicit in each system_bringup_pkg runtime profile.
+    - Interface transport health and downstream estimation quality are separate decisions.
+  gps_blackout:
+    expected_operating_condition: true
+    gps_stale_or_no_fix_alone_requires_stop: false
+    motion_requires_fresh_local_odometry: true
+    motion_requires_localization_quality_within_approved_bounds: true
+    last_gps_fix_must_not_be_reused_as_current_position_truth: true
 
 contract_modules:
+  package_registry:
+    path: package_registry.yaml
+    required_contract_version: 0.1.0
   tf:
     frame_contract: tf/frame_contract.yaml
     sensor_extrinsics: tf/sensor_extrinsics.yaml
+    required_contract_version: 0.1.0
   timestamp:
     timestamp_contract: timestamp/timestamp_contract.yaml
+    required_contract_version: 0.1.0
   morai_interface:
     udp_ros_bridge: morai_interface/udp_ros_bridge.yaml
+    required_contract_version: 0.1.0
 
-# Populate interface lists only after the producer-consumer contract is reviewed.
 nodes:
   - name: morai_camera_front
     owner_package: morai_interface_pkg
     executable: camera_receiver_node
+    visibility: public_boundary
+    external_transport_role: ingress_adapter
     status: development_live_transport_verified
+    diagram_description_ko: 전방 카메라 UDP 영상을 ROS 압축 영상으로 변환
     details: morai_interface/udp_ros_bridge.yaml
   - name: morai_camera_left
     owner_package: morai_interface_pkg
     executable: camera_receiver_node
+    visibility: public_boundary
+    external_transport_role: ingress_adapter
     status: development_live_transport_verified
+    diagram_description_ko: 좌측 카메라 UDP 영상을 ROS 압축 영상으로 변환
     details: morai_interface/udp_ros_bridge.yaml
   - name: morai_camera_right
     owner_package: morai_interface_pkg
     executable: camera_receiver_node
+    visibility: public_boundary
+    external_transport_role: ingress_adapter
     status: development_live_transport_verified
+    diagram_description_ko: 우측 카메라 UDP 영상을 ROS 압축 영상으로 변환
     details: morai_interface/udp_ros_bridge.yaml
   - name: morai_gps_bridge
     owner_package: morai_interface_pkg
     executable: gps_receiver_node
+    visibility: public_boundary
+    external_transport_role: ingress_adapter
     status: development_live_transport_verified
+    diagram_description_ko: MORAI GPS GGA를 ROS 위치 fix로 변환
     details: morai_interface/udp_ros_bridge.yaml
   - name: morai_imu_bridge
     owner_package: morai_interface_pkg
     executable: imu_receiver_node
+    visibility: public_boundary
+    external_transport_role: ingress_adapter
     status: provisional_disabled
+    diagram_description_ko: MORAI IMU 패킷을 ROS IMU 데이터로 변환
     details: morai_interface/udp_ros_bridge.yaml
   - name: morai_vehicle_status_bridge
     owner_package: morai_interface_pkg
     executable: vehicle_status_receiver_node
+    visibility: public_boundary
+    external_transport_role: ingress_adapter
     status: prohibited_until_competition_packet_verified
+    diagram_description_ko: 허용된 차량 운동 상태를 ROS 속도 정보로 변환
     details: morai_interface/udp_ros_bridge.yaml
   - name: morai_velodyne_manager
     owner_package: morai_interface_pkg
     implementation_package: nodelet
+    visibility: package_internal
     status: provisional_disabled
     details: morai_interface/udp_ros_bridge.yaml
   - name: morai_velodyne_driver
     owner_package: morai_interface_pkg
     implementation_package: velodyne_driver
+    visibility: package_internal
+    external_transport_role: ingress_adapter
     status: provisional_disabled
     details: morai_interface/udp_ros_bridge.yaml
   - name: morai_velodyne_cloud
     owner_package: morai_interface_pkg
     implementation_package: velodyne_pointcloud
+    visibility: public_boundary
     status: provisional_disabled
+    diagram_description_ko: VLP16 패킷을 ROS 3차원 점군으로 변환
     details: morai_interface/udp_ros_bridge.yaml
   - name: morai_lidar_watchdog
     owner_package: morai_interface_pkg
     executable: lidar_watchdog_node
+    visibility: public_boundary
     status: development_diagnostic_disabled
+    diagram_description_ko: LiDAR 점군의 최근 수신 여부를 감시
     details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_collision_bridge
+    owner_package: morai_interface_pkg
+    executable: collision_receiver_node
+    visibility: public_boundary
+    external_transport_role: ingress_adapter
+    status: reserved_not_implemented
+    diagram_description_ko: 허용된 충돌 데이터를 ROS 충돌 이벤트로 변환
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_interface_status_node
+    owner_package: morai_interface_pkg
+    executable: interface_status_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: MORAI 채널의 연결과 데이터 상태를 종합
+  - name: morai_control_sender
+    owner_package: morai_interface_pkg
+    executable: control_sender_node
+    visibility: public_boundary
+    external_transport_role: egress_adapter
+    status: reserved_not_implemented_pending_competition_packet
+    diagram_description_ko: Safety 최종 명령을 MORAI 제어 패킷으로 송신
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: hd_map_server_node
+    owner_package: hd_map_pkg
+    executable: hd_map_server_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: 정적 HD Map을 검증해 버전 상태와 함께 발행
+  - name: camera_perception_node
+    owner_package: camera_perception_pkg
+    executable: camera_perception_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: 세 카메라 영상에서 객체와 차선 관측을 생성
+  - name: lidar_perception_node
+    owner_package: lidar_perception_pkg
+    executable: lidar_perception_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: 점군에서 장애물과 지면 및 빈 공간을 추출
+  - name: localization_node
+    owner_package: localization_pkg
+    executable: localization_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: 센서와 지도를 융합해 차량 위치와 움직임을 추정
+  - name: global_route_manager_node
+    owner_package: global_route_manager_pkg
+    executable: global_route_manager_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: 전역경로 진행도와 다음 주행 구간 정보를 계산
+  - name: world_model_node
+    owner_package: world_model_pkg
+    executable: world_model_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: 지도와 센서 관측을 시각과 좌표 기준으로 통합
+  - name: path_planner_node
+    owner_package: path_planning_pkg
+    executable: path_planner_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: 위치와 경로 및 통합 장면으로 지역 궤적을 생성
+    policy_role: modular_behavior_and_motion_planning
+  - name: vehicle_controller_node
+    owner_package: vehicle_control_pkg
+    executable: vehicle_controller_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: 궤적 추종용 조향과 가속 및 제동을 계산
+  - name: system_readiness_node
+    owner_package: system_bringup_pkg
+    executable: system_readiness_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: 필수 상류 구성요소의 준비 여부를 종합
+  - name: safety_supervisor_node
+    owner_package: safety_supervisor_pkg
+    executable: safety_supervisor_node
+    visibility: public_boundary
+    status: reserved_not_implemented
+    diagram_description_ko: 명령을 검사하고 제한하거나 안전 정지를 결정
+  - name: runtime_evaluator_node
+    owner_package: runtime_evaluation_pkg
+    executable: runtime_evaluator_node
+    visibility: public_boundary
+    status: reserved_not_implemented_read_only
+    diagram_description_ko: 주행 흐름을 관찰해 성능과 안전 지표를 산출
+
 topics:
   - name: /molit/sensors/camera/front/image/compressed
     owner_package: morai_interface_pkg
     producers: [morai_camera_front]
-    consumers: [camera_perception_pkg]
+    consumers: [camera_perception_node]
+    status: development_live_transport_verified
+    visibility: public
     data_meaning: Front camera JPEG image observation
+    diagram_description_ko: 전방 카메라 압축 영상
     data_type: sensor_msgs/CompressedImage
     unit: encoded_jpeg_bytes
     frame: camera_front_optical_frame
-    timestamp_source: source_measurement_packet
+    timestamp_source: morai_camera_packet_frame_time
     expected_rate_hz: 20.0
     queue_policy: publisher_queue_2_drop_old
     timeout_sec: pending_live_jitter_measurement
@@ -86,12 +277,15 @@ topics:
   - name: /molit/sensors/camera/left/image/compressed
     owner_package: morai_interface_pkg
     producers: [morai_camera_left]
-    consumers: [camera_perception_pkg]
+    consumers: [camera_perception_node]
+    status: development_live_transport_verified
+    visibility: public
     data_meaning: Left camera JPEG image observation
+    diagram_description_ko: 좌측 카메라 압축 영상
     data_type: sensor_msgs/CompressedImage
     unit: encoded_jpeg_bytes
     frame: camera_left_optical_frame
-    timestamp_source: source_measurement_packet
+    timestamp_source: morai_camera_packet_frame_time
     expected_rate_hz: 20.0
     queue_policy: publisher_queue_2_drop_old
     timeout_sec: pending_live_jitter_measurement
@@ -99,12 +293,15 @@ topics:
   - name: /molit/sensors/camera/right/image/compressed
     owner_package: morai_interface_pkg
     producers: [morai_camera_right]
-    consumers: [camera_perception_pkg]
+    consumers: [camera_perception_node]
+    status: development_live_transport_verified
+    visibility: public
     data_meaning: Right camera JPEG image observation
+    diagram_description_ko: 우측 카메라 압축 영상
     data_type: sensor_msgs/CompressedImage
     unit: encoded_jpeg_bytes
     frame: camera_right_optical_frame
-    timestamp_source: source_measurement_packet
+    timestamp_source: morai_camera_packet_frame_time
     expected_rate_hz: 20.0
     queue_policy: publisher_queue_2_drop_old
     timeout_sec: pending_live_jitter_measurement
@@ -112,8 +309,11 @@ topics:
   - name: /molit/sensors/gps/fix
     owner_package: morai_interface_pkg
     producers: [morai_gps_bridge]
-    consumers: [localization_pkg]
+    consumers: [localization_node]
+    status: development_live_transport_verified
+    visibility: public
     data_meaning: One GGA-derived GPS geodetic fix per MORAI measurement epoch
+    diagram_description_ko: GPS 위도·경도·고도와 fix 상태
     data_type: sensor_msgs/NavSatFix
     unit: deg_deg_m
     frame: gps_link
@@ -127,11 +327,13 @@ topics:
     producers: [morai_velodyne_driver]
     consumers: [morai_velodyne_cloud]
     runtime_graph_caller: morai_velodyne_manager
+    status: provisional_disabled
+    visibility: package_internal
     data_meaning: Package-internal decoded VLP16 UDP packet scan
     data_type: velodyne_msgs/VelodyneScan
     unit: raw_velodyne_packet_bytes
     frame: lidar_link
-    timestamp_source: source_measurement_packet
+    timestamp_source: morai_interface_ingress_time
     expected_rate_hz: packet_level_pending_live_measurement
     queue_policy: velodyne_driver_internal
     timeout_sec: pending_live_jitter_measurement
@@ -139,8 +341,11 @@ topics:
   - name: /molit/sensors/imu/data
     owner_package: morai_interface_pkg
     producers: [morai_imu_bridge]
-    consumers: [localization_pkg]
+    consumers: [localization_node]
+    status: provisional_disabled
+    visibility: public
     data_meaning: IMU orientation angular velocity and linear acceleration
+    diagram_description_ko: 차량 자세·각속도·선형가속도
     data_type: sensor_msgs/Imu
     unit: quaternion_rad_per_sec_m_per_sec2_pending_live_verification
     frame: imu_link
@@ -152,8 +357,11 @@ topics:
   - name: /molit/vehicle/twist
     owner_package: morai_interface_pkg
     producers: [morai_vehicle_status_bridge]
-    consumers: [localization_pkg]
+    consumers: [localization_node]
+    status: prohibited_until_competition_packet_verified
+    visibility: public
     data_meaning: Competition-allowed ego body twist only
+    diagram_description_ko: 차량의 선속도·각속도
     data_type: geometry_msgs/TwistWithCovarianceStamped
     unit: pending_competition_packet_spec
     frame: base_link
@@ -165,13 +373,16 @@ topics:
   - name: /molit/sensors/lidar/points
     owner_package: morai_interface_pkg
     producers: [morai_velodyne_cloud]
-    consumers: [morai_lidar_watchdog, lidar_perception_pkg]
+    consumers: [morai_lidar_watchdog, lidar_perception_node, localization_node]
     runtime_graph_caller: morai_velodyne_manager
+    status: provisional_disabled
+    visibility: public
     data_meaning: VLP16 point cloud observation
+    diagram_description_ko: LiDAR 3차원 점군
     data_type: sensor_msgs/PointCloud2
     unit: m_and_sensor_fields
     frame: lidar_link
-    timestamp_source: source_measurement_packet
+    timestamp_source: morai_interface_ingress_time
     expected_rate_hz: 10.0
     queue_policy: external_driver_default_pending_measurement
     timeout_sec: pending_live_jitter_measurement
@@ -179,8 +390,11 @@ topics:
   - name: /molit/sensors/lidar/status
     owner_package: morai_interface_pkg
     producers: [morai_lidar_watchdog]
-    consumers: [system_bringup_pkg]
+    consumers: [lidar_perception_node, morai_interface_status_node]
+    status: development_diagnostic_disabled
+    visibility: public
     data_meaning: Development-only recent LiDAR points received flag
+    diagram_description_ko: LiDAR 최근 수신 여부
     data_type: std_msgs/Bool
     unit: boolean
     frame: not_applicable
@@ -189,6 +403,430 @@ topics:
     queue_policy: publisher_queue_1_latched
     timeout_sec: 1.0
     invalid_data_policy: false_when_no_points_after_timeout
+  - name: /molit/events/collision
+    owner_package: morai_interface_pkg
+    producers: [morai_collision_bridge]
+    consumers: [safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_not_implemented_pending_competition_packet
+    visibility: public
+    data_meaning: Collision event allowed by the competition interface
+    diagram_description_ko: 충돌 발생 정보
+    data_type: common_msgs_pkg/CollisionEvent
+    unit: pending_competition_packet_spec
+    frame: pending_competition_packet_spec
+    timestamp_source: morai_interface_ingress_time
+    expected_rate_hz: event_driven
+    queue_policy: publisher_queue_10
+    timeout_sec: not_applicable_event
+    invalid_data_policy: reject_invalid_packet_and_raise_interface_fault
+  - name: /molit/interface/status
+    owner_package: morai_interface_pkg
+    producers: [morai_interface_status_node]
+    consumers: [system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_not_implemented
+    visibility: public
+    data_meaning: Aggregated MORAI channel connectivity freshness decode health and timestamp provenance quality
+    diagram_description_ko: MORAI 통신·신선도·디코딩·시각 품질
+    data_type: common_msgs_pkg/InterfaceStatus
+    unit: state_age_sec_and_counters
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 2.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: fail_closed_when_required_channel_is_unknown_or_stale
+  - name: /molit/map/hd_map
+    owner_package: hd_map_pkg
+    producers: [hd_map_server_node]
+    consumers: [localization_node, global_route_manager_node, world_model_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Versioned immutable HD map layers and topology
+    diagram_description_ko: 버전이 고정된 정적 지도와 연결 구조
+    data_type: common_msgs_pkg/HdMap
+    unit: m_rad_and_semantic_attributes
+    frame: map
+    timestamp_source: map_version_load_time
+    expected_rate_hz: latched_on_validated_version_change
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: not_applicable_static_version
+    invalid_data_policy: do_not_publish_unvalidated_map_or_hash
+  - name: /molit/map/status
+    owner_package: hd_map_pkg
+    producers: [hd_map_server_node]
+    consumers: [localization_node, global_route_manager_node, world_model_node, system_readiness_node, safety_supervisor_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Loaded map version hash frame and validation state
+    diagram_description_ko: 지도 버전·해시·좌표계·검증 상태
+    data_type: common_msgs_pkg/ComponentStatus
+    unit: state_age_sec_and_counters
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 2.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_runtime_policy
+    invalid_data_policy: invalid_until_version_hash_and_frame_are_verified
+  - name: /molit/perception/camera/front/observations
+    owner_package: camera_perception_pkg
+    producers: [camera_perception_node]
+    consumers: [world_model_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Timestamped front-camera object lane signal and free-space observations
+    diagram_description_ko: 전방 영상의 객체·차선·신호·빈 공간 관측
+    data_type: common_msgs_pkg/CameraObservationArray
+    unit: pixel_normalized_image_coordinates_confidence
+    frame: camera_front_optical_frame
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 20.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_inference_latency_and_jitter_measurement
+    invalid_data_policy: publish_explicit_invalid_status_never_retimestamp_old_result
+  - name: /molit/perception/camera/left/observations
+    owner_package: camera_perception_pkg
+    producers: [camera_perception_node]
+    consumers: [world_model_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Timestamped left-camera object lane signal and free-space observations
+    diagram_description_ko: 좌측 영상의 객체·차선·신호·빈 공간 관측
+    data_type: common_msgs_pkg/CameraObservationArray
+    unit: pixel_normalized_image_coordinates_confidence
+    frame: camera_left_optical_frame
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 20.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_inference_latency_and_jitter_measurement
+    invalid_data_policy: publish_explicit_invalid_status_never_retimestamp_old_result
+  - name: /molit/perception/camera/right/observations
+    owner_package: camera_perception_pkg
+    producers: [camera_perception_node]
+    consumers: [world_model_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Timestamped right-camera object lane signal and free-space observations
+    diagram_description_ko: 우측 영상의 객체·차선·신호·빈 공간 관측
+    data_type: common_msgs_pkg/CameraObservationArray
+    unit: pixel_normalized_image_coordinates_confidence
+    frame: camera_right_optical_frame
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 20.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_inference_latency_and_jitter_measurement
+    invalid_data_policy: publish_explicit_invalid_status_never_retimestamp_old_result
+  - name: /molit/perception/camera/status
+    owner_package: camera_perception_pkg
+    producers: [camera_perception_node]
+    consumers: [world_model_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Camera input freshness inference health and observation validity
+    diagram_description_ko: 영상 신선도·처리 상태·관측 유효성
+    data_type: common_msgs_pkg/ComponentStatus
+    unit: state_age_sec_and_counters
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 2.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_inference_latency_and_jitter_measurement
+    invalid_data_policy: degraded_or_fault_when_required_view_is_missing
+  - name: /molit/perception/lidar/observations
+    owner_package: lidar_perception_pkg
+    producers: [lidar_perception_node]
+    consumers: [world_model_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Timestamped LiDAR objects obstacles ground and free-space observations
+    diagram_description_ko: LiDAR 객체·장애물·지면·빈 공간 관측
+    data_type: common_msgs_pkg/LidarObservationArray
+    unit: m_confidence_and_class
+    frame: lidar_link
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_processing_latency_and_jitter_measurement
+    invalid_data_policy: publish_explicit_invalid_status_never_retimestamp_old_result
+  - name: /molit/perception/lidar/status
+    owner_package: lidar_perception_pkg
+    producers: [lidar_perception_node]
+    consumers: [world_model_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: LiDAR input freshness processing health and observation validity
+    diagram_description_ko: 점군 신선도·처리 상태·관측 유효성
+    data_type: common_msgs_pkg/ComponentStatus
+    unit: state_age_sec_and_counters
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 2.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_processing_latency_and_jitter_measurement
+    invalid_data_policy: degraded_or_fault_when_point_cloud_is_missing
+  - name: /molit/localization/local/odometry
+    owner_package: localization_pkg
+    producers: [localization_node]
+    consumers: [world_model_node, path_planner_node, vehicle_controller_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_not_implemented
+    visibility: public
+    data_meaning: Locally continuous odometry that is not absolute map truth
+    diagram_description_ko: 연속적인 차량 상대 이동이며 절대 지도 위치가 아님
+    data_type: nav_msgs/Odometry
+    unit: m_rad_m_per_sec_rad_per_sec
+    frame: odom
+    child_frame: base_link
+    timestamp_source: estimate_valid_time
+    expected_rate_hz: 50.0
+    queue_policy: publisher_queue_10_drop_old
+    timeout_sec: pending_sensor_jitter_measurement
+    invalid_data_policy: publish_covariance_and_stop_required_status_when_unreliable
+  - name: /molit/localization/ego_state
+    owner_package: localization_pkg
+    producers: [localization_node]
+    consumers: [global_route_manager_node, world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Best map-referenced ego pose motion uncertainty and validity
+    diagram_description_ko: 지도 기준 차량 자세·움직임·불확실성
+    data_type: common_msgs_pkg/EgoState
+    unit: m_rad_m_per_sec_rad_per_sec_covariance
+    frame: map
+    motion_frame: base_link
+    timestamp_source: estimate_valid_time
+    expected_rate_hz: 50.0
+    queue_policy: publisher_queue_10_drop_old
+    timeout_sec: pending_sensor_jitter_measurement
+    invalid_data_policy: retain_explicit_uncertainty_and_quality_during_gps_blackout
+  - name: /molit/localization/status
+    owner_package: localization_pkg
+    producers: [localization_node]
+    consumers: [global_route_manager_node, world_model_node, path_planner_node, vehicle_controller_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Localization mode including nominal dead-reckoning degraded and lost
+    diagram_description_ko: 위치추정 모드·품질·유효성
+    data_type: common_msgs_pkg/LocalizationStatus
+    unit: state_age_sec_covariance_and_reason
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_sensor_jitter_measurement
+    invalid_data_policy: lost_or_stop_required_when_pose_contract_cannot_be_met
+  - name: /molit/route/global_path
+    owner_package: global_route_manager_pkg
+    producers: [global_route_manager_node]
+    consumers: [runtime_evaluator_node]
+    status: reserved_not_implemented
+    visibility: public
+    data_meaning: Validated immutable competition global route geometry
+    diagram_description_ko: 검증된 고정 전역경로 형상
+    data_type: nav_msgs/Path
+    unit: m_and_quaternion
+    frame: map
+    timestamp_source: route_activation_time
+    expected_rate_hz: latched_on_validated_route_change
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: not_applicable_static_route
+    invalid_data_policy: do_not_publish_route_with_wrong_hash_or_checkpoint_order
+  - name: /molit/route/context
+    owner_package: global_route_manager_pkg
+    producers: [global_route_manager_node]
+    consumers: [world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Route progress upcoming geometry checkpoints speed rules and mission context
+    diagram_description_ko: 진행도·앞 경로·체크포인트·속도·미션 정보
+    data_type: common_msgs_pkg/RouteContext
+    unit: m_ratio_index_m_per_sec_and_enum
+    frame: map
+    timestamp_source: ego_pose_time_used_for_route_matching
+    expected_rate_hz: 20.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_localization_jitter_measurement
+    invalid_data_policy: invalid_when_progress_is_discontinuous_or_pose_is_unusable
+  - name: /molit/route/status
+    owner_package: global_route_manager_pkg
+    producers: [global_route_manager_node]
+    consumers: [world_model_node, path_planner_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Route hash order progress and context generation health
+    diagram_description_ko: 경로 해시·순서·진행도 계산 상태
+    data_type: common_msgs_pkg/ComponentStatus
+    unit: state_age_sec_and_counters
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 2.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_runtime_policy
+    invalid_data_policy: fault_on_wrong_route_hash_checkpoint_order_or_index
+  - name: /molit/world_model/scene
+    owner_package: world_model_pkg
+    producers: [world_model_node]
+    consumers: [path_planner_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Time-aligned map ego tracked objects occupancy free-space and traffic context
+    diagram_description_ko: 시각 정렬된 지도·차량·객체·주행 공간
+    data_type: common_msgs_pkg/WorldModel
+    unit: m_rad_m_per_sec_confidence_and_semantics
+    frame: map
+    timestamp_source: fusion_reference_time
+    expected_rate_hz: 20.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_fusion_latency_and_jitter_measurement
+    invalid_data_policy: preserve_source_age_uncertainty_and_partial_observation_flags
+  - name: /molit/world_model/status
+    owner_package: world_model_pkg
+    producers: [world_model_node]
+    consumers: [path_planner_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Fusion freshness transform availability and scene validity
+    diagram_description_ko: 융합 신선도·TF 사용 가능 여부·장면 유효성
+    data_type: common_msgs_pkg/ComponentStatus
+    unit: state_age_sec_and_counters
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 2.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_fusion_latency_and_jitter_measurement
+    invalid_data_policy: degraded_or_fault_when_required_pose_or_observation_is_stale
+  - name: /molit/planning/trajectory
+    owner_package: path_planning_pkg
+    producers: [path_planner_node]
+    consumers: [vehicle_controller_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Time-parameterized locally continuous feasible trajectory generated from route localization and world model
+    diagram_description_ko: 차량이 따라갈 시간 포함 실행 가능 지역 궤적
+    data_type: common_msgs_pkg/Trajectory
+    unit: m_rad_m_per_sec_m_per_sec2_sec
+    frame: odom
+    timestamp_source: planning_reference_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_planner_latency_and_jitter_measurement
+    invalid_data_policy: invalid_if_expired_infeasible_or_input_contract_is_stale
+  - name: /molit/planning/status
+    owner_package: path_planning_pkg
+    producers: [path_planner_node]
+    consumers: [vehicle_controller_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Planner input freshness replanning state computation latency readiness and trajectory validity
+    diagram_description_ko: 입력 신선도·계획 가능 여부·궤적 유효성
+    data_type: common_msgs_pkg/ComponentStatus
+    unit: state_age_sec_and_counters
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 2.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_planner_latency_and_jitter_measurement
+    invalid_data_policy: stop_required_when_no_fresh_feasible_trajectory_exists
+  - name: /molit/control/nominal_command
+    owner_package: vehicle_control_pkg
+    producers: [vehicle_controller_node]
+    consumers: [safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Nominal steering accelerator and brake request before safety gating
+    diagram_description_ko: Safety 검사 전 조향·가속·제동 요청
+    data_type: common_msgs_pkg/ActuatorCommand
+    unit: steering_rad_accel_0_to_1_brake_0_to_1
+    frame: base_link
+    timestamp_source: command_generation_time
+    expected_rate_hz: 50.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_controller_latency_and_jitter_measurement
+    invalid_data_policy: never_send_directly_to_morai_and_mark_expired_command_invalid
+  - name: /molit/control/status
+    owner_package: vehicle_control_pkg
+    producers: [vehicle_controller_node]
+    consumers: [system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Tracking error saturation command validity and controller health
+    diagram_description_ko: 추종 오차·포화·명령 유효성·제어기 상태
+    data_type: common_msgs_pkg/ControllerStatus
+    unit: state_age_sec_tracking_error_and_reason
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_controller_latency_and_jitter_measurement
+    invalid_data_policy: stop_required_on_nan_expired_trajectory_or_excessive_error
+  - name: /molit/system/readiness
+    owner_package: system_bringup_pkg
+    producers: [system_readiness_node]
+    consumers: [safety_supervisor_node, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Upstream subsystem readiness presented to the final safety gate without commanding motion
+    diagram_description_ko: Safety 이전 필수 모듈 준비 상태
+    scope: upstream_dependencies_only_safety_state_is_final_driving_authority
+    data_type: common_msgs_pkg/SystemReadiness
+    unit: state_component_mask_age_sec_and_reason
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 2.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_runtime_policy
+    invalid_data_policy: not_ready_when_any_required_component_is_unknown_or_faulted
+  - name: /molit/safety/final_command
+    owner_package: safety_supervisor_pkg
+    producers: [safety_supervisor_node]
+    consumers: [morai_control_sender, runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Sole validated rate-limited final actuator command for MORAI
+    diagram_description_ko: Safety 검사를 통과한 유일한 MORAI 명령
+    data_type: common_msgs_pkg/ActuatorCommand
+    unit: steering_rad_accel_0_to_1_brake_0_to_1
+    frame: base_link
+    timestamp_source: command_generation_time
+    expected_rate_hz: 50.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_safety_loop_jitter_measurement
+    invalid_data_policy: publish_fail_closed_stop_command_on_any_required_invalid_input
+    consumer_watchdog_owner: morai_control_sender
+    consumer_watchdog_timeout_sec: pending_safety_loop_jitter_measurement
+    consumer_timeout_policy: never_repeat_last_nonzero_command_and_send_only_a_packet_verified_fail_closed_stop
+  - name: /molit/safety/state
+    owner_package: safety_supervisor_pkg
+    producers: [safety_supervisor_node]
+    consumers: [runtime_evaluator_node]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Machine-readable pass limit stop and fault decision with reason
+    diagram_description_ko: 통과·제한·정지·고장 결정과 이유
+    data_type: common_msgs_pkg/SafetyState
+    unit: state_age_sec_reason_and_limit_values
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: pending_safety_loop_jitter_measurement
+    invalid_data_policy: fault_and_stop_when_state_cannot_be_evaluated
+  - name: /molit/evaluation/metrics
+    owner_package: runtime_evaluation_pkg
+    producers: [runtime_evaluator_node]
+    consumers: []
+    external_consumers: [operator_and_offline_report]
+    status: reserved_type_schema_not_implemented
+    visibility: public
+    data_meaning: Read-only runtime completion safety penalty latency and reproducibility metrics
+    diagram_description_ko: 완주·안전·패널티·지연·재현성 지표
+    data_type: common_msgs_pkg/RunMetrics
+    unit: sec_m_count_ratio_and_metadata
+    frame: not_applicable
+    timestamp_source: metric_evaluation_time
+    expected_rate_hz: 1.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: not_applicable_observer_output
+    invalid_data_policy: report_unknown_without_affecting_any_driving_node
+
 messages:
   - type: sensor_msgs/CompressedImage
     status: approved_standard_type
@@ -204,8 +842,45 @@ messages:
     status: package_internal_provisional_pending_live_lidar
   - type: std_msgs/Bool
     status: development_diagnostic_only
+  - type: nav_msgs/Odometry
+    status: approved_standard_type_name_runtime_not_implemented
+  - type: nav_msgs/Path
+    status: approved_standard_type_name_runtime_not_implemented
+  - type: common_msgs_pkg/ComponentStatus
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/CameraObservationArray
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/LidarObservationArray
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/HdMap
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/EgoState
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/LocalizationStatus
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/RouteContext
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/WorldModel
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/Trajectory
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/ActuatorCommand
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/ControllerStatus
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/SystemReadiness
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/SafetyState
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/InterfaceStatus
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/CollisionEvent
+    status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/RunMetrics
+    status: type_name_reserved_schema_not_implemented
 services: []
 actions: []
+
 frames:
   - name: map
     details: tf/frame_contract.yaml
@@ -231,6 +906,7 @@ frames:
     details: tf/frame_contract.yaml
   - name: imu_link
     details: tf/frame_contract.yaml
+
 parameters:
   - owner_package: morai_interface_pkg
     scope: private_node_parameters
@@ -240,6 +916,8 @@ required_interface_fields:
   - owner_package
   - producers
   - consumers
+  - status
+  - visibility
   - data_meaning
   - data_type
   - unit
@@ -249,6 +927,390 @@ required_interface_fields:
   - queue_policy
   - timeout_sec
   - invalid_data_policy
+
+package_boundaries:
+  ros_architecture_pkg:
+    diagram_summary_ko: 공개 ROS 인터페이스와 TF·시간·UDP 규칙을 승인하고 검증
+    runtime_status: governance_no_runtime_io
+    public_nodes: []
+    inputs: []
+    outputs: []
+  common_msgs_pkg:
+    diagram_summary_ko: 패키지 사이에서 공유하는 ROS 메시지·서비스·액션 타입 제공
+    runtime_status: type_provider_no_runtime_io
+    public_nodes: []
+    inputs: []
+    outputs: []
+  morai_interface_pkg:
+    diagram_summary_ko: 허용된 MORAI UDP를 ROS로 변환하고 Safety 승인 명령만 송신
+    runtime_status: camera_and_gps_live_other_public_boundaries_reserved_or_disabled
+    public_nodes:
+      - morai_camera_front
+      - morai_camera_left
+      - morai_camera_right
+      - morai_gps_bridge
+      - morai_imu_bridge
+      - morai_vehicle_status_bridge
+      - morai_velodyne_cloud
+      - morai_lidar_watchdog
+      - morai_collision_bridge
+      - morai_interface_status_node
+      - morai_control_sender
+    inputs:
+      - /molit/safety/final_command
+    outputs:
+      - /molit/sensors/camera/front/image/compressed
+      - /molit/sensors/camera/left/image/compressed
+      - /molit/sensors/camera/right/image/compressed
+      - /molit/sensors/gps/fix
+      - /molit/sensors/imu/data
+      - /molit/vehicle/twist
+      - /molit/sensors/lidar/points
+      - /molit/sensors/lidar/status
+      - /molit/events/collision
+      - /molit/interface/status
+  hd_map_pkg:
+    diagram_summary_ko: 검증된 정적 HD Map과 버전·해시·좌표계 상태 제공
+    runtime_status: public_contract_reserved_not_implemented
+    public_nodes: [hd_map_server_node]
+    inputs: []
+    outputs:
+      - /molit/map/hd_map
+      - /molit/map/status
+  camera_perception_pkg:
+    diagram_summary_ko: 카메라 영상에서 객체·차선·신호·주행 가능 영역 관측 생성
+    runtime_status: public_contract_reserved_not_implemented
+    public_nodes: [camera_perception_node]
+    inputs:
+      - /molit/sensors/camera/front/image/compressed
+      - /molit/sensors/camera/left/image/compressed
+      - /molit/sensors/camera/right/image/compressed
+    outputs:
+      - /molit/perception/camera/front/observations
+      - /molit/perception/camera/left/observations
+      - /molit/perception/camera/right/observations
+      - /molit/perception/camera/status
+  lidar_perception_pkg:
+    diagram_summary_ko: LiDAR 점군에서 장애물·지면·주행 가능 영역 관측 생성
+    runtime_status: public_contract_reserved_not_implemented
+    public_nodes: [lidar_perception_node]
+    inputs:
+      - /molit/sensors/lidar/points
+      - /molit/sensors/lidar/status
+    outputs:
+      - /molit/perception/lidar/observations
+      - /molit/perception/lidar/status
+  localization_pkg:
+    diagram_summary_ko: 센서와 지도를 융합해 차량 위치·움직임과 추정 품질 계산
+    runtime_status: public_contract_reserved_not_implemented
+    public_nodes: [localization_node]
+    inputs:
+      - /molit/sensors/gps/fix
+      - /molit/sensors/imu/data
+      - /molit/sensors/lidar/points
+      - /molit/vehicle/twist
+      - /molit/map/hd_map
+      - /molit/map/status
+    outputs:
+      - /molit/localization/local/odometry
+      - /molit/localization/ego_state
+      - /molit/localization/status
+  global_route_manager_pkg:
+    diagram_summary_ko: 전역경로와 진행도를 관리하고 앞 경로·속도·미션 정보 제공
+    runtime_status: public_contract_reserved_not_implemented
+    public_nodes: [global_route_manager_node]
+    inputs:
+      - /molit/map/hd_map
+      - /molit/map/status
+      - /molit/localization/ego_state
+      - /molit/localization/status
+    outputs:
+      - /molit/route/global_path
+      - /molit/route/context
+      - /molit/route/status
+  world_model_pkg:
+    diagram_summary_ko: 지도·차량 상태·센서 관측을 측정시각 기준으로 통합
+    runtime_status: public_contract_reserved_not_implemented
+    public_nodes: [world_model_node]
+    inputs:
+      - /molit/map/hd_map
+      - /molit/map/status
+      - /molit/perception/camera/front/observations
+      - /molit/perception/camera/left/observations
+      - /molit/perception/camera/right/observations
+      - /molit/perception/camera/status
+      - /molit/perception/lidar/observations
+      - /molit/perception/lidar/status
+      - /molit/localization/local/odometry
+      - /molit/localization/ego_state
+      - /molit/localization/status
+      - /molit/route/context
+      - /molit/route/status
+    outputs:
+      - /molit/world_model/scene
+      - /molit/world_model/status
+  path_planning_pkg:
+    diagram_summary_ko: 위치·경로·통합 장면으로 실행 가능한 지역 궤적 생성
+    runtime_status: public_contract_reserved_not_implemented
+    public_nodes: [path_planner_node]
+    inputs:
+      - /molit/localization/local/odometry
+      - /molit/localization/ego_state
+      - /molit/localization/status
+      - /molit/route/context
+      - /molit/route/status
+      - /molit/world_model/scene
+      - /molit/world_model/status
+    outputs:
+      - /molit/planning/trajectory
+      - /molit/planning/status
+  vehicle_control_pkg:
+    diagram_summary_ko: 지역 궤적을 추종할 조향·가속·제동 명령 계산
+    runtime_status: public_contract_reserved_not_implemented
+    public_nodes: [vehicle_controller_node]
+    inputs:
+      - /molit/localization/local/odometry
+      - /molit/localization/status
+      - /molit/planning/trajectory
+      - /molit/planning/status
+    outputs:
+      - /molit/control/nominal_command
+      - /molit/control/status
+  system_bringup_pkg:
+    diagram_summary_ko: 전체 실행 순서를 관리하고 필수 상류 모듈 준비 상태 종합
+    runtime_status: public_contract_reserved_not_implemented
+    public_nodes: [system_readiness_node]
+    inputs:
+      - /molit/interface/status
+      - /molit/map/status
+      - /molit/perception/camera/status
+      - /molit/perception/lidar/status
+      - /molit/localization/status
+      - /molit/route/status
+      - /molit/world_model/status
+      - /molit/planning/status
+      - /molit/control/status
+    outputs:
+      - /molit/system/readiness
+  safety_supervisor_pkg:
+    diagram_summary_ko: 시스템 상태와 nominal 명령을 검사해 최종 안전 명령 결정
+    runtime_status: public_contract_reserved_not_implemented
+    public_nodes: [safety_supervisor_node]
+    inputs:
+      - /molit/events/collision
+      - /molit/interface/status
+      - /molit/map/status
+      - /molit/perception/camera/status
+      - /molit/perception/lidar/status
+      - /molit/localization/local/odometry
+      - /molit/localization/ego_state
+      - /molit/localization/status
+      - /molit/route/context
+      - /molit/route/status
+      - /molit/world_model/scene
+      - /molit/world_model/status
+      - /molit/planning/trajectory
+      - /molit/planning/status
+      - /molit/control/nominal_command
+      - /molit/control/status
+      - /molit/system/readiness
+    outputs:
+      - /molit/safety/final_command
+      - /molit/safety/state
+  runtime_evaluation_pkg:
+    diagram_summary_ko: 명령을 바꾸지 않고 완주·안전·패널티·지연 지표 기록
+    runtime_status: public_contract_reserved_not_implemented_read_only
+    public_nodes: [runtime_evaluator_node]
+    inputs:
+      - /molit/events/collision
+      - /molit/interface/status
+      - /molit/perception/camera/status
+      - /molit/perception/lidar/status
+      - /molit/localization/local/odometry
+      - /molit/localization/ego_state
+      - /molit/localization/status
+      - /molit/route/global_path
+      - /molit/route/context
+      - /molit/route/status
+      - /molit/world_model/scene
+      - /molit/world_model/status
+      - /molit/planning/trajectory
+      - /molit/planning/status
+      - /molit/control/nominal_command
+      - /molit/control/status
+      - /molit/system/readiness
+      - /molit/safety/final_command
+      - /molit/safety/state
+    outputs:
+      - /molit/evaluation/metrics
+
+architecture_views:
+  nominal_data_control:
+    title: Nominal data and control flow
+    output_basename: system_nominal_flow
+    direction: TB
+    nodes:
+      - morai_camera_front
+      - morai_camera_left
+      - morai_camera_right
+      - morai_gps_bridge
+      - morai_imu_bridge
+      - morai_vehicle_status_bridge
+      - morai_velodyne_driver
+      - morai_velodyne_cloud
+      - morai_control_sender
+      - hd_map_server_node
+      - camera_perception_node
+      - lidar_perception_node
+      - localization_node
+      - global_route_manager_node
+      - world_model_node
+      - path_planner_node
+      - vehicle_controller_node
+      - safety_supervisor_node
+    topics:
+      - /molit/sensors/camera/front/image/compressed
+      - /molit/sensors/camera/left/image/compressed
+      - /molit/sensors/camera/right/image/compressed
+      - /molit/sensors/gps/fix
+      - /molit/internal/morai_interface/lidar/packets
+      - /molit/sensors/imu/data
+      - /molit/vehicle/twist
+      - /molit/sensors/lidar/points
+      - /molit/map/hd_map
+      - /molit/perception/camera/front/observations
+      - /molit/perception/camera/left/observations
+      - /molit/perception/camera/right/observations
+      - /molit/perception/lidar/observations
+      - /molit/localization/local/odometry
+      - /molit/localization/ego_state
+      - /molit/route/context
+      - /molit/world_model/scene
+      - /molit/planning/trajectory
+      - /molit/control/nominal_command
+      - /molit/safety/final_command
+    external_channels:
+      ingress:
+        - Competition Vehicle Status
+        - GPS sensor
+        - IMU sensor
+        - Camera sensor
+        - 3D LiDAR sensor
+      egress:
+        - Ego Ctrl Cmd
+    layout_lanes:
+      - - morai_camera_front
+        - /molit/sensors/camera/front/image/compressed
+        - morai_camera_left
+        - /molit/sensors/camera/left/image/compressed
+        - morai_camera_right
+        - /molit/sensors/camera/right/image/compressed
+        - camera_perception_node
+        - /molit/perception/camera/front/observations
+        - /molit/perception/camera/left/observations
+        - /molit/perception/camera/right/observations
+      - - morai_velodyne_driver
+        - /molit/internal/morai_interface/lidar/packets
+        - morai_velodyne_cloud
+        - /molit/sensors/lidar/points
+        - lidar_perception_node
+        - /molit/perception/lidar/observations
+      - - morai_gps_bridge
+        - /molit/sensors/gps/fix
+        - morai_imu_bridge
+        - /molit/sensors/imu/data
+        - morai_vehicle_status_bridge
+        - /molit/vehicle/twist
+        - localization_node
+        - /molit/localization/local/odometry
+        - /molit/localization/ego_state
+      - - hd_map_server_node
+        - /molit/map/hd_map
+        - global_route_manager_node
+        - /molit/route/context
+      - - world_model_node
+        - /molit/world_model/scene
+        - path_planner_node
+        - /molit/planning/trajectory
+        - vehicle_controller_node
+        - /molit/control/nominal_command
+        - safety_supervisor_node
+        - /molit/safety/final_command
+        - morai_control_sender
+  health_readiness_safety_evaluation:
+    title: Health readiness safety and evaluation flow
+    output_basename: system_health_safety_flow
+    direction: TB
+    nodes:
+      - morai_lidar_watchdog
+      - morai_collision_bridge
+      - morai_interface_status_node
+      - morai_control_sender
+      - hd_map_server_node
+      - camera_perception_node
+      - lidar_perception_node
+      - localization_node
+      - global_route_manager_node
+      - world_model_node
+      - path_planner_node
+      - vehicle_controller_node
+      - system_readiness_node
+      - safety_supervisor_node
+      - runtime_evaluator_node
+    topics:
+      - /molit/sensors/lidar/status
+      - /molit/events/collision
+      - /molit/interface/status
+      - /molit/map/status
+      - /molit/perception/camera/status
+      - /molit/perception/lidar/status
+      - /molit/localization/status
+      - /molit/route/status
+      - /molit/world_model/status
+      - /molit/planning/status
+      - /molit/control/nominal_command
+      - /molit/control/status
+      - /molit/system/readiness
+      - /molit/safety/final_command
+      - /molit/safety/state
+      - /molit/evaluation/metrics
+    external_channels:
+      ingress:
+        - CollisionData
+      egress:
+        - Ego Ctrl Cmd
+    layout_lanes:
+      - - morai_lidar_watchdog
+        - /molit/sensors/lidar/status
+        - morai_interface_status_node
+        - /molit/interface/status
+        - morai_collision_bridge
+        - /molit/events/collision
+      - - hd_map_server_node
+        - /molit/map/status
+        - camera_perception_node
+        - /molit/perception/camera/status
+        - lidar_perception_node
+        - /molit/perception/lidar/status
+        - localization_node
+        - /molit/localization/status
+        - global_route_manager_node
+        - /molit/route/status
+        - world_model_node
+        - /molit/world_model/status
+        - path_planner_node
+        - /molit/planning/status
+        - vehicle_controller_node
+        - /molit/control/nominal_command
+        - /molit/control/status
+      - - system_readiness_node
+        - /molit/system/readiness
+        - safety_supervisor_node
+        - /molit/safety/final_command
+        - morai_control_sender
+      - - /molit/safety/state
+        - runtime_evaluator_node
+        - /molit/evaluation/metrics
 
 external_transport:
   owner_package: morai_interface_pkg
@@ -261,6 +1323,39 @@ external_transport:
     - IMU sensor
     - Camera sensor
     - 3D LiDAR sensor
+  diagram_bindings:
+    ingress:
+      label: MORAI Simulator allowed sensor and event UDP
+      logical_channels:
+        - CollisionData
+        - Competition Vehicle Status
+        - GPS sensor
+        - IMU sensor
+        - Camera sensor
+        - 3D LiDAR sensor
+      adapter_nodes:
+        - morai_camera_front
+        - morai_camera_left
+        - morai_camera_right
+        - morai_gps_bridge
+        - morai_imu_bridge
+        - morai_vehicle_status_bridge
+        - morai_velodyne_driver
+        - morai_collision_bridge
+    egress:
+      label: MORAI Simulator Ego Ctrl Cmd UDP type 1 mode 2
+      logical_channels:
+        - Ego Ctrl Cmd
+      adapter_nodes:
+        - morai_control_sender
   control_constraints:
     command_type: 1
     control_mode: 2
+    final_command_consumer_gate:
+      owner_node: morai_control_sender
+      enable_status: prohibited_until_control_packet_and_watchdog_timeout_are_verified
+      required_checks:
+        - reject_zero_regressing_future_or_expired_command_stamp
+        - reject_nan_and_out_of_range_fields
+        - never_repeat_the_last_nonzero_command_after_input_loss
+        - serialize_only_a_packet_verified_fail_closed_stop_on_timeout

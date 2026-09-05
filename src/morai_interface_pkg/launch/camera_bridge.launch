@@ -1,11 +1,10 @@
 <launch>
   <!-- 단일 Camera UDP Bridge: MORAI Camera UDP(MOR 청크)
        -> sensor_msgs/CompressedImage(jpeg) -->
-  <arg name="name" default="morai_camera_front"/>
   <arg name="config" default="$(find morai_interface_pkg)/config/camera_bridge.yaml"/>
 
   <node pkg="morai_interface_pkg" type="camera_receiver_node"
-        name="$(arg name)" output="screen" required="true">
+        name="morai_camera_front" output="screen" required="true">
     <rosparam command="load" file="$(arg config)"/>
   </node>
 </launch>

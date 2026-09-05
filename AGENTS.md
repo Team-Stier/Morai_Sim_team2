@@ -16,9 +16,16 @@
 - `ros_architecture_pkg`는 공개 ROS node, topic, message, service, action, TF frame, 단위, timestamp, 주기, queue, timeout, 상태와 소유 패키지를 정하는 유일한 권위다.
 - `config/interface_contract.yaml`이 중앙 진입점이며 그 파일이 가리키는 `config/tf/`와 `config/timestamp/`도 같은 중앙 계약의 일부다.
 - 다른 패키지는 공개 인터페이스의 이름이나 의미를 독자적으로 정의하거나 변경하지 않는다.
-- 중앙 계약 목록이 비어 있다는 것은 자유롭게 이름을 만들 수 있다는 뜻이 아니라 아직 승인된 공개 인터페이스가 없다는 뜻이다.
+- 중앙 계약의 특정 목록이 비어 있다는 것은 그 범주에서 자유롭게 이름을 만들
+  수 있다는 뜻이 아니라 아직 승인된 공개 인터페이스가 없다는 뜻이다.
 - 필요한 공개 인터페이스가 계약에 없으면 임시 이름으로 우회하지 않는다. 먼저 중앙 계약 변경안과 producer/consumer 영향을 제안한다.
 - 승인된 이름을 코드·launch·config에서 사용하는 것은 가능하지만, 다른 파일을 새로운 원본 계약으로 만들면 안 된다.
+- 각 패키지는 `package_boundaries`의 공개 node basename, input/output topic과
+  message type을 정확히 사용한다. 통합 launch의 node namespace는 root `/`이며
+  공개 node/topic remap과 anonymous node name을 사용하지 않는다.
+- 패키지 내부 node와 자료구조는 자유지만 내부 ROS topic은 private name 또는
+  `/molit/internal/<package_name_without_pkg>/...`만 사용한다. 다른 패키지는
+  내부 topic을 직접 구독하지 않는다.
 - `publish_enabled: false`인 TF는 launch나 코드에서 발행하지 않는다. MORAI 원본 frame 문자열을 중앙 frame 이름처럼 사용하지 않는다.
 - 센서 파생 데이터는 원본 측정 `header.stamp`를 유지한다. 처리 완료 시각으로 덮어쓰지 않으며 clock domain이 다른 시각끼리 직접 비교하지 않는다.
 - MORAI UDP adapter의 node/topic/frame/port와 활성화 여부는 `config/morai_interface/udp_ros_bridge.yaml`을 따른다. `runtime_activation_allowed: false` 채널은 system bringup에 넣지 않는다.
@@ -31,7 +38,16 @@
 - Camera/LiDAR 패키지는 관측값과 신뢰도·측정시각을 제공하며 각자 전역 world model을 만들지 않는다.
 - 좌표 변환·시간 동기화·교차 센서 융합·동적 객체 추적은 `world_model_pkg`가 소유한다.
 - `hd_map_pkg`의 정적 지도와 `global_route_manager_pkg`의 주행 진행 상태를 섞지 않는다.
-- `path_planning_pkg`는 actuator 또는 UDP 명령을 직접 만들거나 보내지 않는다.
+- `path_planning_pkg` / `path_planner_node`는 모듈형 behavior planning과
+  local motion planning의 단일 소유자다.
+- Planner는 중앙 계약에 승인된 Localization, Route와 World Model 공개
+  데이터만 입력으로 사용한다. raw Camera/LiDAR와 개별 Perception 관측을
+  직접 구독하여 다른 패키지의 소유 경계를 우회하지 않는다.
+- `path_planner_node`의 v1 주행 출력은
+  `/molit/planning/trajectory`뿐이다. accel/brake/steer 또는 UDP
+  명령을 직접 만들거나 Controller/Safety를 우회하면 안 된다.
+- Planner는 입력 freshness, 재계획 상태, 계산 지연, 준비 여부와 trajectory
+  유효성을 `/molit/planning/status`로 보고한다.
 - `vehicle_control_pkg`는 nominal 제어를 만들고 `safety_supervisor_pkg`가 최종 명령을 검사·제한·거부한다.
 - `runtime_evaluation_pkg`는 관측과 평가만 하며 제어 명령을 변경하지 않는다.
 - 전체 실행 조합과 시작 순서는 `system_bringup_pkg`만 소유한다.
@@ -58,9 +74,29 @@
 ## 개발 및 검증
 
 - ROS1 Noetic과 catkin을 기준으로 한다.
-- `main`에서 직접 개발하지 않고 `feature/*` 브랜치를 사용한다.
+- 조회·진단만 하는 작업이 아니라 파일을 변경하는 작업이면 편집 전에
+  `git fetch --prune origin`, 저장소 root, 현재 branch와 worktree 상태를 확인한다.
+- 사용자가 지정한 작업 branch가 있으면 그 branch를 사용한다. 지정이 없으면
+  담당 패키지와 작업 목적에 맞는 `feature/<package_name>-<short_task>` branch를
+  최신 `origin/main`에서 만들거나, 동일 작업을 위해 이미 존재하는 branch임을
+  확인한 뒤 이어서 사용한다.
+- 중앙 공개 계약처럼 여러 패키지를 함께 바꾸는 작업은
+  `feature/public-interface-contract-<short_task>`, 문서 전용 작업은
+  `feature/docs-<short_task>` 형식을 사용한다. 기존 remote branch와 이름이
+  충돌하면 의미를 유지하는 다른 짧은 이름을 사용한다.
+- `main`에서 직접 개발·commit·push하지 않는다. 다른 작업의 branch에 변경을
+  섞지 않으며, dirty worktree를 발견하면 사용자 변경을 보존하기 전에는
+  branch를 전환하지 않는다.
+- 구현과 검증이 끝난 변경 작업은 사용자가 `빌드까지만`, `push하지 마`처럼
+  범위를 제한하지 않은 한 현재 작업 branch에 한국어 subject/body로 commit하고
+  `git push -u origin HEAD`로 같은 이름의 remote branch에 올린다.
+- PR 생성과 merge는 사용자가 요청한 범위까지만 수행한다. push 뒤에는 branch,
+  upstream, local/remote SHA와 clean 상태를 다시 확인한다.
 - 구현 전 현재 파일, 패키지 manifest, CMake, launch와 중앙 계약을 검사한다.
 - 패키지 단위 테스트와 producer-consumer 계약 테스트를 함께 작성한다.
+- 대상 패키지 README의 공개 I/O 표와 `docs/interface_io.svg`를 확인하고
+  `python3 src/ros_architecture_pkg/scripts/generate_interface_diagrams.py --check`를
+  통과시킨다.
 - catkin build, launch XML, YAML, 중앙 계약 준수와 의존성 방향을 검사한다.
 - TF 변경은 단일 parent, cycle 부재, 원본 extrinsic 일치, 검증되지 않은 TF의 발행 금지를 검사한다.
 - Timestamp 변경은 live/replay clock 분리, 측정시각 보존, reset/역행과 watchdog 동작을 검사한다.

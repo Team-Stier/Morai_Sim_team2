@@ -1,6 +1,8 @@
 # global_route_manager_pkg
 
-> **INTERFACE LOCK:** 이 패키지는 [`ros_architecture_pkg`](../ros_architecture_pkg/README.md)의 중앙 ROS 계약을 따른다. 구체 node/topic/message/frame 이름은 여기서 정의하지 않는다.
+> **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
+> [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
+> 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
 
 ## 담당 범위
 
@@ -23,10 +25,36 @@
 - 60 km/h 예외 Link 구간은 실제 HD Map Link 대응이 검증되기 전까지 좌표로 추측하지 않는다.
 - checkpoint 좌표는 progress 검증 기준이지 Localization Ground Truth가 아니다.
 
-## 논리 입출력
+## 공개 ROS 입출력
 
-- 입력: 검증된 전역경로, HD Map topology, ego pose와 localization quality
-- 출력: route validity, progress, checkpoint state, local route context와 규정 context
+현재 상태는 **이름 승인, 구현 예약**이며 공개 경계 노드는
+`global_route_manager_node`다.
+
+![Global Route Manager 공개 입출력](docs/interface_io.svg)
+
+- [Mermaid 원본](docs/interface_io.mmd)
+- [PNG 이미지](docs/interface_io.png)
+
+**공개 node (exact):** `global_route_manager_node`
+
+| 구분 | Topic | Type |
+|---|---|---|
+| 입력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
+| 입력 | `/molit/map/status` | `common_msgs_pkg/ComponentStatus` |
+| 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
+| 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
+| 출력 | `/molit/route/global_path` | `nav_msgs/Path` |
+| 출력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` |
+| 출력 | `/molit/route/status` | `common_msgs_pkg/ComponentStatus` |
+
+공유 custom type은 이름만 예약됐고 실제 `.msg` schema는 아직 구현되지 않았다.
+
+## 통합 전 자체 확인
+
+- 노드의 통합 실행 이름이 정확히 `global_route_manager_node`인지 확인한다.
+- 위 topic/type/frame/stamp와 route hash/checkpoint 순서를 유지한다.
+- 내부 topic은 `/molit/internal/global_route_manager/...` 또는 private name만 사용한다.
+- 공개 이름을 remap하지 않고 중앙 계약 생성 검사를 통과시킨다.
 
 ## 디렉터리
 

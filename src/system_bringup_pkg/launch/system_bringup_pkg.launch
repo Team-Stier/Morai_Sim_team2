@@ -1,4 +1,5 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Full-system composition is blocked until the central interface contract is approved. -->
+  <!-- Public names are approved, but full-system composition remains blocked until
+       required runtime implementations, packet contracts, timeouts and TF gates are verified. -->
 </launch>

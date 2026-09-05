@@ -1,4 +1,5 @@
 schema_version: 1
+contract_version: 0.1.0
 status: approved_package_boundaries
 
 dependency_layers:

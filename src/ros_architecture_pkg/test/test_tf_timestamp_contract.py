@@ -79,6 +79,40 @@ class TfTimestampContractTest(unittest.TestCase):
         visit(root)
         self.assertEqual(visited, set(frame_names))
 
+    def test_v1_dynamic_tf_chain_is_exact(self):
+        self.assertEqual(self.frames["root_frame"], "map")
+        dynamic_chain = [
+            (transform["parent"], transform["child"])
+            for transform in self.frames["transforms"]
+            if transform["type"] == "dynamic"
+        ]
+        self.assertEqual(
+            dynamic_chain,
+            [("map", "odom"), ("odom", "base_link")],
+        )
+
+    def test_every_topic_frame_uses_the_registered_tf_vocabulary(self):
+        frame_names = {entry["name"] for entry in self.frames["frames"]}
+        non_frame_values = {"not_applicable", "pending_competition_packet_spec"}
+        for topic in self.interface["topics"]:
+            for field in ("frame", "child_frame", "motion_frame"):
+                if field not in topic or topic[field] in non_frame_values:
+                    continue
+                self.assertIn(
+                    topic[field],
+                    frame_names,
+                    "{} {}".format(topic["name"], field),
+                )
+
+        topics = {topic["name"]: topic for topic in self.interface["topics"]}
+        odometry = topics["/molit/localization/local/odometry"]
+        self.assertEqual(odometry["data_type"], "nav_msgs/Odometry")
+        self.assertEqual(odometry["frame"], "odom")
+        self.assertEqual(odometry["child_frame"], "base_link")
+        ego_state = topics["/molit/localization/ego_state"]
+        self.assertEqual(ego_state["frame"], "map")
+        self.assertEqual(ego_state["motion_frame"], "base_link")
+
     def test_unverified_transforms_cannot_publish(self):
         for transform in self.frames["transforms"]:
             self.assertTrue(transform["verification_status"])
@@ -230,6 +264,36 @@ class TfTimestampContractTest(unittest.TestCase):
             self.timestamps["freshness_policy"]["stale_threshold_status"],
             "pending_rate_and_jitter_measurement",
         )
+
+    def test_interface_topics_use_the_canonical_timestamp_registry(self):
+        registry = self.timestamps["timestamp_source_registry"]
+        for topic in self.interface["topics"]:
+            self.assertIn(
+                topic["timestamp_source"], registry, topic["name"]
+            )
+
+        topics = {topic["name"]: topic for topic in self.interface["topics"]}
+        expected = {
+            "/molit/perception/camera/front/observations": "source_sensor_measurement_time",
+            "/molit/perception/lidar/observations": "source_sensor_measurement_time",
+            "/molit/localization/local/odometry": "estimate_valid_time",
+            "/molit/localization/ego_state": "estimate_valid_time",
+            "/molit/route/context": "ego_pose_time_used_for_route_matching",
+            "/molit/world_model/scene": "fusion_reference_time",
+            "/molit/planning/trajectory": "planning_reference_time",
+            "/molit/control/nominal_command": "command_generation_time",
+            "/molit/safety/final_command": "command_generation_time",
+            "/molit/safety/state": "status_evaluation_time",
+        }
+        for topic_name, timestamp_source in expected.items():
+            self.assertEqual(
+                topics[topic_name]["timestamp_source"],
+                timestamp_source,
+                topic_name,
+            )
+
+        for policy in self.timestamps["derived_message_contract"].values():
+            self.assertIn(policy["stamp"], registry)
 
 
 if __name__ == "__main__":
