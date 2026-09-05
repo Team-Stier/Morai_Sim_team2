@@ -1,0 +1,241 @@
+schema_version: 1
+contract_version: 0.1.0
+status: development_partial_live_verification
+
+authority:
+  package: ros_architecture_pkg
+  runtime_owner: morai_interface_pkg
+  rule: >-
+    Only channels marked runtime_activation_allowed may be launched during
+    development. Competition use still requires the final official packet and
+    network allowlist to match this contract.
+
+source_import:
+  repository: https://github.com/Team-Stier/Morai_Sim-Stier-Team2
+  commit: f889f7f5ae47b51c4c5c0211c6a92a62398ca269
+  upstream_package: morai_udp_bridge
+  imported_python_namespace: morai_udp_bridge
+  imported_scope:
+    - camera_udp_to_compressed_image
+    - gps_nmea_udp_to_nav_sat_fix
+    - imu_udp_to_sensor_msgs_imu
+    - legacy_ego_status_udp_to_twist
+    - vlp16_external_driver_launch
+    - lidar_points_watchdog
+  deliberately_excluded:
+    - ctrl_cmd_ros_to_udp
+    - fake_udp_senders
+    - fake_control_publisher
+    - ego_ctrl_cmd_packet
+    - udp_sender
+  reason: This import is limited to MORAI-to-ROS sensor adapters.
+
+live_observation:
+  observed_at: "2026-09-03T13:36:24+09:00"
+  simulator_version: 25.S4.251001.MolitComp03_Linux
+  ros_master_before_validation_reachable: false
+  temporary_ros_master_started_for_validation: true
+  clock_topic_verified: false
+  packet_probe:
+    camera_front:
+      source: "127.0.0.1:9290"
+      destination: "127.0.0.1:9291"
+      datagram_bytes: 65000
+      packet_stamp_matches_host_ros_time: true
+      chunk_index_pattern: [0, 1, 2]
+    camera_left:
+      source: "127.0.0.1:9292"
+      destination: "127.0.0.1:9293"
+      datagram_bytes: 65000
+      packet_stamp_matches_host_ros_time: true
+      chunk_index_pattern: [0]
+    camera_right:
+      source: "127.0.0.1:9294"
+      destination: "127.0.0.1:9295"
+      datagram_bytes: 65000
+      packet_stamp_matches_host_ros_time: true
+      chunk_index_pattern: [0]
+    gps:
+      source: "127.0.0.1:9090"
+      destination: "127.0.0.1:7801"
+      datagram_bytes: 77
+      sentences_observed: [GPRMC, GPGGA]
+      paired_same_utc_epoch: true
+    lidar:
+      destination: "127.0.0.1:2368"
+      packet_observed: false
+    imu:
+      packet_observed: false
+    vehicle_status:
+      packet_observed: false
+  ros_publish_validation:
+    camera_front:
+      message_received: true
+      frame_id: camera_front_optical_frame
+      jpeg_markers_valid: true
+      sample_bytes: 141820
+      measured_rate_hz_8_sec_window: 7.367
+    camera_left:
+      message_received: true
+      frame_id: camera_left_optical_frame
+      jpeg_markers_valid: true
+      sample_bytes: 56654
+      measured_rate_hz_8_sec_window: 6.970
+    camera_right:
+      message_received: true
+      frame_id: camera_right_optical_frame
+      jpeg_markers_valid: true
+      sample_bytes: 49492
+      measured_rate_hz_8_sec_window: 7.507
+    gps:
+      message_received: true
+      frame_id: gps_link
+      fix_status: 0
+      pre_filter_duplicate_publish_rate_hz_10_sec_window: 9.4
+      post_filter_rate_hz_10_sec_wall_window: 1.665
+      post_filter_counts: {received: 40, filtered_rmc: 20, published_gga: 20}
+    lidar_driver_graph:
+      nodelets_loaded: true
+      nodes: [morai_velodyne_manager, morai_velodyne_driver, morai_velodyne_cloud]
+      internal_packet_topic_type: velodyne_msgs/VelodyneScan
+      points_topic_type: sensor_msgs/PointCloud2
+      runtime_graph_caller: morai_velodyne_manager
+      live_point_message_received: false
+    note: >-
+      Rates vary with the current simulator wall/simulation-time ratio. These
+      short wall-time observations are not approved expected rates or stale
+      thresholds.
+
+channels:
+  camera_front:
+    runtime_activation_allowed: true
+    competition_runtime_status: pending_final_network_confirmation
+    transport: morai_camera_mor_udp
+    bind_ip: 0.0.0.0
+    port: 9291
+    port_evidence: repository_sensor_reference_and_live_packet
+    node_name: morai_camera_front
+    topic: /molit/sensors/camera/front/image/compressed
+    message_type: sensor_msgs/CompressedImage
+    frame_id: camera_front_optical_frame
+    queue_size: 2
+    timestamp_source: source_measurement_packet
+    timestamp_validation: reject_invalid_future_duplicate_or_regressing_stamp
+    chunk_validation: require_index_zero_then_contiguous_and_valid_jpeg_markers
+    configured_rate_hz: 20.0
+  camera_left:
+    runtime_activation_allowed: true
+    competition_runtime_status: pending_final_network_confirmation
+    transport: morai_camera_mor_udp
+    bind_ip: 0.0.0.0
+    port: 9293
+    port_evidence: repository_sensor_reference_and_live_packet
+    node_name: morai_camera_left
+    topic: /molit/sensors/camera/left/image/compressed
+    message_type: sensor_msgs/CompressedImage
+    frame_id: camera_left_optical_frame
+    queue_size: 2
+    timestamp_source: source_measurement_packet
+    timestamp_validation: reject_invalid_future_duplicate_or_regressing_stamp
+    chunk_validation: require_index_zero_then_contiguous_and_valid_jpeg_markers
+    configured_rate_hz: 20.0
+  camera_right:
+    runtime_activation_allowed: true
+    competition_runtime_status: pending_final_network_confirmation
+    transport: morai_camera_mor_udp
+    bind_ip: 0.0.0.0
+    port: 9295
+    port_evidence: repository_sensor_reference_and_live_packet
+    node_name: morai_camera_right
+    topic: /molit/sensors/camera/right/image/compressed
+    message_type: sensor_msgs/CompressedImage
+    frame_id: camera_right_optical_frame
+    queue_size: 2
+    timestamp_source: source_measurement_packet
+    timestamp_validation: reject_invalid_future_duplicate_or_regressing_stamp
+    chunk_validation: require_index_zero_then_contiguous_and_valid_jpeg_markers
+    configured_rate_hz: 20.0
+  gps:
+    runtime_activation_allowed: true
+    competition_runtime_status: pending_final_network_confirmation
+    transport: nmea_udp
+    bind_ip: 0.0.0.0
+    port: 7801
+    port_evidence: live_packet
+    node_name: morai_gps_bridge
+    topic: /molit/sensors/gps/fix
+    message_type: sensor_msgs/NavSatFix
+    frame_id: gps_link
+    queue_size: 10
+    timestamp_source: morai_interface_ingress_time
+    sentence_policy: gga_only
+    configured_rate_hz: 5.0
+  imu:
+    runtime_activation_allowed: false
+    competition_runtime_status: pending_packet_axis_unit_covariance_and_port
+    transport: legacy_morai_binary_udp
+    bind_ip: 0.0.0.0
+    port: 7802
+    port_evidence: imported_placeholder_not_live_verified
+    node_name: morai_imu_bridge
+    topic: /molit/sensors/imu/data
+    message_type: sensor_msgs/Imu
+    frame_id: imu_link
+    queue_size: 10
+    timestamp_source: morai_interface_ingress_time
+    configured_rate_hz: 50.0
+  vehicle_status:
+    runtime_activation_allowed: false
+    competition_runtime_status: incompatible_until_competition_vehicle_status_spec_verified
+    transport: legacy_ego_vehicle_status_229_byte_udp
+    bind_ip: 0.0.0.0
+    port: 7803
+    port_evidence: imported_placeholder_not_live_verified
+    node_name: morai_vehicle_status_bridge
+    topic: /molit/vehicle/twist
+    message_type: geometry_msgs/TwistWithCovarianceStamped
+    frame_id: base_link
+    queue_size: 10
+    timestamp_source: morai_interface_ingress_time
+    configured_rate_hz: pending_competition_packet_spec
+    restriction: >-
+      The legacy parser reads fields absent from Competition Vehicle Status.
+      Do not launch or use it until the official competition packet is matched.
+  lidar:
+    runtime_activation_allowed: false
+    competition_runtime_status: pending_live_packet_port_axis_and_driver_verification
+    transport: velodyne_vlp16_udp
+    bind_ip: 0.0.0.0
+    port: 2368
+    port_evidence: imported_velodyne_example_not_live_verified
+    nodelet_manager_name: morai_velodyne_manager
+    driver_node_name: morai_velodyne_driver
+    node_name: morai_velodyne_cloud
+    internal_packet_topic: /molit/internal/morai_interface/lidar/packets
+    runtime_graph_caller: morai_velodyne_manager
+    topic: /molit/sensors/lidar/points
+    message_type: sensor_msgs/PointCloud2
+    frame_id: lidar_link
+    queue_size: external_driver_default_pending_measurement
+    timestamp_source: source_measurement_packet
+    configured_rate_hz: 10.0
+  lidar_status:
+    runtime_activation_allowed: false
+    competition_runtime_status: development_diagnostic_only
+    node_name: morai_lidar_watchdog
+    input_topic: /molit/sensors/lidar/points
+    topic: /molit/sensors/lidar/status
+    message_type: std_msgs/Bool
+    frame_id: not_applicable
+    queue_size: 1
+    timestamp_source: steady_watchdog_time
+    configured_rate_hz: 2.0
+    timeout_sec: 1.0
+    limitation: Boolean status does not replace a structured transport health contract.
+
+global_rules:
+  - Bounding-box UDP packets are not published or used.
+  - Static sensor TF remains disabled until the TF activation gates pass.
+  - Receive-time fallback is captured immediately after recvfrom, not after parsing.
+  - No ROS-to-MORAI control sender is part of this import.
+  - No channel with runtime_activation_allowed false belongs in system bringup.

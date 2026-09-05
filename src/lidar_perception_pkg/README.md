@@ -19,7 +19,7 @@
 
 - 3D LiDAR는 최대 1대이며 `VLP16`, Intensity 방식만 허용된다.
 - 회전율은 최대 15 Hz이고 공지 권장은 10 Hz 이하이다.
-- 현재 센서 설정 파일에는 LiDAR가 없으므로 장착 위치·회전율·포트를 추측하지 않는다.
+- 저장소의 제공 Camera 설정에는 LiDAR가 없다. 로컬 MORAI 저장 프로필에서 확인된 LiDAR 위치는 활성 loadout 검증 전까지 후보값으로만 사용한다.
 - sample scene의 객체 목록이나 Ground Truth를 검출 결과로 사용하지 않는다.
 
 ## 논리 입출력
@@ -28,6 +28,8 @@
 - 출력: 센서 관측 좌표의 timestamped 3D object/obstacle/free-space와 품질 상태
 
 오래된 장애물을 현재 관측처럼 유지하지 않고, sparse VLP16 환경에서의 miss와 uncertainty를 명시한다.
+
+LiDAR frame과 후보 장착 위치는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)을 따른다. Raw point 축이 REP-103으로 정규화됐는지 확인하기 전에는 TF를 발행하지 않는다. 출력 관측은 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)에 따라 원본 scan의 측정시각을 유지한다.
 
 ## 디렉터리
 

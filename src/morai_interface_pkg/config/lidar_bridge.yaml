@@ -1,0 +1,19 @@
+# morai_udp_bridge - LiDAR(VLP16) 파라미터
+# velodyne_driver + velodyne_pointcloud 로 MORAI VLP16 UDP -> PointCloud2.
+# 자체 UDP 파서는 없다(MORAI 매뉴얼상 3D LiDAR는 Velodyne 프로토콜을 그대로 따름).
+#
+# 이 파일은 두 노드(velodyne_driver_node, velodyne_pointcloud/cloud_node)에 함께
+# 로드된다. 각 노드는 자신이 모르는 키는 무시한다.
+# lidar_bridge.launch의 인자로도 port/rpm/frame_id/device_ip를 덮어쓸 수 있다.
+
+# --- velodyne_driver_node 파라미터 ---
+device_ip: ""            # MORAI 송신 IP로 필터. ""=모든 소스 허용
+port: 2368               # <예제 기본값 — 대회 고정 포트 아님> MORAI VLP16 데이터 UDP 포트
+                         #   MORAI Network Settings의 실제 포트와 반드시 일치시킬 것
+model: "VLP16"
+rpm: 600.0               # MORAI Rotation Rate(Hz) x 60.  10Hz->600, 15Hz->900
+frame_id: "lidar_link"   # 중앙 TF 계약의 LiDAR 측정 frame
+
+# --- velodyne_pointcloud/cloud_node 파라미터 ---
+min_range: 0.4
+max_range: 130.0

@@ -2,7 +2,7 @@
 
 2026 국토부 KATRI 대학생 AI/SW 모빌리티 경진대회 **AI융합자율주행 부문**을 위한 Team Stier의 MORAI 기반 자율주행 프로젝트다.
 
-이 문서는 이후 사람이나 AI가 설계·구현을 진행할 때 가장 먼저 확인해야 하는 **대회 규정 베이스라인**이다. 현재 단계에서는 대회의 목적, 시뮬레이터 제약, 채점 기준, 제공 파일에서 확인한 사실과 아키텍처 책임 경계를 정의한다. 세부 ROS 인터페이스와 노드 설계는 실제 패킷 명세 및 구현이 추가된 뒤 별도 문서에서 확정한다.
+이 문서는 이후 사람이나 AI가 설계·구현을 진행할 때 가장 먼저 확인해야 하는 **대회 규정 베이스라인**이다. 현재 단계에서는 대회의 목적, 시뮬레이터 제약, 채점 기준, 제공 파일에서 확인한 사실과 아키텍처 책임 경계를 정의한다. 승인된 세부 ROS 인터페이스와 노드 설계는 `ros_architecture_pkg`의 중앙 계약에서만 확정한다.
 
 > 기준일: 2026-09-03
 >
@@ -22,7 +22,10 @@
 4. GPS blackout, 날씨·시간 변화, 센서 지연에도 안전한 동작을 유지한다.
 5. 위 조건을 만족하면서 `실제 주행 시간 + 패널티 시간`을 최소화한다.
 
-따라서 기본 정책 구조는 단일 카메라 프레임만으로 조향을 예측하는 모델이 아니라, 카메라 시계열·경로 정보·차량 상태를 함께 사용하는 **route-conditioned temporal policy**를 지향한다. 이 문장은 팀의 설계 원칙이며 공식 대회 규정 자체는 아니다.
+본 프로젝트는 E2E 주행 모델을 사용하지 않는다. Camera/LiDAR 인식,
+Localization, HD Map, World Model, Path Planning, Vehicle Control과 Safety를
+명시적인 ROS 계약으로 분리하는 모듈형 파이프라인을 사용한다. 이 문장은 팀의
+설계 원칙이며 공식 대회 규정 자체는 아니다.
 
 ## 2. 근거 자료와 사실 표기
 
@@ -190,7 +193,7 @@ GPS와 IMU에는 대회에서 noise가 인가될 수 있으며 구체적인 범�
 - `accel_x`, `accel_y`, `accel_z`
 - 각 타이어의 lateral force, side slip angle, cornering stiffness
 
-ROS 토픽 이름, ROS 메시지 타입, UDP 포트와 바이너리 패킷 레이아웃은 현재 저장소에 구현 또는 명세되어 있지 않다. 일반적인 MORAI 예제를 근거로 이 값을 추측하지 말고 실제 대회용 UDP 명세와 런타임 패킷을 확인한 뒤 확정한다.
+현재 저장소에는 라이브 MORAI에서 확인한 Camera/GPS **개발용 수신 어댑터**와 그 ROS 계약만 있다. IMU, LiDAR, `CollisionData`, `Competition Vehicle Status`, 제어 송신의 대회용 UDP 포트와 바이너리 레이아웃은 아직 승인되지 않았다. 일반 MORAI 예제의 구형 `EgoVehicleStatus`를 대회용 `Competition Vehicle Status`로 간주하지 말고, 실제 대회 UDP 명세와 런타임 패킷을 확인한 뒤 중앙 계약에서 확정한다.
 
 ## 10. 현재 참고파일
 
@@ -234,6 +237,10 @@ Camera와 LiDAR 결과를 각 인식 패키지가 직접 전역좌표로 변환�
 - [편집 가능한 Mermaid 원본](src/ros_architecture_pkg/docs/system_architecture.mmd)
 - [SVG 벡터 이미지](src/ros_architecture_pkg/docs/system_architecture.svg)
 - [파트 배분 및 소유권](src/ros_architecture_pkg/docs/part_ownership.md)
+- [TF 구조와 센서 위치](src/ros_architecture_pkg/docs/tf/README.md)
+- [Timestamp 정책](src/ros_architecture_pkg/docs/timestamp/README.md)
+- [MORAI UDP → ROS 어댑터 계약](src/ros_architecture_pkg/config/morai_interface/udp_ros_bridge.yaml)
+- [UDP 브리지 이식 및 라이브 검증 기록](src/morai_interface_pkg/docs/morai_udp_bridge_import.md)
 
 ### 패키지 구조
 
@@ -267,7 +274,33 @@ Camera와 LiDAR 결과를 각 인식 패키지가 직접 전역좌표로 변환�
 └── src/        # 실제 구현
 ```
 
-공개 인터페이스는 [`interface_contract.yaml`](src/ros_architecture_pkg/config/interface_contract.yaml)만 원본으로 사용한다. 현재 목록이 비어 있는 것은 아직 이름이 승인되지 않았기 때문이며, 각 패키지가 임시 ROS 이름을 만들어도 된다는 의미가 아니다.
+공개 인터페이스는 [`interface_contract.yaml`](src/ros_architecture_pkg/config/interface_contract.yaml)을 중앙 진입점으로 사용한다. TF 상세 계약은 [`config/tf/`](src/ros_architecture_pkg/config/tf/), 시간 상세 계약은 [`config/timestamp/`](src/ros_architecture_pkg/config/timestamp/)에 모듈로 분리되어 있지만 모두 `ros_architecture_pkg`가 소유하는 하나의 중앙 계약이다.
+
+### 빌드와 테스트
+
+이 Ubuntu 20.04/ROS Noetic 환경에서는 사용자 영역의 최신 `setuptools`가
+Catkin install과 충돌할 수 있으므로 system Python과 user-site 차단을 함께 쓴다.
+
+```bash
+source /opt/ros/noetic/setup.bash
+PYTHONNOUSERSITE=1 catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3
+source devel/setup.bash
+PYTHONNOUSERSITE=1 catkin_make run_tests
+catkin_test_results --all build/test_results
+PYTHONNOUSERSITE=1 catkin_make install -DPYTHON_EXECUTABLE=/usr/bin/python3
+```
+
+### TF와 Timestamp 1차 계약
+
+승인된 frame tree는 다음과 같다.
+
+```text
+map → odom → base_link → camera/lidar/gps/imu frames
+```
+
+현재 Camera 3대의 위치는 제공 원본과 로컬 MORAI 저장 프로필이 일치한다. LiDAR/GPS/IMU 위치는 로컬 저장 프로필에서만 확인됐으며 현재 Simulator의 활성 loadout으로는 검증되지 않았다. MORAI 차량 원점·회전축과 ROS `base_link`의 정합도 남아 있으므로 모든 센서 정적 TF는 현재 `publish_enabled: false`다.
+
+Timestamp의 기준은 센서 또는 상태가 실제로 유효한 **측정시각**이다. Perception과 downstream 노드는 처리 완료 시각으로 `header.stamp`를 덮어쓰면 안 된다. Live MORAI의 `/clock` 동작이 검증되기 전에는 `use_sim_time`을 활성화하지 않고, rosbag replay에서만 bag clock을 사용한다.
 
 ### HD Map에 대한 현재 판단
 
@@ -299,8 +332,8 @@ Camera와 LiDAR 결과를 각 인식 패키지가 직접 전역좌표로 변환�
 
 ## 13. 다음 설계 작업
 
-1. 대회용 UDP 명세와 실제 packet capture를 확보하고 `morai_interface_pkg` 논리 I/O를 확정한다.
-2. 중앙 ROS 계약의 node/topic/message/frame/time/unit/timeout을 producer-consumer 단위로 승인한다.
+1. 나머지 대회용 UDP 명세와 실제 packet capture를 확보하고 IMU, LiDAR, `CollisionData`, `Competition Vehicle Status`, 제어 송신 계약을 확정한다.
+2. 승인한 TF 이름을 live MORAI에서 검증하고, node/topic/message/unit/timeout을 producer-consumer 단위로 승인한다.
 3. 공유 타입을 `common_msgs_pkg`에 정의하고 자동 contract test를 만든다.
 4. 공식 HD Map 원본·맵명·좌표계·Link 대응을 확인하고 HD Map 완료 기준을 검증한다.
 5. sensor calibration/time offset과 GPS blackout을 포함한 Localization 상태 머신을 설계한다.
@@ -310,4 +343,6 @@ Camera와 LiDAR 결과를 각 인식 패키지가 직접 전역좌표로 변환�
 9. Safety Supervisor fault-injection과 최종 단일 command path를 검증한다.
 10. 전체 bringup, runtime evaluation, rosbag replay와 MORAI closed-loop 검증을 수행한다.
 
-상세 node/topic 이름이 승인되기 전까지 현재 골격은 **빌드 가능한 책임 경계**만 제공하며 실제 주행 기능이 구현되었다는 뜻이 아니다.
+현재 승인된 구체 node/topic은 MORAI Camera/GPS 개발 어댑터 범위뿐이다.
+나머지 골격과 `runtime_activation_allowed: false` 채널은 실제 주행 기능이
+구현·검증됐다는 뜻이 아니다.

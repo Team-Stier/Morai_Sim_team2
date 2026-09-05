@@ -1,4 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- No transport node is approved until the competition packet contract is verified. -->
+  <!-- 의도적으로 아무 노드도 자동 실행하지 않는다.
+       라이브 검증된 개발용 Camera/GPS도 cameras.launch와 gps_bridge.launch에서
+       명시적으로 선택하고, 기본 비활성 채널은 중앙 계약 승인 없이 켜지 않는다. -->
 </launch>

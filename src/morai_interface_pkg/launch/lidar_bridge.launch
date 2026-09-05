@@ -1,0 +1,50 @@
+<launch>
+  <!-- LiDAR(VLP16) Bridge: MORAI VLP16 UDP -> velodyne_driver ->
+       velodyne_pointcloud -> sensor_msgs/PointCloud2 -> /molit/sensors/lidar/points
+       자체 UDP 파서 없음. 표준 velodyne 패키지를 감싼다.
+       (설치: sudo apt install ros-noetic-velodyne) -->
+
+  <arg name="config"       default="$(find morai_interface_pkg)/config/lidar_bridge.yaml"/>
+  <arg name="packets_topic" default="/molit/internal/morai_interface/lidar/packets"/>
+  <arg name="points_topic" default="/molit/sensors/lidar/points"/>
+  <arg name="calibration"  default="$(find velodyne_pointcloud)/params/VLP16db.yaml"/>
+  <arg name="enable"       default="false"/>
+
+  <!-- 선택적 override 인자. 비워두면 config(YAML) 값을 사용한다. -->
+  <arg name="port"       default=""/>
+  <arg name="rpm"        default=""/>
+  <arg name="frame_id"   default=""/>
+  <arg name="device_ip"  default=""/>
+  <arg name="manager" default="morai_velodyne_manager"/>
+
+  <!-- Noetic velodyne 1.7.0은 구형 velodyne_driver_node/cloud_node 대신
+       DriverNodelet/TransformNodelet을 제공한다. 공식 VLP16 launch와 같은 구성이다. -->
+  <group if="$(arg enable)">
+    <node pkg="nodelet" type="nodelet" name="$(arg manager)"
+          args="manager" output="screen"/>
+
+    <!-- 1) MORAI VLP16 UDP -> velodyne_msgs/VelodyneScan -->
+    <node pkg="nodelet" type="nodelet" name="morai_velodyne_driver"
+          args="load velodyne_driver/DriverNodelet $(arg manager)" output="screen">
+      <rosparam command="load" file="$(arg config)"/>
+      <param name="model" value="VLP16"/>
+      <param name="port"      value="$(arg port)"      if="$(eval arg('port') != '')"/>
+      <param name="rpm"       value="$(arg rpm)"       if="$(eval arg('rpm') != '')"/>
+      <param name="frame_id"  value="$(arg frame_id)"  if="$(eval arg('frame_id') != '')"/>
+      <param name="device_ip" value="$(arg device_ip)" if="$(eval arg('device_ip') != '')"/>
+      <remap from="velodyne_packets" to="$(arg packets_topic)"/>
+    </node>
+
+    <!-- 2) velodyne_packets -> PointCloud2, 중앙 계약 토픽으로 remap -->
+    <node pkg="nodelet" type="nodelet" name="morai_velodyne_cloud"
+          args="load velodyne_pointcloud/TransformNodelet $(arg manager)" output="screen">
+      <rosparam command="load" file="$(arg config)"/>
+      <param name="model" value="VLP16"/>
+      <param name="calibration" value="$(arg calibration)"/>
+      <param name="fixed_frame" value=""/>
+      <param name="target_frame" value=""/>
+      <remap from="velodyne_packets" to="$(arg packets_topic)"/>
+      <remap from="velodyne_points" to="$(arg points_topic)"/>
+    </node>
+  </group>
+</launch>

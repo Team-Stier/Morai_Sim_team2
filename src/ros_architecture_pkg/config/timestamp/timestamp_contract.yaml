@@ -1,0 +1,108 @@
+schema_version: 1
+contract_version: 0.1.0
+status: approved_semantics_pending_live_clock_verification
+
+authority:
+  package: ros_architecture_pkg
+  rule: >-
+    All public sensor and derived messages must use this clock-domain and
+    measurement-time policy. Downstream nodes must preserve source stamps.
+
+definitions:
+  measurement_time: Time at which a sensor sample or state estimate is valid.
+  ingress_time: ROS time immediately after data enters morai_interface_pkg.
+  publication_time: Time at which a producer publishes its processed output.
+  steady_watchdog_time: Monotonic wall time used only to detect a frozen ROS clock or transport.
+
+clock_modes:
+  live_morai:
+    ros_use_sim_time: false
+    canonical_message_clock: ros_time
+    source_clock_priority:
+      - simulator_measurement_time_if_convertible_to_ros_time
+      - morai_interface_ingress_time
+    clock_verification_status: no_clock_topic_observed_on_temporary_ros_master_2026_09_03
+    rule: >-
+      Do not enable use_sim_time until a live MORAI clock publisher, monotonicity,
+      reset behavior and every producer clock domain have been verified together.
+  rosbag_replay:
+    ros_use_sim_time: true
+    canonical_message_clock: bag_clock
+    required_clock_source: rosbag_play_with_clock
+    rule: Never run the live MORAI source and a replay source in the same graph.
+  offline_file:
+    ros_use_sim_time: false
+    canonical_message_clock: recorded_measurement_time
+    rule: Preserve recorded stamps and never replace them with processing wall time.
+
+header_stamp_contract:
+  semantic: measurement_time
+  owner_at_ingress: morai_interface_pkg
+  required_on_sensor_messages: true
+  zero_stamp_policy: invalid
+  downstream_overwrite_allowed: false
+  processing_completion_time_allowed: false
+  fallback_when_source_stamp_missing:
+    stamp: morai_interface_ingress_time
+    provenance: ingress_fallback
+    quality_effect: degraded
+  required_provenance_values:
+    - source_measurement
+    - converted_source_measurement
+    - ingress_fallback
+    - recorded_measurement
+
+derived_message_contract:
+  localization:
+    stamp: estimate_valid_time
+    rule: Pose history must be queryable by sensor measurement time.
+  perception:
+    stamp: source_sensor_measurement_time
+    rule: Inference completion must not replace the source image or scan stamp.
+  world_model:
+    stamp: fusion_reference_time
+    rule: Every fused element must retain source stamp, age and provenance internally.
+  route_context:
+    stamp: ego_pose_time_used_for_route_matching
+    rule: Route publication time is not the route-context validity time.
+  trajectory:
+    stamp: planning_reference_time
+    rule: A separate validity horizon must be added when the trajectory message is approved.
+  control_and_safety:
+    stamp: command_generation_time
+    rule: Input measurement stamps remain available for end-to-end age checks.
+
+ordering_and_reset_policy:
+  per_source_regression: reject_and_report
+  duplicate_stamp: allow_only_if_source_sequence_or_payload_policy_handles_it
+  clock_reset: clear_temporal_buffers_and_reinitialize
+  future_stamp: reject_or_degrade_after_measured_tolerance_is_approved
+  cross_clock_comparison: forbidden
+
+freshness_policy:
+  data_age_clock: canonical_message_clock
+  transport_watchdog_clock: steady_watchdog_time
+  stale_threshold_status: pending_rate_and_jitter_measurement
+  rule: >-
+    Do not reuse MORAI receiveTimeout or configured sensor period as a stale
+    threshold. Approve each timeout only after observed p95/p99 period and jitter.
+  configured_targets_not_measurements:
+    camera:
+      configured_period_sec: 0.05000000074505806
+      configured_rate_hz: 20.0
+    lidar:
+      configured_period_sec: 0.10000000149011612
+      configured_rate_hz: 10.0
+    gps:
+      configured_period_sec: 0.20000000298023224
+      configured_rate_hz: 5.0
+    imu:
+      configured_period_sec: 0.019999999552965164
+      configured_rate_hz: 50.0
+
+runtime_evidence_required:
+  - Verify whether the competition MORAI build publishes a usable clock.
+  - Record source stamp, ingress time and publication time without changing the source stamp.
+  - Measure rate, jitter, transport delay and processing latency per sensor.
+  - Test pause, reset, replay seek, packet loss and clock regression.
+  - Approve numeric future tolerance and stale timeout in a later contract revision.

@@ -33,6 +33,8 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 - 입력: versioned HD Map slice, pose history/quality, timestamped Camera/LiDAR observations
 - 출력: time-aligned tracked scene, occupancy/free-space, traffic context와 world-model quality
 
+좌표 변환에는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)에서 승인된 frame과 extrinsic만 사용한다. 시간 정렬에는 중앙 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)을 적용하고, 각 관측의 source stamp를 fusion publication time으로 교체하지 않는다.
+
 ## 디렉터리
 
 - `config/`: sync, association, tracking, uncertainty와 stale 파라미터
