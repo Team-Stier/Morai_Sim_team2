@@ -37,6 +37,7 @@ class BoundarySide(Enum):
     LEFT = "left"
     RIGHT = "right"
     SHARED = "shared"
+    CONNECTOR_MOUTH = "connector_mouth"
     UPSTREAM_END = "upstream_end"
     DOWNSTREAM_END = "downstream_end"
     OTHER = "other"
@@ -259,14 +260,28 @@ class CorridorPolicy:
         if policy_input.mode is CorridorMode.TURN_CONNECTOR:
             if not policy_input.turn_connector_verified:
                 diagnostics.append("turn connector was not verified")
-            invalid = [
-                boundary_id
-                for boundary_id in requested.intersection(all_boundary_ids)
-                if boundaries[boundary_id].side is not BoundarySide.DOWNSTREAM_END
-            ]
+            invalid = []
+            for boundary_id in requested.intersection(all_boundary_ids):
+                boundary = boundaries[boundary_id]
+                matched_lane_ids = frozenset(
+                    lane.lane_id
+                    for lane in corridor.lanes
+                    if any(
+                        edge_matches_polyline(start, finish, boundary.points)
+                        for start, finish in polygon_edges(lane.vertices)
+                    )
+                )
+                if (
+                    boundary.side is not BoundarySide.CONNECTOR_MOUTH
+                    or boundary.marking is not BoundaryMarking.VIRTUAL
+                    or len(boundary.points) != 2
+                    or len(boundary.lane_ids) != 2
+                    or matched_lane_ids != boundary.lane_ids
+                ):
+                    invalid.append(boundary_id)
             if invalid:
                 diagnostics.append(
-                    "turn policy may open downstream ends only: {}".format(
+                    "turn policy may open verified virtual connector mouths only: {}".format(
                         ",".join(sorted(invalid))
                     )
                 )
@@ -278,7 +293,7 @@ class CorridorPolicy:
             )
             opened = requested if qualified else frozenset()
             if qualified:
-                diagnostics.append("verified turn-connector downstream end opened")
+                diagnostics.append("verified turn-connector mouth opened")
             else:
                 diagnostics.append("turn opening denied; all boundaries stay hard")
             return CorridorPolicyDecision(

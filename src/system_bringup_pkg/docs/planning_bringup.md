@@ -33,6 +33,11 @@ ROS1 Noetic workspace를 build하고 source한 terminal에서:
 roslaunch system_bringup_pkg planning_stack.launch
 ```
 
+`use_rviz`의 기본값은 `true`다. 따라서 `planning_stack.launch`, 이를 포함하는
+`path_control_test.launch`와 `system_bringup_pkg.launch`를 기본 인자로 시작하면
+동일한 planning RViz profile이 함께 시작된다. 이 기본 동작과 필수 display topic은
+launch contract test로 고정한다.
+
 headless 확인:
 
 ```bash

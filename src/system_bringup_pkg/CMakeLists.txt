@@ -40,3 +40,7 @@ install(
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   PATTERN ".gitkeep" EXCLUDE
 )
+
+if(CATKIN_ENABLE_TESTING)
+  catkin_add_nosetests(test)
+endif()

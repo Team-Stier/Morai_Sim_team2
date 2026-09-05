@@ -293,7 +293,7 @@ class StrictCorridorSafetyTest(unittest.TestCase):
             ).valid
         )
 
-    def test_turn_connector_opens_only_verified_downstream_end(self):
+    def test_turn_connector_opens_only_verified_virtual_connector_mouth(self):
         incoming = LanePolygon(
             "incoming",
             (
@@ -315,7 +315,7 @@ class StrictCorridorSafetyTest(unittest.TestCase):
         downstream = BoundarySegment(
             "mouth",
             (Point2D(5.0, -3.0), Point2D(5.0, 3.0)),
-            BoundarySide.DOWNSTREAM_END,
+            BoundarySide.CONNECTOR_MOUTH,
             BoundaryMarking.VIRTUAL,
             frozenset(("incoming", "outgoing")),
         )
@@ -338,6 +338,22 @@ class StrictCorridorSafetyTest(unittest.TestCase):
         self.assertTrue(
             self.checker.check_pose(Pose2D(5.0, 0.0, 0.0), effective).valid
         )
+
+        for invalid_mouth in (
+            dataclasses.replace(downstream, side=BoundarySide.DOWNSTREAM_END),
+            dataclasses.replace(downstream, marking=BoundaryMarking.DASHED),
+            dataclasses.replace(downstream, lane_ids=frozenset(("incoming",))),
+        ):
+            with self.subTest(invalid_mouth=invalid_mouth):
+                invalid_corridor = DrivingCorridor(
+                    "turn-link",
+                    ("turn-link",),
+                    (incoming, outgoing),
+                    (invalid_mouth,),
+                )
+                denied = self.policy.resolve(invalid_corridor, verified)
+                self.assertTrue(denied.fail_closed)
+                self.assertEqual(denied.opened_boundary_ids, frozenset())
 
     def test_circle_contact_with_complete_body_is_invalid(self):
         effective = self.policy.apply(

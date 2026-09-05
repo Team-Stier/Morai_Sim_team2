@@ -21,6 +21,7 @@
   <depend>vehicle_control_pkg</depend>
   <depend>world_model_pkg</depend>
   <exec_depend>rviz</exec_depend>
+  <test_depend>python3-nose</test_depend>
 
   <export />
 </package>

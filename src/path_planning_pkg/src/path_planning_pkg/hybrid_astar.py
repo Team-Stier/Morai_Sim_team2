@@ -52,6 +52,7 @@ class HybridAStarConfig:
     bearing_heuristic_weight_m_per_rad: float = 3.0
     yaw_heuristic_weight_m_per_rad: float = 4.0
     reference_lateral_heuristic_weight: float = 1.5
+    reference_lateral_cost_weight: float = 1.0
     reference_lookahead_m: float = 7.0
     maximum_steering_expansions: int = 5
     max_search_nodes: int = 50000
@@ -80,6 +81,10 @@ class HybridAStarConfig:
             (
                 self.reference_lateral_heuristic_weight,
                 "reference lateral heuristic weight",
+            ),
+            (
+                self.reference_lateral_cost_weight,
+                "reference lateral cost weight",
             ),
         ):
             if not math.isfinite(value) or value < 0.0:
@@ -374,6 +379,7 @@ class HybridAStarPlanner:
         steering_rad: float,
         previous_steering_rad: float,
         minimum_clearance_m: float,
+        reference_lateral_distance_m: float = 0.0,
     ) -> float:
         length = self.config.primitive_length_m
         cost = length
@@ -395,6 +401,16 @@ class HybridAStarPlanner:
                 * normalized_deficit
                 * length
             )
+        # Unlike the reference heuristic, this term changes the accumulated
+        # path cost.  A safe route-following solution is therefore preferred
+        # over another safe solution that merely reaches the same local goal.
+        # Hard map walls remain the independent feasibility authority.
+        cost += (
+            self.config.reference_lateral_cost_weight
+            * reference_lateral_distance_m
+            * reference_lateral_distance_m
+            * length
+        )
         return cost
 
     def _steering_expansions(
@@ -754,7 +770,14 @@ class HybridAStarPlanner:
                     for result in validity_results
                 )
                 child_cost = current.cost + self._transition_cost(
-                    steering_rad, current.steering_rad, minimum_clearance
+                    steering_rad,
+                    current.steering_rad,
+                    minimum_clearance,
+                    (
+                        guide.project(Point2D(child_pose.x, child_pose.y))[1]
+                        if guide is not None
+                        else 0.0
+                    ),
                 )
                 found_index = discovered.get(child_key)
                 if found_index is not None and child_cost >= records[found_index].cost - 1.0e-12:

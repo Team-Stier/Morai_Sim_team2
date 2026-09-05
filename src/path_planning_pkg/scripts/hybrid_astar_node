@@ -34,6 +34,10 @@ from path_planning_pkg import (
     VehicleGeometry,
 )
 from path_planning_pkg.geometry import polygon_edges
+from path_planning_pkg.global_route_reference import (
+    GlobalRouteReference,
+    GlobalRouteTrackingConfig,
+)
 from path_planning_pkg.mgeo_adapter import MGeoPlannerMap, parse_lane_change_pairs
 from path_planning_pkg.node_safety import (
     aligned_path_index,
@@ -72,6 +76,8 @@ class _PublicationContext:
     proposed_phase: str
     initial_pair: object
     proposed_pair: object
+    global_path_reference: object
+    accepted_global_route_progress_m: object
     validated_odometry: object
     validated_route: object
     validated_lead_message: object
@@ -140,6 +146,44 @@ class HybridAStarNode(object):
         self._high_speed = float(behavior["high_speed_target_speed_mps"])
         self._lateral_acceleration = float(
             behavior["maximum_lateral_acceleration_mps2"]
+        )
+        route_reference = config["global_route_reference"]
+        self._global_route_config = GlobalRouteTrackingConfig(
+            expected_point_count=int(route_reference["expected_point_count"]),
+            expected_length_m=float(route_reference["expected_length_m"]),
+            expected_xy_sha256=str(route_reference["expected_xy_sha256"]),
+            length_tolerance_m=float(route_reference["length_tolerance_m"]),
+            maximum_point_spacing_m=float(
+                route_reference["maximum_point_spacing_m"]
+            ),
+            closure_tolerance_m=float(route_reference["closure_tolerance_m"]),
+            maximum_index_progress_error_m=float(
+                route_reference["maximum_index_progress_error_m"]
+            ),
+            maximum_progress_regression_m=float(
+                route_reference["maximum_progress_regression_m"]
+            ),
+            projection_backward_points=int(
+                route_reference["projection_backward_points"]
+            ),
+            projection_forward_points=int(
+                route_reference["projection_forward_points"]
+            ),
+            matching_tube_radius_m=float(
+                route_reference["matching_tube_radius_m"]
+            ),
+            maximum_projection_progress_error_m=float(
+                route_reference["maximum_projection_progress_error_m"]
+            ),
+            maximum_projection_heading_error_rad=math.radians(
+                float(route_reference["maximum_projection_heading_error_deg"])
+            ),
+            turn_detection_heading_change_rad=math.radians(
+                float(route_reference["turn_detection_heading_change_deg"])
+            ),
+            turn_goal_distance_m=float(route_reference["turn_goal_distance_m"]),
+            heading_score_weight=float(route_reference["heading_score_weight"]),
+            goal_scan_step_m=float(route_reference["goal_scan_step_m"]),
         )
         for value, label in (
             (self._validity_sec, "trajectory_validity_sec"),
@@ -227,6 +271,9 @@ class HybridAStarNode(object):
             reference_lateral_heuristic_weight=float(
                 planner_values["reference_lateral_heuristic_weight"]
             ),
+            reference_lateral_cost_weight=float(
+                planner_values["reference_lateral_cost_weight"]
+            ),
             reference_lookahead_m=float(
                 planner_values["reference_lookahead_m"]
             ),
@@ -310,6 +357,8 @@ class HybridAStarNode(object):
         self._route_context = None
         self._lead_vehicle = None
         self._global_path_valid = False
+        self._global_path_reference = None
+        self._last_global_route_progress_m = None
         self._last_route_link = ""
         self._previous_route_link = ""
         self._maneuver_phase = "idle"
@@ -386,6 +435,7 @@ class HybridAStarNode(object):
 
     def _on_global_path(self, message):
         valid = message.header.frame_id == self._frame_id and len(message.poses) >= 2
+        points = []
         if valid:
             for pose in message.poses:
                 position = pose.pose.position
@@ -395,14 +445,34 @@ class HybridAStarNode(object):
                 ):
                     valid = False
                     break
+                points.append(Point2D(float(position.x), float(position.y)))
                 try:
                     _yaw(pose.pose.orientation)
                 except ValueError:
                     valid = False
                     break
+        reference = None
+        if valid:
+            try:
+                reference = GlobalRouteReference(points, self._global_route_config)
+            except ValueError as error:
+                valid = False
+                rospy.logerr("competition global path rejected: %s", error)
         with self._output_lock:
             with self._state_lock:
+                unchanged = valid and self._global_path_reference is not None
+                if unchanged:
+                    # Any accepted path has the locked official XY digest, so
+                    # an identical latched re-publication is a no-op and must
+                    # not erase the last successfully published progress.
+                    reference = self._global_path_reference
                 self._global_path_valid = valid
+                self._global_path_reference = reference
+                # A replacement latched path starts a new matching epoch.  The
+                # central contract says it is immutable, so a replacement is
+                # treated conservatively rather than carrying progress across.
+                if not unchanged:
+                    self._last_global_route_progress_m = None
             self._invalidate_live_trajectory_if_inputs_fault("input_update")
 
     def _snapshot(self):
@@ -541,9 +611,56 @@ class HybridAStarNode(object):
         effective = self._planner.policy.apply(corridor.corridor, policy)
         if effective.decision.fail_closed:
             raise ValueError("route corridor policy rejected")
-        goal, lane_id = self._goal_on_route(
-            selected, source, ego, effective, obstacles
-        )
+        goal = None
+        reference_path = corridor.guidance_points
+        lane_id = source
+        used_global_reference = None
+        accepted_global_progress = None
+        # Only normal route keeping follows the official 4,430-point line.
+        # An active overtake/follow-adjacent maneuver must use its verified
+        # branch geometry until it merges back into the competition route.
+        if active_pair is None:
+            with self._state_lock:
+                global_reference = self._global_path_reference
+                previous_progress = self._last_global_route_progress_m
+            if global_reference is None:
+                raise ValueError("competition global path is unavailable")
+            try:
+                route_slice = global_reference.forward_slice(
+                    ego=ego,
+                    context_progress_m=float(route.progress_m),
+                    context_route_length_m=float(route.route_length_m),
+                    nearest_source_index=int(route.nearest_route_index),
+                    previous_progress_m=previous_progress,
+                    preferred_distance_m=self._goal_distance,
+                    minimum_distance_m=self._minimum_published_path_length,
+                    final_end_margin_m=self._route_end_margin,
+                    pose_is_valid=lambda pose: self._planner.checker.check_pose(
+                        pose, effective, obstacles
+                    ).valid,
+                    config=self._global_route_config,
+                )
+                goal = route_slice.goal
+                reference_path = route_slice.reference_path
+                used_global_reference = global_reference
+                accepted_global_progress = route_slice.accepted_progress_m
+                lane_id = nearest_lane_id(
+                    Point2D(goal.x, goal.y), corridor.map_lanes, fallback=source
+                )
+            except ValueError as error:
+                # The fallback remains inside the exact same map corridor and
+                # hard wheel-footprint walls.  It prevents one noisy reference
+                # match from removing all steering authority, while emitting a
+                # visible diagnostic and never authorizing a lane change.
+                rospy.logwarn_throttle(
+                    1.0,
+                    "official route slice unavailable; using safe map goal: %s"
+                    % error,
+                )
+        if goal is None:
+            goal, lane_id = self._goal_on_route(
+                selected, source, ego, effective, obstacles
+            )
         return (
             PlanningRequest(
                 ego,
@@ -551,10 +668,12 @@ class HybridAStarNode(object):
                 corridor.corridor,
                 policy,
                 obstacles,
-                reference_path=corridor.guidance_points,
+                reference_path=reference_path,
             ),
             corridor,
             lane_id,
+            used_global_reference,
+            accepted_global_progress,
         )
 
     def _lane_change_request(
@@ -782,6 +901,8 @@ class HybridAStarNode(object):
         initial_pair = active_pair
         proposed_phase = phase
         proposed_pair = active_pair
+        planned_global_reference = None
+        accepted_global_progress = None
         try:
             if phase == "crossing" and active_pair is not None:
                 if route.current_link_id != active_pair.route_link_id:
@@ -807,7 +928,13 @@ class HybridAStarNode(object):
                     proposed_phase = phase
                     proposed_pair = None
                 if phase == "follow_adjacent":
-                    request, corridor, output_lane_id = self._standard_request(
+                    (
+                        request,
+                        corridor,
+                        output_lane_id,
+                        planned_global_reference,
+                        accepted_global_progress,
+                    ) = self._standard_request(
                         ego, route, previous, active_pair, obstacles
                     )
             if phase == "idle":
@@ -826,8 +953,18 @@ class HybridAStarNode(object):
                     proposed_phase = "crossing"
                     proposed_pair = candidate
                 else:
-                    request, corridor, output_lane_id = self._standard_request(
-                        ego, route, previous, None, obstacles
+                    (
+                        request,
+                        corridor,
+                        output_lane_id,
+                        planned_global_reference,
+                        accepted_global_progress,
+                    ) = self._standard_request(
+                        ego,
+                        route,
+                        previous,
+                        None,
+                        obstacles,
                     )
         except (KeyError, TypeError, ValueError) as error:
             self._publish_failure(
@@ -1064,6 +1201,8 @@ class HybridAStarNode(object):
             proposed_phase=proposed_phase,
             initial_pair=initial_pair,
             proposed_pair=proposed_pair,
+            global_path_reference=planned_global_reference,
+            accepted_global_route_progress_m=accepted_global_progress,
             validated_odometry=newest_odometry,
             validated_route=newest_route,
             validated_lead_message=newest_lead_message,
@@ -1118,6 +1257,14 @@ class HybridAStarNode(object):
                 PlannedTrajectory.STATUS_INPUT_STALE,
                 "missing_global_path",
             )
+        if context.global_path_reference is not None:
+            with self._state_lock:
+                current_global_reference = self._global_path_reference
+            if current_global_reference is not context.global_path_reference:
+                return rejected(
+                    PlannedTrajectory.STATUS_INPUT_STALE,
+                    "global_path_changed_after_planning",
+                )
         input_reason = self._input_reason(current_odometry, current_route, now)
         if input_reason:
             return rejected(
@@ -1329,7 +1476,18 @@ class HybridAStarNode(object):
             message.header.frame_id = self._frame_id
             message.valid_until = valid_until
             message.status = PlannedTrajectory.STATUS_VALID
-            message.reason = "valid"
+            if context.global_path_reference is not None:
+                message.reason = "valid:official_global_path_reference"
+            elif (
+                context.pending_pair is not None
+                or context.planning_active_pair is not None
+            ):
+                message.reason = "valid:verified_mgeo_maneuver_reference"
+            else:
+                # This remains a valid, hard-wall-certified path, but exposing
+                # the fallback mode makes loss of the official reference
+                # visible in rosbag/rostopic diagnostics during track tests.
+                message.reason = "valid:safe_mgeo_reference_fallback"
             message.lane_change_authorized = bool(
                 result.diagnostics.policy.lane_change_enabled
             )
@@ -1393,6 +1551,17 @@ class HybridAStarNode(object):
                 # corresponding successful trajectory publication.
                 self._maneuver_phase = context.proposed_phase
                 self._active_pair = context.proposed_pair
+                if (
+                    context.global_path_reference is self._global_path_reference
+                    and context.accepted_global_route_progress_m is not None
+                ):
+                    # Progress becomes planner state only after a fully checked
+                    # trajectory is published. Failed searches and noisy
+                    # provisional matches can therefore never poison the next
+                    # bounded match.
+                    self._last_global_route_progress_m = float(
+                        context.accepted_global_route_progress_m
+                    )
             return True
 
     def _publish_failure(self, status, reason, stamp, corridor=None, policy=None):

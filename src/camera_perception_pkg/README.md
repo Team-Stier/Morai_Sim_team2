@@ -22,6 +22,14 @@
 - Ground Truth와 2D/3D Bounding Box를 사용할 수 없다.
 - 허용 UDP에 신호등 정답 전용 채널이 없으므로 sample scene의 신호 상태를 런타임 인식 대신 사용하지 않는다.
 
+MORAI SIM: Drive 24.R2의 [일반 ROS 인터페이스](https://help-morai-sim.scrollhelp.site/ko/morai-sim-drive/24.R2/ros-2)에는
+`/GetTrafficLightStatus`가 문서화되어 있지만, 대회 외부 통신 allowlist에는 해당
+신호등 정답 채널이 없다. 따라서 대회 runtime에서는 이 topic/service, V2I 또는
+sample scene의 `tlList`를 구독하지 않는다. 현재 신호 상태는 알 수 없는 상태로
+취급하며, 향후 전방 카메라의 timestamped 신호 인식과 정적 HD Map의 신호 ID·정지선
+association을 World Model에서 결합하는 중앙 계약이 승인된 뒤에만 Planner 입력으로
+사용한다.
+
 ## 논리 입출력
 
 - 입력: 정규화된 카메라 프레임과 중앙에서 승인한 calibration 정보

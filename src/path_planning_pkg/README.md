@@ -34,8 +34,17 @@
 ## 현재 구현
 
 - KATRI MGeo의 선택 route Link만 rolling corridor로 만드는 adapter
+- 대회 제공 4,430점 `/planning/global_path`를 불변 polyline으로 검증·저장하고,
+  `RouteContext` 진행도와 원본 인덱스를 기준으로 일반 주행용 전방 slice/목표를 생성
+- 작은 후퇴 noise는 단조 진행도로 clamp하고, 지역 인덱스 탐색·횡방/종방/
+  heading tolerance를 넘는 관측은 전역 경로 분기 jump로 채택하지 않는 보수적 matching
+- 일반 주행은 대회 전역경로에 대한 heuristic과 누적 횡방 cost를 동시에 쓰되,
+  차선 변경/인접 차로 follow 중은 승인된 MGeo branch guide를 유지
+- 발행 trajectory의 `reason`에 공식 경로·검증된 maneuver·안전 MGeo fallback
+  reference mode를 남겨 rosbag/track test에서 실제 사용 경로를 구분
 - 전진 bicycle primitive와 `(x, y, yaw, steering)` 상태를 쓰는 Hybrid A*
-- MGeo 중심선을 search ordering에만 사용하는 route guide(안전 판정 권한은 없음)
+- 선택 reference를 search ordering과 누적 횡방 cost에 사용하는 route guide
+  (안전 판정 권한은 없으며 최종 허용은 지도 hard wall이 결정)
 - 보수적 네 wheel-contact proxy의 strict-positive hard-wall clearance와 차체 기반 객체 충돌 검사
 - primitive 사이 구간까지 연속 안전성을 보수적으로 판정하고, 조밀한 검증 표본을 그대로 출력
 - 모든 측면 실선·점선·미상·합성 경계를 기본 hard wall로 유지

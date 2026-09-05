@@ -32,6 +32,18 @@ def open_corridor(y_extent=5.0):
 
 
 class HybridAStarPlannerTest(unittest.TestCase):
+    def test_reference_lateral_error_changes_accumulated_cost(self):
+        planner = HybridAStarPlanner(
+            config=HybridAStarConfig(reference_lateral_cost_weight=2.0),
+            boundary_clearance_m=0.10,
+        )
+        on_reference = planner._transition_cost(0.0, 0.0, 1.0, 0.0)
+        one_metre_off = planner._transition_cost(0.0, 0.0, 1.0, 1.0)
+        self.assertAlmostEqual(
+            one_metre_off - on_reference,
+            2.0 * planner.config.primitive_length_m,
+        )
+
     def test_keeps_continuous_pose_but_uses_discrete_key(self):
         planner = HybridAStarPlanner(boundary_clearance_m=0.10)
         first = Pose2D(1.01, 2.01, math.radians(1.0))

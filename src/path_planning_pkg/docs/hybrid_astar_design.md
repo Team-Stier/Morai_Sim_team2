@@ -10,7 +10,7 @@
 
 ## 탐색
 
-AMET2026 Team Stier 구현의 연속 pose + 이산 discovered set, exact constant-curvature bicycle propagation, OPEN/parent bookkeeping 개념을 독립적으로 재구현했다. 상태 key에는 조향 변화 비용과 일관되도록 `(x, y, yaw, steering bin)`을 넣는다. 각 primitive는 설정 간격의 pose를 출력하며 샘플 사이 rigid-body displacement bound도 재귀 검증한다. 선택 Link의 MGeo 중심선은 heuristic과 조향 후보 순서를 정하는 guide로만 쓰며, 중심선 밖 경로도 hard-wall 검사를 통과하면 허용하고 중심선 위 경로도 벽 검사에 실패하면 거부한다. Link seam 부근의 preferred goal footprint가 invalid이면 경로 horizon을 따라 전방으로 scan하여 첫 valid centerline goal을 쓴다. 그러한 목표가 없으면 단순 endpoint로 대체하지 않고 정지한다.
+AMET2026 Team Stier 구현의 연속 pose + 이산 discovered set, exact constant-curvature bicycle propagation, OPEN/parent bookkeeping 개념을 독립적으로 재구현했다. 상태 key에는 조향 변화 비용과 일관되도록 `(x, y, yaw, steering bin)`을 넣는다. 각 primitive는 설정 간격의 pose를 출력하며 샘플 사이 rigid-body displacement bound도 재귀 검증한다. 일반 주행은 대회 제공 4,430점 전역경로의 `RouteContext` 진행도 기반 전방 slice를, 차선 변경·인접 차로 follow와 안전 fallback은 검증된 MGeo branch 중심선을 guide로 쓴다. guide는 heuristic·조향 후보 순서와 누적 횡방 cost에 영향을 주지만 안전 판정 권한은 없다. reference 밖 경로도 hard-wall 검사를 통과하면 후보가 될 수 있고, reference 위 경로도 벽 검사에 실패하면 거부한다. 제공 경로는 폐곡선이므로 종료선 직전의 짧은 로컬 slice는 `L→0`을 넘을 수 있지만, `RouteContext` 진행도가 1 lap 종료 `L`에서 고정되는 현재 계약을 planner가 다중 lap 진행도로 변조하지는 않는다. 공식 goal footprint가 invalid이면 설정 local horizon 안의 더 짧은 공식 goal만 검사하고, 모두 invalid이면 같은 hard corridor의 기존 safe MGeo goal로 fallback한다.
 
 색인 node 수 상한과 별도로 wall-clock 탐색 상한과 primitive당 collision-evaluation 상한을 두어 적대적 goal이나 폐쇄 공간에서도 유효기간 밖으로 무한정 block하지 않는다. 탐색 중 ego가 이동했으면 최신 pose와 collision-certified dense path 사이 위치·yaw 추종오차와 남은 horizon을 gate로 검사한다. 통과해도 snapshot 시각부터 연속 검증된 원래 path 전체와 원래 `s`를 유지한다. suffix를 잘라 최신 ego→anchor 연결을 암묵적으로 만들지 않는다. controller의 nearest-point 선택, planning latency 보상과 실제 추종 궤적은 이 planner의 충돌 증명 범위 밖이다.
 
@@ -23,7 +23,7 @@ AMET2026 Team Stier 구현의 연속 pose + 이산 discovered set, exact constan
 | 상태 | 주행 polygon | 열리는 경계 | 실패 동작 |
 |---|---|---|---|
 | keep route | 선택 predecessor/current/successor | topology가 검증된 종방향 seam만 | 모든 횡방향 경계 hard |
-| turn connector | 선택한 predecessor→connector→successor | longitudinal mouth/end cap만 | 다른 교차로 branch는 polygon에서 제외 |
+| turn connector | 선택한 predecessor→connector→successor | 두 인접 polygon의 검증된 virtual longitudinal mouth만 | lateral marking·terminal end cap은 hard, 다른 교차로 branch는 polygon에서 제외 |
 | highway overtake | current + 승인된 adjacent | 두 차로가 공유하는 실제 pure-dashed 선 하나 | 조건 하나라도 누락되면 벽 유지/no-path |
 | crossing latched | 최초 승인과 같은 두 차로 | 횡단 완료까지 같은 공유선 | solid/unknown/외측 벽은 latch로도 열 수 없음 |
 

@@ -10,6 +10,36 @@ route_context_timeout_sec: 0.25
 lead_vehicle_timeout_sec: 0.30
 maximum_input_skew_sec: 0.10
 
+# The latched Path is cross-checked against the immutable competition artifact
+# before it can guide motion.  RouteContext progress is the longitudinal
+# authority; a bounded local ego projection is only a noise/branch sanity gate.
+# Normal driving uses this official slice and goal. An authorized lane change
+# and its adjacent-lane follow phase keep using the verified MGeo branch guide
+# until the maneuver merges back into the official route.
+global_route_reference:
+  expected_point_count: 4430
+  expected_length_m: 2184.612
+  # SHA-256 over each Path pose's x/y encoded as big-endian IEEE-754 doubles.
+  expected_xy_sha256: 8df933cdce0d1430db6082ebcc820836ad2999013ca5cc2408b3dd52391abf54
+  length_tolerance_m: 0.10
+  maximum_point_spacing_m: 1.00
+  closure_tolerance_m: 0.05
+  maximum_index_progress_error_m: 1.00
+  # Small backward jitter is clamped to the last accepted planner progress.
+  maximum_progress_regression_m: 0.75
+  projection_backward_points: 40
+  projection_forward_points: 80
+  matching_tube_radius_m: 3.00
+  maximum_projection_progress_error_m: 5.00
+  maximum_projection_heading_error_deg: 100.0
+  # Tight-turn detection is geometry-derived from heading variation over the
+  # normal 18 m slice. Such turns use a 12 m official goal so A182/A146 remain
+  # within the 0.60 s search budget without hardcoded Link IDs.
+  turn_detection_heading_change_deg: 30.0
+  turn_goal_distance_m: 12.0
+  heading_score_weight: 1.0
+  goal_scan_step_m: 0.50
+
 vehicle:
   wheelbase_m: 3.000
   length_m: 4.635
@@ -67,8 +97,11 @@ planner:
   bearing_heuristic_weight_m_per_rad: 3.0
   yaw_heuristic_weight_m_per_rad: 4.0
   # MGeo centerlines guide search ordering only. Hard-wall collision checks
-  # remain the sole authority for whether a primitive can be used.
+  # remain the sole authority for whether a primitive can be used. The cost
+  # term makes safe paths that track the selected reference preferable to safe
+  # paths that only arrive at the same goal.
   reference_lateral_heuristic_weight: 1.5
+  reference_lateral_cost_weight: 2.0
   reference_lookahead_m: 7.0
   max_search_nodes: 20000
 

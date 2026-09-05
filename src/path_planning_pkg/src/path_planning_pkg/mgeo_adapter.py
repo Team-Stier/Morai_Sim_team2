@@ -384,24 +384,24 @@ class MGeoPlannerMap:
         )
 
     @staticmethod
-    def _end_cap(identifier, lane, downstream, lane_ids=None):
+    def _end_cap(identifier, lane, downstream, lane_ids=None, side=None):
         if downstream:
             points = (lane.right[-1], lane.left[-1])
-            side = BoundarySide.DOWNSTREAM_END
+            terminal_side = BoundarySide.DOWNSTREAM_END
         else:
             points = (lane.left[0], lane.right[0])
-            side = BoundarySide.UPSTREAM_END
+            terminal_side = BoundarySide.UPSTREAM_END
         return BoundarySegment(
             identifier,
             points,
-            side,
+            terminal_side if side is None else side,
             BoundaryMarking.VIRTUAL,
             frozenset(lane_ids or (lane.link_id,)),
         )
 
     @classmethod
     def _append_end_cap(
-        cls, boundaries, identifier, lane, downstream, lane_ids=None
+        cls, boundaries, identifier, lane, downstream, lane_ids=None, side=None
     ):
         points = (
             (lane.right[-1], lane.left[-1])
@@ -411,7 +411,13 @@ class MGeoPlannerMap:
         if distance(points[0], points[1]) <= 1.0e-6:
             return False
         boundaries.append(
-            cls._end_cap(identifier, lane, downstream, lane_ids=lane_ids)
+            cls._end_cap(
+                identifier,
+                lane,
+                downstream,
+                lane_ids=lane_ids,
+                side=side,
+            )
         )
         return True
 
@@ -479,6 +485,7 @@ class MGeoPlannerMap:
                     first,
                     True,
                     lane_ids=(first.link_id, second.link_id),
+                    side=BoundarySide.CONNECTOR_MOUTH,
                 ):
                     raise ValueError(
                         "zero-width route seam {} -> {}".format(
@@ -527,7 +534,7 @@ class MGeoPlannerMap:
                 BoundarySegment(
                     first_seam,
                     (first.right[-1], first.left[-1]),
-                    BoundarySide.DOWNSTREAM_END,
+                    BoundarySide.CONNECTOR_MOUTH,
                     BoundaryMarking.VIRTUAL,
                     frozenset((first.link_id, bridge_id)),
                 )
@@ -536,7 +543,7 @@ class MGeoPlannerMap:
                 BoundarySegment(
                     second_seam,
                     (second.right[0], second.left[0]),
-                    BoundarySide.DOWNSTREAM_END,
+                    BoundarySide.CONNECTOR_MOUTH,
                     BoundaryMarking.VIRTUAL,
                     frozenset((bridge_id, second.link_id)),
                 )
