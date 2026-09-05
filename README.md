@@ -366,6 +366,32 @@ Timestamp의 기준은 센서 또는 상태가 실제로 유효한 **측정시�
 
 이 저장소에서 설계나 코드를 생성하는 AI와 개발자는 다음 규칙을 지켜야 한다.
 
+### 작업별 Git branch 선택과 게시
+
+다른 팀원이 새로운 Codex 세션을 실행하더라도 작업이 엉뚱한 branch에 섞이지
+않도록 루트 [`AGENTS.md`](AGENTS.md)의 Git 규칙을 작업 계약으로 사용한다.
+
+1. 파일을 바꾸기 전에 `git fetch --prune origin`, 저장소 root, 현재 branch,
+   upstream과 dirty worktree를 확인한다. 조회·진단만 하는 작업은 branch를
+   만들거나 commit하지 않는다.
+2. 사용자가 branch를 지정하면 그대로 사용한다. 지정하지 않았다면 최신
+   `origin/main`에서 작업 소유 패키지와 목적이 드러나는
+   `feature/<package_name>-<short_task>` branch를 만든다. 이미 있는 branch는
+   동일 작업용이고 안전하게 이어갈 수 있는지 확인한 경우에만 사용한다.
+3. 여러 패키지의 공개 ROS 계약을 함께 바꾸면
+   `feature/public-interface-contract-<short_task>`, 문서만 바꾸면
+   `feature/docs-<short_task>` 형식을 사용한다.
+4. `main`에서는 직접 편집·commit·push하지 않고, 한 branch에는 한 작업 범위만
+   담는다. 기존 사용자 변경이나 다른 사람의 commit을 덮어쓰거나 섞지 않는다.
+5. 구현과 검증이 끝나면 사용자가 범위를 제한하지 않은 한 작업 branch에
+   한국어 subject/body로 commit하고 `git push -u origin HEAD`로 같은 이름의
+   GitHub branch에 게시한다.
+6. PR 생성과 merge는 사용자가 요청한 범위까지만 수행한다. 완료 보고 전에는
+   branch/upstream, local·remote SHA, worktree 상태와 실제 테스트 결과를 다시
+   확인한다.
+
+### 아키텍처·검증 규칙
+
 1. 작업 전에 루트 [`AGENTS.md`](AGENTS.md), 이 README, `ros_architecture_pkg`, 중앙 계약과 대상 패키지 README를 순서대로 읽는다.
 2. node, topic, message, service, action, TF frame, 단위, timestamp, 주기와 timeout은 `ros_architecture_pkg`만 정의한다.
 3. 중앙 계약에 필요한 인터페이스가 없으면 임시 공개 이름을 만들지 않고 계약 변경을 먼저 제안한다.

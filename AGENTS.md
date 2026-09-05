@@ -74,7 +74,24 @@
 ## 개발 및 검증
 
 - ROS1 Noetic과 catkin을 기준으로 한다.
-- `main`에서 직접 개발하지 않고 `feature/*` 브랜치를 사용한다.
+- 조회·진단만 하는 작업이 아니라 파일을 변경하는 작업이면 편집 전에
+  `git fetch --prune origin`, 저장소 root, 현재 branch와 worktree 상태를 확인한다.
+- 사용자가 지정한 작업 branch가 있으면 그 branch를 사용한다. 지정이 없으면
+  담당 패키지와 작업 목적에 맞는 `feature/<package_name>-<short_task>` branch를
+  최신 `origin/main`에서 만들거나, 동일 작업을 위해 이미 존재하는 branch임을
+  확인한 뒤 이어서 사용한다.
+- 중앙 공개 계약처럼 여러 패키지를 함께 바꾸는 작업은
+  `feature/public-interface-contract-<short_task>`, 문서 전용 작업은
+  `feature/docs-<short_task>` 형식을 사용한다. 기존 remote branch와 이름이
+  충돌하면 의미를 유지하는 다른 짧은 이름을 사용한다.
+- `main`에서 직접 개발·commit·push하지 않는다. 다른 작업의 branch에 변경을
+  섞지 않으며, dirty worktree를 발견하면 사용자 변경을 보존하기 전에는
+  branch를 전환하지 않는다.
+- 구현과 검증이 끝난 변경 작업은 사용자가 `빌드까지만`, `push하지 마`처럼
+  범위를 제한하지 않은 한 현재 작업 branch에 한국어 subject/body로 commit하고
+  `git push -u origin HEAD`로 같은 이름의 remote branch에 올린다.
+- PR 생성과 merge는 사용자가 요청한 범위까지만 수행한다. push 뒤에는 branch,
+  upstream, local/remote SHA와 clean 상태를 다시 확인한다.
 - 구현 전 현재 파일, 패키지 manifest, CMake, launch와 중앙 계약을 검사한다.
 - 패키지 단위 테스트와 producer-consumer 계약 테스트를 함께 작성한다.
 - 대상 패키지 README의 공개 I/O 표와 `docs/interface_io.svg`를 확인하고
