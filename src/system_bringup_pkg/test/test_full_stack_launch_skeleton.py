@@ -24,6 +24,7 @@ class FullStackLaunchSkeletonTest(unittest.TestCase):
             "start_world_model",
             "start_path_planning",
             "start_vehicle_control",
+            "start_system_readiness",
             "start_safety_supervisor",
             "start_runtime_evaluation",
         }
@@ -45,6 +46,7 @@ class FullStackLaunchSkeletonTest(unittest.TestCase):
             "start_world_model": "$(find world_model_pkg)/launch/world_model_pkg.launch",
             "start_path_planning": "$(find path_planning_pkg)/launch/path_planning_pkg.launch",
             "start_vehicle_control": "$(find vehicle_control_pkg)/launch/vehicle_control_pkg.launch",
+            "start_system_readiness": "$(find system_bringup_pkg)/launch/system_readiness.launch",
             "start_safety_supervisor": "$(find safety_supervisor_pkg)/launch/safety_supervisor_pkg.launch",
             "start_runtime_evaluation": "$(find runtime_evaluation_pkg)/launch/runtime_evaluation_pkg.launch",
         }
