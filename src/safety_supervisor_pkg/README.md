@@ -61,9 +61,10 @@
 | 출력 | `/molit/safety/final_command` | `common_msgs_pkg/ActuatorCommand` |
 | 출력 | `/molit/safety/state` | `common_msgs_pkg/SafetyState` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입에는 기반 메시지 3종과 LiDAR 관측 2종이 구현됐다. 전체 구현 현황은
+[중앙 메시지 안내](../common_msgs_pkg/README.md)를 따른다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+이 패키지가 사용하는 그 밖의 custom type과 자체 런타임 노드는 아직 미구현이다.
 
 `/molit/system/readiness`는 Safety 이전 상류 상태이며, 최종 주행 허용 여부는
 이 노드가 `/molit/safety/state`로 발행한다. Safety가 준비되지 않았거나 필수

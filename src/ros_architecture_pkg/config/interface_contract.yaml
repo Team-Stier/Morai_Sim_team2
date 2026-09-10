@@ -557,7 +557,7 @@ topics:
     owner_package: lidar_perception_pkg
     producers: [lidar_perception_node]
     consumers: [world_model_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: schema_implemented_runtime_not_implemented
+    status: development_not_runtime_verified
     visibility: public
     data_meaning: LiDAR input freshness processing health and observation validity
     diagram_description_ko: 점군 신선도·처리 상태·관측 유효성

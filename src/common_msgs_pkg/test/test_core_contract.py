@@ -34,7 +34,10 @@ class CoreContractTest(unittest.TestCase):
                 self.assertIn('schema', entry)
         for topic in contract['topics']:
             if topic['data_type'] in types:
-                self.assertEqual(topic['status'], 'schema_implemented_runtime_not_implemented')
+                expected = ('development_not_runtime_verified'
+                            if topic['name'] == '/molit/perception/lidar/status'
+                            else 'schema_implemented_runtime_not_implemented')
+                self.assertEqual(topic['status'], expected)
 
     def test_no_forbidden_raw_fields_in_ego(self):
         schema = read(CONFIG / 'messages/core_messages.yaml')

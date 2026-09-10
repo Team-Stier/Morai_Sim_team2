@@ -332,7 +332,8 @@ Camera/GPS transport이고, 회색·주황 점선은 이름만 예약됐거나 �
 - 등록 node: 24개(공개 경계 22개, MORAI LiDAR package-internal 2개)
 - 공개 topic: 34개, MORAI LiDAR package-internal topic 1개
 - 현재 live transport 확인: MORAI Camera 3개와 GPS
-- 스키마 구현: `ComponentStatus`, `EgoState`, `LocalizationStatus` (런타임 노드는 미구현)
+- 스키마 구현: `ComponentStatus`, `EgoState`, `LocalizationStatus`, `LidarObservationArray`, `LidarObjectObservation`
+- LiDAR 검출 노드: 개발 구현, ROS/MORAI 검증 대기. 주행 readiness 비활성
 - 이름만 예약: 나머지 기능 package node/topic과 custom type
 - 개발 실행 가능·라이브 검증 대기: IMU/LiDAR
 - 사용 금지: legacy Vehicle Status

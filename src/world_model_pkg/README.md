@@ -60,9 +60,10 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 | 출력 | `/molit/world_model/scene` | `common_msgs_pkg/WorldModel` |
 | 출력 | `/molit/world_model/status` | `common_msgs_pkg/ComponentStatus` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입에는 기반 메시지 3종과 LiDAR 관측 2종이 구현됐다. 전체 구현 현황은
+[중앙 메시지 안내](../common_msgs_pkg/README.md)를 따른다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+이 패키지가 사용하는 그 밖의 custom type과 자체 런타임 노드는 아직 미구현이다.
 
 좌표 변환에는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)에서 승인된 frame과 extrinsic만 사용한다. 시간 정렬에는 중앙 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)을 적용하고, 각 관측의 source stamp를 fusion publication time으로 교체하지 않는다.
 
@@ -83,7 +84,6 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 ## LiDAR 검출부 개발 구현 (2026-09-10)
 
 `LidarObservationArray`, `LidarObjectObservation` 필드와 검출 노드는 개발 구현 상태다.
-기존의 "나머지 custom type 미구현" 표기에서 이 두 타입은 제외한다.
 중앙 [LiDAR 계약](../ros_architecture_pkg/docs/lidar_detection_contract.md)과
 [검출부 실행·검증](../lidar_perception_pkg/docs/legacy_port.md)을 따른다.
 소비자는 `common_msgs_pkg.lidar_validation.validate_lidar(..., for_fusion=True)`로

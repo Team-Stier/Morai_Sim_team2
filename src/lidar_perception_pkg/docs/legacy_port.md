@@ -40,6 +40,9 @@ RViz Fixed Frame=lidar_link에서 /lidar_perception_node/filtered_points를 확�
 - 잘못된 frame, 0·미래·중복·역행 stamp는 관측 발행 없이 상태 오류로 보고한다.
 - 고정 100개 배열을 제거해 군집 수에 따른 배열 초과를 방지한다.
 - 개발 수신 watchdog은 중앙 lidar_runtime.yaml의 기존 1초 기준을 사용한다.
+- scan 유효기간은 별도 max_scan_age_sec로 분리했다. 기본 0은 미확정이며
+  age를 보고하되 1초 수신 watchdog을 데이터 유효기간으로 전용하지 않는다.
+- 상태는 중앙 status_period_sec=0.5에 따라 2 Hz 타이머에서만 발행한다.
 - 처리 완료로 원본 stamp를 바꾸지 않는다. 과거 결과를 재발행하지 않는다.
 - 축·loadout·freshness 검증 전이므로 ready=false, stop_required=true다.
 - 센서 프로필 해시는 보정 근거 식별용이며 실제 장착 승인으로 사용하지 않는다.

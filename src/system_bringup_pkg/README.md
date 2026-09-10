@@ -52,9 +52,10 @@ uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별�
 | 입력 | `/molit/control/status` | `common_msgs_pkg/ControllerStatus` |
 | 출력 | `/molit/system/readiness` | `common_msgs_pkg/SystemReadiness` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입에는 기반 메시지 3종과 LiDAR 관측 2종이 구현됐다. 전체 구현 현황은
+[중앙 메시지 안내](../common_msgs_pkg/README.md)를 따른다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+이 패키지가 사용하는 그 밖의 custom type과 자체 런타임 노드는 아직 미구현이다.
 `/molit/system/readiness`는 Safety를 제외한 상류 필수 구성요소의 준비 상태다.
 최종 주행 허용 여부는 순환 구독 없이 `safety_supervisor_node`가
 `/molit/safety/state`로 결정한다.

@@ -18,6 +18,15 @@ def fixture():
 
 
 class LidarContract(unittest.TestCase):
+    def test_runtime_timeouts_are_separate_and_status_period_matches(self):
+        config=ROOT/'src/ros_architecture_pkg/config'
+        runtime=yaml.safe_load((config/'messages/lidar_runtime.yaml').read_text(encoding='utf-8'))
+        contract=yaml.safe_load((config/'interface_contract.yaml').read_text(encoding='utf-8'))
+        self.assertEqual(runtime['max_scan_age_sec'],0)
+        self.assertGreater(runtime['development_watchdog_sec'],0)
+        status=next(t for t in contract['topics'] if t['name']=='/molit/perception/lidar/status')
+        self.assertEqual(runtime['status_period_sec'],1/status['expected_rate_hz'])
+
     def test_exact_wire_and_registry(self):
         config=ROOT/'src/ros_architecture_pkg/config'
         schema=yaml.safe_load((config/'messages/lidar_messages.yaml').read_text(encoding='utf-8'))

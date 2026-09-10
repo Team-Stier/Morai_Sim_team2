@@ -27,10 +27,10 @@ class Node {
   Steady::time_point last_received_=Steady::now(), transport_received_=Steady::now();
   bool transport_ok_=false;
   std::string calibration_id_;
-  double watchdog_sec_=0;
+  double watchdog_sec_=0, max_scan_age_sec_=0, status_period_sec_=0;
   common_msgs_pkg::ComponentStatus health_;
 
-  void publishStatus(const std::string& reason, bool fault=false) {
+  void setStatus(const std::string& reason, bool fault=false) {
     const auto now=ros::Time::now();
     health_.header.stamp=now;
     health_.component="lidar_perception_pkg";
@@ -41,23 +41,24 @@ class Node {
     health_.data_age_sec=last_stamp_.isZero() ? -1 : (now-last_stamp_).toSec();
     if (health_.data_age_sec<0) {health_.data_stamp=ros::Time(); health_.data_age_sec=-1;}
     health_.reason=reason;
-    status_.publish(health_);
+    // Publishing is owned by the central 2 Hz heartbeat, not scan callbacks.
   }
   void tick(const ros::WallTimerEvent&) {
     const auto now=ros::Time::now();
     if (!last_clock_.isZero() && now<last_clock_) {
       last_stamp_=ros::Time(); transport_ok_=false;
-      publishStatus("clock reset; waiting for new transport status and scan", true);
+      setStatus("clock reset; waiting for new transport status and scan", true);
     } else if (elapsed(last_received_)>watchdog_sec_ ||
                elapsed(transport_received_)>watchdog_sec_ || !transport_ok_) {
-      publishStatus("no recent LiDAR transport/scan; old observations are invalid", true);
-    } else publishStatus(health_.reason, health_.state==health_.FAULT);
+      setStatus("no recent LiDAR transport/scan; old observations are invalid", true);
+    } else setStatus(health_.reason, health_.state==health_.FAULT);
     last_clock_=now;
+    if (!now.isZero()) status_.publish(health_);
   }
   void transport(const std_msgs::Bool::ConstPtr& message) {
     transport_ok_=message->data;
     transport_received_=Steady::now();
-    if (!transport_ok_) publishStatus("LiDAR transport reports no points", true);
+    if (!transport_ok_) setStatus("LiDAR transport reports no points", true);
   }
   static bool layoutValid(const sensor_msgs::PointCloud2& msg) {
     if (msg.is_bigendian || msg.point_step==0) return false;
@@ -79,13 +80,13 @@ class Node {
     last_clock_=now;
     if (message->header.frame_id!="lidar_link") {
       ++health_.invalid_count;
-      publishStatus("wrong LiDAR frame; no coordinate relabeling allowed", true);
+      setStatus("wrong LiDAR frame; no coordinate relabeling allowed", true);
       return;
     }
     if (message->header.stamp.isZero() || message->header.stamp>now ||
         (!last_stamp_.isZero() && message->header.stamp<=last_stamp_)) {
       ++health_.invalid_count;
-      publishStatus("zero/future/duplicate/regressing scan stamp", true);
+      setStatus("zero/future/duplicate/regressing scan stamp", true);
       return;
     }
     last_stamp_=message->header.stamp;
@@ -101,8 +102,8 @@ class Node {
       if (message->header.frame_id!="lidar_link") throw std::runtime_error("wrong LiDAR frame");
       if (!transport_ok_ || elapsed(transport_received_)>watchdog_sec_)
         throw std::runtime_error("missing/stale/false transport status");
-      if ((now-message->header.stamp).toSec()>watchdog_sec_)
-        throw std::runtime_error("scan exceeds development transport watchdog");
+      if (max_scan_age_sec_>0 && (now-message->header.stamp).toSec()>max_scan_age_sec_)
+        throw std::runtime_error("scan exceeds separately configured data-age limit");
       if (!layoutValid(*message)) throw std::runtime_error("invalid PointCloud2 XYZ layout");
       if (uint64_t(message->width)*message->height==0)
         throw std::runtime_error("empty raw scan is not evidence of free space");
@@ -136,14 +137,14 @@ class Node {
     }
     health_.processing_latency_sec=elapsed(start);
     if (output.objects_valid &&
-        ((ros::Time::now()-message->header.stamp).toSec()>watchdog_sec_ ||
+        ((max_scan_age_sec_>0 && (ros::Time::now()-message->header.stamp).toSec()>max_scan_age_sec_) ||
          ros::Time::now()<message->header.stamp)) {
       output.objects.clear(); output.objects_valid=false;
       ++health_.dropped_count;
       health_.reason="scan expired or clock reset during processing";
     }
     observations_.publish(output);
-    publishStatus(health_.reason, !output.objects_valid);
+    setStatus(health_.reason, !output.objects_valid);
   }
 public:
   Node() {
@@ -160,14 +161,19 @@ public:
         !std::isfinite(watchdog_sec_) || watchdog_sec_<=0 ||
         !private_.getParam("contract/calibration_id",calibration_id_) || calibration_id_.empty())
       throw std::runtime_error("load central lidar_messages.yaml contract using package launch");
+    if (!private_.getParam("contract/max_scan_age_sec",max_scan_age_sec_) ||
+        !std::isfinite(max_scan_age_sec_) || max_scan_age_sec_<0 ||
+        !private_.getParam("contract/status_period_sec",status_period_sec_) ||
+        !std::isfinite(status_period_sec_) || status_period_sec_<=0)
+      throw std::runtime_error("invalid central data-age/status period policy");
     health_.processing_latency_sec=-1;
     observations_=nh_.advertise<common_msgs_pkg::LidarObservationArray>("/molit/perception/lidar/observations",2);
     status_=nh_.advertise<common_msgs_pkg::ComponentStatus>("/molit/perception/lidar/status",1,true);
     debug_=private_.advertise<sensor_msgs::PointCloud2>("filtered_points",1);
     points_=nh_.subscribe("/molit/sensors/lidar/points",1,&Node::scan,this);
     transport_=nh_.subscribe("/molit/sensors/lidar/status",1,&Node::transport,this);
-    timer_=nh_.createWallTimer(ros::WallDuration(0.5),&Node::tick,this);
-    publishStatus("waiting for LiDAR input; development only");
+    timer_=nh_.createWallTimer(ros::WallDuration(status_period_sec_),&Node::tick,this);
+    setStatus("waiting for LiDAR input; development only");
   }
 };
 }

@@ -5,8 +5,8 @@ import unittest
 import rospy
 import rostest
 from std_msgs.msg import Header, Bool
-from sensor_msgs.msg import PointCloud2
-from sensor_msgs.point_cloud2 import create_cloud_xyz32
+from sensor_msgs.msg import PointCloud2, PointField
+from sensor_msgs.point_cloud2 import create_cloud_xyz32, create_cloud
 from common_msgs_pkg.msg import LidarObservationArray, ComponentStatus
 
 
@@ -22,10 +22,12 @@ class DetectionTest(unittest.TestCase):
         while points.get_num_connections()==0 and time.monotonic()<deadline: time.sleep(.02)
         self.assertGreater(points.get_num_connections(),0)
 
-        def send(xyz):
-            transport.publish(Bool(data=True)); time.sleep(.1)
-            header=Header(stamp=rospy.Time.now(), frame_id='lidar_link')
-            points.publish(create_cloud_xyz32(header, xyz))
+        def send(xyz, transport_ok=True, age=0):
+            transport.publish(Bool(data=transport_ok)); time.sleep(.1)
+            header=Header(stamp=rospy.Time.now()-rospy.Duration(age), frame_id='lidar_link')
+            fields=[PointField(name=name,offset=i*4,datatype=PointField.FLOAT32,count=1)
+                    for i,name in enumerate(('x','y','z','intensity'))]
+            points.publish(create_cloud(header,fields,[tuple(p)+(20.,) for p in xyz]))
             end=time.monotonic()+3
             while time.monotonic()<end:
                 for msg in received:
@@ -34,10 +36,21 @@ class DetectionTest(unittest.TestCase):
             self.fail('no matching scan output')
 
         blob=[(2+i*.05,j*.05,k*.05) for i in range(4) for j in range(4) for k in range(2)]
+        # Unmeasured scan age is not replaced by the one-second transport watchdog.
+        msg=send(blob,age=2)
+        self.assertTrue(msg.objects_valid)
+        self.assertFalse(msg.freshness_verified)
         msg=send(blob)
         self.assertTrue(msg.objects_valid); self.assertEqual(len(msg.objects),1)
         self.assertFalse(msg.calibration_verified)
         self.assertFalse(msg.freshness_verified)
+        msg=send(blob,transport_ok=False)
+        self.assertFalse(msg.objects_valid)
+        self.assertEqual(len(msg.objects),0)
+        before=len(statuses)
+        for _ in range(10): send(blob)
+        # Allow scheduling boundary jitter; scan callbacks must not add 10 statuses.
+        self.assertLessEqual(len(statuses)-before,5)
         msg=send([(-10,0,0)])
         self.assertTrue(msg.objects_valid); self.assertEqual(len(msg.objects),0)
         msg=send([])
