@@ -29,8 +29,8 @@ uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별�
 
 현재 `system_bringup_pkg.launch`는 기본값으로 1차 live MORAI sensor-ingress profile만 실행한다.
 중앙 UDP 계약에서 `runtime_activation_allowed: true`인 Camera 3개와 GPS만 포함하며,
-IMU/LiDAR/Vehicle Status/Collision/Control은 포함하지 않는다. `system_readiness_node`와
-나머지 downstream autonomy runtime은 아직 미구현이며 모든 정적 sensor TF 발행도 계속 잠겨 있다.
+IMU/LiDAR/Vehicle Status/Collision/Control은 포함하지 않는다. Downstream autonomy와
+`system_readiness_node`는 opt-in gate로 분리하며 모든 정적 sensor TF 발행도 계속 잠겨 있다.
 
 ## 1차 runtime profile
 
@@ -64,13 +64,44 @@ readiness, Safety 또는 MORAI closed-loop 주행이 준비됐다는 의미는 �
 - `start_world_model`
 - `start_path_planning`
 - `start_vehicle_control`
+- `start_system_readiness`
 - `start_safety_supervisor`
 - `start_runtime_evaluation`
 
-각 gate는 해당 패키지가 소유한 `<package_name>.launch`만 include한다. `common_msgs_pkg`와
+각 gate는 해당 패키지가 소유한 launch만 include한다. `common_msgs_pkg`와
 `ros_architecture_pkg`는 runtime node가 없는 타입/거버넌스 패키지이므로 full-stack launch에서
 직접 실행하지 않는다. 현재 대부분의 downstream launch는 skeleton이므로 gate를 `true`로 바꿔도
 기능 구현이 생기는 것은 아니다.
+
+## System Readiness 구현
+
+`system_readiness_node`는 중앙 공개 계약에 예약된 9개 upstream status를 구독해
+`/molit/system/readiness`를 2 Hz latched topic으로 발행한다. 기본 required component는
+interface, map, camera perception, lidar perception, localization, route, world model, planning,
+control이다.
+
+- 누락 status: `missing_mask`, state `INITIALIZING`
+- timeout/zero stamp: `stale_mask`
+- fresh하지만 준비 안 됨: `not_ready_mask`
+- `stop_required`, FAULT/DISABLED, future stamp: `fault_mask`
+- 모든 required component가 fresh + ready일 때만 `ready=true`
+
+개발용 watchdog 기본값은 `config/system_readiness.yaml`의 `1.5 s`이며 본선 승인 timeout이 아니다.
+`SystemReadiness.ready`는 상류 준비 상태일 뿐 주행 허가가 아니다. 최종 주행 허가는
+`safety_supervisor_node`만 결정한다.
+
+단독 실행:
+
+```bash
+roslaunch system_bringup_pkg system_readiness.launch
+```
+
+현재 upstream runtime 대부분이 미구현이므로 단독 실행 직후 `ready=false`와 missing mask가
+나오는 것이 정상이다. 전체 launch에서 시험할 때는 다음처럼 명시적으로 gate를 연다.
+
+```bash
+roslaunch system_bringup_pkg system_bringup_pkg.launch start_system_readiness:=true
+```
 
 ## 공개 ROS 입출력
 
@@ -94,18 +125,17 @@ readiness, Safety 또는 MORAI closed-loop 주행이 준비됐다는 의미는 �
 | 입력 | `/molit/control/status` | `common_msgs_pkg/ControllerStatus` |
 | 출력 | `/molit/system/readiness` | `common_msgs_pkg/SystemReadiness` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
-해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
-`/molit/system/readiness`는 Safety를 제외한 상류 필수 구성요소의 준비 상태다.
-최종 주행 허용 여부는 순환 구독 없이 `safety_supervisor_node`가
-`/molit/safety/state`로 결정한다.
+`ComponentStatus`, `EgoState`, `LocalizationStatus`는 기존 core schema를 사용한다.
+`InterfaceStatus`, `ControllerStatus`, `SystemReadiness`는
+`ros_architecture_pkg/config/messages/readiness_messages.yaml`의 candidate schema로 구현했으며,
+로컬/runtime 검증 뒤 중앙 `interface_contract.yaml`의 구현 상태를 승격해야 한다.
 
 ## 통합 전 자체 확인
 
 - readiness 공개 노드 이름은 정확히 `system_readiness_node`를 사용한다.
 - 전체 launch가 같은 공개 노드를 중복 실행하거나 공개 topic을 remap하지 않는지 확인한다.
 - 상류 필수 component가 unknown/fault이면 readiness를 false로 유지한다.
+- future/zero/stale header stamp를 ready로 인정하지 않는다.
 - 내부 topic은 `/molit/internal/system_bringup/...`만 사용한다.
 - 중앙 계약 생성 검사와 launch 중복-publisher 검사를 통과시킨다.
 
@@ -114,4 +144,6 @@ readiness, Safety 또는 MORAI closed-loop 주행이 준비됐다는 의미는 �
 - `config/`: 시스템 조합과 모드별 파라미터
 - `docs/`: startup sequence, readiness와 운영 절차
 - `launch/`: 승인된 전체 시스템 조합
-- `src/`: 향후 readiness 보조 도구
+- `src/`: readiness 집계 로직
+- `scripts/`: `system_readiness_node` 실행 진입점
+- `test/`: launch/profile/readiness 로직 검증
