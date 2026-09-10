@@ -28,16 +28,30 @@ schema provider다.
 
 **공개 node (exact):** 없음
 
-`ComponentStatus`, `EgoState`, `LocalizationStatus`의 `.msg`, catkin 메시지 생성
-설정과 순수 검증 함수를 구현했다. 나머지 타입과 런타임 노드는 미구현이다.
-필드의 원본은 중앙 `config/messages/core_messages.yaml`이며
-[필드·이식·테스트 지침](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-검증 함수는 자동으로 callback에 적용되지 않으며 추정기나 Safety 구현을 대신하지 않는다.
+현재 생성하는 message는 다음 6개다.
+
+- `ComponentStatus`
+- `EgoState`
+- `LocalizationStatus`
+- `InterfaceStatus`
+- `ControllerStatus`
+- `SystemReadiness`
+
+기존 세 타입 `ComponentStatus`, `EgoState`, `LocalizationStatus`의 field 원본은
+`ros_architecture_pkg/config/messages/core_messages.yaml`이다. readiness 구현에 필요한
+`InterfaceStatus`, `ControllerStatus`, `SystemReadiness`의 field 원본은
+`ros_architecture_pkg/config/messages/readiness_messages.yaml`의 candidate schema다.
+세 readiness 타입의 이름은 이미 `interface_contract.yaml`에 예약되어 있으며,
+로컬/runtime 검증 뒤 중앙 구현 상태를 승격해야 한다.
+
+`SystemReadiness`는 상류 구성요소의 준비 상태만 표현하며 Safety의 주행 허가를 대신하지 않는다.
+`InterfaceStatus`와 `ControllerStatus`의 `ready` 역시 해당 component readiness만 의미한다.
 
 ## 통합 전 자체 확인
 
-- 새 `.msg/.srv/.action` 이름을 먼저 만들지 않고 중앙 계약을 먼저 변경한다.
+- 새 `.msg/.srv/.action` 이름을 먼저 만들지 않고 중앙 계약에 예약된 이름만 사용한다.
 - field의 timestamp, frame, unit, invalid/quality 의미를 producer·consumer와 함께 검토한다.
+- readiness candidate schema 변경 시 `readiness_messages.yaml`, `.msg`, producer/consumer test를 함께 갱신한다.
 - 타입 변경 시 관련 모든 패키지와 contract test를 같은 PR에서 갱신한다.
 - 이 패키지에 기능성 런타임 node나 topic을 추가하지 않는다.
 
@@ -48,3 +62,4 @@ schema provider다.
 - `launch/`: 타입/contract 검사 실행용 placeholder
 - `src/`: 생성 타입 보조 검증 코드
 - `msg/`, `srv/`, `action/`: 중앙 승인 후에만 사용
+- `test/`: core/readiness schema 및 serialization 검증
