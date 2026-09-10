@@ -92,7 +92,8 @@ base_link 위치를 추정한다. 6-state position/velocity Kalman filter이며 
 
 - map은 EPSG:32652에서 중앙 원점 `[302595,4124145,0]`을 뺀 좌표다.
 - odom 축은 map ENU와 평행하며 위치는 초기화 후 예측 이동량만 적분한다.
-  GPS 보정은 odom 위치를 점프시키지 않는다. reset 시 원점과 reset_id가 바뀐다.
+  GPS 보정과 센서 기반 재배치는 odom 위치를 점프시키지 않는다. 재배치 시
+  map 기준 위치와 reset_id가 바뀌고, clock/IMU 단절 reset은 odom 원점도 초기화한다.
 - GPS는 60 ms reorder buffer 안에서 IMU 자세를 보간하여 측정시각에 보정한다.
   이미 처리한 상태보다 오래된 GPS나 보간 양 끝 IMU가 없는 GPS는 거부한다.
 - EgoState/Odometry/동적 TF는 동일한 원본 IMU stamp를 정수 ns로 보존한다.
@@ -117,6 +118,16 @@ roslaunch system_bringup_pkg localization_visualization.launch
 및 15-state EKF는 이식 참고용으로 보존한다. legacy adapter는 빌드/설치하지 않는다.
 
 검증 및 실제 실행 기록: [TF 개발 검증](docs/tf_localization_validation.md).
+
+## 센서 기반 위치 재설정
+
+GPS 점프가 IMU 예측 이동으로 설명되지 않고 새 GPS가 같은 위치 주변에
+반복 수신되면 위치 재배치를 추정한다. 기본 활성화되어 있으며 일반 GPS
+innovation gate는 유지한다. [판정 조건과 한계](docs/sensor_relocation.md)를 참고한다.
+
+확인 중에는 `RELOCALIZING`, 위치 validity=false로 전환하고 pose/TF 발행을
+보류한다. 확인 후 map 위치·속도·공분산을 재초기화하고 `reset_id`를 증가시킨다.
+소비자는 새 epoch의 pose/status 쌍을 기다린다. `stop_required=true`는 유지한다.
 
 ## 위치 갱신에 맞춘 RViz 표시
 

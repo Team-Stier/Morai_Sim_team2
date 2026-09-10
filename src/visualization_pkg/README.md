@@ -64,6 +64,9 @@ MORAI 제원 문서의 기준은 후륜 사이 중심이다. 이 기준과 `base
 
 ## TF와 유효성
 
+- 공유 상태 의미는 중앙 [core messages](../ros_architecture_pkg/docs/core_messages.md)를 따른다.
+  `RELOCALIZING` 중에는 차량 도형을 숨기고, 재배치로 `reset_id`가 바뀌면
+  이전 pose/status 캐시를 비운 뒤 새 epoch의 일치하는 쌍으로 표시를 재개한다.
 - `map` 모드: `EgoState`의 `map -> base_link` pose에 차체 표시 오프셋을 합성한다.
 - `odom` 모드: Odometry의 `odom -> base_link` pose에 같은 오프셋을 합성한다.
 - 두 모드는 선택한 추정 frame에 직접 마커를 둔다. map 좌표를 odom으로 이름만

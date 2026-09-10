@@ -196,6 +196,7 @@ publication_gate:
     required:
       - Use the central map projection and user-approved GPS/IMU extrinsics.
       - Preserve source estimate stamps and the continuous odom frame.
+      - Sensor relocation may re-anchor map-to-odom only with a new localization reset_id; odom translation remains continuous.
       - Keep stop_required true while the development profile lacks driving validation.
       - Reject disabled transforms and inconsistent frame or extrinsic gates.
       - Use a single localization dynamic publisher and one bringup static publisher.

@@ -131,6 +131,9 @@ def validate_localization(message):
     if message.mode in (0, 1, 5):
         require(message.stop_required and not message.map_pose_valid
                 and not message.local_odometry_valid, 'unavailable localization must stop')
+    if message.mode == 4:
+        require(message.stop_required and not message.map_pose_valid
+                and not message.local_odometry_valid, 'relocalizing must invalidate pending poses')
     if message.mode == 2:
         require(message.gps_fix_valid, 'tracking requires GPS')
     if message.mode == 3:

@@ -1,0 +1,58 @@
+{
+  "measurement_date_local": "2026-09-11",
+  "duration_wall_sec": 12.059221917999821,
+  "counts": {
+    "status": 474,
+    "vehicle_markers": 471,
+    "ego": 473,
+    "tf_odom": 473,
+    "tf_base_link": 473,
+    "imu": 474,
+    "gps": 60
+  },
+  "source_stamp_rate_hz": {
+    "ego": 39.3813334835612,
+    "imu": 39.528873786441814,
+    "gps": 5.008589941224992
+  },
+  "mode_counts": {
+    "2": 474
+  },
+  "validated_pose_status_pairs": 473,
+  "validation_errors": [],
+  "relocation_parameters": {
+    "enabled": true,
+    "min_jump_m": 15.0,
+    "confirmation_samples": 5,
+    "min_confirmation_sec": 0.6,
+    "max_confirmation_sec": 2.0,
+    "max_gps_gap_sec": 0.65,
+    "cluster_radius_m": 1.5,
+    "max_imu_displacement_m": 3.0,
+    "max_linear_accel_mps2": 2.0,
+    "max_angular_rate_radps": 0.5,
+    "max_gps_stddev_m": 2.0
+  },
+  "latest_status": {
+    "mode": 2,
+    "reset_id": 0,
+    "map_pose_valid": true,
+    "local_odometry_valid": true,
+    "gps_fix_valid": true,
+    "stop_required": true,
+    "gps_age_sec": 0.1750781536102295,
+    "reason": "development only; ingress fallback; physical alignment unverified; GPS correction accepted"
+  },
+  "localization_publishers": {
+    "/molit/localization/ego_state": [
+      "/localization_node"
+    ],
+    "/molit/localization/local/odometry": [
+      "/localization_node"
+    ],
+    "/molit/localization/status": [
+      "/localization_node"
+    ]
+  },
+  "scope": "Live sensor reception and estimator restart verified; no deliberate MORAI respawn or closed-loop drive exercised."
+}
