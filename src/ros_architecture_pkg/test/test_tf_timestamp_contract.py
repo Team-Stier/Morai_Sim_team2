@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import copy
 import hashlib
+import importlib.util
 import json
 import math
 import unittest
@@ -25,6 +27,10 @@ class TfTimestampContractTest(unittest.TestCase):
         cls.interface = load_yaml(CONFIG_ROOT / "interface_contract.yaml")
         cls.frames = load_yaml(CONFIG_ROOT / "tf" / "frame_contract.yaml")
         cls.extrinsics = load_yaml(CONFIG_ROOT / "tf" / "sensor_extrinsics.yaml")
+        cls.projection = load_yaml(CONFIG_ROOT / "tf" / "map_projection.yaml")
+        spec = importlib.util.spec_from_file_location("tf_contract_generator", PACKAGE_ROOT / "scripts" / "generate_interface_diagrams.py")
+        cls.generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.generator)
         cls.timestamps = load_yaml(
             CONFIG_ROOT / "timestamp" / "timestamp_contract.yaml"
         )
@@ -34,6 +40,7 @@ class TfTimestampContractTest(unittest.TestCase):
         module_paths = [
             modules["tf"]["frame_contract"],
             modules["tf"]["sensor_extrinsics"],
+            modules["tf"]["map_projection"],
             modules["timestamp"]["timestamp_contract"],
         ]
         for relative_path in module_paths:
@@ -113,17 +120,42 @@ class TfTimestampContractTest(unittest.TestCase):
         self.assertEqual(ego_state["frame"], "map")
         self.assertEqual(ego_state["motion_frame"], "base_link")
 
-    def test_unverified_transforms_cannot_publish(self):
-        for transform in self.frames["transforms"]:
-            self.assertTrue(transform["verification_status"])
-            if transform["verification_status"] != "runtime_verified":
-                self.assertFalse(transform["publish_enabled"], transform["child"])
+    def test_only_scoped_development_transforms_can_publish(self):
+        allowed = {"odom", "base_link", "gps_link", "imu_link", "lidar_link"}
+        enabled = {entry["child"] for entry in self.frames["transforms"] if entry["publish_enabled"]}
+        self.assertEqual(enabled, allowed)
+        self.assertEqual(self.generator.validate_tf_activation(self.frames, self.extrinsics, self.projection), [])
+        for entry in self.frames["transforms"]:
+            if entry["publish_enabled"]:
+                self.assertEqual(entry["activation_scope"], "development_only")
+                self.assertFalse(entry["physical_alignment_verified"])
+                self.assertNotEqual(entry["verification_status"], "runtime_verified")
 
-        for mount in self.extrinsics["sensor_mounts"]:
-            self.assertTrue(mount["source_evidence"])
-            self.assertTrue(mount["verification_status"])
-            if mount["verification_status"] != "runtime_verified":
-                self.assertFalse(mount["publish_enabled"], mount["key"])
+    def test_development_gate_rejects_camera_and_mismatched_mount(self):
+        frames = copy.deepcopy(self.frames)
+        camera = next(entry for entry in frames["transforms"] if entry["child"] == "camera_front_link")
+        camera["publish_enabled"] = True
+        self.assertTrue(self.generator.validate_tf_activation(frames, self.extrinsics, self.projection))
+        extrinsics = copy.deepcopy(self.extrinsics)
+        next(entry for entry in extrinsics["sensor_mounts"] if entry["key"] == "gps")["publish_enabled"] = False
+        self.assertTrue(self.generator.validate_tf_activation(self.frames, extrinsics, self.projection))
+
+    def test_development_gate_rejects_false_physical_claim_and_wrong_owner(self):
+        frames = copy.deepcopy(self.frames)
+        frames["transforms"][0]["physical_alignment_verified"] = True
+        self.assertTrue(self.generator.validate_tf_activation(frames, self.extrinsics, self.projection))
+        frames = copy.deepcopy(self.frames)
+        frames["transforms"][0]["runtime_publisher_owner"] = "visualization_pkg"
+        self.assertTrue(self.generator.validate_tf_activation(frames, self.extrinsics, self.projection))
+
+    def test_development_projection_and_timing_are_explicitly_unverified(self):
+        self.assertEqual(self.projection["origin_utm_m"], [302595.0, 4124145.0, 0.0])
+        self.assertFalse(self.projection["physical_alignment_verified"])
+        profile = self.timestamps["development_localization_profile"]
+        self.assertFalse(profile["measurement_verified"])
+        self.assertFalse(profile["autonomous_driving_ready"])
+        self.assertEqual(profile["future_tolerance_sec"], 0.0)
+        self.assertEqual(profile["provenance"], "ingress_fallback")
 
     def test_candidate_extrinsics_are_finite_and_use_declared_units(self):
         source_convention = self.extrinsics["source_pose_convention"]
@@ -179,11 +211,49 @@ class TfTimestampContractTest(unittest.TestCase):
                 mount["raw_identifiers"]["source_frame_id"],
             )
 
-    def test_observed_launcher_profile_matches_all_recorded_mounts(self):
-        evidence = self.extrinsics["source_evidence"]["launcher_saved_profile"]
+    def test_sensor_evidence_references_resolve_within_scope(self):
+        evidence_by_key = self.extrinsics["source_evidence"]
+        mounts = {mount["key"]: mount for mount in self.extrinsics["sensor_mounts"]}
+        for key, mount in mounts.items():
+            evidence_key = mount["source_evidence"]
+            self.assertIn(evidence_key, evidence_by_key)
+            self.assertIn(key, evidence_by_key[evidence_key]["scope"])
+        for evidence_key, evidence in evidence_by_key.items():
+            self.assertTrue(set(evidence["scope"]).issubset(mounts))
+
+    def test_user_confirmed_gps_imu_placements_have_scoped_development_approval(self):
+        mounts = {mount["key"]: mount for mount in self.extrinsics["sensor_mounts"]}
+        evidence_key = "launcher_saved_profile_user_confirmed"
+        evidence = self.extrinsics["source_evidence"][evidence_key]
+        self.assertEqual(set(evidence["scope"]), {"gps", "imu"})
+        self.assertTrue(evidence["user_confirmed_mount_position"])
+        self.assertFalse(evidence["active_loadout_verified"])
+        expected = {
+            "gps": ([0.0, 0.0, 1.3], 4, "GPS-4"),
+            "imu": ([0.0, 0.0, 0.0], 5, "IMU-5"),
+        }
+        for key, (position, sensor_id, raw_frame) in expected.items():
+            mount = mounts[key]
+            self.assertEqual(mount["source_evidence"], evidence_key)
+            self.assertEqual(mount["source_pose"]["translation_m"], position)
+            self.assertEqual(mount["candidate_ros_pose"]["translation_m"], position)
+            self.assertEqual(mount["source_pose"]["rotation_rpy_deg"], [0.0] * 3)
+            self.assertEqual(mount["candidate_ros_pose"]["rotation_rpy_rad"], [0.0] * 3)
+            self.assertEqual(mount["raw_identifiers"]["sensor_unique_id"], sensor_id)
+            self.assertEqual(mount["raw_identifiers"]["source_frame_id"], raw_frame)
+            self.assertEqual(mount["child_frame"], key + "_link")
+            self.assertTrue(mount["publish_enabled"])
+            self.assertEqual(mount["activation_scope"], "development_only")
+            self.assertFalse(mount["physical_alignment_verified"])
+
+    def test_observed_user_confirmed_profile_matches_its_scope(self):
+        self._assert_observed_profile_matches_scope("launcher_saved_profile_user_confirmed")
+
+    def _assert_observed_profile_matches_scope(self, evidence_key):
+        evidence = self.extrinsics["source_evidence"][evidence_key]
         source_path = Path(evidence["observed_host_path"])
         if not source_path.is_file():
-            self.skipTest("host-specific MORAI saved profile is not present")
+            self.skipTest("host-specific MORAI saved profile is not present: " + evidence_key)
 
         digest = hashlib.sha256(source_path.read_bytes()).hexdigest()
         self.assertEqual(digest, evidence["sha256"])
@@ -191,22 +261,26 @@ class TfTimestampContractTest(unittest.TestCase):
             source = json.load(stream)
 
         source_locations = {
-            "camera_front": ("cameraList", "cc", 1),
-            "camera_left": ("cameraList", "cc", 2),
-            "camera_right": ("cameraList", "cc", 3),
-            "lidar": ("Lidar3DList", "lc", 6),
-            "gps": ("GPSList", "gc", 5),
-            "imu": ("IMUList", "ic", 4),
+            "camera_front": ("cameraList", "cc"),
+            "camera_left": ("cameraList", "cc"),
+            "camera_right": ("cameraList", "cc"),
+            "lidar": ("Lidar3DList", "lc"),
+            "gps": ("GPSList", "gc"),
+            "imu": ("IMUList", "ic"),
         }
         mount_by_key = {
             mount["key"]: mount for mount in self.extrinsics["sensor_mounts"]
         }
-        for key, (list_name, config_name, sensor_id) in source_locations.items():
+        for key in evidence["scope"]:
+            list_name, config_name = source_locations[key]
+            mount = mount_by_key[key]
+            sensor_id = mount["raw_identifiers"]["sensor_unique_id"]
             candidates = {
                 sensor["m_SensorUniqueID"]: sensor for sensor in source[list_name]
             }
             source_sensor = candidates[sensor_id]
-            mount = mount_by_key[key]
+            self.assertEqual(source_sensor["m_TargetUniqueID"],
+                             mount["raw_identifiers"]["target_unique_id"])
             source_translation = [float(source_sensor["pos"][axis]) for axis in "xyz"]
             source_rotation = [
                 float(source_sensor["rot"][axis]) for axis in ("roll", "pitch", "yaw")
@@ -221,6 +295,19 @@ class TfTimestampContractTest(unittest.TestCase):
             self.assertEqual(
                 sensor_config["sensorPeriod"], mount["configured_period_sec"]
             )
+
+    def test_user_approved_lidar_mount_and_publication_gate(self):
+        lidar = next(m for m in self.extrinsics["sensor_mounts"] if m["key"] == "lidar")
+        self.assertEqual(lidar["source_evidence"], "user_confirmed_lidar_mount")
+        evidence = self.extrinsics["source_evidence"][lidar["source_evidence"]]
+        self.assertEqual(evidence["translation_m"], [2.0, 0.0, 1.5])
+        for field in ("source_pose", "candidate_ros_pose"):
+            self.assertEqual(lidar[field]["translation_m"], [2.0, 0.0, 1.5])
+        self.assertTrue(lidar["publish_enabled"])
+        frames = yaml.safe_load((Path(__file__).resolve().parents[1] / "config/tf/frame_contract.yaml").read_text())
+        transform = next(t for t in frames["transforms"] if t["child"] == "lidar_link")
+        self.assertEqual(transform["parent"], "base_link")
+        self.assertTrue(transform["publish_enabled"])
 
     def test_configured_rates_are_targets_and_match_periods(self):
         timing_targets = self.timestamps["freshness_policy"][

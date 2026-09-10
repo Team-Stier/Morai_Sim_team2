@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- GPS/IMU ingress must already run; this composition never duplicates sensors. -->
+  <arg name="use_sim_time" default="false" doc="true only with exclusive rosbag replay and bag clock"/>
+  <arg name="visualization" default="true"/>
+  <arg name="show_hd_map" default="true"/>
+  <arg name="rviz" default="true"/>
+  <arg name="reference_frame" default="map"/>
+  <arg name="display_mode" default="footprint"/>
+  <param name="/use_sim_time" value="$(arg use_sim_time)"/>
+  <node pkg="system_bringup_pkg" type="sensor_tf_publisher.py"
+        name="sensor_tf_publisher" ns="/" output="screen" required="true"/>
+  <include file="$(find localization_pkg)/launch/localization_pkg.launch">
+    <arg name="mode" value="estimator"/>
+  </include>
+  <include if="$(arg visualization)" file="$(find visualization_pkg)/launch/visualization_pkg.launch">
+    <arg name="show_hd_map" value="$(arg show_hd_map)"/>
+    <arg name="rviz" value="$(arg rviz)"/>
+    <arg name="reference_frame" value="$(arg reference_frame)"/>
+    <arg name="display_mode" value="$(arg display_mode)"/>
+  </include>
+</launch>

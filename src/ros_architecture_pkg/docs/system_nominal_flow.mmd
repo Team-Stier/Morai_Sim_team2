@@ -30,7 +30,7 @@ flowchart TB
     view_node_009["node: hd_map_server_node<br/>package: hd_map_pkg<br/>state: RESERVED"]
     view_node_010["node: camera_perception_node<br/>package: camera_perception_pkg<br/>state: RESERVED"]
     view_node_011["node: lidar_perception_node<br/>package: lidar_perception_pkg<br/>state: RESERVED"]
-    view_node_012["node: localization_node<br/>package: localization_pkg<br/>state: RESERVED"]
+    view_node_012["node: localization_node<br/>package: localization_pkg<br/>state: LIVE"]
     view_node_013["node: global_route_manager_node<br/>package: global_route_manager_pkg<br/>state: RESERVED"]
     view_node_014["node: world_model_node<br/>package: world_model_pkg<br/>state: RESERVED"]
     view_node_015["node: path_planner_node<br/>package: path_planning_pkg<br/>state: RESERVED"]
@@ -50,8 +50,8 @@ flowchart TB
     view_topic_010["/molit/perception/camera/left/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
     view_topic_011["/molit/perception/camera/right/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
     view_topic_012["/molit/perception/lidar/observations<br/>type: common_msgs_pkg/LidarObservationArray<br/>state: RESERVED"]
-    view_topic_013["/molit/localization/local/odometry<br/>type: nav_msgs/Odometry<br/>state: RESERVED"]
-    view_topic_014["/molit/localization/ego_state<br/>type: common_msgs_pkg/EgoState<br/>state: RESERVED"]
+    view_topic_013["/molit/localization/local/odometry<br/>type: nav_msgs/Odometry<br/>state: LIVE"]
+    view_topic_014["/molit/localization/ego_state<br/>type: common_msgs_pkg/EgoState<br/>state: LIVE"]
     view_topic_015["/molit/route/context<br/>type: common_msgs_pkg/RouteContext<br/>state: RESERVED"]
     view_topic_016["/molit/world_model/scene<br/>type: common_msgs_pkg/WorldModel<br/>state: RESERVED"]
     view_topic_017["/molit/planning/trajectory<br/>type: common_msgs_pkg/Trajectory<br/>state: RESERVED"]
@@ -140,7 +140,7 @@ flowchart TB
     class view_node_009 reservedNode;
     class view_node_010 reservedNode;
     class view_node_011 reservedNode;
-    class view_node_012 reservedNode;
+    class view_node_012 liveNode;
     class view_node_013 reservedNode;
     class view_node_014 reservedNode;
     class view_node_015 reservedNode;
@@ -159,8 +159,8 @@ flowchart TB
     class view_topic_010 reservedTopic;
     class view_topic_011 reservedTopic;
     class view_topic_012 reservedTopic;
-    class view_topic_013 reservedTopic;
-    class view_topic_014 reservedTopic;
+    class view_topic_013 liveTopic;
+    class view_topic_014 liveTopic;
     class view_topic_015 reservedTopic;
     class view_topic_016 reservedTopic;
     class view_topic_017 reservedTopic;

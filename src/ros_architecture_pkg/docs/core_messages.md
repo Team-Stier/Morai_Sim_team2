@@ -66,8 +66,12 @@ ComponentStatus는 UNKNOWN/INITIALIZING/READY/DEGRADED/FAULT/DISABLED를 사용�
 ready=true는 READY/DEGRADED에서만 가능하며 stop_required=false 및 data_stamp가
 필요하다. DEAD_RECKONING은 Localization의 별도 모드이며 GPS invalid여도
 local estimate가 유효할 수 있다. LOST/UNINITIALIZED/INITIALIZING은 map/local
-유효성을 선언하지 않고 stop_required=true다. RELOCALIZING은 품질 플래그와
-실측 profile 조건을 함께 검사하며 모드명만으로 주행 가능 여부를 결정하지 않는다.
+유효성을 선언하지 않고 stop_required=true다. RELOCALIZING도 map/local pose
+validity=false와 stop_required=true를 요구한다. 개발 추정기는 GPS innovation이
+설정된 χ² 기준을 넘으면 즉시 해당 GPS로 map 위치를 재설정하고 reset_id를
+증가시킨다. 샘플 확인 대기 단계는 없으며 blackout 복귀에도 적용한다. 연속 odom 위치를
+보존하더라도 소비자는 이전 epoch의 캐시를 비우고 새 pose/status 쌍을 기다린다.
+판정 조건과 한계는 [위치 재설정](../../localization_pkg/docs/sensor_relocation.md)을 따른다.
 
 상태 Header는 frame_id가 빈 문자열이고 평가시각이다. 데이터 Header를 now()로
 덮어써서는 안 된다. latched 상태를 받았다고 현재 healthy로 인정하지 않는다.

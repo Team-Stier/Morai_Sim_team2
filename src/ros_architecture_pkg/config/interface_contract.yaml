@@ -86,10 +86,11 @@ contract_modules:
   tf:
     frame_contract: tf/frame_contract.yaml
     sensor_extrinsics: tf/sensor_extrinsics.yaml
-    required_contract_version: 0.1.0
+    map_projection: tf/map_projection.yaml
+    required_contract_version: 0.2.0
   timestamp:
     timestamp_contract: timestamp/timestamp_contract.yaml
-    required_contract_version: 0.1.0
+    required_contract_version: 0.2.0
   morai_interface:
     udp_ros_bridge: morai_interface/udp_ros_bridge.yaml
     required_contract_version: 0.1.0
@@ -212,10 +213,20 @@ nodes:
     diagram_description_ko: 점군에서 장애물과 지면 및 빈 공간을 추출
   - name: localization_node
     owner_package: localization_pkg
-    executable: localization_node
+    executable: localization_estimator_node.py
     visibility: public_boundary
-    status: reserved_not_implemented
+    status: development_estimator_active
+    implementation_note: >-
+      Development GPS/IMU estimates publish EgoState, continuous Odometry and the
+      two approved dynamic transforms. Physical alignment and driving accuracy
+      are incomplete; stop_required remains true. Diagnostic mode remains available.
     diagram_description_ko: 센서와 지도를 융합해 차량 위치와 움직임을 추정
+  - name: sensor_tf_publisher
+    owner_package: system_bringup_pkg
+    executable: sensor_tf_publisher.py
+    visibility: package_internal
+    status: development_static_tf_active
+    diagram_description_ko: 중앙 계약에서 개발용으로 승인한 GPS와 IMU 정적 TF 발행
   - name: global_route_manager_node
     owner_package: global_route_manager_pkg
     executable: global_route_manager_node
@@ -259,6 +270,19 @@ nodes:
     visibility: public_boundary
     status: reserved_not_implemented_read_only
     diagram_description_ko: 주행 흐름을 관찰해 성능과 안전 지표를 산출
+
+  - name: vehicle_visualizer_node
+    owner_package: visualization_pkg
+    executable: vehicle_visualizer_node.py
+    visibility: public_boundary
+    status: development_visualization_only
+    diagram_description_ko: 위치 추정값과 상태를 차량 사각형 표시로 변환
+  - name: vehicle_rviz
+    owner_package: visualization_pkg
+    implementation_package: rviz
+    executable: rviz
+    visibility: package_internal
+    status: development_visualization_only
 
 topics:
   - name: /molit/sensors/camera/front/image/compressed
@@ -345,18 +369,18 @@ topics:
     owner_package: morai_interface_pkg
     producers: [morai_imu_bridge]
     consumers: [localization_node]
-    status: provisional_disabled
+    status: development_only_physical_alignment_pending
     visibility: public
     data_meaning: IMU orientation angular velocity and linear acceleration
     diagram_description_ko: 차량 자세·각속도·선형가속도
     data_type: sensor_msgs/Imu
-    unit: quaternion_rad_per_sec_m_per_sec2_pending_live_verification
+    unit: quaternion_rad_per_sec_m_per_sec2_development
     frame: imu_link
     timestamp_source: morai_interface_ingress_time
     expected_rate_hz: 50.0
     queue_policy: publisher_queue_10
-    timeout_sec: pending_live_jitter_measurement
-    invalid_data_policy: disabled_until_axis_unit_covariance_and_port_verified
+    timeout_sec: 0.30
+    invalid_data_policy: reject_invalid_measurements_development_only_stop_required
   - name: /molit/vehicle/twist
     owner_package: morai_interface_pkg
     producers: [morai_vehicle_status_bridge]
@@ -569,8 +593,8 @@ topics:
   - name: /molit/localization/local/odometry
     owner_package: localization_pkg
     producers: [localization_node]
-    consumers: [world_model_node, path_planner_node, vehicle_controller_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_not_implemented
+    consumers: [world_model_node, path_planner_node, vehicle_controller_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node]
+    status: development_estimator_active
     visibility: public
     data_meaning: Locally continuous odometry that is not absolute map truth
     diagram_description_ko: 연속적인 차량 상대 이동이며 절대 지도 위치가 아님
@@ -581,13 +605,15 @@ topics:
     timestamp_source: estimate_valid_time
     expected_rate_hz: 50.0
     queue_policy: publisher_queue_10_drop_old
-    timeout_sec: pending_sensor_jitter_measurement
+    timeout_sec: 0.30
+    activation_scope: development_only
+    timing_profile: timestamp/timestamp_contract.yaml#development_localization_profile
     invalid_data_policy: publish_covariance_and_stop_required_status_when_unreliable
   - name: /molit/localization/ego_state
     owner_package: localization_pkg
     producers: [localization_node]
-    consumers: [global_route_manager_node, world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node]
-    status: schema_implemented_runtime_not_implemented
+    consumers: [global_route_manager_node, world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node]
+    status: development_estimator_active
     visibility: public
     data_meaning: Best map-referenced ego pose motion uncertainty and validity
     diagram_description_ko: 지도 기준 차량 자세·움직임·불확실성
@@ -598,13 +624,15 @@ topics:
     timestamp_source: estimate_valid_time
     expected_rate_hz: 50.0
     queue_policy: publisher_queue_10_drop_old
-    timeout_sec: pending_sensor_jitter_measurement
+    timeout_sec: 0.30
+    activation_scope: development_only
+    timing_profile: timestamp/timestamp_contract.yaml#development_localization_profile
     invalid_data_policy: retain_explicit_uncertainty_and_quality_during_gps_blackout
   - name: /molit/localization/status
     owner_package: localization_pkg
     producers: [localization_node]
-    consumers: [global_route_manager_node, world_model_node, path_planner_node, vehicle_controller_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: schema_implemented_runtime_not_implemented
+    consumers: [global_route_manager_node, world_model_node, path_planner_node, vehicle_controller_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node]
+    status: development_estimator_active
     visibility: public
     data_meaning: Localization mode including nominal dead-reckoning degraded and lost
     diagram_description_ko: 위치추정 모드·품질·유효성
@@ -612,10 +640,14 @@ topics:
     unit: state_age_sec_covariance_and_reason
     frame: not_applicable
     timestamp_source: status_evaluation_time
-    expected_rate_hz: 10.0
-    queue_policy: publisher_queue_1_latched
-    timeout_sec: pending_sensor_jitter_measurement
+    expected_rate_hz: 50.0
+    queue_policy: publisher_queue_10_latched
+    timeout_sec: 0.50
+    activation_scope: development_only
+    timing_profile: timestamp/timestamp_contract.yaml#development_localization_profile
     invalid_data_policy: lost_or_stop_required_when_pose_contract_cannot_be_met
+    rate_semantic: sensor_driven_status_per_estimate_with_10_hz_idle_heartbeat
+
   - name: /molit/route/global_path
     owner_package: global_route_manager_pkg
     producers: [global_route_manager_node]
@@ -830,7 +862,28 @@ topics:
     timeout_sec: not_applicable_observer_output
     invalid_data_policy: report_unknown_without_affecting_any_driving_node
 
+  - name: /molit/internal/visualization/vehicle_markers
+    owner_package: visualization_pkg
+    producers: [vehicle_visualizer_node]
+    consumers: [vehicle_rviz]
+    status: development_visualization_only
+    visibility: package_internal
+    data_meaning: Read-only vehicle footprint or box and display annotations; never localization or control input
+    diagram_description_ko: 차량 크기·방향과 위치 추정 대기 상태 표시
+    data_type: visualization_msgs/MarkerArray
+    unit: m_rad_and_rgba
+    frame: not_applicable
+    marker_frames: [map, odom]
+    frame_policy: Each marker uses the selected pose frame; map and odom are never relabeled.
+    timestamp_source: visualization_marker_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: display_only_configurable_not_driving_freshness
+    invalid_data_policy: Delete vehicle on invalid_stale_reset_or_missing_pose_and_show_waiting_annotation
+
 messages:
+  - type: visualization_msgs/MarkerArray
+    status: approved_standard_type_visualization_only
   - type: sensor_msgs/CompressedImage
     status: approved_standard_type
   - type: sensor_msgs/NavSatFix
@@ -1008,7 +1061,8 @@ package_boundaries:
       - /molit/perception/lidar/status
   localization_pkg:
     diagram_summary_ko: 센서와 지도를 융합해 차량 위치·움직임과 추정 품질 계산
-    runtime_status: public_contract_reserved_not_implemented
+    runtime_status: development_estimator_active
+    implementation_note: gps_imu_development_estimates_stop_required_physical_validation_incomplete
     public_nodes: [localization_node]
     inputs:
       - /molit/sensors/gps/fix
@@ -1149,6 +1203,16 @@ package_boundaries:
       - /molit/safety/state
     outputs:
       - /molit/evaluation/metrics
+
+  visualization_pkg:
+    diagram_summary_ko: 위치 추정값을 차량 크기 사각형으로 단일 RViz 화면에 표시
+    runtime_status: development_visualization_only
+    public_nodes: [vehicle_visualizer_node]
+    inputs:
+      - /molit/localization/ego_state
+      - /molit/localization/local/odometry
+      - /molit/localization/status
+    outputs: []
 
 architecture_views:
   nominal_data_control:

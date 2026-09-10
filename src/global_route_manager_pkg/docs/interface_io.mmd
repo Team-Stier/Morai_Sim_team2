@@ -11,8 +11,8 @@ flowchart LR
     subgraph INPUTS["입력 (구독)"]
         input_000["/molit/map/hd_map<br/>설명: 버전이 고정된 정적 지도와 연결 구조<br/>메시지: common_msgs_pkg/HdMap<br/>상태: 설계 예약·미구현"]
         input_001["/molit/map/status<br/>설명: 지도 버전·해시·좌표계·검증 상태<br/>메시지: common_msgs_pkg/ComponentStatus<br/>상태: 설계 예약·미구현"]
-        input_002["/molit/localization/ego_state<br/>설명: 지도 기준 차량 자세·움직임·불확실성<br/>메시지: common_msgs_pkg/EgoState<br/>상태: 설계 예약·미구현"]
-        input_003["/molit/localization/status<br/>설명: 위치추정 모드·품질·유효성<br/>메시지: common_msgs_pkg/LocalizationStatus<br/>상태: 설계 예약·미구현"]
+        input_002["/molit/localization/ego_state<br/>설명: 지도 기준 차량 자세·움직임·불확실성<br/>메시지: common_msgs_pkg/EgoState<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
+        input_003["/molit/localization/status<br/>설명: 위치추정 모드·품질·유효성<br/>메시지: common_msgs_pkg/LocalizationStatus<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
     end
     subgraph PACKAGE["패키지 처리<br/>global_route_manager_pkg<br/>전역경로와 진행도를 관리하고 앞 경로·속도·미션 정보 제공"]
         local_node_000["global_route_manager_node<br/>역할: 전역경로 진행도와 다음 주행 구간 정보를 계산<br/>실행: global_route_manager_node<br/>상태: 설계 예약·미구현"]
@@ -34,8 +34,8 @@ flowchart LR
     class local_node_000 reservedNode;
     class input_000 reservedTopic;
     class input_001 reservedTopic;
-    class input_002 reservedTopic;
-    class input_003 reservedTopic;
+    class input_002 liveTopic;
+    class input_003 liveTopic;
     class output_000 reservedTopic;
     class output_001 reservedTopic;
     class output_002 reservedTopic;

@@ -27,50 +27,10 @@ fresh Local Odometry와 승인된 uncertainty 범위 안의 Localization quality
 마지막 GPS fix를 현재 위치 정답처럼 재사용하지 않는다. 구체 required 채널 집합과
 uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별도로 승인한다.
 
-현재 `system_bringup_pkg.launch`는 기본값으로 1차 live MORAI sensor-ingress profile만 실행한다.
-중앙 UDP 계약에서 `runtime_activation_allowed: true`인 Camera 3개와 GPS만 포함하며,
-IMU/LiDAR/Vehicle Status/Collision/Control은 포함하지 않는다. `system_readiness_node`와
-나머지 downstream autonomy runtime은 아직 미구현이며 모든 정적 sensor TF 발행도 계속 잠겨 있다.
-
-## 1차 runtime profile
-
-- profile: `config/live_morai_sensor_ingress.yaml`
-- mode: `live_morai`
-- required channels: `camera_front`, `camera_left`, `camera_right`, `gps`
-- optional channels: 없음
-- `use_sim_time`: `false`
-- 제외: IMU, LiDAR, LiDAR watchdog, Vehicle Status, Collision, Control
-
-실행:
-
-```bash
-roslaunch system_bringup_pkg system_bringup_pkg.launch
-```
-
-이 profile은 센서 ingress 통합 실행만 검증하기 위한 1차 구성이다. 전체 자율주행 stack,
-readiness, Safety 또는 MORAI closed-loop 주행이 준비됐다는 의미는 아니다.
-
-## Full-stack 통합 골격
-
-`system_bringup_pkg.launch`에는 향후 runtime 구현을 연결할 package-level gate를 미리 둔다.
-현재 다음 gate는 모두 기본값 `false`이며, 각 패키지 구현과 계약 검증이 완료되기 전에는
-활성화하지 않는다.
-
-- `start_hd_map`
-- `start_camera_perception`
-- `start_lidar_perception`
-- `start_localization`
-- `start_global_route_manager`
-- `start_world_model`
-- `start_path_planning`
-- `start_vehicle_control`
-- `start_safety_supervisor`
-- `start_runtime_evaluation`
-
-각 gate는 해당 패키지가 소유한 `<package_name>.launch`만 include한다. `common_msgs_pkg`와
-`ros_architecture_pkg`는 runtime node가 없는 타입/거버넌스 패키지이므로 full-stack launch에서
-직접 실행하지 않는다. 현재 대부분의 downstream launch는 skeleton이므로 gate를 `true`로 바꿔도
-기능 구현이 생기는 것은 아니다.
+`localization_visualization.launch`는 기존 GPS/IMU 입력을 사용하여 개발 추정기,
+중앙 계약의 GPS/IMU/LiDAR 정적 TF와 시각화를 시작한다. `visualization:=false`로 기존
+시각화 노드와의 중복을 피한다. 센서·제어 송신은 시작하지 않는다.
+`system_readiness_node`는 아직 미구현이며 주행 준비를 승인하지 않는다.
 
 ## 공개 ROS 입출력
 
@@ -115,3 +75,14 @@ readiness, Safety 또는 MORAI closed-loop 주행이 준비됐다는 의미는 �
 - `docs/`: startup sequence, readiness와 운영 절차
 - `launch/`: 승인된 전체 시스템 조합
 - `src/`: 향후 readiness 보조 도구
+
+## RViz HD Map + Localization
+
+`roslaunch system_bringup_pkg localization_visualization.launch`는 기본으로 HD Map 차선(밝은 회색),
+도로 중심선(청록색)과 로컬리제이션 차량을 같은 `map` 좌표계에 표시한다. GPS/IMU 수신은 먼저 실행해야 한다.
+`show_hd_map:=false`로 지도 표시를 끌 수 있다. 지도 원본은 `hd_map_pkg`의 고정 MGeo submodule을 사용하고,
+변환 원점은 중앙 `config/tf/map_projection.yaml`에서 읽는다. 지도는 화면에서만 평면으로 투영된다.
+지도 마커는 visualization 내부 RViz 표시 전용이며 Localization의 입력이나 공개 HdMap 메시지가 아니다.
+
+RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 30 m + 북쪽 지정 경계 확장을 사용한다.
+`hd_map_pkg/config/map_conversion.yaml`의 crop 설정을 공유하고 전역경로는 초록색으로 표시한다.

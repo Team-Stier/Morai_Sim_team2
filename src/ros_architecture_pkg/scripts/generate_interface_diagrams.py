@@ -67,6 +67,7 @@ EXPECTED_FINAL_COMMAND_TIMEOUT_POLICY = (
     "never_repeat_last_nonzero_command_and_send_only_a_packet_verified_fail_closed_stop"
 )
 EXPECTED_TOPIC_FRAME_CONTRACT = {
+    "/molit/internal/visualization/vehicle_markers": {"frame": "not_applicable"},
     "/molit/sensors/camera/front/image/compressed": {"frame": "camera_front_optical_frame"},
     "/molit/sensors/camera/left/image/compressed": {"frame": "camera_left_optical_frame"},
     "/molit/sensors/camera/right/image/compressed": {"frame": "camera_right_optical_frame"},
@@ -152,6 +153,78 @@ NON_LIVE_STATUS_MARKERS = (
     "unverified",
 )
 LIVE_STATUS_MARKERS = ("active", "implemented", "live", "runtime_verified")
+DEVELOPMENT_TF_CHILDREN = {"odom", "base_link", "gps_link", "imu_link", "lidar_link"}
+
+
+def validate_tf_activation(frames, extrinsics, projection):
+    """Check the narrowly scoped development exception without claiming physical verification."""
+    errors = []
+    gate = frames.get("publication_gate", {}).get("development_activation", {})
+    if set(gate.get("allowed_children", [])) != DEVELOPMENT_TF_CHILDREN:
+        errors.append("development TF approval must be scoped to odom base_link gps_link imu_link lidar_link")
+    if gate.get("scope") != "development_only" or gate.get("physical_alignment_verified") is not False:
+        errors.append("development TF gate must preserve incomplete physical verification")
+    if gate.get("autonomous_driving_ready") is not False or not gate.get("authorization"):
+        errors.append("development TF activation requires authorization and cannot claim driving readiness")
+    names = [entry.get("name") for entry in frames.get("frames", [])]
+    if len(names) != len(set(names)):
+        errors.append("TF frame names must be unique")
+    transforms = frames.get("transforms", [])
+    parents = {}
+    by_child = {}
+    for transform in transforms:
+        child, parent = transform.get("child"), transform.get("parent")
+        if child in parents or child not in names or parent not in names:
+            errors.append("TF graph has duplicate parent or unknown frame")
+        parents[child] = parent
+        by_child[child] = transform
+        if not transform.get("publish_enabled"):
+            continue
+        if child not in DEVELOPMENT_TF_CHILDREN:
+            errors.append("enabled TF is outside the development scope: {}".format(child))
+        if transform.get("activation_scope") != "development_only" or transform.get("physical_alignment_verified") is not False:
+            errors.append("enabled development TF must preserve its scoped verification: {}".format(child))
+        expected_owner = "localization_pkg" if transform.get("type") == "dynamic" else "system_bringup_pkg"
+        if transform.get("runtime_publisher_owner") != expected_owner:
+            errors.append("enabled TF publisher owner is invalid: {}".format(child))
+    root = frames.get("root_frame")
+    if root in parents or set(parents) != set(names) - {root}:
+        errors.append("TF graph must have one central root and a parent for every other frame")
+    for child in parents:
+        seen = set()
+        current = child
+        while current in parents and current not in seen:
+            seen.add(current)
+            current = parents[current]
+        if current != root:
+            errors.append("TF graph contains a cycle or disconnected frame")
+            break
+    for mount in extrinsics.get("sensor_mounts", []):
+        child = mount.get("child_frame")
+        if bool(mount.get("publish_enabled")) != bool(by_child.get(child, {}).get("publish_enabled")):
+            errors.append("TF frame and sensor extrinsic publication gates disagree: {}".format(child))
+        if not mount.get("publish_enabled"):
+            continue
+        if child not in {"gps_link", "imu_link", "lidar_link"} or mount.get("activation_scope") != "development_only" or mount.get("physical_alignment_verified") is not False:
+            errors.append("sensor mount is outside the scoped development approval: {}".format(child))
+        evidence = extrinsics.get("source_evidence", {}).get(mount.get("source_evidence"), {})
+        if mount.get("key") not in evidence.get("scope", []) or not evidence.get("user_confirmed_mount_position"):
+            errors.append("enabled sensor mount has no scoped user-approved evidence")
+        user_lidar_approval = (child == "lidar_link" and evidence.get("approval_source") == "user_instruction"
+                               and evidence.get("user_confirmed_coordinate_alignment") is True
+                               and evidence.get("runtime_activation_authorized") is True)
+        if not user_lidar_approval and not re.fullmatch(r"[a-f0-9]{64}", str(evidence.get("sha256", ""))):
+            errors.append("enabled sensor mount needs a source profile hash")
+    if extrinsics.get("camera_optical_convention", {}).get("publish_enabled"):
+        errors.append("camera optical TF is outside the current development approval")
+    if projection.get("epsg") != 32652 or projection.get("map_frame") != "map":
+        errors.append("development map projection must use map and EPSG 32652")
+    origin = projection.get("origin_utm_m", [])
+    if not isinstance(origin, list) or len(origin) != 3 or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in origin):
+        errors.append("map projection origin must have three finite metre values")
+    if projection.get("runtime_activation_allowed") is not True or projection.get("activation_scope") != "development_only" or projection.get("physical_alignment_verified") is not False:
+        errors.append("map projection activation must remain explicitly developmental")
+    return errors
 
 
 class ContractError(ValueError):
@@ -308,7 +381,7 @@ def validate_contract(contract, repository_root):
     required_module_paths = {
         "core_messages": ("path",),
         "package_registry": ("path",),
-        "tf": ("frame_contract", "sensor_extrinsics"),
+        "tf": ("frame_contract", "sensor_extrinsics", "map_projection"),
         "timestamp": ("timestamp_contract",),
         "morai_interface": ("udp_ros_bridge",),
     }
@@ -357,6 +430,13 @@ def validate_contract(contract, repository_root):
                         module_name, path_field, required_version
                     )
                 )
+
+    tf_modules = [loaded_modules.get(("tf", key)) for key in ("frame_contract", "sensor_extrinsics", "map_projection")]
+    if all(isinstance(module, dict) for module in tf_modules):
+        errors.extend(validate_tf_activation(*tf_modules))
+        map_config = load_contract(repository_root / "src" / "hd_map_pkg" / "config" / "map_conversion.yaml")
+        if tf_modules[2].get("origin_utm_m") != map_config.get("coordinates", {}).get("simulator_scene_origin_utm"):
+            errors.append("central projection and HD Map conversion origins must agree")
 
     planning_policy = contract.get("planning_policy")
     if not isinstance(planning_policy, dict):
@@ -1625,6 +1705,12 @@ def _topic_label(topic, node_by_name):
 
 def _package_status_label_ko(status):
     normalized = str(status or "").lower()
+    if normalized == "development_estimator_active":
+        return "GPS·IMU 개발 추정 실행·주행 검증 전"
+    if normalized == "development_static_tf_active":
+        return "GPS·IMU 정적 TF 개발 실행"
+    if normalized == "development_visualization_only":
+        return "시각화 개발 실행·추정 입력 대기"
     if _runtime_kind(status) == "live":
         return "개발 환경 동작 확인"
     if "prohibited" in normalized:
@@ -1980,7 +2066,7 @@ def render_package_interface(package_name, boundary, contract):
                 )
             )
     else:
-        lines.append('        no_outputs["런타임 ROS 출력 없음"]')
+        lines.append('        no_outputs["공개 ROS 출력 없음"]')
         lines.append("        class no_outputs emptyPort;")
     lines.append("    end")
     lines.append("")

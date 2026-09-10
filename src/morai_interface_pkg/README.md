@@ -39,16 +39,17 @@ roslaunch morai_interface_pkg morai_interface_pkg.launch \
 
 기본 개발 포트는 Camera 9291/9293/9295, GPS 7801, IMU 7802, VLP16 2368이다.
 이는 대회 고정 포트가 아니라 Team2 수신 설정이므로 MORAI Network Settings의
-destination IP/port를 실행 PC와 이 YAML 값에 맞춰야 한다. IMU/LiDAR는 통합
-시스템 투입이 아니라 격리된 연결 시험에서만 위처럼 명시적으로 활성화한다.
+destination IP/port를 실행 PC와 이 YAML 값에 맞춰야 한다. IMU는 중앙 개발 계약 범위에서 명시적으로 활성화하고, LiDAR는
+격리된 연결 시험에서만 활성화한다.
 필요한 센서만 실행할 때는 `start_cameras:=false` 같은 launch 인자를 사용한다. LiDAR에는
 ROS Noetic `velodyne_driver`, `velodyne_pointcloud`, `velodyne_msgs`, `nodelet`이
 필요하다.
 
 IMU parser의 구조 근거는 MORAI 공식
 [`24.R2.0/lib/define/IMU.py`](https://github.com/MORAI-Autonomous/MORAI-NetworkModule/blob/24.R2.0/lib/define/IMU.py)다.
-현재 시뮬레이터의 packet 수신, 축 방향과 단위는 아직 라이브 검증하지 않았으므로
-Localization 입력으로 승인하기 전에 rosbag과 정지/직진/회전 시험을 수행한다.
+2026-09-10 IMU packet 수신과 정지 가속도 크기를 확인했고, 사용자 요청에 따라
+중앙 계약에서 개발 Localization 입력을 허용한다. 공식 문서 축 정의를 사용하되
+완전한 회전/roll/pitch 물리 정합과 covariance 정확도는 미검증이다.
 개별·통합 launch의 IMU/LiDAR 기본 `false` gate는 실수 실행 방지를 위해 유지한다.
 MORAI 설정부터 topic별 성공 조건까지는
 [`센서 연결 실행 절차`](docs/sensor_connection_runbook.md)를 따른다.

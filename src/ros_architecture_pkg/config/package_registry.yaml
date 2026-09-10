@@ -55,6 +55,9 @@ packages:
   - name: system_bringup_pkg
     layer: bringup_and_evaluation
     owns: full-system launch composition and readiness order
+  - name: visualization_pkg
+    layer: bringup_and_evaluation
+    owns: RViz configuration and read-only vehicle rendering from approved localization outputs
 
 rules:
   - Dependencies must not point from a lower layer back to a higher runtime layer.

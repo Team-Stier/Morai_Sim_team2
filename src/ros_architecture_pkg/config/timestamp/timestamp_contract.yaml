@@ -1,5 +1,5 @@
 schema_version: 1
-contract_version: 0.1.0
+contract_version: 0.2.0
 status: approved_semantics_pending_live_clock_verification
 
 authority:
@@ -15,6 +15,16 @@ definitions:
   steady_watchdog_time: Monotonic wall time used only to detect a frozen ROS clock or transport.
 
 timestamp_source_registry:
+  visualization_marker_time:
+    kind: canonical_derived_display_only
+    clock_domain: canonical_message_clock
+    message_stamp_carried: true
+    allowed_owner_packages: [visualization_pkg]
+    allowed_topics: [/molit/internal/visualization/vehicle_markers]
+    marker_stamp_rules:
+      vehicle_geometry_and_attached_labels: preserve_source_pose_estimate_valid_time
+      waiting_annotations_and_deletes: canonical_ros_display_evaluation_time_zero_allowed_before_clock_start
+    rule: Never restamp old vehicle geometry or use display markers as localization estimates.
   morai_camera_packet_frame_time:
     kind: verified_external_raw
     canonical_semantic: source_sensor_measurement_time
@@ -186,7 +196,11 @@ provenance_transport_policy:
 derived_message_contract:
   localization:
     stamp: estimate_valid_time
-    rule: Pose history must be queryable by sensor measurement time.
+    rule: >-
+      Preserve the processed IMU estimate-valid stamp in EgoState, Odometry and
+      both dynamic transforms. GPS correction uses its accepted measurement time
+      in ordered sensor processing; publication time never refreshes the estimate.
+      Keep bounded pose history and clear it on reset or clock regression.
   perception:
     stamp: source_sensor_measurement_time
     rule: Inference completion must not replace the source image or scan stamp.
@@ -249,3 +263,30 @@ runtime_evidence_required:
   - Measure rate, jitter, transport delay and processing latency per sensor.
   - Test pause, reset, replay seek, packet loss and clock regression.
   - Approve numeric future tolerance and stale timeout in a later contract revision.
+
+# Explicit development defaults, not measured competition limits.
+development_localization_profile:
+  activation_scope: development_only
+  measurement_verified: false
+  autonomous_driving_ready: false
+  authorization: user_requested_estimation_and_activation_2026_09_10
+  imu_timeout_sec: 0.30
+  gps_timeout_sec: 0.65
+  estimate_timeout_sec: 0.30
+  status_timeout_sec: 0.50
+  reorder_delay_sec: 0.06
+  max_dead_reckoning_sec: 15.0
+  max_integration_step_sec: 0.30
+  clock_stall_sec: 0.50
+  future_tolerance_sec: 0.0
+  status_publish_rate_hz: 10.0
+  status_rate_semantic: heartbeat_when_idle_plus_one_status_per_estimate
+  estimate_publish_rate_hz: 50.0
+  estimate_rate_semantic: target_upper_bound_sensor_driven_not_a_restamping_timer
+  relocation_policy: immediate_reinitialization_at_accepted_gps_measurement_time_when_innovation_exceeds_threshold
+  provenance: ingress_fallback
+  uncertainty_semantic: modelled_covariance_not_measured_accuracy_or_zero_simulator_noise
+  required_followup:
+    - Measure input interarrival p95/p99 and end-to-end estimate latency.
+    - Validate pause, clock reset, replay seek and GPS blackout recovery.
+    - Validate axis signs, map datum and model error while following the route.

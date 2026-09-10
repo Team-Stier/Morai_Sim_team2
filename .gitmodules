@@ -1,0 +1,3 @@
+[submodule "src/hd_map_pkg/vendor/verdict_sdk"]
+	path = src/hd_map_pkg/vendor/verdict_sdk
+	url = https://github.com/MORAI-Autonomous/verdict-sdk.git

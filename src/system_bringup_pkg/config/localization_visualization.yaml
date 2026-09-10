@@ -1,0 +1,10 @@
+profile: localization_visualization_development
+activation_scope: development_only
+autonomous_driving_ready: false
+required_existing_channels: [gps, imu]
+optional_existing_channels: []
+starts_sensor_ingress: false
+starts_control_path: false
+central_frame_contract: ros_architecture_pkg/config/tf/frame_contract.yaml
+central_timestamp_contract: ros_architecture_pkg/config/timestamp/timestamp_contract.yaml
+rule: Required channels are diagnostic inputs, not a declaration of autonomous-driving readiness.

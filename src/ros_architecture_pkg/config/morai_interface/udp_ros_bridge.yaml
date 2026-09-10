@@ -183,9 +183,14 @@ channels:
     sentence_policy: gga_only
     configured_rate_hz: 5.0
   imu:
-    runtime_activation_allowed: false
+    runtime_activation_allowed: true
     isolated_probe_activation_allowed: true
-    competition_runtime_status: pending_packet_axis_unit_covariance_and_port
+    competition_runtime_status: development_only_physical_alignment_pending
+    activation_scope: development_only
+    physical_alignment_verified: false
+    autonomous_driving_ready: false
+    development_evidence: live_GPS_IMU_audit_2026_09_10_and_documented_axes
+    authorization: user_requested_localization_activation_2026_09_10
     transport: legacy_morai_binary_udp
     bind_ip: 0.0.0.0
     port: 7802
@@ -288,7 +293,7 @@ channels:
 global_rules:
   - Bounding-box UDP packets are not published or used.
   - isolated_probe_activation_allowed permits only a manual sensor connectivity test and never authorizes system bringup or downstream driving use.
-  - Static sensor TF remains disabled until the TF activation gates pass.
+  - Only centrally approved development GPS/IMU TF may publish; Camera/LiDAR TF remains disabled.
   - Receive-time fallback is captured immediately after recvfrom, not after parsing.
   - Runtime timestamp_source values packet and receive map through runtime_timestamp_parameter_mapping and are not new central clock names.
   - No ROS-to-MORAI control sender is part of this import.

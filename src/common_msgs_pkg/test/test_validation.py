@@ -102,6 +102,19 @@ class ValidationTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_localization(value)
 
+    def test_relocalizing_requires_stop_and_invalid_pose(self):
+        value = localization()
+        value.mode = 4
+        value.stop_required = True
+        value.map_pose_valid = value.local_odometry_valid = False
+        validate_localization(value)
+        for field in ('map_pose_valid', 'local_odometry_valid', 'stop_required'):
+            original = getattr(value, field)
+            setattr(value, field, not original)
+            with self.assertRaises(ValueError):
+                validate_localization(value)
+            setattr(value, field, original)
+
     def test_freshness_zero_future_stale_regression(self):
         validate_freshness(stamp(9), 10., 1.)
         for value in (0, 11, 8):

@@ -33,6 +33,8 @@ schema provider다.
 필드의 원본은 중앙 `config/messages/core_messages.yaml`이며
 [필드·이식·테스트 지침](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 검증 함수는 자동으로 callback에 적용되지 않으며 추정기나 Safety 구현을 대신하지 않는다.
+`RELOCALIZING`은 map/local pose validity=false와 `stop_required=true`를 요구한다.
+재배치 후 `reset_id`가 바뀌면 소비자는 이전 epoch의 pose/status를 결합하지 않는다.
 
 ## 통합 전 자체 확인
 

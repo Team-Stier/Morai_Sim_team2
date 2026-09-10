@@ -1,6 +1,6 @@
 schema_version: 1
-contract_version: 0.1.0
-status: approved_names_provisional_geometry
+contract_version: 0.2.0
+status: development_localization_activation_with_scoped_geometry_evidence
 
 authority:
   package: ros_architecture_pkg
@@ -36,7 +36,8 @@ frames:
     category: global
     semantic: Locally translated global map frame aligned ENU.
     semantic_owner: hd_map_pkg
-    origin_status: pending_official_hd_map_verification
+    origin_status: development_projection_from_static_scene_metadata
+    projection_contract: map_projection.yaml
   - name: odom
     category: local_continuous
     semantic: Continuous local motion frame that may drift over time.
@@ -44,9 +45,10 @@ frames:
     origin_status: set_at_localization_initialization
   - name: base_link
     category: vehicle_body
-    semantic: Ego vehicle body reference using REP-103 body axes.
+    semantic: MORAI sensor target rear axle midpoint using REP-103 body axes.
     semantic_owner: localization_pkg
-    origin_status: provisional_morai_sensor_target_pivot
+    origin_status: documented_rear_axle_midpoint_development_definition
+    physical_alignment_verified: false
   - name: camera_front_link
     category: sensor_mount
     semantic: Front camera mounting frame before optical-axis conversion.
@@ -91,16 +93,20 @@ transforms:
     semantic_owner: ros_architecture_pkg
     runtime_publisher_owner: localization_pkg
     source: global_localization_correction
-    verification_status: pending_localization_implementation
-    publish_enabled: false
+    verification_status: development_estimator_model_pending_physical_validation
+    activation_scope: development_only
+    physical_alignment_verified: false
+    publish_enabled: true
   - parent: odom
     child: base_link
     type: dynamic
     semantic_owner: ros_architecture_pkg
     runtime_publisher_owner: localization_pkg
     source: continuous_ego_motion_estimate
-    verification_status: pending_localization_implementation
-    publish_enabled: false
+    verification_status: development_estimator_model_pending_physical_validation
+    activation_scope: development_only
+    physical_alignment_verified: false
+    publish_enabled: true
   - parent: base_link
     child: camera_front_link
     type: static
@@ -155,30 +161,52 @@ transforms:
     semantic_owner: ros_architecture_pkg
     runtime_publisher_owner: system_bringup_pkg
     source: sensor_extrinsics.yaml#lidar
-    verification_status: saved_profile_only_axis_mapping_pending
-    publish_enabled: false
+    verification_status: user_confirmed_mount_and_axes_development
+    activation_scope: development_only
+    physical_alignment_verified: false
+    publish_enabled: true
   - parent: base_link
     child: gps_link
     type: static
     semantic_owner: ros_architecture_pkg
     runtime_publisher_owner: system_bringup_pkg
     source: sensor_extrinsics.yaml#gps
-    verification_status: saved_profile_only
-    publish_enabled: false
+    verification_status: documented_axes_user_approved_mount_development
+    activation_scope: development_only
+    physical_alignment_verified: false
+    publish_enabled: true
   - parent: base_link
     child: imu_link
     type: static
     semantic_owner: ros_architecture_pkg
     runtime_publisher_owner: system_bringup_pkg
     source: sensor_extrinsics.yaml#imu
-    verification_status: saved_profile_only
-    publish_enabled: false
+    verification_status: documented_axes_user_approved_mount_development
+    activation_scope: development_only
+    physical_alignment_verified: false
+    publish_enabled: true
 
 publication_gate:
-  required_before_enabling:
-    - Confirm the active MORAI sensor loadout and its file hash.
-    - Confirm that the MORAI sensor target pivot equals the chosen base_link origin.
-    - Verify translation axes and roll-pitch-yaw signs with asymmetric poses.
-    - Verify raw Camera and LiDAR measurement-axis mappings.
-    - Add a single static-transform publisher through system_bringup_pkg.
-    - Pass frame uniqueness, acyclic graph and live tf2 checks.
+  development_activation:
+    allowed_children: [odom, base_link, gps_link, imu_link, lidar_link]
+    authorization: user_requested_estimation_and_activation_2026_09_10
+    scope: development_only
+    physical_alignment_verified: false
+    autonomous_driving_ready: false
+    required:
+      - Use the central map projection and user-approved GPS/IMU extrinsics.
+      - Preserve source estimate stamps and the continuous odom frame.
+      - A GPS innovation reset re-anchors map-to-odom with a new localization reset_id; odom translation remains continuous.
+      - Keep stop_required true while the development profile lacks driving validation.
+      - Reject disabled transforms and inconsistent frame or extrinsic gates.
+      - Use a single localization dynamic publisher and one bringup static publisher.
+    unresolved:
+      - Active simulator build rear axle pivot physical comparison.
+      - Recorded forward and turn motion checks of IMU and GPS axes.
+      - Asymmetric roll and pitch checks and altitude datum validation.
+      - Timing jitter and localization accuracy over the full route and GPS blackout.
+  camera_activation:
+    allowed: false
+    required:
+      - Confirm the active camera loadout and hash.
+      - Verify camera measurement axes, optical conversions and rotation signs.

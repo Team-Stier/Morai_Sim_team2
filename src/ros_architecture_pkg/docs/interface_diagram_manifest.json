@@ -18,11 +18,11 @@
     },
     {
       "png": "src/global_route_manager_pkg/docs/interface_io.png",
-      "png_sha256": "bd66ecb91bf39ed5a6f550d8e56cc384248fdba32f473cfd2d58ea7e3e13f766",
+      "png_sha256": "3ba461ea9de63d3fe9e7e0180eae89a4f6fdb6d91094fbff1e95925707e640bb",
       "source": "src/global_route_manager_pkg/docs/interface_io.mmd",
-      "source_sha256": "593927185300cb5bd4736d4c4d49612548e3313c24f128797e790d287aebda17",
+      "source_sha256": "fb1dffdb807dbd4f6131081227e765bef72a8e2f355a8d709f04c13d254d7452",
       "svg": "src/global_route_manager_pkg/docs/interface_io.svg",
-      "svg_sha256": "c6db66ce0383494b48c0bd91cf3d69fcfde0918fd8370db799809fb1cc740778"
+      "svg_sha256": "31f3703574f67d2b31fea429eb966978e8b95eab82f08c099532f9113dc3db78"
     },
     {
       "png": "src/hd_map_pkg/docs/interface_io.png",
@@ -42,27 +42,27 @@
     },
     {
       "png": "src/localization_pkg/docs/interface_io.png",
-      "png_sha256": "feddc9642bda184443a369e9e014fdb11741e4e5fcbc51d4ba63390f075c569e",
+      "png_sha256": "59ced82359c256bd118826a881feff4b4f113d077637b15a3da9f227eb52092e",
       "source": "src/localization_pkg/docs/interface_io.mmd",
-      "source_sha256": "bd4469b87cfc47646d355bdfb59cf0fa738f924010feaf83565d40af97859ffd",
+      "source_sha256": "1bc22b655ea8200b3708aaf6feb504119c0e4e096b95c37ca37cca94a525edd0",
       "svg": "src/localization_pkg/docs/interface_io.svg",
-      "svg_sha256": "52774814ad28a04aa2bf65533f61808e7174d7336c3a18afb07b6efb7b3f3d7f"
+      "svg_sha256": "03b7a1fd9bd162e1cc7fdce728567dbf30f03e2b015284e58c6bd2877e324a53"
     },
     {
       "png": "src/morai_interface_pkg/docs/interface_io.png",
-      "png_sha256": "36416ab448ab1b12f13bf15ce0f51c4cd09345442d95e716f491bf96b3e6ab82",
+      "png_sha256": "bd01301900d61a8dda505ecefb0345cfef57ca951ec8d0fbc9bb27ee9e628d39",
       "source": "src/morai_interface_pkg/docs/interface_io.mmd",
-      "source_sha256": "84090bd027b8895972b41c97fbf8dcc9b32fb1b006fa547706a2a04bcbb7e166",
+      "source_sha256": "fb5f83376108251b41407e7084aab75f914319d9d852661ffa6adc14b5db5acb",
       "svg": "src/morai_interface_pkg/docs/interface_io.svg",
-      "svg_sha256": "969237f038105e14ba224fd7dcd4a6bf04d2091d2ba3e7dab818c6b22d95d4bf"
+      "svg_sha256": "67610fba065689c26fe4f90346e69a36fef1005a14bd239b901644b5af33c9ca"
     },
     {
       "png": "src/path_planning_pkg/docs/interface_io.png",
-      "png_sha256": "9b47e33efded1bbe3da56db7518c602086961aa0c5ba3b0e694451c2e22a2826",
+      "png_sha256": "fea7cd7658e9d760e1c00c6883b25dc0b7f74abf744f741fb093a20c37dfbc23",
       "source": "src/path_planning_pkg/docs/interface_io.mmd",
-      "source_sha256": "8b020fa505c947487d255b72caa6323f04e530813955b5305dbd5387da792518",
+      "source_sha256": "1e6cc84d26ed6da81b0688343f49bf0053693b16d37db5c58be2f4b13c3cae56",
       "svg": "src/path_planning_pkg/docs/interface_io.svg",
-      "svg_sha256": "a08ab99b3abae94704276aa8e8ed0c791d1064c292e13eab4759d7a5bfa04c25"
+      "svg_sha256": "3211bc5c19477c639fcd906f613cafd4188ab3c4d355e60c8df90b983ed5e9e6"
     },
     {
       "png": "src/ros_architecture_pkg/docs/interface_io.png",
@@ -74,67 +74,75 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "91cdea5d9f92008a73c82bcda58496eeff0e5e4b8e17cb579645770ec9d6f523",
+      "png_sha256": "dc116e3d2816489fda963ec0af291138271360e18d7177a793bdf98d36944532",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "2233b0a8f17fd3bb6b95c332c55e6b773c36f056523bbcaa2c6b915cffbf66c7",
+      "source_sha256": "aafd64801ea62bf6f0b69f6d3414a989209ff60ff89b253a989e5818085e4fbd",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "f93cb3919e2057c1171270e0a18ea577f161a73e3defb2cb728006300faceddb"
+      "svg_sha256": "a79079260409e4953f256dd05cf986342dbe1902f82c933613b108706a32e988"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
-      "png_sha256": "034dd554c375e2e99f4eb77c5c9cf583efcc166b08d2cf5cc92e3069eca75296",
+      "png_sha256": "b1b1edced72ba3d864483a36669828b9dd0771c2536f4c8325b959b62d87a903",
       "source": "src/ros_architecture_pkg/docs/system_health_safety_flow.mmd",
-      "source_sha256": "de488490ef2a5c38f4cd37dd272d06d396bb65c40f9d1afa9d260ae70cc9c149",
+      "source_sha256": "11e681c28cd7544d079ae4e6bc294170815f88830ae65c171e299bb290cafef8",
       "svg": "src/ros_architecture_pkg/docs/system_health_safety_flow.svg",
-      "svg_sha256": "30ff9dd1cef0ef7bde56763a6516fdd2966d523c3d1022927d2a625a8c9b7241"
+      "svg_sha256": "86a1ffe37ae26ae3aa73a77fd7a3f232426e5bab5c7bc5bf969f4eb3b8acb06e"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_nominal_flow.png",
-      "png_sha256": "c80be693d44de399a28de9af91678267d241f8abb4db72be93359810fe76fa30",
+      "png_sha256": "c8f445c4368e5b7e9f01d77a417dbe49bf585d7cf035a6a7e74fcaeefd4982d3",
       "source": "src/ros_architecture_pkg/docs/system_nominal_flow.mmd",
-      "source_sha256": "ccd586971168d7c49d305773aa55f83b532a7e8b31cd14f44c5aaacceb8f4c00",
+      "source_sha256": "44a58d2024d10d5f9392d7249b8b38b5c806a8eda06c156a238fd5c07a167612",
       "svg": "src/ros_architecture_pkg/docs/system_nominal_flow.svg",
-      "svg_sha256": "9e8872bb0466d3674e7a28598656c14aef95f5d22a156dc121f7e57e32ec11ae"
+      "svg_sha256": "8ea4adb2d378f0db19a033cb82e6fb426f8d24fc80674cbc9a55c94358fa00eb"
     },
     {
       "png": "src/runtime_evaluation_pkg/docs/interface_io.png",
-      "png_sha256": "b16c21272f964fe871eb501c64c7769130464651368267ae46eaf27347dfd123",
+      "png_sha256": "0631e257515033c947a91110d7e1c259f475acaf0dfb5200246e8260def613a3",
       "source": "src/runtime_evaluation_pkg/docs/interface_io.mmd",
-      "source_sha256": "61add819a3d98050b20f1a4da83398f51cdb60b7ff1cbfb9b901834533de22f8",
+      "source_sha256": "9096a5ead625d72b115376cb7edfbd84cf5c9eab33bc2afa16b67d5ee1567a28",
       "svg": "src/runtime_evaluation_pkg/docs/interface_io.svg",
-      "svg_sha256": "13696744dc2694ce940492f98ab882fda5797d837393173eb2c042dc00748db4"
+      "svg_sha256": "48c1a9388d7a54f6e332550434e78962878b49b57eab11fa67fef2e8bc974a71"
     },
     {
       "png": "src/safety_supervisor_pkg/docs/interface_io.png",
-      "png_sha256": "50a8eebd373bc2d4d211a1c4b374baf9efa56da0a63d1e549c0513a097623fa9",
+      "png_sha256": "e3d46db2db967ffa83cbe1d6a92e6f374618f0b0ed92e5c35f677097f6d862f3",
       "source": "src/safety_supervisor_pkg/docs/interface_io.mmd",
-      "source_sha256": "58300288bfb76051a367edb8be58fc92a4b70fc7e804877bc7bfdd3a88d7a30d",
+      "source_sha256": "125381d21448ecfde9d4b1127927329cfb9e455dcd536469f2f79a10d6bce390",
       "svg": "src/safety_supervisor_pkg/docs/interface_io.svg",
-      "svg_sha256": "6169a888974ac039c6f9d14618ef8d8e4c3011bb16ee5c38cb30fdce9561a93d"
+      "svg_sha256": "9ff40311ac97ddb6637947f3a0a512665c9f9fa333bc51b0239305a28749ecfc"
     },
     {
       "png": "src/system_bringup_pkg/docs/interface_io.png",
-      "png_sha256": "d939a0bb2b2916ad2b8bb6f4f0afcde52dffb6a7a3d795918654aba1e78dba8e",
+      "png_sha256": "90635fce5bdc27fb7cf548eb198586b1febe5e66bd662612e7fe071331c61630",
       "source": "src/system_bringup_pkg/docs/interface_io.mmd",
-      "source_sha256": "b269f6115bf3865b4d1422a1bceb460d4e7e50bb79bffe186812cd0687fd536d",
+      "source_sha256": "476a0f67a1c1ca17d1576d7e47231c62e4282ba698f1c9507ef32e4d33968a21",
       "svg": "src/system_bringup_pkg/docs/interface_io.svg",
-      "svg_sha256": "67f2c92464eb79c9b441e8cc7d7fabb2b16669248eac971f3ffb0474ee9e4c2f"
+      "svg_sha256": "645f0863a033da405afdd07a035f8c3a71dea6a1589ae109e69cd003a4d5e0f0"
     },
     {
       "png": "src/vehicle_control_pkg/docs/interface_io.png",
-      "png_sha256": "68c3d46677e3c4ff3b8fd358c5fe3712fdcf3f66de4a4222a12f6a0ab7a7c4ff",
+      "png_sha256": "9c4c13075532d79463bcbc6e14b8b7ae9ca524f156dbb5a5a02978971cba6ab7",
       "source": "src/vehicle_control_pkg/docs/interface_io.mmd",
-      "source_sha256": "f1602b0dfa0145cbac9d47a83eda44795b636e6ac2cdf9dd02fe6f1f30da7967",
+      "source_sha256": "26b025bf0340da02ab1cd33474fb877073b4a9530e609cafdf3c82f121ae6b80",
       "svg": "src/vehicle_control_pkg/docs/interface_io.svg",
-      "svg_sha256": "c5238fcf300a75dfc4415005bddf631422db83c85b87cb04933bda4270b373ef"
+      "svg_sha256": "77f77b6fd4b7a01cd2464b96ab1ecd06e58af18ce94aff733a8725dccbc6aa70"
+    },
+    {
+      "png": "src/visualization_pkg/docs/interface_io.png",
+      "png_sha256": "5ca0375bc9de876c717826a934e07910924a25630dc4266381100add326bf051",
+      "source": "src/visualization_pkg/docs/interface_io.mmd",
+      "source_sha256": "bda9119afa3aabb64b9b4f95032bbc0ae11e03faa2ab4e4ab78e2f585f82f4f5",
+      "svg": "src/visualization_pkg/docs/interface_io.svg",
+      "svg_sha256": "0a0cf35e4cccaeed4799bb63f921bf22909a25485f8c24aa85d2b776dd5b8823"
     },
     {
       "png": "src/world_model_pkg/docs/interface_io.png",
-      "png_sha256": "c920289c6e44ee60d5ec91e929c42e43aa2061b32665941ef630051f755fbc35",
+      "png_sha256": "a0b357f81c9d9f3a3f05a6f54f5aa4ae1350775b61990356a0bf8479772a2fbd",
       "source": "src/world_model_pkg/docs/interface_io.mmd",
-      "source_sha256": "03dffc88d42a234427d9cf798efe0d8d1391aa8daf2d061592fcb68cfa0923f2",
+      "source_sha256": "2014e214803fd9420695921c356cfcc5f57f04ec1da23e1684dcf73ec522370a",
       "svg": "src/world_model_pkg/docs/interface_io.svg",
-      "svg_sha256": "d259a44b324132011bace1e659481d629a6140f0017ae4952ffaff5a0e1dd812"
+      "svg_sha256": "e1fb2add33941aa6f26802f15b074554bcdc73bdc1790a803f571733643e0929"
     }
   ],
   "renderer": "@mermaid-js/mermaid-cli@11.16.0",
@@ -142,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "697bb10dc627cd43abe41abcac8a1b4f9248bf21ef84784f4b60966093d8e2fc"
+  "source_of_truth_sha256": "a7ec1f1ca85baa7426d74d1780ea7e1064c47f035c3e7e1ad24b9bd711b4f88c"
 }

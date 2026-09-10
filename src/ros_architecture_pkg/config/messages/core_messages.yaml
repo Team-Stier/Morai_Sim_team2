@@ -2,7 +2,9 @@ schema_version: 1
 contract_version: 0.1.0
 authority: ros_architecture_pkg
 implementation_owner: common_msgs_pkg
-runtime_nodes_implemented: false
+runtime_nodes_implemented: true
+runtime_implementation_scope: localization_gps_imu_development_and_visualization
+autonomous_driving_ready: false
 regulation_source:
   url: https://morai.atlassian.net/wiki/external/YTRiNWMwZTNjODc3NDBkYzgxMTMzOWMwMWY3YWRkZDc
   evidence: user_supplied_regulation_excerpt_2026_09_10
@@ -46,6 +48,12 @@ rules:
   - Consumers reject zero future regressing or stale headers using measured profile thresholds.
   - Consumers compare reset_id and data stamps before combining EgoState LocalizationStatus and local odometry.
   - The reset epoch starts at zero and changes on resets; process restarts and clock resets also clear consumer caches.
+  - Development localization treats a finite GPS innovation above its configured chi2 threshold as a respawn assumption and immediately accepts that fix by reinitializing map pose and velocity.
+  - The immediate GPS reset has no consecutive-sample, stationary-motion, distance-jump or confirmation-time requirement; blackout return can trigger it too.
+  - This reset policy is a simulator assumption, never a verified simulator respawn event or Ground Truth.
+  - RELOCALIZING requires stop_required true and invalid map/local flags; the immediate reset policy has no pending-confirmation phase.
+  - A GPS innovation reset increments reset_id before the next pose/status pair and clears prior velocity.
+  - Relocation re-anchors map-to-odom while retaining continuous odom translation; all consumers discard old-epoch histories.
   - Status reason is diagnostic text and never a machine control enum.
   - Component counters reset on process restart; counter decreases do not represent negative events.
   - Static map load time is not a live sensor freshness timer; evaluate immutable identity and status heartbeat.

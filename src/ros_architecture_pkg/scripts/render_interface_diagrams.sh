@@ -41,10 +41,10 @@ for mermaid_file in "${mermaid_files[@]}"; do
     png_scale="3"
   fi
 
-  npx --yes "@mermaid-js/mermaid-cli@${mermaid_cli_version}" \
+  npx --yes --package="@mermaid-js/mermaid-cli@${mermaid_cli_version}" mmdc \
     -i "${mermaid_file}" -o "${output_base}.svg" -b transparent \
     -c "${mermaid_config}"
-  npx --yes "@mermaid-js/mermaid-cli@${mermaid_cli_version}" \
+  npx --yes --package="@mermaid-js/mermaid-cli@${mermaid_cli_version}" mmdc \
     -i "${mermaid_file}" -o "${output_base}.png" -b white -s "${png_scale}" \
     -c "${mermaid_config}"
 done

@@ -279,7 +279,7 @@ Camera/GPS transport이고, 회색·주황 점선은 이름만 예약됐거나 �
 계약의 `diagram_summary_ko`, `diagram_description_ko`에서 자동 생성한다.
 생성된 Mermaid나 이미지는 직접 편집하지 않는다.
 
-- [전체 24개 node·35개 topic 상세 SVG 확대해서 열기](src/ros_architecture_pkg/docs/system_architecture.svg)
+- [전체 26개 node·36개 topic 상세 SVG 확대해서 열기](src/ros_architecture_pkg/docs/system_architecture.svg)
 - [전체 상세 Mermaid 원본](src/ros_architecture_pkg/docs/system_architecture.mmd)
 - [Nominal Mermaid 원본](src/ros_architecture_pkg/docs/system_nominal_flow.mmd)
 - [Health/Safety Mermaid 원본](src/ros_architecture_pkg/docs/system_health_safety_flow.mmd)
@@ -292,6 +292,7 @@ Camera/GPS transport이고, 회색·주황 점선은 이름만 예약됐거나 �
 - [Timestamp 정책](src/ros_architecture_pkg/docs/timestamp/README.md)
 - [MORAI UDP → ROS 어댑터 계약](src/ros_architecture_pkg/config/morai_interface/udp_ros_bridge.yaml)
 - [UDP 브리지 이식 및 라이브 검증 기록](src/morai_interface_pkg/docs/morai_udp_bridge_import.md)
+- [Localization 차량 표시 계약과 치수 근거](src/ros_architecture_pkg/docs/visualization_vehicle.md)
 
 ### 패키지 구조
 
@@ -311,6 +312,7 @@ Camera/GPS transport이고, 회색·주황 점선은 이름만 예약됐거나 �
 | `vehicle_control_pkg` | `vehicle_controller_node` | trajectory tracking과 nominal actuator command |
 | `safety_supervisor_pkg` | `safety_supervisor_node` | Controller 뒤 최종 fail-closed command gate |
 | `runtime_evaluation_pkg` | `runtime_evaluator_node` | 주행에 영향을 주지 않는 규정·지연·성능 지표 기록 |
+| `visualization_pkg` | `vehicle_visualizer_node` | Localization 추정값을 차량 크기 사각형으로 단일 RViz에 표시 |
 
 모든 패키지는 `src/<package_name>/` 아래에 있으며 다음 기본 구조를 지킨다.
 
@@ -329,10 +331,14 @@ Camera/GPS transport이고, 회색·주황 점선은 이름만 예약됐거나 �
 
 ### 공개 ROS 경계 v1.0.0
 
-- 등록 node: 24개(공개 경계 22개, MORAI LiDAR package-internal 2개)
-- 공개 topic: 34개, MORAI LiDAR package-internal topic 1개
+- 등록 node: 27개(공개 경계 23개, MORAI LiDAR 내부 2개, RViz 및 정적 TF publisher)
+- 공개 topic: 34개, package-internal topic 2개(LiDAR packet과 차량 표시 MarkerArray)
 - 현재 live transport 확인: MORAI Camera 3개와 GPS
-- 스키마 구현: `ComponentStatus`, `EgoState`, `LocalizationStatus` (런타임 노드는 미구현)
+- 스키마 구현: `ComponentStatus`, `EgoState`, `LocalizationStatus`
+- Localization 개발 실행: GPS/IMU 추정 EgoState·연속 Odometry·상태 및
+  map/odom/base_link TF 구현. GPS/IMU 정적 TF는 bringup 소유; 항상 stop_required
+- Visualization 개발 실행: 승인된 Localization 입력으로 차량 사각형을 표시;
+  유효한 추정값이 없으면 대기 상태를 표시하고 TF를 발행하지 않음
 - 이름만 예약: 나머지 기능 package node/topic과 custom type
 - 개발 실행 가능·라이브 검증 대기: IMU/LiDAR
 - 사용 금지: legacy Vehicle Status
@@ -364,7 +370,14 @@ PYTHONNOUSERSITE=1 catkin_make install -DPYTHON_EXECUTABLE=/usr/bin/python3
 map → odom → base_link → camera/lidar/gps/imu frames
 ```
 
-현재 Camera 3대의 위치는 제공 원본과 로컬 MORAI 저장 프로필이 일치한다. LiDAR/GPS/IMU 위치는 로컬 저장 프로필에서만 확인됐으며 현재 Simulator의 활성 loadout으로는 검증되지 않았다. MORAI 차량 원점·회전축과 ROS `base_link`의 정합도 남아 있으므로 모든 센서 정적 TF는 현재 `publish_enabled: false`다.
+현재 Camera 3대의 위치는 제공 원본과 로컬 MORAI 저장 프로필이 일치한다.
+2026-09-10 사용자가 지정한 IMU `[0, 0, 0] m`, GPS `[0, 0, 1.3] m`는
+최신 저장 파일의 값·식별자·해시와 대조해 중앙 TF 후보에 반영했다. 두 센서의
+원본 회전은 `[0, 0, 0] deg`다. LiDAR는 최신 저장 파일과 기존 후보의 차이를
+기록하고 기존 위치를 유지한다. [센서 위치 근거](src/ros_architecture_pkg/docs/tf/README.md)에
+과거·현재 값을 구분했다. 사용자 장착 위치 승인은 활성 loadout 전체나 MORAI
+차량 원점·회전축과 ROS `base_link` 정합의 검증 완료를 뜻하지 않는다.
+현재 모든 동적·정적 TF는 `publish_enabled: false`다.
 
 Timestamp의 기준은 센서 또는 상태가 실제로 유효한 **측정시각**이다. Perception과 downstream 노드는 처리 완료 시각으로 `header.stamp`를 덮어쓰면 안 된다. Live MORAI의 `/clock` 동작이 검증되기 전에는 `use_sim_time`을 활성화하지 않고, rosbag replay에서만 bag clock을 사용한다.
 
@@ -442,5 +455,7 @@ Timestamp의 기준은 센서 또는 상태가 실제로 유효한 **측정시�
 전체 package의 구체 node/topic/type **이름**은 v1.0.0으로 승인됐다. 다만
 실제 live runtime을 확인한 범위는 MORAI Camera/GPS이고, IMU/LiDAR는 기존
 브리지와 통합 launch까지 구현됐지만 현재 대회 시뮬레이터에서 재검증해야 한다.
+Localization은 개발용 GPS/IMU 추정과 상태 전용 진단 모드를 제공한다.
+개발 추정 출력은 주행 준비를 뜻하지 않으며 물리 정합과 전체 경로 검증은 별도다.
 나머지 골격, 예약 custom type과 `runtime_activation_allowed: false` 채널은
 실제 주행 기능이 구현·검증됐다는 뜻이 아니다.
