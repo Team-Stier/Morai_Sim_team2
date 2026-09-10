@@ -23,6 +23,7 @@ uint32 required_mask
 uint32 ready_mask
 uint32 missing_mask
 uint32 stale_mask
+uint32 not_ready_mask
 uint32 fault_mask
 # Maximum nonnegative age among received required statuses; -1 means none received.
 float64 max_status_age_sec
