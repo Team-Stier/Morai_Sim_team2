@@ -1,4 +1,12 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Runtime entities will be added after central contract approval. -->
+  <arg name="config_file"
+       default="$(find localization_pkg)/config/localization.yaml" />
+
+  <node pkg="localization_pkg" type="ego_state_estimator" name="ego_state_estimator"
+        ns="localization" output="screen">
+    <rosparam command="load" file="$(arg config_file)" />
+    <remap from="/sensors/imu/data" to="/sensors/imu/data" />
+    <remap from="/sensors/gps/fix" to="/sensors/gps/fix" />
+  </node>
 </launch>

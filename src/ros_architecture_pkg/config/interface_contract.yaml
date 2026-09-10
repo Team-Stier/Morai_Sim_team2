@@ -1,6 +1,6 @@
 schema_version: 1
-contract_version: 0.0.0
-status: draft
+contract_version: 0.1.0
+status: approved_for_development
 
 authority:
   package: ros_architecture_pkg
@@ -9,9 +9,77 @@ authority:
     They do not authorize packages to invent temporary public names.
 
 # Populate these lists only after the producer-consumer contract is reviewed.
-nodes: []
-topics: []
-messages: []
+nodes:
+  - name: /localization/ego_state_estimator
+    owner_package: localization_pkg
+    purpose: IMU prediction and GPS position correction for ego localization.
+topics:
+  - name: /sensors/gps/fix
+    owner_package: morai_interface_pkg
+    producers: [morai_interface_pkg]
+    consumers: [localization_pkg]
+    data_meaning: Normalized GPS geodetic fix; invalid fixes are explicitly marked.
+    data_type: sensor_msgs/NavSatFix
+    unit: latitude_deg, longitude_deg, altitude_m, covariance_m2
+    frame: gps_link
+    timestamp_source: sensor measurement timestamp validated by morai_interface_pkg
+    expected_rate_hz: 30
+    queue_policy: keep_last_20
+    timeout_sec: 0.5
+    invalid_data_policy: Reject invalid, non-finite, stale, or out-of-order fixes.
+  - name: /sensors/imu/data
+    owner_package: morai_interface_pkg
+    producers: [morai_interface_pkg]
+    consumers: [localization_pkg]
+    data_meaning: Normalized raw IMU angular velocity and specific force measurement.
+    data_type: sensor_msgs/Imu
+    unit: radps, mps2
+    frame: imu_link
+    timestamp_source: sensor measurement timestamp validated by morai_interface_pkg
+    expected_rate_hz: 50
+    queue_policy: keep_last_50
+    timeout_sec: 0.2
+    invalid_data_policy: Reject non-finite or out-of-order data; stale IMU makes localization invalid.
+  - name: /localization/ego/odometry
+    owner_package: localization_pkg
+    producers: [localization_pkg]
+    consumers: [world_model_pkg, global_route_manager_pkg, path_planning_pkg, runtime_evaluation_pkg]
+    data_meaning: Timestamped local ENU ego pose, velocity, and covariance estimated from IMU and GPS.
+    data_type: nav_msgs/Odometry
+    unit: m, mps, rad, covariance_m2
+    frame: local_enu
+    timestamp_source: most recent accepted IMU measurement timestamp
+    expected_rate_hz: 50
+    queue_policy: keep_last_100
+    timeout_sec: 0.2
+    invalid_data_policy: Do not publish a newly stamped pose without a new IMU measurement; consume quality state.
+  - name: /localization/ego/quality
+    owner_package: localization_pkg
+    producers: [localization_pkg]
+    consumers: [world_model_pkg, global_route_manager_pkg, path_planning_pkg, safety_supervisor_pkg, runtime_evaluation_pkg]
+    data_meaning: Localization lifecycle, freshness, uncertainty, and GPS rejection diagnostics.
+    data_type: common_msgs_pkg/LocalizationQuality
+    unit: sec, m2
+    frame: local_enu
+    timestamp_source: publication time for freshness fields; state estimate timestamp is carried separately.
+    expected_rate_hz: 10
+    queue_policy: keep_last_10
+    timeout_sec: 0.5
+    invalid_data_policy: Consumers treat invalid state as unusable localization and apply their safety policy.
+messages:
+  - name: LocalizationQuality
+    owner_package: common_msgs_pkg
+    producers: [localization_pkg]
+    consumers: [world_model_pkg, global_route_manager_pkg, path_planning_pkg, safety_supervisor_pkg, runtime_evaluation_pkg]
+    data_meaning: Shared localization quality diagnostics.
+    data_type: common_msgs_pkg/LocalizationQuality
+    unit: sec, m2
+    frame: local_enu
+    timestamp_source: localization publication time and latest accepted state timestamp
+    expected_rate_hz: 10
+    queue_policy: keep_last_10
+    timeout_sec: 0.5
+    invalid_data_policy: State INVALID means pose must not be treated as current or trusted.
 services: []
 actions: []
 frames: []

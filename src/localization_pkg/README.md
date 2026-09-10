@@ -36,3 +36,47 @@ Local Odometry는 연속 motion 추정이지 절대 Ground Truth가 아니다. W
 - `docs/`: 좌표계, sensor model, blackout/recovery와 검증 근거
 - `launch/`: Localization 단독 실행
 - `src/`: projection, estimation, gating과 quality 구현
+
+## 1차 구현: IMU 예측 + GPS 보정
+
+`ego_state_estimator`는 `sensor_msgs/Imu`와 `sensor_msgs/NavSatFix`를 구독한다. 첫 정상 GPS를
+`local_enu`의 원점으로 두고, 이후 최소 이동거리를 만족하는 GPS 이동 방향으로 초기 yaw를 정한다.
+초기화가 끝난 뒤 IMU는 위치·속도·quaternion 자세·IMU bias를 예측하고, GPS는 위치만 보정한다.
+
+출력은 `nav_msgs/Odometry`와 `common_msgs_pkg/LocalizationQuality`다. GPS blackout 동안 odometry는
+새 IMU가 들어오는 한 계속 발행되지만 quality가 `DEGRADED`로 전환되고 공분산이 커진다. IMU가
+stale이거나 최대 dead-reckoning 시간을 넘으면 quality는 `INVALID`다.
+
+```mermaid
+sequenceDiagram
+    participant Interface as morai_interface_pkg
+    participant EKF as ego_state_estimator
+    participant Consumer as World Model / Planner
+    Interface->>EKF: /sensors/imu/data
+    EKF->>EKF: predict nominal state and covariance
+    Interface->>EKF: /sensors/gps/fix
+    EKF->>EKF: gate and correct position
+    EKF->>Consumer: /localization/ego/odometry
+    EKF->>Consumer: /localization/ego/quality
+```
+
+```mermaid
+classDiagram
+    class EgoStateEstimatorNode {
+      +handle_imu()
+      +handle_gps()
+      +publish_odometry()
+      +publish_quality()
+    }
+    class LocalizationEkf {
+      +propagate(ImuSample) bool
+      +correct_gps(GpsSample) UpdateResult
+      +position_m() Vector3d
+      +covariance() Matrix15d
+    }
+    EgoStateEstimatorNode --> LocalizationEkf
+```
+
+LiDAR 융합은 후속 정적 지도 기반 pose constraint를 위한 측정 업데이트 경계만 남겼으며, 이번 버전에는
+LiDAR 토픽, map matching, ICP/NDT 또는 객체 인식이 없다. 상세 설계는
+[`docs/localization_design.md`](docs/localization_design.md)에 있다.

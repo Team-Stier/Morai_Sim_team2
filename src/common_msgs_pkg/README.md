@@ -14,7 +14,11 @@
 - 기능 알고리즘, UDP 송수신, launch 조합
 - 패키지 한 곳에서만 쓰는 내부 자료구조의 무조건적인 공용화
 
-현재 중앙 계약이 draft이므로 승인된 공유 타입은 없다. 빈 `msg/`, `srv/`, `action/` 디렉터리는 임의 정의 권한이 아니라 향후 승인 타입의 위치다.
+승인된 공유 타입은 다음 하나다.
+
+- `LocalizationQuality`: ego localization의 lifecycle state, estimate timestamp, covariance trace,
+  GPS/IMU freshness와 GPS rejection 진단을 전달한다. 상태 값은 `INITIALIZING`, `NOMINAL`,
+  `DEGRADED`, `INVALID`이며, `INVALID` 상태의 pose는 현재·신뢰 가능한 위치로 사용하면 안 된다.
 
 ## 디렉터리
 
