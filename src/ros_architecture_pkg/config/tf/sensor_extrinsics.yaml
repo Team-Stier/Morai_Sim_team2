@@ -27,18 +27,13 @@ source_evidence:
       - camera_front
       - camera_left
       - camera_right
-    verification: cameraList_matches_repository_reference
-  launcher_saved_profile_user_confirmed:
-    logical_path: "MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
-    observed_host_path: "/home/paik/MoraiLauncher_Stage/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
-    sha256: 1f7432b56041d5e6c47ff44155c0d96e47893aaf978ab92879125eae31a3193f
-    confirmed_on: "2026-09-10"
-    user_confirmed_mount_position: true
-    user_confirmed_notes:
-      - "User-approved IMU/GPS positions match the observed saved profile on 2026-09-10"
-      - "Rotations remain [0, 0, 0] in source JSON"
-      - "Development activation requested by user; physical axis/pivot validation remains incomplete"
-      - "canonical frame ownership unchanged: gps_link / imu_link"
+    verification: cameraList_matches_launcher_saved_profile
+  launcher_saved_profile:
+    logical_path: "MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/team2sensor.json"
+    observed_host_path: "/home/stier/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/team2sensor.json"
+    sha256: 5f31b23c1c8ca6b1792a77a42ebe4e2c756f990a3f17d826c079d126112033c8
+    saved_at: "2026-09-10T22:21:34+09:00"
+    active_loadout_verified: false
     scope:
       - gps
       - imu
@@ -140,7 +135,7 @@ sensor_mounts:
       sensor_unique_id: 6
       target_unique_id: 0
       source_frame_id: Lidar3D-6
-    source_evidence: user_confirmed_lidar_mount
+    source_evidence: launcher_saved_profile
     source_pose:
       translation_m: [2.0, 0.0, 1.5]
       rotation_rpy_deg: [0.0, 0.0, 0.0]

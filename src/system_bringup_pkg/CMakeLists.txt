@@ -42,11 +42,9 @@ catkin_package(
     world_model_pkg
 )
 
-catkin_install_python(PROGRAMS src/sensor_tf_publisher.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-
 if(CATKIN_ENABLE_TESTING)
-  catkin_add_nosetests(test/test_static_tf_contract.py)
+  catkin_add_nosetests(test/test_live_morai_sensor_ingress.py)
+  catkin_add_nosetests(test/test_full_stack_launch_skeleton.py)
 endif()
 
 install(FILES README.md DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

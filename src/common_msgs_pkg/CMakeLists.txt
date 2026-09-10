@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   ros_architecture_pkg message_generation std_msgs geometry_msgs)
 
 catkin_python_setup()
+
 add_message_files(FILES ComponentStatus.msg EgoState.msg LocalizationStatus.msg)
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)
 
