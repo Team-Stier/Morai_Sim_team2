@@ -198,7 +198,14 @@ PC 제출 후에는 주석이나 파라미터를 포함한 코드 수정이 금�
 - `accel_x`, `accel_y`, `accel_z`
 - 각 타이어의 lateral force, side slip angle, cornering stiffness
 
-현재 저장소에는 라이브 MORAI에서 확인한 Camera/GPS **개발용 수신 어댑터**와 그 ROS 계약만 있다. IMU, LiDAR, `CollisionData`, `Competition Vehicle Status`, 제어 송신의 대회용 UDP 포트와 바이너리 레이아웃은 아직 승인되지 않았다. 일반 MORAI 예제의 구형 `EgoVehicleStatus`를 대회용 `Competition Vehicle Status`로 간주하지 말고, 실제 대회 UDP 명세와 런타임 패킷을 확인한 뒤 중앙 계약에서 확정한다.
+현재 저장소에는 Camera/GPS 라이브 수신 어댑터와 개발 실행 가능한 IMU/VLP16
+어댑터가 있다. IMU 구조는 MORAI NetworkModule 24.R2.0 예제와 일치하지만 현재
+대회 시뮬레이터의 축·단위·packet은 아직 라이브 검증 전이다. LiDAR도 VLP16
+표준 드라이버 실행 경로는 있지만 실제 packet·축 검증이 남아 있다.
+`CollisionData`, `Competition Vehicle Status`, 제어 송신의 대회용 UDP 포트와
+바이너리 레이아웃은 아직 승인되지 않았다. 일반 MORAI 예제의 구형
+`EgoVehicleStatus`를 대회용 `Competition Vehicle Status`로 간주하지 말고,
+실제 대회 UDP 명세와 런타임 패킷을 확인한 뒤 중앙 계약에서 확정한다.
 
 ## 10. 현재 참고파일
 
@@ -327,7 +334,8 @@ Camera/GPS transport이고, 회색·주황 점선은 이름만 예약됐거나 �
 - 현재 live transport 확인: MORAI Camera 3개와 GPS
 - 스키마 구현: `ComponentStatus`, `EgoState`, `LocalizationStatus` (런타임 노드는 미구현)
 - 이름만 예약: 나머지 기능 package node/topic과 custom type
-- 비활성 또는 사용 금지: 검증 전 IMU/LiDAR와 legacy Vehicle Status
+- 개발 실행 가능·라이브 검증 대기: IMU/LiDAR
+- 사용 금지: legacy Vehicle Status
 
 각 기능 패키지는 README의 표와 `docs/interface_io.svg`에서 자신의 정확한
 입력·출력만 확인할 수 있다. 알고리즘, 클래스, 보조 node와 내부 자료구조는
@@ -432,6 +440,7 @@ Timestamp의 기준은 센서 또는 상태가 실제로 유효한 **측정시�
 11. 전체 bringup, runtime evaluation, rosbag replay와 MORAI closed-loop 검증을 수행한다.
 
 전체 package의 구체 node/topic/type **이름**은 v1.0.0으로 승인됐다. 다만
-실제 runtime 구현이 확인된 범위는 MORAI Camera/GPS 개발 어댑터뿐이다.
+실제 live runtime을 확인한 범위는 MORAI Camera/GPS이고, IMU/LiDAR는 기존
+브리지와 통합 launch까지 구현됐지만 현재 대회 시뮬레이터에서 재검증해야 한다.
 나머지 골격, 예약 custom type과 `runtime_activation_allowed: false` 채널은
 실제 주행 기능이 구현·검증됐다는 뜻이 아니다.

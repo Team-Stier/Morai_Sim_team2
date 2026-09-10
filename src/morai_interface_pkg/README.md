@@ -25,20 +25,33 @@
 |---|---|---|
 | Front/Left/Right Camera | `sensor_msgs/CompressedImage` | 라이브 UDP→ROS 발행 확인 |
 | GPS | `sensor_msgs/NavSatFix` | 같은 epoch 중복 방지 GGA-only, 라이브 valid fix 확인 |
-| IMU | `sensor_msgs/Imu` | port·축·단위·covariance 미확인, 기본 비활성 |
-| LiDAR | `sensor_msgs/PointCloud2` | 외부 Velodyne driver 방식, packet 미관측, 기본 비활성 |
+| IMU | `sensor_msgs/Imu` | 공식 NetworkModule 24.R2.0 구조와 parser 일치, 라이브 축·단위 검증 대기 |
+| LiDAR | `sensor_msgs/PointCloud2` | 외부 Velodyne driver 방식, 라이브 packet·축 검증 대기 |
 | Vehicle Status | `geometry_msgs/TwistWithCovarianceStamped` | 구형 packet이라 사용 금지 상태 |
 
-ROS → MORAI 제어 sender는 이번 이식 범위가 아니다. Camera/GPS 개발 실행은
-다음처럼 패키지 launch를 명시적으로 사용한다.
+ROS → MORAI 제어 sender는 이번 이식 범위가 아니다. 기존 센서 브리지 5종은
+다음 명령으로 한 번에 실행한다.
 
 ```bash
-roslaunch morai_interface_pkg cameras.launch
-roslaunch morai_interface_pkg gps_bridge.launch
+roslaunch morai_interface_pkg morai_interface_pkg.launch \
+  start_imu:=true start_lidar:=true start_lidar_watchdog:=true
 ```
 
-IMU, LiDAR, legacy Vehicle Status launch에는 기본 `false` gate가 있다. 검증
-근거 없이 이를 우회하거나 `system_bringup_pkg`에 포함하지 않는다.
+기본 개발 포트는 Camera 9291/9293/9295, GPS 7801, IMU 7802, VLP16 2368이다.
+이는 대회 고정 포트가 아니라 Team2 수신 설정이므로 MORAI Network Settings의
+destination IP/port를 실행 PC와 이 YAML 값에 맞춰야 한다. IMU/LiDAR는 통합
+시스템 투입이 아니라 격리된 연결 시험에서만 위처럼 명시적으로 활성화한다.
+필요한 센서만 실행할 때는 `start_cameras:=false` 같은 launch 인자를 사용한다. LiDAR에는
+ROS Noetic `velodyne_driver`, `velodyne_pointcloud`, `velodyne_msgs`, `nodelet`이
+필요하다.
+
+IMU parser의 구조 근거는 MORAI 공식
+[`24.R2.0/lib/define/IMU.py`](https://github.com/MORAI-Autonomous/MORAI-NetworkModule/blob/24.R2.0/lib/define/IMU.py)다.
+현재 시뮬레이터의 packet 수신, 축 방향과 단위는 아직 라이브 검증하지 않았으므로
+Localization 입력으로 승인하기 전에 rosbag과 정지/직진/회전 시험을 수행한다.
+개별·통합 launch의 IMU/LiDAR 기본 `false` gate는 실수 실행 방지를 위해 유지한다.
+MORAI 설정부터 topic별 성공 조건까지는
+[`센서 연결 실행 절차`](docs/sensor_connection_runbook.md)를 따른다.
 
 `CollisionData` 수신과 `Ego Ctrl Cmd` 송신은 중앙 공개 이름만 예약돼 있다.
 상세 UDP 계약에도 `runtime_activation_allowed: false`인 명시적 stub을 두며,
@@ -79,9 +92,10 @@ launch에 추가하지 않는다.
 `morai_camera_right`, `morai_gps_bridge`, `morai_imu_bridge`,
 `morai_vehicle_status_bridge`, `morai_velodyne_cloud`,
 `morai_lidar_watchdog`, `morai_collision_bridge`,
-`morai_interface_status_node`, `morai_control_sender`다. 이 중 Camera/GPS만
-현재 live transport를 확인했다. Control/Collision/Interface status와 custom
-type은 이름만 예약된 상태다.
+`morai_interface_status_node`, `morai_control_sender`다. Camera/GPS만 현재
+live transport를 확인했고, IMU/LiDAR는 개발 실행 가능하지만 live packet 검증
+대기 상태다. Control/Collision/Interface status와 관련 custom type은 이름만
+예약된 상태다.
 
 패킷 명세가 확보되기 전에는 포트나 필드 구조를 추측해 구현하지 않는다. stale 패킷을 새 데이터처럼 재발행하지 않으며 연결 상실 시 명시적인 invalid 상태를 제공한다.
 향후 `morai_control_sender`에는 consumer-side watchdog을 두고 Safety 입력이
