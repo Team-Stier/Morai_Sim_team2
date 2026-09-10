@@ -27,7 +27,7 @@ fresh Local Odometry와 승인된 uncertainty 범위 안의 Localization quality
 마지막 GPS fix를 현재 위치 정답처럼 재사용하지 않는다. 구체 required 채널 집합과
 uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별도로 승인한다.
 
-현재 `system_bringup_pkg.launch`는 1차 live MORAI sensor-ingress profile만 실행한다.
+현재 `system_bringup_pkg.launch`는 기본값으로 1차 live MORAI sensor-ingress profile만 실행한다.
 중앙 UDP 계약에서 `runtime_activation_allowed: true`인 Camera 3개와 GPS만 포함하며,
 IMU/LiDAR/Vehicle Status/Collision/Control은 포함하지 않는다. `system_readiness_node`와
 나머지 downstream autonomy runtime은 아직 미구현이며 모든 정적 sensor TF 발행도 계속 잠겨 있다.
@@ -49,6 +49,28 @@ roslaunch system_bringup_pkg system_bringup_pkg.launch
 
 이 profile은 센서 ingress 통합 실행만 검증하기 위한 1차 구성이다. 전체 자율주행 stack,
 readiness, Safety 또는 MORAI closed-loop 주행이 준비됐다는 의미는 아니다.
+
+## Full-stack 통합 골격
+
+`system_bringup_pkg.launch`에는 향후 runtime 구현을 연결할 package-level gate를 미리 둔다.
+현재 다음 gate는 모두 기본값 `false`이며, 각 패키지 구현과 계약 검증이 완료되기 전에는
+활성화하지 않는다.
+
+- `start_hd_map`
+- `start_camera_perception`
+- `start_lidar_perception`
+- `start_localization`
+- `start_global_route_manager`
+- `start_world_model`
+- `start_path_planning`
+- `start_vehicle_control`
+- `start_safety_supervisor`
+- `start_runtime_evaluation`
+
+각 gate는 해당 패키지가 소유한 `<package_name>.launch`만 include한다. `common_msgs_pkg`와
+`ros_architecture_pkg`는 runtime node가 없는 타입/거버넌스 패키지이므로 full-stack launch에서
+직접 실행하지 않는다. 현재 대부분의 downstream launch는 skeleton이므로 gate를 `true`로 바꿔도
+기능 구현이 생기는 것은 아니다.
 
 ## 공개 ROS 입출력
 
