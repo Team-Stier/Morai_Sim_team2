@@ -6,7 +6,14 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_python_setup()
 
-add_message_files(FILES ComponentStatus.msg EgoState.msg LocalizationStatus.msg)
+add_message_files(FILES
+  ComponentStatus.msg
+  EgoState.msg
+  LocalizationStatus.msg
+  InterfaceStatus.msg
+  ControllerStatus.msg
+  SystemReadiness.msg
+)
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)
 
 catkin_package(CATKIN_DEPENDS
@@ -14,6 +21,7 @@ catkin_package(CATKIN_DEPENDS
 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_core_contract.py)
+  catkin_add_nosetests(test/test_readiness_contract.py)
   catkin_add_nosetests(test/test_validation.py)
   catkin_add_nosetests(test/test_serialization.py)
 endif()
