@@ -27,7 +27,7 @@
 
 ## 공개 ROS 입출력
 
-현재 상태는 **이름 승인, 구현 예약**이며 공개 경계 노드는
+현재 상태는 **EKF 코어 이식, 공개 ROS 런타임 구현 예약**이며 공개 경계 노드는
 `localization_node`다.
 
 ![Localization 공개 입출력](docs/interface_io.svg)
@@ -80,3 +80,19 @@ Local Odometry는 연속 motion 추정이지 절대 Ground Truth가 아니다. W
 - `docs/`: 좌표계, sensor model, blackout/recovery와 검증 근거
 - `launch/`: Localization 단독 실행
 - `src/`: projection, estimation, gating과 quality 구현
+
+## 가져온 EKF 구현과 활성화 범위
+
+`feature/localization_pkg`의 GPS/IMU 15-state error-state EKF 코어와 C++ 테스트,
+설정, 설계 문서, 기존 ROS adapter 소스를 가져왔다. 현재 빌드 대상은
+`localization_ekf` 라이브러리와 테스트뿐이다.
+
+`src/ego_state_estimator_node.cpp`는 이전 계약의 참고 소스로 보존하며 빌드·설치·실행하지 않는다.
+이 소스가 요구하는 이전 quality 메시지는 현재 공통 메시지에 없고 node/topic/frame도
+현재 계약과 다르다. `docs/localization_design.md`의 원본 설계는 과거 구현 설명이며
+공개 ROS 계약을 정의하지 않는다. `config/localization.yaml`도 이식된 후보 파라미터이며
+현재 launch에서 로드하지 않는다.
+
+첫 GPS 원점과 GPS 이동 방향 기반 초기화, GPS 보정으로 변하는 위치를 중앙 계약의
+연속 `odom` 또는 `map` pose로 곧바로 취급해서는 안 된다. 현재 세 공개 출력에 대한
+adapter, map/odom 분리, timestamp·freshness·reset 처리와 센서 축 검증은 후속 작업이다.

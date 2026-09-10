@@ -1,0 +1,15 @@
+# All quantities use SI units. The first valid GPS fix establishes local ENU (0, 0, 0).
+imu_timeout_sec: 0.2
+gps_timeout_sec: 0.5
+max_dead_reckoning_sec: 15.0
+minimum_yaw_initialization_distance_m: 1.0
+gps_innovation_gate_chi2: 16.27
+max_gps_correction_m: 5.0
+max_gps_measurement_delay_sec: 0.2
+default_gps_position_stddev_m: 2.5
+accelerometer_noise_stddev_mps2: 0.35
+gyroscope_noise_stddev_radps: 0.03
+accelerometer_bias_random_walk_stddev_mps2: 0.01
+gyroscope_bias_random_walk_stddev_radps: 0.003
+gravity_mps2: 9.80665
+quality_publish_rate_hz: 10.0
