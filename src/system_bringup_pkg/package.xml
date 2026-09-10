@@ -16,6 +16,7 @@
   <depend>morai_interface_pkg</depend>
   <depend>path_planning_pkg</depend>
   <depend>ros_architecture_pkg</depend>
+  <depend>rospy</depend>
   <depend>runtime_evaluation_pkg</depend>
   <depend>safety_supervisor_pkg</depend>
   <depend>vehicle_control_pkg</depend>
