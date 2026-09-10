@@ -12,14 +12,14 @@ authority:
 
 source_evidence:
   user_confirmed_lidar_mount:
-    confirmed_on: "2026-09-10"
+    confirmed_on: "2026-09-11"
     approval_source: user_instruction
     user_confirmed_coordinate_alignment: true
     runtime_activation_authorized: true
     scope: [lidar]
     user_confirmed_mount_position: true
-    translation_m: [1.43, 0.0, 1.22]
-    note: "User-specified mounting position; coordinate alignment and TF activation explicitly confirmed by user; independent runtime validation not claimed."
+    translation_m: [2.0, 0.0, 1.5]
+    note: "Mounting position corrected by user on 2026-09-11; coordinate alignment and TF activation explicitly confirmed by user; independent runtime validation not claimed."
   repository_camera_reference:
     path: "참고파일들/2026_molit_comp_cam_set (1).json"
     sha256: 5c3da20597f44a57a1ecab83374bd652024126e6a09e33a800ddc89c222dcbd4
@@ -142,10 +142,10 @@ sensor_mounts:
       source_frame_id: Lidar3D-6
     source_evidence: user_confirmed_lidar_mount
     source_pose:
-      translation_m: [1.43, 0.0, 1.22]
+      translation_m: [2.0, 0.0, 1.5]
       rotation_rpy_deg: [0.0, 0.0, 0.0]
     candidate_ros_pose:
-      translation_m: [1.43, 0.0, 1.22]
+      translation_m: [2.0, 0.0, 1.5]
       rotation_rpy_rad: [0.0, 0.0, 0.0]
     source_measurement_axes: velodyne_native_mapping_possible
     normalized_measurement_axes: x_forward_y_left_z_up

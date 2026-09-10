@@ -30,7 +30,7 @@
   `/home/paik/MoraiLauncher_Stage/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json`
 - 확인 SHA256: `1f7432b56041d5e6c47ff44155c0d96e47893aaf978ab92879125eae31a3193f`.
 - GPS ID4/GPS-4, IMU ID5/IMU-5. 재개 시 hash와 활성 설정을 재확인하세요.
-- LiDAR 중앙 장착 위치는 사용자 지정 `[1.43,0,1.22] m`로 갱신했습니다. LiDAR TF는 이후 사용자 좌표계 확인 및 명시적 요청으로 개발용 활성화했습니다. Camera TF는 비활성입니다.
+- LiDAR 중앙 장착 위치는 2026-09-11 사용자 정정값 `[2.0,0.0,1.5] m`로 갱신했습니다. LiDAR TF는 이후 사용자 좌표계 확인 및 명시적 요청으로 개발용 활성화했습니다. Camera TF는 비활성입니다.
 - 기존 지도 좌표: WGS84 → EPSG:32652 → `[302595,4124145,0]` m를 뺀 simulator local map. 중앙 `config/tf/map_projection.yaml`을 새로 작성했습니다. HD map 기존 config와 정합하세요.
 - GPS altitude의 map z datum 정합은 아직 개발 가정입니다. route z에 맞춰 보정값을 끼워 넣지 마세요.
 - 원점 공식 근거: https://help-morai-sim.scrollhelp.site/en/morai-sim-drive/23.R1.0/-7 — 센서 위치 원점은 뒷바퀴 사이 중심.

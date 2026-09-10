@@ -37,7 +37,7 @@ class StaticTest(unittest.TestCase):
     def test_lidar_pose_and_disabled_gate(self):
         poses = module.approved_static_poses(self.frames, self.mounts)
         lidar = next(p for p in poses if p[1] == 'lidar_link')
-        self.assertEqual(lidar, ('base_link', 'lidar_link', [1.43, 0., 1.22], (0., 0., 0., 1.)))
+        self.assertEqual(lidar, ('base_link', 'lidar_link', [2.0, 0., 1.5], (0., 0., 0., 1.)))
         next(t for t in self.frames['transforms'] if t['child'] == 'lidar_link')['publish_enabled'] = False
         with self.assertRaises(ValueError):
             module.approved_static_poses(self.frames, self.mounts)

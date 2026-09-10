@@ -299,8 +299,10 @@ class TfTimestampContractTest(unittest.TestCase):
     def test_user_approved_lidar_mount_and_publication_gate(self):
         lidar = next(m for m in self.extrinsics["sensor_mounts"] if m["key"] == "lidar")
         self.assertEqual(lidar["source_evidence"], "user_confirmed_lidar_mount")
+        evidence = self.extrinsics["source_evidence"][lidar["source_evidence"]]
+        self.assertEqual(evidence["translation_m"], [2.0, 0.0, 1.5])
         for field in ("source_pose", "candidate_ros_pose"):
-            self.assertEqual(lidar[field]["translation_m"], [1.43, 0.0, 1.22])
+            self.assertEqual(lidar[field]["translation_m"], [2.0, 0.0, 1.5])
         self.assertTrue(lidar["publish_enabled"])
         frames = yaml.safe_load((Path(__file__).resolve().parents[1] / "config/tf/frame_contract.yaml").read_text())
         transform = next(t for t in frames["transforms"] if t["child"] == "lidar_link")
