@@ -34,6 +34,10 @@ catkin_package(
     world_model_pkg
 )
 
+if(CATKIN_ENABLE_TESTING)
+  catkin_add_nosetests(test/test_live_morai_sensor_ingress.py)
+endif()
+
 install(FILES README.md DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 install(
   DIRECTORY config docs launch

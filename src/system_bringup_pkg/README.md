@@ -27,8 +27,28 @@ fresh Local Odometry와 승인된 uncertainty 범위 안의 Localization quality
 마지막 GPS fix를 현재 위치 정답처럼 재사용하지 않는다. 구체 required 채널 집합과
 uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별도로 승인한다.
 
-현재 launch 파일과 `system_readiness_node` 구현은 아직 비어 있다. 공개 이름은
-승인됐지만 모든 정적 TF 발행은 계속 잠겨 있다.
+현재 `system_bringup_pkg.launch`는 1차 live MORAI sensor-ingress profile만 실행한다.
+중앙 UDP 계약에서 `runtime_activation_allowed: true`인 Camera 3개와 GPS만 포함하며,
+IMU/LiDAR/Vehicle Status/Collision/Control은 포함하지 않는다. `system_readiness_node`와
+나머지 downstream autonomy runtime은 아직 미구현이며 모든 정적 sensor TF 발행도 계속 잠겨 있다.
+
+## 1차 runtime profile
+
+- profile: `config/live_morai_sensor_ingress.yaml`
+- mode: `live_morai`
+- required channels: `camera_front`, `camera_left`, `camera_right`, `gps`
+- optional channels: 없음
+- `use_sim_time`: `false`
+- 제외: IMU, LiDAR, LiDAR watchdog, Vehicle Status, Collision, Control
+
+실행:
+
+```bash
+roslaunch system_bringup_pkg system_bringup_pkg.launch
+```
+
+이 profile은 센서 ingress 통합 실행만 검증하기 위한 1차 구성이다. 전체 자율주행 stack,
+readiness, Safety 또는 MORAI closed-loop 주행이 준비됐다는 의미는 아니다.
 
 ## 공개 ROS 입출력
 
