@@ -74,11 +74,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "91cdea5d9f92008a73c82bcda58496eeff0e5e4b8e17cb579645770ec9d6f523",
+      "png_sha256": "847675e82df58038d6bb9a2d5244f0c2e69963ad4facb5d7ac684ed429ad2ba6",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "2233b0a8f17fd3bb6b95c332c55e6b773c36f056523bbcaa2c6b915cffbf66c7",
+      "source_sha256": "9ccf6f1159b2258b901d7dcc4d869dbf384bb2ab6ad90374938751c8704f0ff6",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "f93cb3919e2057c1171270e0a18ea577f161a73e3defb2cb728006300faceddb"
+      "svg_sha256": "6cbfb35c967e90265d8577294818a263f065c8097f9306dcaadac7fc07eaa813"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
@@ -129,6 +129,14 @@
       "svg_sha256": "c5238fcf300a75dfc4415005bddf631422db83c85b87cb04933bda4270b373ef"
     },
     {
+      "png": "src/visualization_pkg/docs/interface_io.png",
+      "png_sha256": "eda1c2b236a41da25fc368e5a819313b1a7938f0e45be0c7497e3bdd849199d9",
+      "source": "src/visualization_pkg/docs/interface_io.mmd",
+      "source_sha256": "3bc898391d2aa542d609375273edf7df1384fefb01bb4627b01fd8b1e375a9bd",
+      "svg": "src/visualization_pkg/docs/interface_io.svg",
+      "svg_sha256": "aeceddabedab52726aa904274a514e83f38743433d292661925174a70f0dfe88"
+    },
+    {
       "png": "src/world_model_pkg/docs/interface_io.png",
       "png_sha256": "c920289c6e44ee60d5ec91e929c42e43aa2061b32665941ef630051f755fbc35",
       "source": "src/world_model_pkg/docs/interface_io.mmd",
@@ -142,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "697bb10dc627cd43abe41abcac8a1b4f9248bf21ef84784f4b60966093d8e2fc"
+  "source_of_truth_sha256": "46521c5230682270deb951cae7eb92cfaf0e991cff27a954917d94aa780d1f50"
 }

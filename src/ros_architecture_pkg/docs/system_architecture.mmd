@@ -70,6 +70,10 @@ flowchart LR
     subgraph pkg_013["runtime_evaluation_pkg<br/>runtime: public_contract_reserved_not_implemented_read_only"]
         node_023["runtime_evaluator_node<br/>exec: runtime_evaluator_node<br/>state: RESERVED (reserved_not_implemented_read_only)"]
     end
+    subgraph pkg_014["visualization_pkg<br/>runtime: scaffold_no_runtime_io"]
+        pkg_empty_014["no runtime ROS node"]
+        class pkg_empty_014 emptyPort;
+    end
 
     topic_000["/molit/sensors/camera/front/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: LIVE"]
     topic_001["/molit/sensors/camera/left/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: LIVE"]

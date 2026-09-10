@@ -1150,6 +1150,13 @@ package_boundaries:
     outputs:
       - /molit/evaluation/metrics
 
+  visualization_pkg:
+    diagram_summary_ko: 단일 RViz 화면의 설정과 읽기 전용 시각화 도구 관리
+    runtime_status: scaffold_no_runtime_io
+    public_nodes: []
+    inputs: []
+    outputs: []
+
 architecture_views:
   nominal_data_control:
     title: Nominal data and control flow

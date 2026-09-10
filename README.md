@@ -311,6 +311,7 @@ Camera/GPS transport이고, 회색·주황 점선은 이름만 예약됐거나 �
 | `vehicle_control_pkg` | `vehicle_controller_node` | trajectory tracking과 nominal actuator command |
 | `safety_supervisor_pkg` | `safety_supervisor_node` | Controller 뒤 최종 fail-closed command gate |
 | `runtime_evaluation_pkg` | `runtime_evaluator_node` | 주행에 영향을 주지 않는 규정·지연·성능 지표 기록 |
+| `visualization_pkg` | 없음 (골격) | 단일 RViz 설정과 읽기 전용 시각화 도구 |
 
 모든 패키지는 `src/<package_name>/` 아래에 있으며 다음 기본 구조를 지킨다.
 
