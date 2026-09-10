@@ -11,7 +11,6 @@ import math
 
 import numpy as np
 from pyproj import Transformer
-from .relocation import RelocationDetector
 
 
 def vector(value, size):
@@ -116,14 +115,12 @@ class MapProjector:
 
 
 class GpsImuEstimator:
-    def __init__(self, config=None, gps_translation_m=(0., 0., 1.3), relocation_config=None):
+    def __init__(self, config=None, gps_translation_m=(0., 0., 1.3)):
         self.config = config or EstimatorConfig()
-        self.relocation = RelocationDetector(relocation_config)
         self.gps_translation = vector(gps_translation_m, 3)
         self.reset()
 
     def reset(self):
-        self.relocation.clear()
         self.gps_reinitialized = False
         self.gps_diagnostic = ""
         self.initialized = False
@@ -237,14 +234,10 @@ class GpsImuEstimator:
                 self._initialize(self.pending_gps, values)
             self._advance(sample.stamp, values)
             self.last_imu, self.last_imu_stamp = sample, sample.stamp
-            self.relocation.observe_imu(sample.stamp, rotation(values[0]).dot(values[1]) -
-                                        np.array([0., 0., self.config.gravity_mps2]), values[2],
-                                        self.config.max_integration_step_sec)
             self.last_rejection = ''
             return True
         except (ValueError, np.linalg.LinAlgError) as error:
             self.last_rejection = str(error)
-            self.relocation.invalidate('IMU rejected: ' + str(error))
             return False
 
     def process_gps(self, sample, interpolated_imu=None):
@@ -267,9 +260,6 @@ class GpsImuEstimator:
                 self._initialize(sample, values)
                 self.last_seen_gps_stamp = sample.stamp
                 self.last_rejection = ''
-                self.relocation.last_imu_stamp = self.last_imu_stamp
-                self.relocation.observe_gps(sample.stamp, self.state[:3], self.local_position,
-                                            np.zeros(3), noise, True)
                 return True
             self._advance(sample.stamp, values)
             R = rotation(self.q)
@@ -278,27 +268,19 @@ class GpsImuEstimator:
             noise += np.outer(self.state[3:], self.state[3:])*self.config.ingress_timing_stddev_sec**2
             position = antenna-R.dot(self.gps_translation)
             residual = position-self.state[:3]
-            world_accel = rotation(values[0]).dot(values[1]) - np.array([0., 0., self.config.gravity_mps2])
-            quiet = (np.linalg.norm(world_accel) <= self.relocation.config.max_linear_accel_mps2
-                     and np.linalg.norm(values[2]) <= self.relocation.config.max_angular_rate_radps)
-            decision = self.relocation.observe_gps(sample.stamp, position, self.local_position,
-                                                   residual, noise, quiet)
-            self.last_seen_gps_stamp = sample.stamp
-            if decision == 'confirmed':
-                # Keep the odom frame continuous; re-anchor map pose and clear old velocity.
-                self._initialize(sample, values)
-                self.gps_reinitialized = True
-                self.gps_diagnostic = self.relocation.diagnostic
-                self.last_rejection = ''
-                return True
-            if decision == 'candidate':
-                self.gps_diagnostic = self.relocation.diagnostic
-                return False
             innovation = self.P[:3, :3]+noise
             distance = float(residual.dot(np.linalg.solve(innovation, residual)))
             self.last_seen_gps_stamp = sample.stamp
-            if not math.isfinite(distance) or distance > self.config.gps_innovation_gate_chi2:
+            if not math.isfinite(distance):
                 raise ValueError('GPS innovation rejected (chi2=%.3f)' % distance)
+            if distance > self.config.gps_innovation_gate_chi2:
+                # User-selected simulator policy: accept this fix as the new map anchor.
+                self._initialize(sample, values)
+                self.gps_reinitialized = True
+                self.gps_diagnostic = 'GPS innovation reset (chi2=%.3f > %.3f)' % (
+                    distance, self.config.gps_innovation_gate_chi2)
+                self.last_rejection = ''
+                return True
             gain = np.linalg.solve(innovation, self.P[:, :3].T).T
             candidate = self.state+gain.dot(residual)
             H = np.hstack((np.eye(3), np.zeros((3, 3))))
@@ -313,7 +295,6 @@ class GpsImuEstimator:
             return True
         except (ValueError, np.linalg.LinAlgError) as error:
             self.last_rejection = self.gps_diagnostic = str(error)
-            self.relocation.invalidate('GPS rejected: ' + str(error))
             return False
 
     def snapshot(self):

@@ -15,7 +15,6 @@ from common_msgs_pkg.msg import EgoState, LocalizationStatus
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu, NavSatFix
-from localization_pkg.relocation import RelocationConfig
 from localization_pkg.live_estimator import (
     EstimatorConfig, GpsImuEstimator, GpsObservation, ImuObservation,
     MapProjector, covariance, slerp)
@@ -54,8 +53,7 @@ class LocalizationNode:
         config = EstimatorConfig(**{key: rospy.get_param('~' + key, value)
                                    for key, value in vars(EstimatorConfig()).items()})
         config.max_integration_step_sec = self.timing['max_integration_step_sec']
-        self.core = GpsImuEstimator(config, sensor['gps']['candidate_ros_pose']['translation_m'],
-                                    RelocationConfig(**rospy.get_param('~relocation', {})))
+        self.core = GpsImuEstimator(config, sensor['gps']['candidate_ros_pose']['translation_m'])
         self.lock = threading.RLock()
         self.epoch = 0
         self.status_wall = -math.inf
@@ -120,7 +118,6 @@ class LocalizationNode:
                 bisect.insort(self.queue, (ns, 0, observation))
             except (ValueError, np.linalg.LinAlgError) as error:
                 self.reason = str(error)
-                self.core.relocation.invalidate(self.reason)
 
     def gps(self, message):
         with self.lock:
@@ -139,7 +136,6 @@ class LocalizationNode:
                 bisect.insort(self.queue, (ns, 1, observation))
             except (ValueError, np.linalg.LinAlgError) as error:
                 self.reason = str(error)
-                self.core.relocation.invalidate(self.reason)
 
     def attitude_at(self, ns):
         before = [item for item in self.imu_history if item[0] <= ns]
@@ -219,8 +215,7 @@ class LocalizationNode:
                         self.core.reset()
                         self.latest, self.output_stamp = None, rospy.Time(0)
                     if self.core.process_imu(observation):
-                        if (not self.core.relocation.pending and
-                                (now.to_nsec()-ns)*1e-9 <= self.timing['estimate_timeout_sec']):
+                        if (now.to_nsec()-ns)*1e-9 <= self.timing['estimate_timeout_sec']:
                             self.publish_estimate(ns)
                             self.publish_status(rospy.Time.now(), time.monotonic(), stalled)
                 else:
@@ -230,19 +225,17 @@ class LocalizationNode:
                             if self.core.gps_reinitialized:
                                 self.epoch += 1
                                 self.latest, self.output_stamp = None, rospy.Time(0)
-                                self.reason = 'sensor relocation confirmed; map re-anchored; velocity reset'
+                                self.reason = self.core.gps_diagnostic + '; map re-anchored; velocity reset'
                                 rospy.logwarn('%s (reset_id=%d)', self.reason, self.epoch)
                             else:
                                 self.reason = 'GPS correction accepted'
                     else:
                         self.reason = 'GPS lacks bracketing IMU: rejected'
-                        self.core.relocation.invalidate(self.reason)
             if wall-self.status_wall < 1.0/self.timing['status_publish_rate_hz']:
                 return
             self.publish_status(now, wall, stalled)
 
     def publish_status(self, now, wall, stalled):
-        self.core.relocation.expire(now.to_sec())
         self.status_wall = wall
         # A wall loop continues during a paused ROS clock and input loss.
         status = LocalizationStatus()
@@ -254,10 +247,9 @@ class LocalizationNode:
                      wall-self.arrival['imu'] <= self.timing['imu_timeout_sec'])
         gps_fresh = (self.arrival['gps'] is not None and
                      wall-self.arrival['gps'] <= self.timing['gps_timeout_sec'])
-        relocating = self.core.relocation.pending
-        status.gps_fix_valid = bool(not relocating and not stalled and gps_fresh and
+        status.gps_fix_valid = bool(not stalled and gps_fresh and
             0 <= status.gps_age_sec <= self.timing['gps_timeout_sec'])
-        valid = bool(not relocating and self.latest is not None and not stalled and imu_fresh and
+        valid = bool(self.latest is not None and not stalled and imu_fresh and
             (now-self.output_stamp).to_sec() <= self.timing['estimate_timeout_sec'] and
             0 <= status.gps_age_sec <= self.timing['max_dead_reckoning_sec'])
         status.map_pose_valid = status.local_odometry_valid = valid
@@ -267,12 +259,9 @@ class LocalizationNode:
         status.yaw_stddev_rad = self.latest['yaw_stddev'] if self.latest else -1.
         status.mode = ((status.TRACKING if status.gps_fix_valid else status.DEAD_RECKONING)
                        if valid else (status.LOST if self.latest or stalled else status.INITIALIZING))
-        if relocating and imu_fresh and not stalled:
-            status.mode = status.RELOCALIZING
         status.reason = ('development only; ingress fallback; physical alignment unverified; ' +
                          ('clock stalled' if stalled else
                           'IMU input stale' if not imu_fresh else
-                          self.core.relocation.diagnostic if relocating else
                           'estimate stale or dead reckoning budget expired' if self.latest and not valid else
                           'GPS blackout; inertial prediction only' if valid and not status.gps_fix_valid else
                           (self.core.last_rejection or self.reason)))

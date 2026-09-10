@@ -283,7 +283,7 @@ development_localization_profile:
   status_rate_semantic: heartbeat_when_idle_plus_one_status_per_estimate
   estimate_publish_rate_hz: 50.0
   estimate_rate_semantic: target_upper_bound_sensor_driven_not_a_restamping_timer
-  relocation_policy: consecutive_measurement_time_evidence_breaks_on_gaps_reset_or_invalid_input
+  relocation_policy: immediate_reinitialization_at_accepted_gps_measurement_time_when_innovation_exceeds_threshold
   provenance: ingress_fallback
   uncertainty_semantic: modelled_covariance_not_measured_accuracy_or_zero_simulator_noise
   required_followup:

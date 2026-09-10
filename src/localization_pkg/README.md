@@ -121,13 +121,14 @@ roslaunch system_bringup_pkg localization_visualization.launch
 
 ## 센서 기반 위치 재설정
 
-GPS 점프가 IMU 예측 이동으로 설명되지 않고 새 GPS가 같은 위치 주변에
-반복 수신되면 위치 재배치를 추정한다. 기본 활성화되어 있으며 일반 GPS
-innovation gate는 유지한다. [판정 조건과 한계](docs/sensor_relocation.md)를 참고한다.
+GPS innovation χ²가 `gps_innovation_gate_chi2: 25.0`을 넘으면 리스폰으로
+간주하여 해당 GPS로 map 위치·속도·공분산을 즉시 재초기화한다. 기준 이하이면
+일반 Kalman 보정을 적용한다. 여러 GPS 확인, 정지 조건, 최소 점프 거리와
+대기시간은 없다. GPS blackout 복귀 시에도 같은 규칙을 적용한다.
 
-확인 중에는 `RELOCALIZING`, 위치 validity=false로 전환하고 pose/TF 발행을
-보류한다. 확인 후 map 위치·속도·공분산을 재초기화하고 `reset_id`를 증가시킨다.
-소비자는 새 epoch의 pose/status 쌍을 기다린다. `stop_required=true`는 유지한다.
+재설정 시 odom 위치를 유지하고 `reset_id`를 증가시킨다. 다음 IMU 측정시각에
+새 pose/status/TF를 발행하며 소비자는 새 epoch의 쌍으로 표시를 갱신한다.
+[판정과 검증](docs/sensor_relocation.md)을 참고한다. `stop_required=true`는 유지한다.
 
 ## 위치 갱신에 맞춘 RViz 표시
 

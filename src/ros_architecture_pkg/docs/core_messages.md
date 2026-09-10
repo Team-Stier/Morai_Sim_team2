@@ -67,8 +67,9 @@ ready=true는 READY/DEGRADED에서만 가능하며 stop_required=false 및 data_
 필요하다. DEAD_RECKONING은 Localization의 별도 모드이며 GPS invalid여도
 local estimate가 유효할 수 있다. LOST/UNINITIALIZED/INITIALIZING은 map/local
 유효성을 선언하지 않고 stop_required=true다. RELOCALIZING도 map/local pose
-validity=false와 stop_required=true를 요구한다. 센서 기반 재배치가 확인되면
-Localization은 reset_id를 증가시키고 map 위치를 재설정한다. 연속 odom 위치를
+validity=false와 stop_required=true를 요구한다. 개발 추정기는 GPS innovation이
+설정된 χ² 기준을 넘으면 즉시 해당 GPS로 map 위치를 재설정하고 reset_id를
+증가시킨다. 샘플 확인 대기 단계는 없으며 blackout 복귀에도 적용한다. 연속 odom 위치를
 보존하더라도 소비자는 이전 epoch의 캐시를 비우고 새 pose/status 쌍을 기다린다.
 판정 조건과 한계는 [위치 재설정](../../localization_pkg/docs/sensor_relocation.md)을 따른다.
 

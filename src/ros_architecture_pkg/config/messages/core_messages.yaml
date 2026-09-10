@@ -48,11 +48,12 @@ rules:
   - Consumers reject zero future regressing or stale headers using measured profile thresholds.
   - Consumers compare reset_id and data stamps before combining EgoState LocalizationStatus and local odometry.
   - The reset epoch starts at zero and changes on resets; process restarts and clock resets also clear consumer caches.
-  - Sensor-only relocation is a hypothesis, never a simulator respawn event or Ground Truth.
-  - Pending relocation uses RELOCALIZING with stop_required true and invalid map/local flags.
-  - A confirmed relocation increments reset_id before the next pose/status pair and clears prior velocity.
+  - Development localization treats a finite GPS innovation above its configured chi2 threshold as a respawn assumption and immediately accepts that fix by reinitializing map pose and velocity.
+  - The immediate GPS reset has no consecutive-sample, stationary-motion, distance-jump or confirmation-time requirement; blackout return can trigger it too.
+  - This reset policy is a simulator assumption, never a verified simulator respawn event or Ground Truth.
+  - RELOCALIZING requires stop_required true and invalid map/local flags; the immediate reset policy has no pending-confirmation phase.
+  - A GPS innovation reset increments reset_id before the next pose/status pair and clears prior velocity.
   - Relocation re-anchors map-to-odom while retaining continuous odom translation; all consumers discard old-epoch histories.
-  - GPS blackout alone cannot confirm relocation; require consecutive GPS discontinuity and consistent IMU evidence.
   - Status reason is diagnostic text and never a machine control enum.
   - Component counters reset on process restart; counter decreases do not represent negative events.
   - Static map load time is not a live sensor freshness timer; evaluate immutable identity and status heartbeat.

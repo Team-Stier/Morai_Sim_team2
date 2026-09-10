@@ -9,20 +9,6 @@ gps_altitude_stddev_floor_m: 0.5
 orientation_stddev_floor_rad: 0.02
 accelerometer_noise_stddev_mps2: 0.5
 initial_velocity_stddev_mps: 2.0
+# Above this value, immediately accept the GPS as a new map anchor and reset velocity.
 gps_innovation_gate_chi2: 25.0
 ingress_timing_stddev_sec: 0.03
-
-# Sensor discontinuity heuristic for a stationary relocation (not a respawn event).
-# Long GPS gaps break the evidence chain; do not relocalize on blackout return alone.
-relocation:
-  enabled: true
-  min_jump_m: 15.0
-  confirmation_samples: 5
-  min_confirmation_sec: 0.6
-  max_confirmation_sec: 2.0
-  max_gps_gap_sec: 0.65
-  cluster_radius_m: 1.5
-  max_imu_displacement_m: 3.0
-  max_linear_accel_mps2: 2.0
-  max_angular_rate_radps: 0.5
-  max_gps_stddev_m: 2.0

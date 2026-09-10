@@ -53,7 +53,6 @@ class LocalizationEstimatorRuntimeTest(unittest.TestCase):
         cls.transforms = OrderedDict()
         cls.status = None
         cls.errors = []
-        cls.relocalizing_epochs = set()
         cls.sequence = 0
         cls.clock = 100.0
         cls.clock_pub = rospy.Publisher('/clock', Clock, queue_size=10)
@@ -110,9 +109,6 @@ class LocalizationEstimatorRuntimeTest(unittest.TestCase):
                 validate_localization(message)
             except ValueError as error:
                 cls.errors.append(str(error))
-            if message.mode == LocalizationStatus.RELOCALIZING:
-                cls.relocalizing_epochs.add(message.reset_id)
-                cls.relocalizing_status = message
             cls.status = message
             cls.sequence += 1
             cls.condition.notify_all()
@@ -270,7 +266,7 @@ class LocalizationEstimatorRuntimeTest(unittest.TestCase):
         self._wait(lambda: self.status.mode == LocalizationStatus.TRACKING)
         self.assertEqual(self.status.reset_id, epoch)
 
-    def test_sensor_relocation_updates_epoch_and_consumer_without_odom_jump(self):
+    def test_single_gps_innovation_updates_epoch_and_consumer_without_odom_jump(self):
         status = self._initialize()
         epoch = status.reset_id
         old_x = self.ego[status.ego_state_stamp.to_nsec()].pose.pose.position.x
@@ -279,10 +275,10 @@ class LocalizationEstimatorRuntimeTest(unittest.TestCase):
         display.ingest_ego(self.ego[status.ego_state_stamp.to_nsec()], status.header.stamp.to_nsec(), 1.0)
         display.ingest_status(status, status.header.stamp.to_nsec(), 1.0)
         self.assertTrue(display.evaluate(status.header.stamp.to_nsec(), 1.0).valid)
-        for index in range(65):
+        for index in range(10):
             self._advance(self.clock + 0.02)
             self.imu_pub.publish(self._imu(self.clock))
-            if index % 10 == 0:
+            if index == 0:
                 shifted = self._gps(self.clock)
                 shifted.longitude += 0.002
                 self.gps_pub.publish(shifted)
@@ -293,16 +289,12 @@ class LocalizationEstimatorRuntimeTest(unittest.TestCase):
         current = self.status
         ego = self.ego[current.ego_state_stamp.to_nsec()]
         odom = self.odom[current.local_odometry_stamp.to_nsec()]
-        self.assertIn(epoch, self.relocalizing_epochs)
         self.assertEqual(ego.reset_id, epoch + 1)
         self.assertGreater(ego.pose.pose.position.x - old_x, 100.)
         self.assertAlmostEqual(odom.pose.pose.position.x, old_local, delta=0.05)
         self.assertAlmostEqual(odom.twist.twist.linear.x, 0., delta=0.05)
         validate_pair(ego, current)
         self.assertTrue(current.stop_required)
-        pending = self.relocalizing_status
-        self.assertTrue(display.ingest_status(pending, pending.header.stamp.to_nsec(), 1.1))
-        self.assertFalse(display.evaluate(pending.header.stamp.to_nsec(), 1.1).valid)
         self.assertTrue(display.ingest_status(current, current.header.stamp.to_nsec(), 1.2))
         self.assertFalse(display.evaluate(current.header.stamp.to_nsec(), 1.2).valid)
         self.assertTrue(display.ingest_ego(ego, current.header.stamp.to_nsec(), 1.2))

@@ -1,58 +1,40 @@
 {
-  "measurement_date_local": "2026-09-11",
-  "duration_wall_sec": 12.059221917999821,
+  "measurement_time_local": "2026-09-11T00:49:22.643016+09:00",
+  "policy": "immediate_gps_reinitialization_when_chi2_exceeds_threshold",
+  "duration_wall_sec": 12.012032199003443,
+  "gps_innovation_gate_chi2": 25.0,
+  "obsolete_relocation_parameters_present": false,
   "counts": {
-    "status": 474,
-    "vehicle_markers": 471,
-    "ego": 473,
-    "tf_odom": 473,
-    "tf_base_link": 473,
-    "imu": 474,
-    "gps": 60
+    "status": 120,
+    "vehicle_markers": 1
   },
-  "source_stamp_rate_hz": {
-    "ego": 39.3813334835612,
-    "imu": 39.528873786441814,
-    "gps": 5.008589941224992
-  },
+  "source_stamp_rate_hz": {},
   "mode_counts": {
-    "2": 474
+    "1": 120
   },
-  "validated_pose_status_pairs": 473,
+  "observed_reset_ids": [
+    0
+  ],
+  "validated_pose_status_pairs": 0,
   "validation_errors": [],
-  "relocation_parameters": {
-    "enabled": true,
-    "min_jump_m": 15.0,
-    "confirmation_samples": 5,
-    "min_confirmation_sec": 0.6,
-    "max_confirmation_sec": 2.0,
-    "max_gps_gap_sec": 0.65,
-    "cluster_radius_m": 1.5,
-    "max_imu_displacement_m": 3.0,
-    "max_linear_accel_mps2": 2.0,
-    "max_angular_rate_radps": 0.5,
-    "max_gps_stddev_m": 2.0
+  "latest_vehicle": {
+    "shapes": 0
   },
   "latest_status": {
-    "mode": 2,
+    "mode": 1,
+    "gps_fix_valid": false,
+    "map_pose_valid": false,
+    "local_odometry_valid": false,
+    "gps_age_sec": -1.0,
     "reset_id": 0,
-    "map_pose_valid": true,
-    "local_odometry_valid": true,
-    "gps_fix_valid": true,
-    "stop_required": true,
-    "gps_age_sec": 0.1750781536102295,
-    "reason": "development only; ingress fallback; physical alignment unverified; GPS correction accepted"
+    "reason": "development only; ingress fallback; physical alignment unverified; IMU input stale"
   },
-  "localization_publishers": {
-    "/molit/localization/ego_state": [
-      "/localization_node"
-    ],
-    "/molit/localization/local/odometry": [
-      "/localization_node"
-    ],
-    "/molit/localization/status": [
-      "/localization_node"
-    ]
-  },
-  "scope": "Live sensor reception and estimator restart verified; no deliberate MORAI respawn or closed-loop drive exercised."
+  "scope": "Estimator restart and initializing heartbeat verified. No GPS/IMU received during this window; actual live GPS-triggered reset and closed-loop driving not exercised.",
+  "input_interruption": {
+    "last_gps_ingress_local_approx": "2026-09-11T00:47:45.635+09:00",
+    "last_imu_ingress_local_approx": "2026-09-11T00:47:45.705+09:00",
+    "simulator_log_modified_local": "2026-09-11T00:47:46.914+09:00",
+    "simulator_process_present_at_check": false,
+    "crash_stack": "vk::ImagePool::ProcessFrontImage -> vk::Texture::FreeUnusedPoolImagesImmediate -> GfxDeviceVK::FlushTexturePools_Internal"
+  }
 }

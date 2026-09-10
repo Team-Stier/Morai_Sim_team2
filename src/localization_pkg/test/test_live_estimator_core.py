@@ -52,7 +52,7 @@ class CoreTest(unittest.TestCase):
         self.assertIsNone(core.last_gps_stamp)
 
 
-class RelocationTest(unittest.TestCase):
+class GpsInnovationResetTest(unittest.TestCase):
     def setUp(self):
         self.core = GpsImuEstimator()
         self.core.process_imu(imu(1.))
@@ -68,83 +68,59 @@ class RelocationTest(unittest.TestCase):
     def gps(self, x=100., y=0., noise=None):
         return self.core.process_gps(GpsObservation(self.t, [x, y, 1.3], noise))
 
-    def test_consistent_jump_reanchors_map_resets_velocity_preserves_odom(self):
-        self.core.state[3] = .5
-        for index in range(5):
-            self.advance()
-            old_local = self.core.local_position.copy()
-            accepted = self.gps()
-            self.assertEqual(accepted, index == 4)
-            self.assertEqual(self.core.gps_reinitialized, index == 4)
-            if index < 4:
-                self.assertTrue(self.core.relocation.pending)
-                self.assertEqual(self.core.last_gps_stamp, 1.)
-        np.testing.assert_allclose(self.core.state, [100., 0., 0., 0., 0., 0.], atol=1e-8)
+    def test_first_exceeding_fix_resets_during_motion_and_preserves_odom(self):
+        self.core.state[3] = 7.
+        self.t += .02
+        sample = imu(self.t, acceleration=[5., 0., 9.80665])
+        sample.angular_velocity_radps = [0., 0., 1.]
+        self.core.process_imu(sample)
+        old_local = self.core.local_position.copy()
+        old_uncertainty = self.core.local_position_stddev.copy()
+        self.assertTrue(self.gps(3.))  # One fix, less than the old 15 m jump requirement.
+        self.assertTrue(self.core.gps_reinitialized)
+        np.testing.assert_allclose(self.core.state, [3., 0., 0., 0., 0., 0.], atol=1e-8)
         np.testing.assert_allclose(self.core.local_position, old_local)
-        self.assertAlmostEqual(self.core.last_gps_stamp, self.t)
-        self.assertFalse(self.core.relocation.pending)
+        np.testing.assert_allclose(self.core.local_position_stddev, old_uncertainty)
+        self.assertEqual(self.core.last_gps_stamp, self.t)
+        self.assertIn('GPS innovation reset', self.core.gps_diagnostic)
         self.assertGreater(np.linalg.eigvalsh(self.core.P).min(), 0.)
 
-    def test_single_outlier_and_inconsistent_cluster_do_not_reset(self):
-        self.advance(); self.gps()
-        self.advance(); self.gps(0.)
-        self.assertFalse(self.core.relocation.pending)
-        for x in [100., 110., 100., 120., 100., 110.]:
-            self.advance(); self.gps(x)
-            self.assertFalse(self.core.gps_reinitialized)
-
-    def test_blackout_return_is_not_a_discontinuity_event(self):
-        self.advance(2.)
-        for _ in range(8):
-            self.advance(); self.gps()
-            self.assertFalse(self.core.gps_reinitialized)
-            self.assertFalse(self.core.relocation.pending)
-
-    def test_gps_and_imu_gaps_break_confirmation(self):
-        self.advance(); self.gps()
-        self.assertTrue(self.core.relocation.pending)
-        self.advance(1.)
-        self.assertFalse(self.core.relocation.pending)
-        self.gps()
+    def test_normal_correction_does_not_reset(self):
+        self.advance(.02)
+        self.assertTrue(self.gps(.1))
         self.assertFalse(self.core.gps_reinitialized)
-        self.setUp()
-        self.advance(); self.gps()
-        self.assertTrue(self.core.relocation.pending)
-        self.t += .4
-        self.assertFalse(self.core.process_imu(imu(self.t)))
-        self.assertFalse(self.core.relocation.pending)
+        self.assertGreater(self.core.state[0], 0.)
+        self.assertLess(self.core.state[0], .1)
 
-    def test_duplicate_nan_and_uncertain_gps_break_confirmation(self):
-        for mode in ['duplicate', 'nan', 'uncertain']:
+    def test_first_fix_after_long_blackout_can_reset(self):
+        self.advance(20.)
+        self.assertTrue(self.gps(1000.))
+        self.assertTrue(self.core.gps_reinitialized)
+        self.assertEqual(self.core.state[0], 1000.)
+        self.assertEqual(self.core.last_gps_stamp, self.t)
+
+    def test_every_exceeding_fix_is_accepted_without_cooldown(self):
+        for x in (100., 0., 110.):
+            self.advance(.02)
+            self.assertTrue(self.gps(x))
+            self.assertTrue(self.core.gps_reinitialized)
+            self.assertEqual(self.core.state[0], x)
+        self.advance(.02)
+        self.assertTrue(self.gps(110.))
+        self.assertFalse(self.core.gps_reinitialized)
+
+    def test_threshold_boundary_uses_strictly_greater(self):
+        # Identity innovations make residual [3, 4, 0] exactly chi2=25.
+        for dx, expected_reset in ((0., False), (.001, True)):
             self.setUp()
-            self.advance(); self.gps()
-            self.assertTrue(self.core.relocation.pending)
-            if mode == 'duplicate': self.gps()
-            elif mode == 'nan':
-                self.advance(); self.gps(float('nan'))
-            else:
-                self.advance(); self.gps(noise=np.eye(3)*100.)
-            self.assertFalse(self.core.relocation.pending)
-            self.assertFalse(self.core.gps_reinitialized)
-
-    def test_motion_and_disable_prevent_stationary_reinitialization(self):
-        self.advance(); self.gps()
-        self.advance(acceleration=[5., 0., 9.80665]); self.gps()
-        self.assertFalse(self.core.relocation.pending)
-        self.setUp()
-        self.core.relocation.config.enabled = False
-        for _ in range(8):
-            self.advance(); self.gps()
-            self.assertFalse(self.core.gps_reinitialized)
-
-    def test_rate_alone_cannot_confirm_and_reset_clears_evidence(self):
-        for _ in range(6):
-            self.advance(.02); self.gps()
-            self.assertFalse(self.core.gps_reinitialized)
-        self.assertTrue(self.core.relocation.pending)
-        self.core.reset()
-        self.assertFalse(self.core.relocation.pending)
-        self.assertIsNone(self.core.relocation.previous)
+            self.core.gps_translation[:] = 0.
+            self.core.config.gps_position_stddev_floor_m = .5
+            self.advance(.02)
+            self.core.P[:3, :3] = np.eye(3)*.75
+            position = np.array([3.+dx, 4., 0.])
+            self.assertTrue(self.core.process_gps(GpsObservation(self.t, position)))
+            self.assertEqual(self.core.gps_reinitialized, expected_reset)
+            np.testing.assert_allclose(self.core.state[:3], position if expected_reset else .75*position)
 
 
 if __name__ == '__main__':
