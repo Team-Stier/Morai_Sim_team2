@@ -184,11 +184,13 @@ channels:
     configured_rate_hz: 5.0
   imu:
     runtime_activation_allowed: false
+    isolated_probe_activation_allowed: true
     competition_runtime_status: pending_packet_axis_unit_covariance_and_port
     transport: legacy_morai_binary_udp
     bind_ip: 0.0.0.0
     port: 7802
-    port_evidence: imported_placeholder_not_live_verified
+    port_evidence: team2_development_port_user_must_match_morai_network_settings
+    packet_layout_evidence: MORAI-Autonomous/MORAI-NetworkModule@24.R2.0/lib/define/IMU.py
     node_name: morai_imu_bridge
     topic: /molit/sensors/imu/data
     message_type: sensor_msgs/Imu
@@ -215,11 +217,12 @@ channels:
       Do not launch or use it until the official competition packet is matched.
   lidar:
     runtime_activation_allowed: false
+    isolated_probe_activation_allowed: true
     competition_runtime_status: pending_live_packet_port_axis_and_driver_verification
     transport: velodyne_vlp16_udp
     bind_ip: 0.0.0.0
     port: 2368
-    port_evidence: imported_velodyne_example_not_live_verified
+    port_evidence: team2_development_port_user_must_match_morai_network_settings
     nodelet_manager_name: morai_velodyne_manager
     driver_node_name: morai_velodyne_driver
     node_name: morai_velodyne_cloud
@@ -233,6 +236,7 @@ channels:
     configured_rate_hz: 10.0
   lidar_status:
     runtime_activation_allowed: false
+    isolated_probe_activation_allowed: true
     competition_runtime_status: development_diagnostic_only
     node_name: morai_lidar_watchdog
     input_topic: /molit/sensors/lidar/points
@@ -283,6 +287,7 @@ channels:
 
 global_rules:
   - Bounding-box UDP packets are not published or used.
+  - isolated_probe_activation_allowed permits only a manual sensor connectivity test and never authorizes system bringup or downstream driving use.
   - Static sensor TF remains disabled until the TF activation gates pass.
   - Receive-time fallback is captured immediately after recvfrom, not after parsing.
   - Runtime timestamp_source values packet and receive map through runtime_timestamp_parameter_mapping and are not new central clock names.

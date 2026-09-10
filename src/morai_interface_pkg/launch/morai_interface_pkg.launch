@@ -1,6 +1,53 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- 의도적으로 아무 노드도 자동 실행하지 않는다.
-       라이브 검증된 개발용 Camera/GPS도 cameras.launch와 gps_bridge.launch에서
-       명시적으로 선택하고, 기본 비활성 채널은 중앙 계약 승인 없이 켜지 않는다. -->
+  <!-- 기존에 구현된 센서 입력을 한 번에 실행하는 개발용 bringup.
+       Competition Vehicle Status, CollisionData, Ego Ctrl Cmd는 포함하지 않는다. -->
+  <arg name="start_cameras" default="true"/>
+  <arg name="start_gps" default="true"/>
+  <arg name="start_imu" default="false"/>
+  <arg name="start_lidar" default="false"/>
+  <arg name="start_lidar_watchdog" default="false"/>
+
+  <arg name="camera_front_config" default="$(find morai_interface_pkg)/config/camera_front.yaml"/>
+  <arg name="camera_left_config" default="$(find morai_interface_pkg)/config/camera_left.yaml"/>
+  <arg name="camera_right_config" default="$(find morai_interface_pkg)/config/camera_right.yaml"/>
+  <arg name="gps_config" default="$(find morai_interface_pkg)/config/gps_bridge.yaml"/>
+  <arg name="imu_config" default="$(find morai_interface_pkg)/config/imu_bridge.yaml"/>
+  <arg name="lidar_config" default="$(find morai_interface_pkg)/config/lidar_bridge.yaml"/>
+  <arg name="lidar_watchdog_config" default="$(find morai_interface_pkg)/config/lidar_watchdog.yaml"/>
+
+  <group if="$(arg start_cameras)">
+    <include file="$(find morai_interface_pkg)/launch/cameras.launch">
+      <arg name="front_config" value="$(arg camera_front_config)"/>
+      <arg name="left_config" value="$(arg camera_left_config)"/>
+      <arg name="right_config" value="$(arg camera_right_config)"/>
+    </include>
+  </group>
+
+  <group if="$(arg start_gps)">
+    <include file="$(find morai_interface_pkg)/launch/gps_bridge.launch">
+      <arg name="config" value="$(arg gps_config)"/>
+    </include>
+  </group>
+
+  <group if="$(arg start_imu)">
+    <include file="$(find morai_interface_pkg)/launch/imu_bridge.launch">
+      <arg name="enable" value="true"/>
+      <arg name="config" value="$(arg imu_config)"/>
+    </include>
+  </group>
+
+  <group if="$(arg start_lidar)">
+    <include file="$(find morai_interface_pkg)/launch/lidar_bridge.launch">
+      <arg name="enable" value="true"/>
+      <arg name="config" value="$(arg lidar_config)"/>
+    </include>
+  </group>
+
+  <group if="$(arg start_lidar_watchdog)">
+    <include file="$(find morai_interface_pkg)/launch/lidar_watchdog.launch">
+      <arg name="enable" value="true"/>
+      <arg name="config" value="$(arg lidar_watchdog_config)"/>
+    </include>
+  </group>
 </launch>

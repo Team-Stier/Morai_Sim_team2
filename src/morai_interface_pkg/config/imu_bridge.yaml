@@ -1,14 +1,14 @@
 # morai_udp_bridge - IMU UDP Bridge 파라미터 (private ~ namespace)
 #
-# 주의: port는 placeholder다. 실제 MORAI IMU UDP destination port로 교체한다.
-#       코드에는 어떤 port도 하드코딩하지 않는다.
+# 7802는 기존 Team2 개발 설정이다. MORAI Network Settings의 destination port를
+# 이 값과 맞추거나 YAML을 함께 변경한다. 대회가 포트 7802를 보장한다는 뜻은 아니다.
 
 bind_ip: "0.0.0.0"
-port: 7802                  # <PLACEHOLDER> MORAI IMU UDP 수신 port로 교체
+port: 7802
 topic: "/molit/sensors/imu/data"
 frame_id: "imu_link"
 
-# --- 미확정 항목(실측 전까지 기본값, 하드코딩 아님) ---
+# --- 라이브 축·단위 검증 전 개발 기본값 ---
 timestamp_source: "receive"          # receive(수신시각) | packet(sec/nsec)
 angular_velocity_scale: 1.0          # 단위 미확정. rad/s면 1.0
 linear_acceleration_scale: 1.0       # 단위 미확정. m/s²면 1.0

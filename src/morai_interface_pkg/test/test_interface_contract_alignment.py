@@ -115,6 +115,39 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
                     for arg in root.findall("arg")}
             self.assertEqual(args.get(expected[0]), expected[1], filename)
 
+    def test_integrated_sensor_launch_starts_only_existing_sensor_bridges(self):
+        root = ET.parse(os.path.join(
+            PACKAGE_ROOT, "launch", "morai_interface_pkg.launch")).getroot()
+        args = {arg.attrib["name"]: arg.attrib.get("default")
+                for arg in root.findall("arg")}
+        for name in ("start_cameras", "start_gps"):
+            self.assertEqual(args.get(name), "true", name)
+        for name in ("start_imu", "start_lidar", "start_lidar_watchdog"):
+            self.assertEqual(args.get(name), "false", name)
+
+        includes = [item.attrib["file"] for item in root.iter("include")]
+        self.assertEqual(set(includes), {
+            "$(find morai_interface_pkg)/launch/cameras.launch",
+            "$(find morai_interface_pkg)/launch/gps_bridge.launch",
+            "$(find morai_interface_pkg)/launch/imu_bridge.launch",
+            "$(find morai_interface_pkg)/launch/lidar_bridge.launch",
+            "$(find morai_interface_pkg)/launch/lidar_watchdog.launch",
+        })
+        self.assertFalse(any("vehicle_status" in item or "collision" in item
+                             or "control" in item for item in includes))
+
+    def test_development_sensor_activation_is_explicit(self):
+        enabled = {name for name, channel in self.contract["channels"].items()
+                   if channel["runtime_activation_allowed"]}
+        self.assertEqual(enabled, {
+            "camera_front", "camera_left", "camera_right", "gps",
+        })
+        probe_enabled = {name for name, channel in self.contract["channels"].items()
+                         if channel.get("isolated_probe_activation_allowed")}
+        self.assertEqual(probe_enabled, {"imu", "lidar", "lidar_status"})
+        self.assertIn("MORAI-NetworkModule@24.R2.0/lib/define/IMU.py",
+                      self.contract["channels"]["imu"]["packet_layout_evidence"])
+
     def test_lidar_internal_packet_topic_is_scoped(self):
         root = ET.parse(os.path.join(
             PACKAGE_ROOT, "launch", "lidar_bridge.launch")).getroot()
