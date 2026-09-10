@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="config" default="$(find system_bringup_pkg)/config/system_readiness.yaml"/>
+
+  <node pkg="system_bringup_pkg"
+        type="system_readiness_node"
+        name="system_readiness_node"
+        output="screen"
+        required="true">
+    <rosparam command="load" file="$(arg config)"/>
+  </node>
+</launch>
