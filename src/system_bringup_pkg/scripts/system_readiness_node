@@ -1,0 +1,208 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Aggregate approved upstream status topics into /molit/system/readiness."""
+
+import threading
+
+import rospy
+
+from common_msgs_pkg.msg import (
+    ComponentStatus,
+    ControllerStatus,
+    InterfaceStatus,
+    LocalizationStatus,
+    SystemReadiness,
+)
+from system_bringup_pkg.readiness import (
+    COMPONENT_BITS,
+    STATE_DEGRADED,
+    STATE_FAULT,
+    STATE_INITIALIZING,
+    STATE_READY,
+    evaluate,
+)
+
+
+class SystemReadinessNode(object):
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._samples = {}
+
+        self._required_components = rospy.get_param(
+            "~required_components", list(COMPONENT_BITS.keys())
+        )
+        self._timeout_sec = float(rospy.get_param("~status_timeout_sec", 1.5))
+        self._publish_rate_hz = float(rospy.get_param("~publish_rate_hz", 2.0))
+
+        if self._timeout_sec <= 0.0:
+            raise rospy.ROSInitException("~status_timeout_sec must be > 0")
+        if self._publish_rate_hz <= 0.0:
+            raise rospy.ROSInitException("~publish_rate_hz must be > 0")
+        unknown = [name for name in self._required_components if name not in COMPONENT_BITS]
+        if unknown:
+            raise rospy.ROSInitException(
+                "unknown ~required_components: %s" % ",".join(unknown)
+            )
+
+        self._publisher = rospy.Publisher(
+            "/molit/system/readiness", SystemReadiness, queue_size=1, latch=True
+        )
+
+        rospy.Subscriber(
+            "/molit/interface/status", InterfaceStatus,
+            self._interface_callback, queue_size=1,
+        )
+        rospy.Subscriber(
+            "/molit/map/status", ComponentStatus,
+            self._component_callback, callback_args="map", queue_size=1,
+        )
+        rospy.Subscriber(
+            "/molit/perception/camera/status", ComponentStatus,
+            self._component_callback, callback_args="camera_perception", queue_size=1,
+        )
+        rospy.Subscriber(
+            "/molit/perception/lidar/status", ComponentStatus,
+            self._component_callback, callback_args="lidar_perception", queue_size=1,
+        )
+        rospy.Subscriber(
+            "/molit/localization/status", LocalizationStatus,
+            self._localization_callback, queue_size=1,
+        )
+        rospy.Subscriber(
+            "/molit/route/status", ComponentStatus,
+            self._component_callback, callback_args="route", queue_size=1,
+        )
+        rospy.Subscriber(
+            "/molit/world_model/status", ComponentStatus,
+            self._component_callback, callback_args="world_model", queue_size=1,
+        )
+        rospy.Subscriber(
+            "/molit/planning/status", ComponentStatus,
+            self._component_callback, callback_args="planning", queue_size=1,
+        )
+        rospy.Subscriber(
+            "/molit/control/status", ControllerStatus,
+            self._control_callback, queue_size=1,
+        )
+
+        self._timer = rospy.Timer(
+            rospy.Duration(1.0 / self._publish_rate_hz), self._publish
+        )
+        self._publish(None)
+        rospy.loginfo(
+            "[system_readiness] required=%s timeout=%.3fs rate=%.2fHz",
+            ",".join(self._required_components),
+            self._timeout_sec,
+            self._publish_rate_hz,
+        )
+
+    @staticmethod
+    def _stamp_sec(message):
+        return message.header.stamp.to_sec()
+
+    def _store(self, name, stamp_sec, state, ready, stop_required):
+        with self._lock:
+            self._samples[name] = {
+                "stamp_sec": stamp_sec,
+                "state": state,
+                "ready": ready,
+                "stop_required": stop_required,
+            }
+
+    def _interface_callback(self, message):
+        self._store(
+            "interface",
+            self._stamp_sec(message),
+            message.state,
+            message.ready,
+            message.stop_required,
+        )
+
+    def _component_callback(self, message, name):
+        self._store(
+            name,
+            self._stamp_sec(message),
+            message.state,
+            message.ready,
+            message.stop_required,
+        )
+
+    def _localization_callback(self, message):
+        tracking = message.mode in (
+            LocalizationStatus.TRACKING,
+            LocalizationStatus.DEAD_RECKONING,
+        )
+        ready = tracking and message.local_odometry_valid and not message.stop_required
+        if ready:
+            state = STATE_READY
+        elif message.mode == LocalizationStatus.LOST or message.stop_required:
+            state = STATE_FAULT
+        elif message.mode in (
+            LocalizationStatus.UNINITIALIZED,
+            LocalizationStatus.INITIALIZING,
+        ):
+            state = STATE_INITIALIZING
+        else:
+            state = STATE_DEGRADED
+        self._store(
+            "localization",
+            self._stamp_sec(message),
+            state,
+            ready,
+            message.stop_required,
+        )
+
+    def _control_callback(self, message):
+        ready = (
+            message.ready
+            and message.trajectory_valid
+            and message.nominal_command_valid
+            and not message.stop_required
+        )
+        self._store(
+            "control",
+            self._stamp_sec(message),
+            message.state,
+            ready,
+            message.stop_required,
+        )
+
+    def _publish(self, _event):
+        now = rospy.Time.now()
+        with self._lock:
+            samples = dict(self._samples)
+        result = evaluate(
+            self._required_components,
+            samples,
+            now.to_sec(),
+            self._timeout_sec,
+        )
+
+        message = SystemReadiness()
+        message.header.stamp = now
+        message.header.frame_id = ""
+        message.state = result["state"]
+        message.ready = result["ready"]
+        message.required_mask = result["required_mask"]
+        message.ready_mask = result["ready_mask"]
+        message.missing_mask = result["missing_mask"]
+        message.stale_mask = result["stale_mask"]
+        message.not_ready_mask = result["not_ready_mask"]
+        message.fault_mask = result["fault_mask"]
+        message.max_status_age_sec = result["max_status_age_sec"]
+        message.reason = result["reason"]
+        self._publisher.publish(message)
+
+
+def main():
+    rospy.init_node("system_readiness_node")
+    try:
+        SystemReadinessNode()
+    except rospy.ROSInitException as error:
+        rospy.logfatal("[system_readiness] initialization failed: %s", error)
+        return
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()
