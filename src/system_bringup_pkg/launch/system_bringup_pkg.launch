@@ -1,5 +1,20 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Public names are approved, but full-system composition remains blocked until
-       required runtime implementations, packet contracts, timeouts and TF gates are verified. -->
+  <!-- 1차 live MORAI sensor-ingress bringup.
+       중앙 UDP 계약에서 runtime_activation_allowed=true인 채널만 포함한다.
+       readiness, downstream autonomy, static sensor TF, control은 아직 활성화하지 않는다. -->
+
+  <param name="/use_sim_time" value="false"/>
+
+  <rosparam command="load"
+            file="$(find system_bringup_pkg)/config/live_morai_sensor_ingress.yaml"
+            ns="/molit/internal/system_bringup/profile"/>
+
+  <include file="$(find morai_interface_pkg)/launch/morai_interface_pkg.launch">
+    <arg name="start_cameras" value="true"/>
+    <arg name="start_gps" value="true"/>
+    <arg name="start_imu" value="false"/>
+    <arg name="start_lidar" value="false"/>
+    <arg name="start_lidar_watchdog" value="false"/>
+  </include>
 </launch>
