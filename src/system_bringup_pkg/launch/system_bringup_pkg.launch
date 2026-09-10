@@ -11,6 +11,7 @@
   <arg name="start_world_model" default="false"/>
   <arg name="start_path_planning" default="false"/>
   <arg name="start_vehicle_control" default="false"/>
+  <arg name="start_system_readiness" default="false"/>
   <arg name="start_safety_supervisor" default="false"/>
   <arg name="start_runtime_evaluation" default="false"/>
 
@@ -58,6 +59,10 @@
 
   <group if="$(arg start_vehicle_control)">
     <include file="$(find vehicle_control_pkg)/launch/vehicle_control_pkg.launch"/>
+  </group>
+
+  <group if="$(arg start_system_readiness)">
+    <include file="$(find system_bringup_pkg)/launch/system_readiness.launch"/>
   </group>
 
   <group if="$(arg start_safety_supervisor)">
