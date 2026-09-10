@@ -27,7 +27,7 @@
 
 ## 공개 ROS 입출력
 
-현재 상태는 **EKF 코어 이식, 공개 ROS 런타임 구현 예약**이며 공개 경계 노드는
+현재 상태는 **GPS/IMU 개발 추정기 및 진단 모드 구현**이며 공개 경계 노드는
 `localization_node`다.
 
 ![Localization 공개 입출력](docs/interface_io.svg)
@@ -52,7 +52,8 @@
 `/molit/sensors/lidar/points`는 HD Map 정합을 구현할 때만 사용하며 현재 LiDAR
 transport 검증 전에는 필수 입력으로 활성화하지 않는다. `/molit/vehicle/twist`는
 Competition packet 검증 전 사용 금지다. `ComponentStatus`, `EgoState`,
-`LocalizationStatus`의 스키마만 구현됐으며 노드와 나머지 타입은 미구현이다.
+`LocalizationStatus` 스키마와 GPS/IMU 추정 출력이 구현됐다. 나머지
+custom type은 미구현이다. 표는 승인된 전체 경계이고 현재 활성 I/O는 아래와 같다.
 
 세 타입의 필드·단위·invalid 계약과 이식 지침은
 [core messages](../ros_architecture_pkg/docs/core_messages.md)를 따른다.
@@ -81,18 +82,44 @@ Local Odometry는 연속 motion 추정이지 절대 Ground Truth가 아니다. W
 - `launch/`: Localization 단독 실행
 - `src/`: projection, estimation, gating과 quality 구현
 
-## 가져온 EKF 구현과 활성화 범위
+## 현재 런타임 상태
 
-`feature/localization_pkg`의 GPS/IMU 15-state error-state EKF 코어와 C++ 테스트,
-설정, 설계 문서, 기존 ROS adapter 소스를 가져왔다. 현재 빌드 대상은
-`localization_ekf` 라이브러리와 테스트뿐이다.
+기본 `mode:=estimator`는 GPS/IMU만 입력으로 사용하며 EgoState(map),
+Odometry(odom), LocalizationStatus와 `map → odom → base_link`를 발행한다.
+IMU quaternion을 자세 관측으로 사용하고, 회전한 GPS 안테나 오프셋을 빼서
+base_link 위치를 추정한다. 6-state position/velocity Kalman filter이며 자세·bias를
+동시에 추정하는 15-state EKF가 아니다. 경로·체크포인트는 관측에 쓰지 않는다.
 
-`src/ego_state_estimator_node.cpp`는 이전 계약의 참고 소스로 보존하며 빌드·설치·실행하지 않는다.
-이 소스가 요구하는 이전 quality 메시지는 현재 공통 메시지에 없고 node/topic/frame도
-현재 계약과 다르다. `docs/localization_design.md`의 원본 설계는 과거 구현 설명이며
-공개 ROS 계약을 정의하지 않는다. `config/localization.yaml`도 이식된 후보 파라미터이며
-현재 launch에서 로드하지 않는다.
+- map은 EPSG:32652에서 중앙 원점 `[302595,4124145,0]`을 뺀 좌표다.
+- odom 축은 map ENU와 평행하며 위치는 초기화 후 예측 이동량만 적분한다.
+  GPS 보정은 odom 위치를 점프시키지 않는다. reset 시 원점과 reset_id가 바뀐다.
+- GPS는 60 ms reorder buffer 안에서 IMU 자세를 보간하여 측정시각에 보정한다.
+  이미 처리한 상태보다 오래된 GPS나 보간 양 끝 IMU가 없는 GPS는 거부한다.
+- EgoState/Odometry/동적 TF는 동일한 원본 IMU stamp를 정수 ns로 보존한다.
+  상태는 wall loop에서 10 Hz 평가하며 ROS clock 정지·역행과 입력 단절을 검사한다.
+- unknown GPS covariance에는 모델 오차 floor를 부여한다. 수평 위치 불확실성은
+  `sqrt(var_x + var_y)`다. GPS blackout 중 covariance가 증가한다.
+- 모든 개발 상태는 `stop_required=true`다. 센서 축·rear axle pivot·고도 datum의
+  물리 정합과 전체 경로 정확도는 별도 검증 대상이다. IMU covariance는 브리지의
+  모델 placeholder이며 실측 정확도로 해석하지 않는다.
 
-첫 GPS 원점과 GPS 이동 방향 기반 초기화, GPS 보정으로 변하는 위치를 중앙 계약의
-연속 `odom` 또는 `map` pose로 곧바로 취급해서는 안 된다. 현재 세 공개 출력에 대한
-adapter, map/odom 분리, timestamp·freshness·reset 처리와 센서 축 검증은 후속 작업이다.
+```bash
+source devel/setup.bash
+roslaunch localization_pkg localization_pkg.launch mode:=estimator
+# 상태만 발행하는 기존 진단 모드
+roslaunch localization_pkg localization_pkg.launch mode:=diagnostic
+# GPS/IMU 브리지가 실행 중일 때 정적 TF와 RViz까지 함께 시작
+roslaunch system_bringup_pkg localization_visualization.launch
+```
+
+진단 모드는 중앙 TF 활성화와 무관하게 pose/TF를 발행하지 않는다. 두 모드는
+같은 공개 node 이름을 쓰므로 동시에 실행하지 않는다. `src/ego_state_estimator_node.cpp`
+및 15-state EKF는 이식 참고용으로 보존한다. legacy adapter는 빌드/설치하지 않는다.
+
+검증 및 실제 실행 기록: [TF 개발 검증](docs/tf_localization_validation.md).
+
+## 위치 갱신에 맞춘 RViz 표시
+
+추정값마다 원본 측정시각을 유지한 pose와 대응 status를 발행한다. 입력이 없을 때는 status heartbeat가 10 Hz로 동작한다.
+차량 마커는 exact pose/status 쌍 수신 즉시 갱신하며 별도의 10 Hz 표시 제한을 두지 않는다.
+표시 watchdog은 입력 중단·clock 이상을 계속 검사한다. RViz 렌더링 상한은 60 FPS다.

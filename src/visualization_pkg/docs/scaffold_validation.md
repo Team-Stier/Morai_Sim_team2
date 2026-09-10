@@ -1,6 +1,9 @@
 # 패키지 골격 검증 (2026-09-10)
 
-현재 단계는 단일 RViz 화면을 위한 패키지 파일 생성이다.
+이 문서는 패키지 최초 생성 당시의 이력이다. 현재 구현은
+[차량 표시 검증](vehicle_display_validation.md)을 따른다.
+
+당시 단계는 단일 RViz 화면을 위한 패키지 파일 생성이었다.
 실행 node, 구독·발행 topic, RViz display 설정은 아직 없다.
 전체 실행 조합은 system_bringup_pkg가 소유한다.
 

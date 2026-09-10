@@ -1,0 +1,24 @@
+schema_version: 1
+contract_version: 0.2.0
+authority: ros_architecture_pkg
+semantic_owner: hd_map_pkg
+status: development_projection_from_existing_static_metadata
+epsg: 32652
+map_frame: map
+origin_utm_m: [302595.0, 4124145.0, 0.0]
+altitude_semantic: morai_gga_altitude_minus_origin_z
+runtime_activation_allowed: true
+activation_scope: development_only
+physical_alignment_verified: false
+autonomous_driving_ready: false
+source_evidence:
+  existing_map_config: src/hd_map_pkg/config/map_conversion.yaml#coordinates
+  metadata_only_source: 참고파일들/2026_molit_comp_sample_scene.json
+  scene: r_kr_pr_k-city_2025.scene
+  rule: Read projection metadata only; never use saved ego pose or hidden simulator state.
+rules:
+  - Project WGS84 latitude and longitude to UTM zone 52 north before subtracting origin.
+  - Correct GPS antenna position with the rotated central base_link-to-gps_link translation.
+  - Global route and checkpoints are navigation geometry, never localization observations.
+  - The altitude datum is a development convention pending independent verification.
+  - HD Map conversion and localization must use this same origin; do not fit origin to route.

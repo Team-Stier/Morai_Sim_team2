@@ -1,15 +1,13 @@
-# All quantities use SI units. The first valid GPS fix establishes local ENU (0, 0, 0).
-imu_timeout_sec: 0.2
-gps_timeout_sec: 0.5
-max_dead_reckoning_sec: 15.0
-minimum_yaw_initialization_distance_m: 1.0
-gps_innovation_gate_chi2: 16.27
-max_gps_correction_m: 5.0
-max_gps_measurement_delay_sec: 0.2
-default_gps_position_stddev_m: 2.5
-accelerometer_noise_stddev_mps2: 0.35
-gyroscope_noise_stddev_radps: 0.03
-accelerometer_bias_random_walk_stddev_mps2: 0.01
-gyroscope_bias_random_walk_stddev_radps: 0.003
+# Six-state development estimator model parameters. Timing is read directly
+# from ros_architecture_pkg/config/timestamp/timestamp_contract.yaml.
+# The C++ diagnostic mode only uses status rate and clock stall.
+status_publish_rate_hz: 10.0
+clock_stall_sec: 0.5
 gravity_mps2: 9.80665
-quality_publish_rate_hz: 10.0
+gps_position_stddev_floor_m: 0.25
+gps_altitude_stddev_floor_m: 0.5
+orientation_stddev_floor_rad: 0.02
+accelerometer_noise_stddev_mps2: 0.5
+initial_velocity_stddev_mps: 2.0
+gps_innovation_gate_chi2: 25.0
+ingress_timing_stddev_sec: 0.03

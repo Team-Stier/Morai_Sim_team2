@@ -2,11 +2,24 @@
 <package format="2">
   <name>visualization_pkg</name>
   <version>0.0.0</version>
-  <description>RViz configuration and read-only visualization tools for the MORAI stack.</description>
+  <description>Read-only RViz vehicle geometry from approved localization estimates.</description>
   <maintainer email="simonpaik04@gmail.com">Team Stier</maintainer>
   <license>TODO</license>
   <buildtool_depend>catkin</buildtool_depend>
+  <depend>hd_map_pkg</depend>
+  <exec_depend>python3-rospkg</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
   <depend>ros_architecture_pkg</depend>
+  <depend>common_msgs_pkg</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>rospy</depend>
+  <depend>visualization_msgs</depend>
   <exec_depend>rviz</exec_depend>
+  <test_depend>rostest</test_depend>
+  <test_depend>rosgraph</test_depend>
+  <test_depend>rosgraph_msgs</test_depend>
+  <test_depend>python3-nose</test_depend>
+  <test_depend>python3-yaml</test_depend>
   <export />
 </package>

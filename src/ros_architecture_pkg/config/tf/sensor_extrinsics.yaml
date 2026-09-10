@@ -1,15 +1,25 @@
 schema_version: 1
-contract_version: 0.1.0
-status: provisional_do_not_publish
+contract_version: 0.2.0
+status: gps_imu_development_enabled_other_geometry_provisional
 
 authority:
   package: ros_architecture_pkg
   frame_graph: frame_contract.yaml
   rule: >-
-    Source poses are evidence, while candidate ROS poses are conversions awaiting
-    live axis and vehicle-origin verification. Only publish_enabled controls use.
+    Source poses are evidence. GPS/IMU may use the explicitly approved development
+    scope while physical validation remains incomplete. Both this file and the
+    frame graph must enable a mount before publication; other mounts stay disabled.
 
 source_evidence:
+  user_confirmed_lidar_mount:
+    confirmed_on: "2026-09-10"
+    approval_source: user_instruction
+    user_confirmed_coordinate_alignment: true
+    runtime_activation_authorized: true
+    scope: [lidar]
+    user_confirmed_mount_position: true
+    translation_m: [1.43, 0.0, 1.22]
+    note: "User-specified mounting position; coordinate alignment and TF activation explicitly confirmed by user; independent runtime validation not claimed."
   repository_camera_reference:
     path: "참고파일들/2026_molit_comp_cam_set (1).json"
     sha256: 5c3da20597f44a57a1ecab83374bd652024126e6a09e33a800ddc89c222dcbd4
@@ -17,27 +27,32 @@ source_evidence:
       - camera_front
       - camera_left
       - camera_right
-    verification: cameraList_matches_launcher_saved_profile
-  launcher_saved_profile:
+    verification: cameraList_matches_repository_reference
+  launcher_saved_profile_user_confirmed:
     logical_path: "MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
-    observed_host_path: "/home/stier/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
-    sha256: 8c87ab955ecf32b86a8f1469017f6980c472f1b46e6d17f959a15ae2fc11fdf7
-    saved_at: "2026-08-05T10:49:13+09:00"
-    active_loadout_verified: false
+    observed_host_path: "/home/paik/MoraiLauncher_Stage/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
+    sha256: 1f7432b56041d5e6c47ff44155c0d96e47893aaf978ab92879125eae31a3193f
+    confirmed_on: "2026-09-10"
+    user_confirmed_mount_position: true
+    user_confirmed_notes:
+      - "User-approved IMU/GPS positions match the observed saved profile on 2026-09-10"
+      - "Rotations remain [0, 0, 0] in source JSON"
+      - "Development activation requested by user; physical axis/pivot validation remains incomplete"
+      - "canonical frame ownership unchanged: gps_link / imu_link"
     scope:
-      - camera_front
-      - camera_left
-      - camera_right
-      - lidar
       - gps
       - imu
+    active_loadout_verified: false
 
 source_pose_convention:
   translation_unit: m
   rotation_unit: deg
   rotation_order: roll_pitch_yaw_as_stored_by_morai
   reference_origin: morai_sensor_target_pivot
-  axis_mapping_to_rep_103: pending_live_verification
+  axis_mapping_to_rep_103: imu_documented_rep_103_other_sensors_pending
+  documented_origin: midpoint_of_rear_axle
+  origin_reference_url: https://help-morai-sim.scrollhelp.site/en/morai-sim-drive/23.R1.0/-7
+  imu_axis_reference_url: https://help-morai-sim-en.scrollhelp.site/morai-sim-standard-en/sensor-coordinate-system
 
 candidate_ros_pose_convention:
   translation_unit: m
@@ -124,55 +139,60 @@ sensor_mounts:
     raw_identifiers:
       sensor_unique_id: 6
       target_unique_id: 0
-      source_frame_id: Lidar3D-4
-    identifier_warning: sensor_unique_id_and_source_frame_suffix_are_not_equivalent
-    source_evidence: launcher_saved_profile
+      source_frame_id: Lidar3D-6
+    source_evidence: user_confirmed_lidar_mount
     source_pose:
-      translation_m: [2.0, 0.0, 1.5]
+      translation_m: [1.43, 0.0, 1.22]
       rotation_rpy_deg: [0.0, 0.0, 0.0]
     candidate_ros_pose:
-      translation_m: [2.0, 0.0, 1.5]
+      translation_m: [1.43, 0.0, 1.22]
       rotation_rpy_rad: [0.0, 0.0, 0.0]
     source_measurement_axes: velodyne_native_mapping_possible
     normalized_measurement_axes: x_forward_y_left_z_up
     configured_period_sec: 0.10000000149011612
     configured_rate_hz: 10.0
     measured_rate_hz: null
-    verification_status: saved_profile_only_axis_mapping_pending
-    publish_enabled: false
+    verification_status: user_confirmed_mount_and_axes_development
+    activation_scope: development_only
+    physical_alignment_verified: false
+    publish_enabled: true
   - key: gps
     child_frame: gps_link
     raw_identifiers:
-      sensor_unique_id: 5
+      sensor_unique_id: 4
       target_unique_id: 0
-      source_frame_id: GPS-5
-    source_evidence: launcher_saved_profile
+      source_frame_id: GPS-4
+    source_evidence: launcher_saved_profile_user_confirmed
     source_pose:
-      translation_m: [0.0, 0.0, 0.0]
+      translation_m: [0.0, 0.0, 1.3]
       rotation_rpy_deg: [0.0, 0.0, 0.0]
     candidate_ros_pose:
-      translation_m: [0.0, 0.0, 0.0]
+      translation_m: [0.0, 0.0, 1.3]
       rotation_rpy_rad: [0.0, 0.0, 0.0]
     configured_period_sec: 0.20000000298023224
     configured_rate_hz: 5.0
     measured_rate_hz: null
-    verification_status: saved_profile_only
-    publish_enabled: false
+    verification_status: documented_axes_user_approved_mount_development
+    activation_scope: development_only
+    physical_alignment_verified: false
+    publish_enabled: true
   - key: imu
     child_frame: imu_link
     raw_identifiers:
-      sensor_unique_id: 4
+      sensor_unique_id: 5
       target_unique_id: 0
-      source_frame_id: IMU-4
-    source_evidence: launcher_saved_profile
+      source_frame_id: IMU-5
+    source_evidence: launcher_saved_profile_user_confirmed
     source_pose:
-      translation_m: [3.434, -0.354, 0.602]
+      translation_m: [0.0, 0.0, 0.0]
       rotation_rpy_deg: [0.0, 0.0, 0.0]
     candidate_ros_pose:
-      translation_m: [3.434, -0.354, 0.602]
+      translation_m: [0.0, 0.0, 0.0]
       rotation_rpy_rad: [0.0, 0.0, 0.0]
     configured_period_sec: 0.019999999552965164
     configured_rate_hz: 50.0
     measured_rate_hz: null
-    verification_status: saved_profile_only
-    publish_enabled: false
+    verification_status: documented_axes_user_approved_mount_development
+    activation_scope: development_only
+    physical_alignment_verified: false
+    publish_enabled: true

@@ -35,7 +35,7 @@ class PublicInterfaceContractTest(unittest.TestCase):
         required_paths = {
             "core_messages": ("path",),
             "package_registry": ("path",),
-            "tf": ("frame_contract", "sensor_extrinsics"),
+            "tf": ("frame_contract", "sensor_extrinsics", "map_projection"),
             "timestamp": ("timestamp_contract",),
             "morai_interface": ("udp_ros_bridge",),
         }

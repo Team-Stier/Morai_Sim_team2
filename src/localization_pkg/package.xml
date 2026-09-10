@@ -12,7 +12,20 @@
   <depend>nav_msgs</depend>
   <depend>ros_architecture_pkg</depend>
   <depend>roscpp</depend>
+  <depend>rospy</depend>
+  <depend>tf2_ros</depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-pyproj</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>python3-rospkg</exec_depend>
+  <test_depend>tf2_msgs</test_depend>
+  <test_depend>visualization_pkg</test_depend>
+  <depend>roslib</depend>
   <depend>sensor_msgs</depend>
+  <depend>yaml-cpp</depend>
   <test_depend>python3-nose</test_depend>
+  <test_depend>rostest</test_depend>
+  <test_depend>rosgraph</test_depend>
+  <test_depend>rosgraph_msgs</test_depend>
   <export />
 </package>

@@ -2,7 +2,9 @@ schema_version: 1
 contract_version: 0.1.0
 authority: ros_architecture_pkg
 implementation_owner: common_msgs_pkg
-runtime_nodes_implemented: false
+runtime_nodes_implemented: true
+runtime_implementation_scope: localization_gps_imu_development_and_visualization
+autonomous_driving_ready: false
 regulation_source:
   url: https://morai.atlassian.net/wiki/external/YTRiNWMwZTNjODc3NDBkYzgxMTMzOWMwMWY3YWRkZDc
   evidence: user_supplied_regulation_excerpt_2026_09_10

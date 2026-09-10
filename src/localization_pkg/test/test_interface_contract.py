@@ -33,14 +33,28 @@ class InterfaceContractTest(unittest.TestCase):
                 self.assertIn(name, packages[0]['inputs'])
 
     def test_legacy_adapter_cannot_be_launched_or_built(self):
+        launch_nodes = []
         for path in (PACKAGE / 'launch').glob('*.launch'):
             root = ET.parse(path).getroot()
-            self.assertEqual(list(root.iter('node')), [])
-            self.assertEqual(list(root.iter('include')), [])
-        cmake = '\n'.join(line for line in (PACKAGE / 'CMakeLists.txt').read_text().splitlines()
-                          if not line.lstrip().startswith('#'))
+            for param in root.iter('param'):
+                self.assertNotEqual(param.attrib.get('name', '').lstrip('/'), 'use_sim_time',
+                                    'Clock mode belongs to bringup/replay, not package launch')
+            for include_node in root.iter('include'):
+                self.fail(f'Included launch is forbidden in package launch: {include_node}')
+            for node in root.iter('node'):
+                launch_nodes.append((path.name, node.attrib.get('name'), node.attrib.get('type')))
+                # legacy adapter reference must never be present.
+                self.assertNotIn('ego_state_estimator', (node.attrib.get('name', '') + node.attrib.get('type', '')))
+
+        # Localization launch remains the single active public runtime node.
+        self.assertTrue((PACKAGE / 'launch/localization_pkg.launch').exists())
+        active_nodes = [entry for entry in launch_nodes if entry[1] == 'localization_node' and entry[2] == 'localization_node']
+        self.assertEqual(1, len(active_nodes))
+
+        cmake = (PACKAGE / 'CMakeLists.txt').read_text()
+        self.assertIn('add_executable(localization_node', cmake)
+        self.assertIn('target_link_libraries(localization_node', cmake)
         self.assertNotIn('ego_state_estimator', cmake)
-        self.assertNotIn('add_executable', cmake)
 
 
 if __name__ == '__main__':

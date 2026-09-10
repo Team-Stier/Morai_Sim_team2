@@ -25,7 +25,7 @@ flowchart TB
     view_node_004["node: hd_map_server_node<br/>package: hd_map_pkg<br/>state: RESERVED"]
     view_node_005["node: camera_perception_node<br/>package: camera_perception_pkg<br/>state: RESERVED"]
     view_node_006["node: lidar_perception_node<br/>package: lidar_perception_pkg<br/>state: RESERVED"]
-    view_node_007["node: localization_node<br/>package: localization_pkg<br/>state: RESERVED"]
+    view_node_007["node: localization_node<br/>package: localization_pkg<br/>state: LIVE"]
     view_node_008["node: global_route_manager_node<br/>package: global_route_manager_pkg<br/>state: RESERVED"]
     view_node_009["node: world_model_node<br/>package: world_model_pkg<br/>state: RESERVED"]
     view_node_010["node: path_planner_node<br/>package: path_planning_pkg<br/>state: RESERVED"]
@@ -40,7 +40,7 @@ flowchart TB
     view_topic_003["/molit/map/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
     view_topic_004["/molit/perception/camera/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
     view_topic_005["/molit/perception/lidar/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
-    view_topic_006["/molit/localization/status<br/>type: common_msgs_pkg/LocalizationStatus<br/>state: RESERVED"]
+    view_topic_006["/molit/localization/status<br/>type: common_msgs_pkg/LocalizationStatus<br/>state: LIVE"]
     view_topic_007["/molit/route/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
     view_topic_008["/molit/world_model/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
     view_topic_009["/molit/planning/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
@@ -133,7 +133,7 @@ flowchart TB
     class view_node_004 reservedNode;
     class view_node_005 reservedNode;
     class view_node_006 reservedNode;
-    class view_node_007 reservedNode;
+    class view_node_007 liveNode;
     class view_node_008 reservedNode;
     class view_node_009 reservedNode;
     class view_node_010 reservedNode;
@@ -147,7 +147,7 @@ flowchart TB
     class view_topic_003 reservedTopic;
     class view_topic_004 reservedTopic;
     class view_topic_005 reservedTopic;
-    class view_topic_006 reservedTopic;
+    class view_topic_006 liveTopic;
     class view_topic_007 reservedTopic;
     class view_topic_008 reservedTopic;
     class view_topic_009 reservedTopic;

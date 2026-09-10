@@ -46,33 +46,34 @@ flowchart LR
     subgraph pkg_005["lidar_perception_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_015["lidar_perception_node<br/>exec: lidar_perception_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
-    subgraph pkg_006["localization_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_016["localization_node<br/>exec: localization_node<br/>state: RESERVED (reserved_not_implemented)"]
+    subgraph pkg_006["localization_pkg<br/>runtime: development_estimator_active"]
+        node_016["localization_node<br/>exec: localization_estimator_node.py<br/>state: LIVE (development_estimator_active)"]
     end
     subgraph pkg_007["global_route_manager_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_017["global_route_manager_node<br/>exec: global_route_manager_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_018["global_route_manager_node<br/>exec: global_route_manager_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
     subgraph pkg_008["world_model_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_018["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_019["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
     subgraph pkg_009["path_planning_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_019["path_planner_node<br/>exec: path_planner_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_020["path_planner_node<br/>exec: path_planner_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
     subgraph pkg_010["vehicle_control_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_020["vehicle_controller_node<br/>exec: vehicle_controller_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_021["vehicle_controller_node<br/>exec: vehicle_controller_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
     subgraph pkg_011["system_bringup_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_021["system_readiness_node<br/>exec: system_readiness_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_017["sensor_tf_publisher<br/>exec: sensor_tf_publisher.py<br/>state: LIVE (development_static_tf_active)"]
+        node_022["system_readiness_node<br/>exec: system_readiness_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
     subgraph pkg_012["safety_supervisor_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_022["safety_supervisor_node<br/>exec: safety_supervisor_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_023["safety_supervisor_node<br/>exec: safety_supervisor_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
     subgraph pkg_013["runtime_evaluation_pkg<br/>runtime: public_contract_reserved_not_implemented_read_only"]
-        node_023["runtime_evaluator_node<br/>exec: runtime_evaluator_node<br/>state: RESERVED (reserved_not_implemented_read_only)"]
+        node_024["runtime_evaluator_node<br/>exec: runtime_evaluator_node<br/>state: RESERVED (reserved_not_implemented_read_only)"]
     end
-    subgraph pkg_014["visualization_pkg<br/>runtime: scaffold_no_runtime_io"]
-        pkg_empty_014["no runtime ROS node"]
-        class pkg_empty_014 emptyPort;
+    subgraph pkg_014["visualization_pkg<br/>runtime: development_visualization_only"]
+        node_025["vehicle_visualizer_node<br/>exec: vehicle_visualizer_node.py<br/>state: RESERVED (development_visualization_only)"]
+        node_026["vehicle_rviz<br/>exec: rviz<br/>state: RESERVED (development_visualization_only)"]
     end
 
     topic_000["/molit/sensors/camera/front/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: LIVE"]
@@ -94,9 +95,9 @@ flowchart LR
     topic_016["/molit/perception/camera/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
     topic_017["/molit/perception/lidar/observations<br/>type: common_msgs_pkg/LidarObservationArray<br/>state: RESERVED"]
     topic_018["/molit/perception/lidar/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
-    topic_019["/molit/localization/local/odometry<br/>type: nav_msgs/Odometry<br/>state: RESERVED"]
-    topic_020["/molit/localization/ego_state<br/>type: common_msgs_pkg/EgoState<br/>state: RESERVED"]
-    topic_021["/molit/localization/status<br/>type: common_msgs_pkg/LocalizationStatus<br/>state: RESERVED"]
+    topic_019["/molit/localization/local/odometry<br/>type: nav_msgs/Odometry<br/>state: LIVE"]
+    topic_020["/molit/localization/ego_state<br/>type: common_msgs_pkg/EgoState<br/>state: LIVE"]
+    topic_021["/molit/localization/status<br/>type: common_msgs_pkg/LocalizationStatus<br/>state: LIVE"]
     topic_022["/molit/route/global_path<br/>type: nav_msgs/Path<br/>state: RESERVED"]
     topic_023["/molit/route/context<br/>type: common_msgs_pkg/RouteContext<br/>state: RESERVED"]
     topic_024["/molit/route/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
@@ -110,6 +111,7 @@ flowchart LR
     topic_032["/molit/safety/final_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
     topic_033["/molit/safety/state<br/>type: common_msgs_pkg/SafetyState<br/>state: RESERVED"]
     topic_034["/molit/evaluation/metrics<br/>type: common_msgs_pkg/RunMetrics<br/>state: RESERVED"]
+    topic_035["/molit/internal/visualization/vehicle_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
 
     node_000 --> topic_000
     topic_000 --> node_014
@@ -133,107 +135,112 @@ flowchart LR
     topic_008 --> node_015
     topic_008 --> node_011
     node_010 --> topic_009
-    topic_009 --> node_022
     topic_009 --> node_023
+    topic_009 --> node_024
     node_011 --> topic_010
-    topic_010 --> node_021
     topic_010 --> node_022
     topic_010 --> node_023
+    topic_010 --> node_024
     node_013 --> topic_011
     topic_011 --> node_016
-    topic_011 --> node_017
     topic_011 --> node_018
+    topic_011 --> node_019
     node_013 --> topic_012
     topic_012 --> node_016
-    topic_012 --> node_017
     topic_012 --> node_018
-    topic_012 --> node_021
+    topic_012 --> node_019
     topic_012 --> node_022
+    topic_012 --> node_023
     node_014 --> topic_013
-    topic_013 --> node_018
+    topic_013 --> node_019
     node_014 --> topic_014
-    topic_014 --> node_018
+    topic_014 --> node_019
     node_014 --> topic_015
-    topic_015 --> node_018
+    topic_015 --> node_019
     node_014 --> topic_016
-    topic_016 --> node_018
-    topic_016 --> node_021
+    topic_016 --> node_019
     topic_016 --> node_022
     topic_016 --> node_023
+    topic_016 --> node_024
     node_015 --> topic_017
-    topic_017 --> node_018
+    topic_017 --> node_019
     node_015 --> topic_018
-    topic_018 --> node_018
-    topic_018 --> node_021
+    topic_018 --> node_019
     topic_018 --> node_022
     topic_018 --> node_023
+    topic_018 --> node_024
     node_016 --> topic_019
-    topic_019 --> node_018
     topic_019 --> node_019
     topic_019 --> node_020
-    topic_019 --> node_022
+    topic_019 --> node_021
     topic_019 --> node_023
+    topic_019 --> node_024
+    topic_019 --> node_025
     node_016 --> topic_020
-    topic_020 --> node_017
     topic_020 --> node_018
     topic_020 --> node_019
-    topic_020 --> node_022
+    topic_020 --> node_020
     topic_020 --> node_023
+    topic_020 --> node_024
+    topic_020 --> node_025
     node_016 --> topic_021
-    topic_021 --> node_017
     topic_021 --> node_018
     topic_021 --> node_019
     topic_021 --> node_020
     topic_021 --> node_021
     topic_021 --> node_022
     topic_021 --> node_023
-    node_017 --> topic_022
-    topic_022 --> node_023
-    node_017 --> topic_023
-    topic_023 --> node_018
+    topic_021 --> node_024
+    topic_021 --> node_025
+    node_018 --> topic_022
+    topic_022 --> node_024
+    node_018 --> topic_023
     topic_023 --> node_019
-    topic_023 --> node_022
+    topic_023 --> node_020
     topic_023 --> node_023
-    node_017 --> topic_024
-    topic_024 --> node_018
+    topic_023 --> node_024
+    node_018 --> topic_024
     topic_024 --> node_019
-    topic_024 --> node_021
+    topic_024 --> node_020
     topic_024 --> node_022
     topic_024 --> node_023
-    node_018 --> topic_025
-    topic_025 --> node_019
-    topic_025 --> node_022
+    topic_024 --> node_024
+    node_019 --> topic_025
+    topic_025 --> node_020
     topic_025 --> node_023
-    node_018 --> topic_026
-    topic_026 --> node_019
-    topic_026 --> node_021
+    topic_025 --> node_024
+    node_019 --> topic_026
+    topic_026 --> node_020
     topic_026 --> node_022
     topic_026 --> node_023
-    node_019 --> topic_027
-    topic_027 --> node_020
-    topic_027 --> node_022
+    topic_026 --> node_024
+    node_020 --> topic_027
+    topic_027 --> node_021
     topic_027 --> node_023
-    node_019 --> topic_028
-    topic_028 --> node_020
+    topic_027 --> node_024
+    node_020 --> topic_028
     topic_028 --> node_021
     topic_028 --> node_022
     topic_028 --> node_023
-    node_020 --> topic_029
-    topic_029 --> node_022
+    topic_028 --> node_024
+    node_021 --> topic_029
     topic_029 --> node_023
-    node_020 --> topic_030
-    topic_030 --> node_021
+    topic_029 --> node_024
+    node_021 --> topic_030
     topic_030 --> node_022
     topic_030 --> node_023
-    node_021 --> topic_031
-    topic_031 --> node_022
+    topic_030 --> node_024
+    node_022 --> topic_031
     topic_031 --> node_023
-    node_022 --> topic_032
+    topic_031 --> node_024
+    node_023 --> topic_032
     topic_032 --> node_012
-    topic_032 --> node_023
-    node_022 --> topic_033
-    topic_033 --> node_023
-    node_023 --> topic_034
+    topic_032 --> node_024
+    node_023 --> topic_033
+    topic_033 --> node_024
+    node_024 --> topic_034
+    node_025 --> topic_035
+    topic_035 --> node_026
     external_ingress --> node_000
     external_ingress --> node_001
     external_ingress --> node_002
@@ -260,14 +267,17 @@ flowchart LR
     class node_013 reservedNode;
     class node_014 reservedNode;
     class node_015 reservedNode;
-    class node_016 reservedNode;
-    class node_017 reservedNode;
+    class node_016 liveNode;
+    class node_017 liveNode;
     class node_018 reservedNode;
     class node_019 reservedNode;
     class node_020 reservedNode;
     class node_021 reservedNode;
     class node_022 reservedNode;
     class node_023 reservedNode;
+    class node_024 reservedNode;
+    class node_025 reservedNode;
+    class node_026 reservedNode;
     class topic_000 liveTopic;
     class topic_001 liveTopic;
     class topic_002 liveTopic;
@@ -287,9 +297,9 @@ flowchart LR
     class topic_016 reservedTopic;
     class topic_017 reservedTopic;
     class topic_018 reservedTopic;
-    class topic_019 reservedTopic;
-    class topic_020 reservedTopic;
-    class topic_021 reservedTopic;
+    class topic_019 liveTopic;
+    class topic_020 liveTopic;
+    class topic_021 liveTopic;
     class topic_022 reservedTopic;
     class topic_023 reservedTopic;
     class topic_024 reservedTopic;
@@ -303,3 +313,4 @@ flowchart LR
     class topic_032 reservedTopic;
     class topic_033 reservedTopic;
     class topic_034 reservedTopic;
+    class topic_035 reservedTopic;

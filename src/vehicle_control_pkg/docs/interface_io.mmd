@@ -9,8 +9,8 @@ flowchart LR
     classDef externalEndpoint fill:#f3e8ff,color:#581c87,stroke:#9333ea,stroke-width:3px;
 
     subgraph INPUTS["입력 (구독)"]
-        input_000["/molit/localization/local/odometry<br/>설명: 연속적인 차량 상대 이동이며 절대 지도 위치가 아님<br/>메시지: nav_msgs/Odometry<br/>상태: 설계 예약·미구현"]
-        input_001["/molit/localization/status<br/>설명: 위치추정 모드·품질·유효성<br/>메시지: common_msgs_pkg/LocalizationStatus<br/>상태: 설계 예약·미구현"]
+        input_000["/molit/localization/local/odometry<br/>설명: 연속적인 차량 상대 이동이며 절대 지도 위치가 아님<br/>메시지: nav_msgs/Odometry<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
+        input_001["/molit/localization/status<br/>설명: 위치추정 모드·품질·유효성<br/>메시지: common_msgs_pkg/LocalizationStatus<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
         input_002["/molit/planning/trajectory<br/>설명: 차량이 따라갈 시간 포함 실행 가능 지역 궤적<br/>메시지: common_msgs_pkg/Trajectory<br/>상태: 설계 예약·미구현"]
         input_003["/molit/planning/status<br/>설명: 입력 신선도·계획 가능 여부·궤적 유효성<br/>메시지: common_msgs_pkg/ComponentStatus<br/>상태: 설계 예약·미구현"]
     end
@@ -30,8 +30,8 @@ flowchart LR
     local_node_000 --> output_001
 
     class local_node_000 reservedNode;
-    class input_000 reservedTopic;
-    class input_001 reservedTopic;
+    class input_000 liveTopic;
+    class input_001 liveTopic;
     class input_002 reservedTopic;
     class input_003 reservedTopic;
     class output_000 reservedTopic;

@@ -27,8 +27,10 @@ fresh Local Odometry와 승인된 uncertainty 범위 안의 Localization quality
 마지막 GPS fix를 현재 위치 정답처럼 재사용하지 않는다. 구체 required 채널 집합과
 uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별도로 승인한다.
 
-현재 launch 파일과 `system_readiness_node` 구현은 아직 비어 있다. 공개 이름은
-승인됐지만 모든 정적 TF 발행은 계속 잠겨 있다.
+`localization_visualization.launch`는 기존 GPS/IMU 입력을 사용하여 개발 추정기,
+중앙 계약의 GPS/IMU/LiDAR 정적 TF와 시각화를 시작한다. `visualization:=false`로 기존
+시각화 노드와의 중복을 피한다. 센서·제어 송신은 시작하지 않는다.
+`system_readiness_node`는 아직 미구현이며 주행 준비를 승인하지 않는다.
 
 ## 공개 ROS 입출력
 
@@ -73,3 +75,14 @@ uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별�
 - `docs/`: startup sequence, readiness와 운영 절차
 - `launch/`: 승인된 전체 시스템 조합
 - `src/`: 향후 readiness 보조 도구
+
+## RViz HD Map + Localization
+
+`roslaunch system_bringup_pkg localization_visualization.launch`는 기본으로 HD Map 차선(밝은 회색),
+도로 중심선(청록색)과 로컬리제이션 차량을 같은 `map` 좌표계에 표시한다. GPS/IMU 수신은 먼저 실행해야 한다.
+`show_hd_map:=false`로 지도 표시를 끌 수 있다. 지도 원본은 `hd_map_pkg`의 고정 MGeo submodule을 사용하고,
+변환 원점은 중앙 `config/tf/map_projection.yaml`에서 읽는다. 지도는 화면에서만 평면으로 투영된다.
+지도 마커는 visualization 내부 RViz 표시 전용이며 Localization의 입력이나 공개 HdMap 메시지가 아니다.
+
+RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 30 m + 북쪽 지정 경계 확장을 사용한다.
+`hd_map_pkg/config/map_conversion.yaml`의 crop 설정을 공유하고 전역경로는 초록색으로 표시한다.

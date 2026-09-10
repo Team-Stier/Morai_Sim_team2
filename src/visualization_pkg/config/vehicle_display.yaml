@@ -1,0 +1,18 @@
+# Display geometry only; never a calibration or driving collision model.
+# MORAI 24.R2 Vehicle Specification / 2023_Hyundai_Ioniq5 (also root README section 7).
+vehicle_length_m: 4.635
+vehicle_width_m: 1.892
+vehicle_height_m: 2.434
+# Rear axle reference candidate: L/2 - rear_overhang = 4.635/2 - 0.790.
+# Base-link/pivot equality and vertical box-center offset remain unverified.
+body_center_offset_m: [1.5275, 0.0, 0.0]
+body_center_offset_verified: false
+# Footprint uses real length/width at the reference pose plane; thickness is cosmetic.
+display_mode: footprint
+footprint_thickness_m: 0.06
+# These limits hide stale graphics; they do not approve localization freshness.
+display_timeout_sec: 0.5
+clock_stall_sec: 0.5
+buffer_size: 100
+# Watchdog frequency only; valid markers publish on matching localization callbacks.
+marker_publish_rate_hz: 10.0
