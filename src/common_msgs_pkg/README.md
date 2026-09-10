@@ -48,3 +48,10 @@ schema provider다.
 - `launch/`: 타입/contract 검사 실행용 placeholder
 - `src/`: 생성 타입 보조 검증 코드
 - `msg/`, `srv/`, `action/`: 중앙 승인 후에만 사용
+
+## LiDAR 검출부 개발 구현 (2026-09-10)
+
+`LidarObservationArray`, `LidarObjectObservation` 필드와 검출 노드는 개발 구현 상태다.
+기존의 "나머지 custom type 미구현" 표기에서 이 두 타입은 제외한다.
+중앙 [LiDAR 계약](../ros_architecture_pkg/docs/lidar_detection_contract.md)과
+[검출부 실행·검증](../lidar_perception_pkg/docs/legacy_port.md)을 따른다.

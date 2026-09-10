@@ -79,3 +79,14 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 - `docs/`: calibration, frame, fusion schema와 평가 근거
 - `launch/`: World Model 단독 실행
 - `src/`: temporal buffer, transform, fusion과 tracking 구현
+
+## LiDAR 검출부 개발 구현 (2026-09-10)
+
+`LidarObservationArray`, `LidarObjectObservation` 필드와 검출 노드는 개발 구현 상태다.
+기존의 "나머지 custom type 미구현" 표기에서 이 두 타입은 제외한다.
+중앙 [LiDAR 계약](../ros_architecture_pkg/docs/lidar_detection_contract.md)과
+[검출부 실행·검증](../lidar_perception_pkg/docs/legacy_port.md)을 따른다.
+소비자는 `common_msgs_pkg.lidar_validation.validate_lidar(..., for_fusion=True)`로
+유효성을 검사하고 원본 stamp의 pose·calibration·freshness를 검증해야 한다.
+현재 관측은 보정/시각 검증 전이므로 planner-ready scene 입력으로 거부한다.
+World Model 런타임 자체는 이번 변경에서 구현하지 않았다.

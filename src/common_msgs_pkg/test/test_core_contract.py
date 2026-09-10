@@ -51,7 +51,8 @@ class CoreContractTest(unittest.TestCase):
     def test_build_dependencies_and_exact_message_set(self):
         cmake = (PACKAGE / 'CMakeLists.txt').read_text()
         names = set(re.findall(r'\b\w+\.msg\b', cmake))
-        self.assertEqual(names, {'ComponentStatus.msg', 'EgoState.msg', 'LocalizationStatus.msg'})
+        self.assertEqual(names, {'ComponentStatus.msg', 'EgoState.msg', 'LocalizationStatus.msg',
+                                 'LidarObjectObservation.msg', 'LidarObservationArray.msg'})
         manifest = ET.parse(PACKAGE / 'package.xml').getroot()
         self.assertIn('message_generation', [e.text for e in manifest.findall('build_depend')])
         self.assertIn('message_runtime', [e.text for e in manifest.findall('exec_depend')])

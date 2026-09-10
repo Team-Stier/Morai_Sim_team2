@@ -444,3 +444,9 @@ Timestamp의 기준은 센서 또는 상태가 실제로 유효한 **측정시�
 브리지와 통합 launch까지 구현됐지만 현재 대회 시뮬레이터에서 재검증해야 한다.
 나머지 골격, 예약 custom type과 `runtime_activation_allowed: false` 채널은
 실제 주행 기능이 구현·검증됐다는 뜻이 아니다.
+
+## LiDAR 검출부 개발 구현 (2026-09-10)
+
+기존 ROI·VoxelGrid·DBSCAN 검출부와 LiDAR 관측 메시지를 작업 브랜치에 구현했다.
+LiDAR live 검증과 World Model 런타임은 미완료다. 자세한 범위와 실행법은
+[src/lidar_perception_pkg/docs/legacy_port.md](src/lidar_perception_pkg/docs/legacy_port.md)를 따른다.

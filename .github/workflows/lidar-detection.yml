@@ -1,0 +1,28 @@
+name: LiDAR detection Noetic
+on:
+  push:
+    branches: ['feature/public-interface-contract-lidar-detection']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  noetic:
+    runs-on: ubuntu-latest
+    container: ros:noetic-ros-base-focal
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install test dependencies
+        run: |
+          apt-get update
+          apt-get install -y ros-noetic-pcl-ros ros-noetic-rostest python3-nose python3-yaml
+      - name: Build, test and install LiDAR dependencies
+        shell: bash
+        run: |
+          source /opt/ros/noetic/setup.bash
+          export PYTHONNOUSERSITE=1
+          catkin_make -j2 -DPYTHON_EXECUTABLE=/usr/bin/python3 -DCATKIN_WHITELIST_PACKAGES='ros_architecture_pkg;common_msgs_pkg;lidar_perception_pkg'
+          source devel/setup.bash
+          python3 src/ros_architecture_pkg/scripts/generate_interface_diagrams.py --check
+          catkin_make -j2 run_tests
+          catkin_test_results --all build/test_results
+          catkin_make -j2 install -DPYTHON_EXECUTABLE=/usr/bin/python3

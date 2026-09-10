@@ -26,7 +26,7 @@
 
 ## 공개 ROS 입출력
 
-현재 상태는 **이름 승인, 구현 예약**이다. 공개 경계 노드는
+현재 상태는 **기존 객체 검출부 개발 구현, ROS/MORAI 실행 검증 대기**다. 공개 경계 노드는
 `lidar_perception_node`다.
 
 ![LiDAR Perception 공개 입출력](docs/interface_io.svg)
@@ -43,9 +43,11 @@
 | 출력 | `/molit/perception/lidar/observations` | `common_msgs_pkg/LidarObservationArray` |
 | 출력 | `/molit/perception/lidar/status` | `common_msgs_pkg/ComponentStatus` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`와
+`LidarObservationArray`, `LidarObjectObservation` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+이 패키지의 ROI·VoxelGrid·DBSCAN 노드는 구현됐으며 지면·빈 공간·속도 추정은
+이번 객체 검출 범위에 포함하지 않는다. downstream 런타임은 아직 미구현이다.
 
 오래된 장애물을 현재 관측처럼 유지하지 않고, sparse VLP16 환경에서의 miss와 uncertainty를 명시한다.
 
@@ -64,3 +66,10 @@ LiDAR frame과 후보 장착 위치는 중앙 [`TF 계약`](../ros_architecture_
 - `docs/`: calibration, 데이터 특성, 알고리즘과 평가 근거
 - `launch/`: LiDAR Perception 단독 실행
 - `src/`: point cloud 처리와 observation 생성 구현
+
+## LiDAR 검출부 개발 구현 (2026-09-10)
+
+`LidarObservationArray`, `LidarObjectObservation` 필드와 검출 노드는 개발 구현 상태다.
+기존의 "나머지 custom type 미구현" 표기에서 이 두 타입은 제외한다.
+중앙 [LiDAR 계약](../ros_architecture_pkg/docs/lidar_detection_contract.md)과
+[검출부 실행·검증](../lidar_perception_pkg/docs/legacy_port.md)을 따른다.

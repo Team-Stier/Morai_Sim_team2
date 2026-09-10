@@ -116,3 +116,10 @@ SVG가 보존한다. 회색/점선은 이름만 예약된 경계이며 현재 �
   - `docs/timestamp/`: live/replay timestamp 운용 방법
 - `launch/`: 이 패키지만 독립 확인할 때 사용하는 launch. 전체 시스템 bringup은 `system_bringup_pkg`가 소유
 - `src/`: 향후 계약 검사 도구만 허용. 기능 알고리즘은 두지 않음
+
+## LiDAR 검출부 개발 구현 (2026-09-10)
+
+`LidarObservationArray`, `LidarObjectObservation` 필드와 검출 노드는 개발 구현 상태다.
+기존의 "나머지 custom type 미구현" 표기에서 이 두 타입은 제외한다.
+중앙 [LiDAR 계약](../ros_architecture_pkg/docs/lidar_detection_contract.md)과
+[검출부 실행·검증](../lidar_perception_pkg/docs/legacy_port.md)을 따른다.

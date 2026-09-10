@@ -1,0 +1,4 @@
+# Development diagnostics only; not a measured driving freshness threshold.
+# Mirrors the existing LiDAR transport watchdog. Runtime readiness remains false.
+development_watchdog_sec: 1.0
+calibration_id: "saved-profile-sha256:8c87ab955ecf32b86a8f1469017f6980c472f1b46e6d17f959a15ae2fc11fdf7"

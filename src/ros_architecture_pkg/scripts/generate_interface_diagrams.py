@@ -2119,20 +2119,20 @@ def build_render_manifest(documents, repository_root):
                 )
         artifacts.append(
             {
-                "source": str(source_path.relative_to(repository_root)),
+                "source": source_path.relative_to(repository_root).as_posix(),
                 "source_sha256": _file_sha256(source_path),
-                "svg": str(svg_path.relative_to(repository_root)),
+                "svg": svg_path.relative_to(repository_root).as_posix(),
                 "svg_sha256": _file_sha256(svg_path),
-                "png": str(png_path.relative_to(repository_root)),
+                "png": png_path.relative_to(repository_root).as_posix(),
                 "png_sha256": _file_sha256(png_path),
             }
         )
     return {
         "schema_version": 1,
         "renderer": "@mermaid-js/mermaid-cli@{}".format(MERMAID_CLI_VERSION),
-        "source_of_truth": str(contract_path.relative_to(repository_root)),
+        "source_of_truth": contract_path.relative_to(repository_root).as_posix(),
         "source_of_truth_sha256": _file_sha256(contract_path),
-        "renderer_config": str(renderer_config_path.relative_to(repository_root)),
+        "renderer_config": renderer_config_path.relative_to(repository_root).as_posix(),
         "renderer_config_sha256": _file_sha256(renderer_config_path),
         "artifacts": artifacts,
     }
@@ -2180,7 +2180,8 @@ def _write_render_manifest(documents, repository_root):
         / "docs"
         / "interface_diagram_manifest.json"
     )
-    manifest_path.write_text(_manifest_text(manifest), encoding="utf-8")
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as stream:
+        stream.write(_manifest_text(manifest))
     print("wrote {}".format(manifest_path.relative_to(repository_root)))
 
 

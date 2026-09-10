@@ -1,0 +1,37 @@
+schema_version: 1
+contract_version: 0.1.0
+authority: ros_architecture_pkg
+implementation_owner: common_msgs_pkg
+status: development_not_runtime_verified
+messages:
+  LidarObjectObservation:
+    wire_definition: |
+      # Authority: ros_architecture_pkg/config/messages/lidar_messages.yaml
+      # Local to this scan; never a persistent tracking ID.
+      uint32 scan_local_id
+      # Axis-aligned bounding box in the array header frame, metres.
+      geometry_msgs/Point center
+      geometry_msgs/Vector3 size
+      # Points after ROI and VoxelGrid, not raw returns.
+      uint32 point_count
+      # -1 = uncalibrated; otherwise a calibrated probability in [0,1].
+      float32 confidence
+  LidarObservationArray:
+    wire_definition: |
+      # Authority: ros_architecture_pkg/config/messages/lidar_messages.yaml
+      # Original input scan stamp; frame_id = lidar_link.
+      std_msgs/Header header
+      string calibration_id
+      bool calibration_verified
+      string timestamp_provenance
+      bool freshness_verified
+      # Successful geometry extraction; does not mean safe or complete free space.
+      bool objects_valid
+      common_msgs_pkg/LidarObjectObservation[] objects
+      # Capabilities absent from this object-only baseline must remain false.
+      bool ground_valid
+      bool free_space_valid
+      bool occupancy_valid
+      bool velocity_valid
+runtime_policy: lidar_runtime.yaml
+semantics: ../../docs/lidar_detection_contract.md
