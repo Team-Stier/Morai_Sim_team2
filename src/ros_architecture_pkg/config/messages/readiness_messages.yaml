@@ -1,0 +1,102 @@
+schema_version: 1
+contract_version: 0.1.0
+authority: ros_architecture_pkg
+implementation_owner: common_msgs_pkg
+status: candidate_schema_implemented_pending_runtime_validation
+
+rules:
+  - Readiness messages report health and availability only; they never authorize actuation.
+  - Header stamps use the active canonical ROS clock and frame_id remains empty.
+  - Zero data stamps mean unavailable data, never fresh data.
+  - Negative ages are reserved for unavailable values; future stamps are invalid.
+  - A ready component may be READY or DEGRADED only when ready=true and stop_required=false.
+  - SystemReadiness covers upstream dependencies only; safety_supervisor_node remains the final driving authority.
+  - Missing, stale and fault masks are evaluated only against required_mask when deciding ready.
+  - Development watchdog thresholds are runtime-profile parameters and are not competition-approved timing limits.
+
+messages:
+  InterfaceStatus:
+    wire_definition: |
+      # Schema authority: ros_architecture_pkg/config/messages/readiness_messages.yaml
+      uint8 UNKNOWN=0
+      uint8 INITIALIZING=1
+      uint8 READY=2
+      uint8 DEGRADED=3
+      uint8 FAULT=4
+      uint8 DISABLED=5
+      # Evaluation time in the active canonical clock; frame_id is empty.
+      std_msgs/Header header
+      uint8 state
+      # Interface readiness only, never permission to actuate.
+      bool ready
+      bool stop_required
+      # Bitmasks are defined by the producing morai_interface_pkg implementation.
+      uint32 required_channel_mask
+      uint32 healthy_channel_mask
+      uint32 stale_channel_mask
+      uint32 invalid_channel_mask
+      # Latest accepted required-channel data stamp; zero means unavailable.
+      time data_stamp
+      # Worst required-channel age at header.stamp; -1 means unavailable.
+      float64 data_age_sec
+      uint64 received_count
+      uint64 dropped_count
+      uint64 invalid_count
+      string reason
+  ControllerStatus:
+    wire_definition: |
+      # Schema authority: ros_architecture_pkg/config/messages/readiness_messages.yaml
+      uint8 UNKNOWN=0
+      uint8 INITIALIZING=1
+      uint8 READY=2
+      uint8 DEGRADED=3
+      uint8 FAULT=4
+      uint8 DISABLED=5
+      # Evaluation time in the active canonical clock; frame_id is empty.
+      std_msgs/Header header
+      uint8 state
+      # Controller readiness only, never permission to actuate.
+      bool ready
+      bool stop_required
+      bool trajectory_valid
+      bool nominal_command_valid
+      # Source stamps preserved by the controller; zero means unavailable.
+      time trajectory_stamp
+      time nominal_command_stamp
+      # Ages at header.stamp; -1 means unavailable.
+      float64 trajectory_age_sec
+      float64 nominal_command_age_sec
+      # Monotonic processing duration; -1 means unavailable.
+      float64 processing_latency_sec
+      string reason
+  SystemReadiness:
+    wire_definition: |
+      # Schema authority: ros_architecture_pkg/config/messages/readiness_messages.yaml
+      uint8 UNKNOWN=0
+      uint8 INITIALIZING=1
+      uint8 READY=2
+      uint8 DEGRADED=3
+      uint8 FAULT=4
+      # Stable component-mask bits owned by system_bringup_pkg.
+      uint32 COMPONENT_INTERFACE=1
+      uint32 COMPONENT_MAP=2
+      uint32 COMPONENT_CAMERA_PERCEPTION=4
+      uint32 COMPONENT_LIDAR_PERCEPTION=8
+      uint32 COMPONENT_LOCALIZATION=16
+      uint32 COMPONENT_ROUTE=32
+      uint32 COMPONENT_WORLD_MODEL=64
+      uint32 COMPONENT_PLANNING=128
+      uint32 COMPONENT_CONTROL=256
+      # Evaluation time in the active canonical clock; frame_id is empty.
+      std_msgs/Header header
+      uint8 state
+      # Upstream readiness only. Safety remains the final driving authority.
+      bool ready
+      uint32 required_mask
+      uint32 ready_mask
+      uint32 missing_mask
+      uint32 stale_mask
+      uint32 fault_mask
+      # Maximum nonnegative age among received required statuses; -1 means none received.
+      float64 max_status_age_sec
+      string reason
