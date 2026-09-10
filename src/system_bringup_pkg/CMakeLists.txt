@@ -42,6 +42,7 @@ if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_live_morai_sensor_ingress.py)
   catkin_add_nosetests(test/test_full_stack_launch_skeleton.py)
   catkin_add_nosetests(test/test_readiness_logic.py)
+  catkin_add_nosetests(test/test_system_readiness_contract.py)
 endif()
 
 catkin_install_python(
