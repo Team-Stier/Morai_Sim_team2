@@ -19,10 +19,10 @@ source_evidence:
       - camera_right
     verification: cameraList_matches_launcher_saved_profile
   launcher_saved_profile:
-    logical_path: "MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
-    observed_host_path: "/home/stier/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
-    sha256: 8c87ab955ecf32b86a8f1469017f6980c472f1b46e6d17f959a15ae2fc11fdf7
-    saved_at: "2026-08-05T10:49:13+09:00"
+    logical_path: "MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/team2sensor.json"
+    observed_host_path: "/home/stier/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/team2sensor.json"
+    sha256: 5f31b23c1c8ca6b1792a77a42ebe4e2c756f990a3f17d826c079d126112033c8
+    saved_at: "2026-09-10T22:21:34+09:00"
     active_loadout_verified: false
     scope:
       - camera_front
@@ -124,8 +124,7 @@ sensor_mounts:
     raw_identifiers:
       sensor_unique_id: 6
       target_unique_id: 0
-      source_frame_id: Lidar3D-4
-    identifier_warning: sensor_unique_id_and_source_frame_suffix_are_not_equivalent
+      source_frame_id: Lidar3D-6
     source_evidence: launcher_saved_profile
     source_pose:
       translation_m: [2.0, 0.0, 1.5]
@@ -148,10 +147,10 @@ sensor_mounts:
       source_frame_id: GPS-5
     source_evidence: launcher_saved_profile
     source_pose:
-      translation_m: [0.0, 0.0, 0.0]
+      translation_m: [0.0, 0.0, 1.3]
       rotation_rpy_deg: [0.0, 0.0, 0.0]
     candidate_ros_pose:
-      translation_m: [0.0, 0.0, 0.0]
+      translation_m: [0.0, 0.0, 1.3]
       rotation_rpy_rad: [0.0, 0.0, 0.0]
     configured_period_sec: 0.20000000298023224
     configured_rate_hz: 5.0
@@ -166,10 +165,10 @@ sensor_mounts:
       source_frame_id: IMU-4
     source_evidence: launcher_saved_profile
     source_pose:
-      translation_m: [3.434, -0.354, 0.602]
+      translation_m: [0.0, 0.0, 0.0]
       rotation_rpy_deg: [0.0, 0.0, 0.0]
     candidate_ros_pose:
-      translation_m: [3.434, -0.354, 0.602]
+      translation_m: [0.0, 0.0, 0.0]
       rotation_rpy_rad: [0.0, 0.0, 0.0]
     configured_period_sec: 0.019999999552965164
     configured_rate_hz: 50.0
