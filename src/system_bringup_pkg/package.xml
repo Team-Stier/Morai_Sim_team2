@@ -21,5 +21,7 @@
   <depend>vehicle_control_pkg</depend>
   <depend>world_model_pkg</depend>
 
+  <test_depend>python3-yaml</test_depend>
+
   <export />
 </package>
