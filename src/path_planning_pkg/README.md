@@ -61,8 +61,10 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 누락·stale하거나 clock domain이 다르면 이를 숨기거나 직전 scene을 현재
 관측처럼 재사용하지 않고 planning status에 명시한다.
 
-Trajectory의 공개 frame은 제어 연속성을 위해 `odom`으로 고정한다. 공유 custom
-type은 이름만 예약된 상태다. v1에서 이 패키지가 생성하는 주행
+Trajectory의 공개 frame은 제어 연속성을 위해 `odom`으로 고정한다.
+`ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마는 구현됐으며
+[기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
+나머지 custom type과 노드는 미구현이다. v1에서 이 패키지가 생성하는 주행
 출력은 `/molit/planning/trajectory`뿐이며 직접 accel/brake/steer 또는
 UDP 출력은 금지한다.
 

@@ -47,7 +47,9 @@
 | 출력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` |
 | 출력 | `/molit/route/status` | `common_msgs_pkg/ComponentStatus` |
 
-공유 custom type은 이름만 예약됐고 실제 `.msg` schema는 아직 구현되지 않았다.
+공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
+나머지 custom type과 런타임 노드는 아직 미구현이다.
 
 ## 통합 전 자체 확인
 

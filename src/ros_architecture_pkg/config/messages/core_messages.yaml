@@ -1,0 +1,126 @@
+schema_version: 1
+contract_version: 0.1.0
+authority: ros_architecture_pkg
+implementation_owner: common_msgs_pkg
+runtime_nodes_implemented: false
+regulation_source:
+  url: https://morai.atlassian.net/wiki/external/YTRiNWMwZTNjODc3NDBkYzgxMTMzOWMwMWY3YWRkZDc
+  evidence: user_supplied_regulation_excerpt_2026_09_10
+  live_page_verified_in_this_change: false
+  gps_imu_artificial_noise_applied_2026: false
+  gps_blackout_still_required: true
+  competition_vehicle_status_missing:
+    - pos_x
+    - pos_y
+    - pos_z
+    - vel_y
+    - vel_z
+    - accel_x
+    - accel_y
+    - accel_z
+    - tire_lateral_force_fr_to_rr
+    - side_slip_angle_fl_to_rr
+    - tire_cornering_stiffnesss_fl_to_rr
+rules:
+  - Field masks describe estimated validity, never availability of raw UDP fields.
+  - ComponentStatus component must equal the central topic owner package; nonempty text alone is insufficient for consumers.
+  - Missing Competition fields must not become zero-valued observations.
+  - No acceleration or tire-dynamics fields are introduced in these three messages.
+  - Standard Twist ingress remains disabled until component availability and packet layout are approved.
+  - Pose and twist use the same estimate validity time; pure adapters preserve the source stamp.
+  - Valid covariance subspaces must be finite symmetric positive semidefinite.
+  - Invalid components are ignored including their covariance rows and columns.
+  - Two-dimensional models may use placeholders for z roll pitch but must leave their validity false.
+  - Noise not being injected does not imply zero estimation uncertainty.
+  - Status publication time does not refresh data stamps or stale latched status.
+  - UNKNOWN INITIALIZING FAULT and DISABLED ComponentStatus cannot be ready.
+  - ComponentStatus ready also requires stop_required false and nonzero data_stamp.
+  - Negative ages are permitted only as the unavailable sentinel -1; future data is rejected.
+  - GPS blackout alone does not imply LOST or stop_required when local estimation remains usable.
+  - UNINITIALIZED INITIALIZING and LOST localization require stop_required and invalid map/local flags.
+  - TRACKING requires gps_fix_valid; DEAD_RECKONING requires gps_fix_valid false and valid local odometry.
+  - A valid map pose needs x y yaw estimates and their uncertainty; map_position_stddev_m is sqrt(var_x + var_y).
+  - local_position_stddev_m is sqrt(local_var_x + local_var_y); yaw_stddev_rad is the local yaw standard deviation.
+  - Valid local odometry requires its stamp and finite nonnegative local position and yaw uncertainty.
+  - gps_fix_valid requires finite nonnegative gps_age_sec; stale or rejected fixes cannot set it true.
+  - Consumers reject zero future regressing or stale headers using measured profile thresholds.
+  - Consumers compare reset_id and data stamps before combining EgoState LocalizationStatus and local odometry.
+  - The reset epoch starts at zero and changes on resets; process restarts and clock resets also clear consumer caches.
+  - Status reason is diagnostic text and never a machine control enum.
+  - Component counters reset on process restart; counter decreases do not represent negative events.
+  - Static map load time is not a live sensor freshness timer; evaluate immutable identity and status heartbeat.
+  - Header seq is transport metadata, not a persistent sample identity.
+messages:
+  ComponentStatus:
+    wire_definition: |
+      # Schema authority: ros_architecture_pkg/config/messages/core_messages.yaml
+      uint8 UNKNOWN=0
+      uint8 INITIALIZING=1
+      uint8 READY=2
+      uint8 DEGRADED=3
+      uint8 FAULT=4
+      uint8 DISABLED=5
+      # Evaluation time in the active canonical clock; frame_id is empty.
+      std_msgs/Header header
+      string component
+      uint8 state
+      # Component readiness only, never permission to actuate.
+      bool ready
+      bool stop_required
+      # Latest evaluated data stamp; zero means no data. Static data uses load time.
+      time data_stamp
+      # Seconds at header.stamp; -1 means unavailable, not zero-age.
+      float64 data_age_sec
+      # Processing duration from a monotonic clock; -1 means unavailable.
+      float64 processing_latency_sec
+      # Counters since process startup, not necessarily network packet counters.
+      uint64 processed_count
+      uint64 dropped_count
+      uint64 invalid_count
+      # Human-readable detail; consumers must use state/ready/stop_required.
+      string reason
+  EgoState:
+    wire_definition: |
+      # Schema authority: ros_architecture_pkg/config/messages/core_messages.yaml
+      # Estimated state, NEVER a Competition Vehicle Status ground-truth pose.
+      # Estimate validity time; frame_id must be map.
+      std_msgs/Header header
+      # Pose refers to base_link; twist is expressed in base_link.
+      string child_frame_id
+      geometry_msgs/PoseWithCovariance pose
+      geometry_msgs/TwistWithCovariance twist
+      # Valid estimated components [x,y,z,roll,pitch,yaw], NOT sensor availability.
+      bool[6] pose_valid
+      # Valid estimated components [vx,vy,vz,wx,wy,wz], NOT raw measurements.
+      bool[6] twist_valid
+      # Changes on localization discontinuity/reset; consumers flush temporal buffers.
+      uint32 reset_id
+  LocalizationStatus:
+    wire_definition: |
+      # Schema authority: ros_architecture_pkg/config/messages/core_messages.yaml
+      uint8 UNINITIALIZED=0
+      uint8 INITIALIZING=1
+      uint8 TRACKING=2
+      uint8 DEAD_RECKONING=3
+      uint8 RELOCALIZING=4
+      uint8 LOST=5
+      # Evaluation time; frame_id is empty.
+      std_msgs/Header header
+      uint8 mode
+      # GPS availability is separate from map/local estimate quality.
+      bool gps_fix_valid
+      bool map_pose_valid
+      bool local_odometry_valid
+      bool stop_required
+      # Stamps of the evaluated map and local estimates; zero means absent.
+      time ego_state_stamp
+      time local_odometry_stamp
+      # Same reset epoch as EgoState.
+      uint32 reset_id
+      # Age of most recent accepted GPS fix at header.stamp; -1 means never accepted.
+      float64 gps_age_sec
+      # Modelled uncertainty, NOT simulator noise settings; -1 means unavailable.
+      float64 map_position_stddev_m
+      float64 local_position_stddev_m
+      float64 yaw_stddev_rad
+      string reason

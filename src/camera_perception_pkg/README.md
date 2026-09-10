@@ -46,8 +46,8 @@
 | 출력 | `/molit/perception/camera/right/observations` | `common_msgs_pkg/CameraObservationArray` |
 | 출력 | `/molit/perception/camera/status` | `common_msgs_pkg/ComponentStatus` |
 
-`CameraObservationArray`와 `ComponentStatus`는 이름만 예약됐고 실제 `.msg`
-schema는 아직 구현되지 않았다.
+`ComponentStatus` 스키마만 구현됐고 `CameraObservationArray`와 노드는 미구현이다.
+[기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 
 World Model이 관측 시각의 pose를 사용해 좌표를 통합하므로 이 패키지는 최신 Localization pose로 검출 결과를 임의 투영하지 않는다.
 

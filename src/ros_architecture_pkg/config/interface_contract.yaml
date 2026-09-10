@@ -77,6 +77,9 @@ runtime_readiness_policy:
     last_gps_fix_must_not_be_reused_as_current_position_truth: true
 
 contract_modules:
+  core_messages:
+    path: messages/core_messages.yaml
+    required_contract_version: 0.1.0
   package_registry:
     path: package_registry.yaml
     required_contract_version: 0.1.0
@@ -455,7 +458,7 @@ topics:
     owner_package: hd_map_pkg
     producers: [hd_map_server_node]
     consumers: [localization_node, global_route_manager_node, world_model_node, system_readiness_node, safety_supervisor_node]
-    status: reserved_type_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: Loaded map version hash frame and validation state
     diagram_description_ko: 지도 버전·해시·좌표계·검증 상태
@@ -519,7 +522,7 @@ topics:
     owner_package: camera_perception_pkg
     producers: [camera_perception_node]
     consumers: [world_model_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: Camera input freshness inference health and observation validity
     diagram_description_ko: 영상 신선도·처리 상태·관측 유효성
@@ -551,7 +554,7 @@ topics:
     owner_package: lidar_perception_pkg
     producers: [lidar_perception_node]
     consumers: [world_model_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: LiDAR input freshness processing health and observation validity
     diagram_description_ko: 점군 신선도·처리 상태·관측 유효성
@@ -584,7 +587,7 @@ topics:
     owner_package: localization_pkg
     producers: [localization_node]
     consumers: [global_route_manager_node, world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: Best map-referenced ego pose motion uncertainty and validity
     diagram_description_ko: 지도 기준 차량 자세·움직임·불확실성
@@ -601,7 +604,7 @@ topics:
     owner_package: localization_pkg
     producers: [localization_node]
     consumers: [global_route_manager_node, world_model_node, path_planner_node, vehicle_controller_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: Localization mode including nominal dead-reckoning degraded and lost
     diagram_description_ko: 위치추정 모드·품질·유효성
@@ -649,7 +652,7 @@ topics:
     owner_package: global_route_manager_pkg
     producers: [global_route_manager_node]
     consumers: [world_model_node, path_planner_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: Route hash order progress and context generation health
     diagram_description_ko: 경로 해시·순서·진행도 계산 상태
@@ -681,7 +684,7 @@ topics:
     owner_package: world_model_pkg
     producers: [world_model_node]
     consumers: [path_planner_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: Fusion freshness transform availability and scene validity
     diagram_description_ko: 융합 신선도·TF 사용 가능 여부·장면 유효성
@@ -713,7 +716,7 @@ topics:
     owner_package: path_planning_pkg
     producers: [path_planner_node]
     consumers: [vehicle_controller_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: Planner input freshness replanning state computation latency readiness and trajectory validity
     diagram_description_ko: 입력 신선도·계획 가능 여부·궤적 유효성
@@ -847,7 +850,8 @@ messages:
   - type: nav_msgs/Path
     status: approved_standard_type_name_runtime_not_implemented
   - type: common_msgs_pkg/ComponentStatus
-    status: type_name_reserved_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
+    schema: messages/core_messages.yaml#ComponentStatus
   - type: common_msgs_pkg/CameraObservationArray
     status: type_name_reserved_schema_not_implemented
   - type: common_msgs_pkg/LidarObservationArray
@@ -855,9 +859,11 @@ messages:
   - type: common_msgs_pkg/HdMap
     status: type_name_reserved_schema_not_implemented
   - type: common_msgs_pkg/EgoState
-    status: type_name_reserved_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
+    schema: messages/core_messages.yaml#EgoState
   - type: common_msgs_pkg/LocalizationStatus
-    status: type_name_reserved_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
+    schema: messages/core_messages.yaml#LocalizationStatus
   - type: common_msgs_pkg/RouteContext
     status: type_name_reserved_schema_not_implemented
   - type: common_msgs_pkg/WorldModel
