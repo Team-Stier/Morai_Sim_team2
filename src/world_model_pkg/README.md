@@ -60,7 +60,9 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 | 출력 | `/molit/world_model/scene` | `common_msgs_pkg/WorldModel` |
 | 출력 | `/molit/world_model/status` | `common_msgs_pkg/ComponentStatus` |
 
-공유 custom type은 이름만 예약됐고 실제 `.msg` schema는 아직 구현되지 않았다.
+공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
+나머지 custom type과 런타임 노드는 아직 미구현이다.
 
 좌표 변환에는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)에서 승인된 frame과 extrinsic만 사용한다. 시간 정렬에는 중앙 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)을 적용하고, 각 관측의 source stamp를 fusion publication time으로 교체하지 않는다.
 

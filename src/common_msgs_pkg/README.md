@@ -28,10 +28,11 @@ schema provider다.
 
 **공개 node (exact):** 없음
 
-중앙 계약에는 `ComponentStatus`, `CameraObservationArray`, `EgoState`,
-`WorldModel`, `Trajectory`, `ActuatorCommand` 등 custom type 이름이 예약됐다.
-현재 실제 `.msg` schema와 message generation 설정은 아직 구현되지 않았으므로
-사용 가능한 타입이라고 주장하면 안 된다.
+`ComponentStatus`, `EgoState`, `LocalizationStatus`의 `.msg`, catkin 메시지 생성
+설정과 순수 검증 함수를 구현했다. 나머지 타입과 런타임 노드는 미구현이다.
+필드의 원본은 중앙 `config/messages/core_messages.yaml`이며
+[필드·이식·테스트 지침](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
+검증 함수는 자동으로 callback에 적용되지 않으며 추정기나 Safety 구현을 대신하지 않는다.
 
 ## 통합 전 자체 확인
 

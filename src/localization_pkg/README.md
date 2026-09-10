@@ -8,7 +8,7 @@
 
 - GPS, IMU와 Competition Vehicle Status 기반 ego motion/pose 추정
 - 승인된 HD Map landmark 및 필요 시 LiDAR map matching 제약 융합
-- GPS 정상·noise·blackout·recovery 상태 전이
+- GPS 정상·blackout·recovery 상태 전이 및 추정 불확실성 관리
 - smooth local motion과 globally referenced pose 관계 유지
 - pose history, velocity, covariance, freshness와 localization quality 제공
 
@@ -20,7 +20,7 @@
 
 ## 대회 규정상 유의사항
 
-- GPS는 최대 1대·30 Hz, IMU는 최대 1대·50 Hz이며 noise 범위는 미공개다.
+- GPS는 최대 1대·30 Hz, IMU는 최대 1대·50 Hz다. 올해는 한시적으로 Noise를 인가하지 않는다(루트 README의 규정 발췌 근거 참조).
 - GPS blackout은 예외가 아니라 반드시 지원해야 하는 운용 상태다.
 - Vehicle Status에는 절대 위치와 일부 운동 상태가 제공되지 않는다.
 - blackout 중 마지막 GPS 값을 새 절대 위치처럼 계속 내보내지 않는다.
@@ -51,8 +51,14 @@
 
 `/molit/sensors/lidar/points`는 HD Map 정합을 구현할 때만 사용하며 현재 LiDAR
 transport 검증 전에는 필수 입력으로 활성화하지 않는다. `/molit/vehicle/twist`는
-Competition packet 검증 전 사용 금지이고, 공유 custom type은 이름만 예약된
-상태다.
+Competition packet 검증 전 사용 금지다. `ComponentStatus`, `EgoState`,
+`LocalizationStatus`의 스키마만 구현됐으며 노드와 나머지 타입은 미구현이다.
+
+세 타입의 필드·단위·invalid 계약과 이식 지침은
+[core messages](../ros_architecture_pkg/docs/core_messages.md)를 따른다.
+`EgoState`는 허용 센서를 이용한 추정값이지 Competition Vehicle Status의
+절대 위치가 아니다. 패킷에 없는 vel_y/vel_z 및 가속도를 0 관측으로 융합하지 않는다.
+미추정 성분은 validity mask를 false로 두고, 모델 가정과 실제 관측을 구분한다.
 
 Local Odometry는 연속 motion 추정이지 절대 Ground Truth가 아니다. World Model이 과거 관측을 정확한 시각의 pose로 변환할 수 있도록 bounded pose history를 제공해야 한다.
 

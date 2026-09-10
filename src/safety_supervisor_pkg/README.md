@@ -61,7 +61,9 @@
 | 출력 | `/molit/safety/final_command` | `common_msgs_pkg/ActuatorCommand` |
 | 출력 | `/molit/safety/state` | `common_msgs_pkg/SafetyState` |
 
-공유 custom type은 이름만 예약됐고 실제 `.msg` schema는 아직 구현되지 않았다.
+공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
+나머지 custom type과 런타임 노드는 아직 미구현이다.
 
 `/molit/system/readiness`는 Safety 이전 상류 상태이며, 최종 주행 허용 여부는
 이 노드가 `/molit/safety/state`로 발행한다. Safety가 준비되지 않았거나 필수

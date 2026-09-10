@@ -150,7 +150,10 @@ PC 제출 후에는 주석이나 파라미터를 포함한 코드 수정이 금�
 | 3D LiDAR | 최대 1 | `VLP16`, Intensity, 최대 15 Hz, 권장 10 Hz 이하, UDP |
 | Camera | 최대 4 | 최대 30 Hz, UDP, Ground Truth 없음, 2D/3D Bounding Box 해제 |
 
-GPS와 IMU에는 대회에서 noise가 인가될 수 있으며 구체적인 범위는 아직 공개되지 않았다.
+[규정] 올해 한시적으로 GPS·IMU 센서에 Noise를 인가하지 않는다.
+근거는 2026-09-10 사용자가 제공한 규정집 2-6-2 발췌이며, 이번 변경에서
+공식 웹페이지 전체를 다시 열어 확인한 것은 아니다. GPS blackout 요구는 유지된다.
+[설계] Noise 미인가는 추정 covariance가 0이거나 지연·좌표변환 오차가 없다는 뜻이 아니다.
 
 ### 변경할 수 없는 고정 카메라 3대
 
@@ -322,7 +325,8 @@ Camera/GPS transport이고, 회색·주황 점선은 이름만 예약됐거나 �
 - 등록 node: 24개(공개 경계 22개, MORAI LiDAR package-internal 2개)
 - 공개 topic: 34개, MORAI LiDAR package-internal topic 1개
 - 현재 live transport 확인: MORAI Camera 3개와 GPS
-- 이름만 예약: 기능 package node/topic과 `common_msgs_pkg` custom type
+- 스키마 구현: `ComponentStatus`, `EgoState`, `LocalizationStatus` (런타임 노드는 미구현)
+- 이름만 예약: 나머지 기능 package node/topic과 custom type
 - 비활성 또는 사용 금지: 검증 전 IMU/LiDAR와 legacy Vehicle Status
 
 각 기능 패키지는 README의 표와 `docs/interface_io.svg`에서 자신의 정확한

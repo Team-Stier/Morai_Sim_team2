@@ -23,8 +23,9 @@ TF frame 이름과 parent-child 구조, timestamp 의미는 첫 중앙 계약으
 공개 topic 34개**의 이름, owner, producer, consumer와 message type 이름을
 등록했다. 이 중 실제 runtime 구현이
 확인된 것은 MORAI Camera 3개와 GPS 수신 어댑터뿐이다. 나머지는
-`reserved_not_implemented` 또는 disabled/prohibited 상태이며, custom message는
-이름만 예약되고 `.msg` schema는 아직 구현되지 않았다. 내부 LiDAR packet topic
+`reserved_not_implemented` 또는 disabled/prohibited 상태다.
+`ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마는 구현됐으며 나머지는 예약 상태다.
+[기반 메시지 계약](docs/core_messages.md)을 따른다. 내부 LiDAR packet topic
 1개는 공개 topic 수에서 제외한다.
 
 다른 패키지를 구현하다 공개 인터페이스가 필요하면 다음 순서로 진행한다.

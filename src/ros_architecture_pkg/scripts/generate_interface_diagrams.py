@@ -306,6 +306,7 @@ def validate_contract(contract, repository_root):
 
     config_root = repository_root / "src" / "ros_architecture_pkg" / "config"
     required_module_paths = {
+        "core_messages": ("path",),
         "package_registry": ("path",),
         "tf": ("frame_contract", "sensor_extrinsics"),
         "timestamp": ("timestamp_contract",),
