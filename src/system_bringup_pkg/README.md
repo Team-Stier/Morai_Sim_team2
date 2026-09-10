@@ -125,7 +125,8 @@ roslaunch system_bringup_pkg system_bringup_pkg.launch start_system_readiness:=t
 | 입력 | `/molit/control/status` | `common_msgs_pkg/ControllerStatus` |
 | 출력 | `/molit/system/readiness` | `common_msgs_pkg/SystemReadiness` |
 
-`ComponentStatus`, `EgoState`, `LocalizationStatus`는 기존 core schema를 사용한다.
+`ComponentStatus`, `EgoState`, `LocalizationStatus`는 기존 core schema를 사용하며
+[`core_messages.md`](../ros_architecture_pkg/docs/core_messages.md)의 필드 의미와 검증 규칙을 따른다.
 `InterfaceStatus`, `ControllerStatus`, `SystemReadiness`는
 `ros_architecture_pkg/config/messages/readiness_messages.yaml`의 candidate schema로 구현했으며,
 로컬/runtime 검증 뒤 중앙 `interface_contract.yaml`의 구현 상태를 승격해야 한다.
