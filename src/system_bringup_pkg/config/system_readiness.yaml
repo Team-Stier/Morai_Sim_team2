@@ -1,0 +1,14 @@
+# Development readiness profile. Timing values are not competition-approved thresholds.
+required_components:
+  - interface
+  - map
+  - camera_perception
+  - lidar_perception
+  - localization
+  - route
+  - world_model
+  - planning
+  - control
+
+publish_rate_hz: 2.0
+status_timeout_sec: 1.5
