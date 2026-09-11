@@ -1,0 +1,22 @@
+{
+  "observations": 31,
+  "marker_arrays": 26,
+  "objects_valid": true,
+  "object_count": 0,
+  "frame": "lidar_link",
+  "stamp": 1789110195.1512065,
+  "scan_tf_available": 1,
+  "last_boxes": 0,
+  "marker_frames": [],
+  "mount": [
+    2.0,
+    0.0,
+    1.5
+  ],
+  "scope": "live read-only ROS observation after Vulkan startup; no synthetic injection",
+  "sample_duration_sec": 4,
+  "points_rate_hz_8sec_window": 8.259,
+  "transport_status": true,
+  "renderer": "Vulkan",
+  "limitation": "Latest scan had zero detected objects. Nonempty box alignment and closed-loop driving not verified."
+}

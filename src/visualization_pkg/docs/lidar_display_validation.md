@@ -56,3 +56,17 @@ Unity의 [GPU readback 지원 조회](https://docs.unity3d.com/2020.3/Documentat
 플랫폼/API 지원 여부를 별도로 제공한다. 이 문서가 MORAI의 현재 오류 원인을 확정하는 증거는 아니다.
 시뮬레이션 상태가 초기화되는 재실행은 사용자 확인을 요청한 상태다.
 실제 UDP 수신, 검출 결과, 물리 정합과 MORAI closed-loop 성공으로 보고하지 않는다.
+
+
+## 후속 실제 연결 성공 (2026-09-11 16:03 KST)
+
+센서 Host Port=2369, Destination Port=2368, IP=127.0.0.1로 정정하고
+MORAI를 `-force-vulkan`으로 실행한 뒤 사용자가 시나리오를 시작했다.
+[후속 측정](evidence/lidar_live_vulkan_20260911.json)에서 PointCloud2 약 8.259 Hz,
+transport=True, 4초간 관측 31건과 시각화 MarkerArray 26건을 확인했다.
+scan-time map ← lidar_link TF가 존재하며 장착 translation=(2,0,1.5)다.
+마지막 관측은 objects_valid=True이나 객체 0개이므로 실제 박스 정합은 미검증이다.
+현 ROI는 lidar_link 기준 x=0~8, y=-5~5, z=-0.5~1.0 m이다.
+이 결과는 UDP→PointCloud2→검출 관측→시각화 메시지 연결 성공을 뜻한다.
+주행 readiness나 검출 누락률, 물리 좌표 정확도 검증을 뜻하지 않는다.
+앞 절의 무수신 기록은 수정 전 상태이며, 시뮬레이터 재실행 대기는 해소됐다.
