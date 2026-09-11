@@ -34,7 +34,12 @@ class CoreContractTest(unittest.TestCase):
                 self.assertIn('schema', entry)
         for topic in contract['topics']:
             if topic['data_type'] in types:
-                self.assertEqual(topic['status'], 'schema_implemented_runtime_not_implemented')
+                expected = ('development_not_runtime_verified'
+                            if topic['name'] == '/molit/perception/lidar/status'
+                            else 'development_estimator_active'
+                            if topic['name'].startswith('/molit/localization/')
+                            else 'schema_implemented_runtime_not_implemented')
+                self.assertEqual(topic['status'], expected)
 
     def test_no_forbidden_raw_fields_in_ego(self):
         schema = read(CONFIG / 'messages/core_messages.yaml')
@@ -51,7 +56,8 @@ class CoreContractTest(unittest.TestCase):
     def test_build_dependencies_and_exact_message_set(self):
         cmake = (PACKAGE / 'CMakeLists.txt').read_text()
         names = set(re.findall(r'\b\w+\.msg\b', cmake))
-        self.assertEqual(names, {'ComponentStatus.msg', 'EgoState.msg', 'LocalizationStatus.msg'})
+        self.assertEqual(names, {'ComponentStatus.msg', 'EgoState.msg', 'LocalizationStatus.msg',
+                                 'LidarObjectObservation.msg', 'LidarObservationArray.msg'})
         manifest = ET.parse(PACKAGE / 'package.xml').getroot()
         self.assertIn('message_generation', [e.text for e in manifest.findall('build_depend')])
         self.assertIn('message_runtime', [e.text for e in manifest.findall('exec_depend')])
@@ -70,9 +76,13 @@ class CoreContractTest(unittest.TestCase):
                     self.assertIn('common_msgs_pkg', deps)
                     self.assertIn('core_messages.md', (package / 'README.md').read_text())
 
-    def test_tf_and_udp_gates_remain_closed(self):
+    def test_only_approved_development_tf_enabled_and_control_udp_closed(self):
         for tf in read(CONFIG / 'tf/frame_contract.yaml')['transforms']:
-            self.assertFalse(tf['publish_enabled'])
+            self.assertEqual(tf['publish_enabled'],
+                             tf['child'] in {'odom', 'base_link', 'gps_link', 'imu_link', 'lidar_link'})
+            if tf['publish_enabled']:
+                self.assertEqual(tf['activation_scope'], 'development_only')
+                self.assertFalse(tf['physical_alignment_verified'])
         channels = read(CONFIG / 'morai_interface/udp_ros_bridge.yaml')['channels']
         for name in ('control', 'collision'):
             self.assertFalse(channels[name]['runtime_activation_allowed'])

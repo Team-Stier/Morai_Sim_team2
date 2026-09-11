@@ -20,9 +20,10 @@ timestamp_source_registry:
     clock_domain: canonical_message_clock
     message_stamp_carried: true
     allowed_owner_packages: [visualization_pkg]
-    allowed_topics: [/molit/internal/visualization/vehicle_markers]
+    allowed_topics: [/molit/internal/visualization/vehicle_markers, /molit/internal/visualization/lidar_markers]
     marker_stamp_rules:
       vehicle_geometry_and_attached_labels: preserve_source_pose_estimate_valid_time
+      lidar_geometry: preserve_source_scan_measurement_stamp
       waiting_annotations_and_deletes: canonical_ros_display_evaluation_time_zero_allowed_before_clock_start
     rule: Never restamp old vehicle geometry or use display markers as localization estimates.
   morai_camera_packet_frame_time:

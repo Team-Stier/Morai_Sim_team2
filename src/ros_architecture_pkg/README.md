@@ -17,7 +17,7 @@
 
 ## 현재 상태
 
-TF frame 이름과 parent-child 구조, timestamp 의미는 첫 중앙 계약으로 승인했다. 센서 위치는 원본 근거와 ROS 변환 후보를 기록했지만 사용자 요청의 개발 범위에서 map/odom/base_link와 GPS/IMU TF만 활성화한다. 물리 정합 검증은 아직 완료되지 않았다.
+TF frame 이름과 parent-child 구조, timestamp 의미는 첫 중앙 계약으로 승인했다. 센서 위치는 원본 근거와 ROS 변환 후보를 기록했지만 사용자 요청의 개발 범위에서 map/odom/base_link와 GPS/IMU/LiDAR TF를 활성화한다. 물리 정합 검증은 아직 완료되지 않았다.
 
 공개 ROS 경계 v1.0.0으로 **공개 경계 node 23개, 내부 node 4개와
 공개 topic 34개**의 이름, owner, producer, consumer와 message type 이름을
@@ -29,9 +29,11 @@ GPS/IMU 정적 TF는 bringup이 발행한다. `stop_required=true`와 물리 정
 RViz는 같은 패키지의 내부 MarkerArray만 읽고, 유효한 추정값이 없으면 차량 대신
 대기 상태를 표시한다. 나머지는
 `reserved_not_implemented` 또는 disabled/prohibited 상태다.
-`ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마는 구현됐으며 나머지는 예약 상태다.
+`ComponentStatus`, `EgoState`, `LocalizationStatus`와 LiDAR의
+`LidarObjectObservation`, `LidarObservationArray` 스키마는 구현됐으며 나머지는 예약 상태다.
+LiDAR 검출은 개발 구현이며 [LiDAR 계약](docs/lidar_detection_contract.md)을 따른다.
 [기반 메시지 계약](docs/core_messages.md)을 따른다. 내부 LiDAR packet과
-Visualization MarkerArray topic 2개는 공개 topic 수에서 제외한다.
+Visualization MarkerArray topic은 공개 topic 수에서 제외한다.
 
 다른 패키지를 구현하다 공개 인터페이스가 필요하면 다음 순서로 진행한다.
 

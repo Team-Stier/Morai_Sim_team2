@@ -1,0 +1,8 @@
+# Development diagnostics only; not a measured driving freshness threshold.
+# Mirrors the existing LiDAR transport watchdog. Runtime readiness remains false.
+development_watchdog_sec: 1.0
+# 0 = not established; age is reported, never inferred from transport timeout.
+# No driving readiness is enabled by this diagnostic setting.
+max_scan_age_sec: 0.0
+status_period_sec: 0.5
+calibration_id: "user-confirmed-lidar-mount:2026-09-11:2.0,0.0,1.5:rpy0,0,0"

@@ -200,8 +200,8 @@ class VehicleVisualizerRuntimeTest(unittest.TestCase):
         node = "/vehicle_visualizer_node"
         emitted = {topic for topic, nodes in publishers if node in nodes}
         consumed = {topic for topic, nodes in subscribers if node in nodes and topic.startswith("/molit/")}
-        self.assertEqual(emitted, {MARKERS, "/molit/internal/visualization/hd_map_markers", "/rosout"})
-        self.assertEqual(consumed, {EGO, ODOMETRY, STATUS})
+        self.assertEqual(emitted, {MARKERS, "/molit/internal/visualization/hd_map_markers", "/molit/internal/visualization/lidar_markers", "/rosout"})
+        self.assertEqual(consumed, {EGO, ODOMETRY, STATUS, "/molit/perception/lidar/observations"})
 
     def test_missing_height_and_tilt_are_labelled_as_planar_projection(self):
         self._clock(rospy.Time.now().to_sec() + 0.1)

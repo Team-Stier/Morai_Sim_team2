@@ -68,6 +68,7 @@ EXPECTED_FINAL_COMMAND_TIMEOUT_POLICY = (
 )
 EXPECTED_TOPIC_FRAME_CONTRACT = {
     "/molit/internal/visualization/vehicle_markers": {"frame": "not_applicable"},
+    "/molit/internal/visualization/lidar_markers": {"frame": "not_applicable"},
     "/molit/sensors/camera/front/image/compressed": {"frame": "camera_front_optical_frame"},
     "/molit/sensors/camera/left/image/compressed": {"frame": "camera_left_optical_frame"},
     "/molit/sensors/camera/right/image/compressed": {"frame": "camera_right_optical_frame"},

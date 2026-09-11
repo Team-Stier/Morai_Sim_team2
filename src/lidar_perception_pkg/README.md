@@ -51,7 +51,7 @@
 
 오래된 장애물을 현재 관측처럼 유지하지 않고, sparse VLP16 환경에서의 miss와 uncertainty를 명시한다.
 
-LiDAR frame과 후보 장착 위치는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)을 따른다. Raw point 축이 REP-103으로 정규화됐는지 확인하기 전에는 TF를 발행하지 않는다. 출력 관측은 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)에 따라 원본 scan의 측정시각을 유지한다.
+LiDAR frame과 후보 장착 위치는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)을 따른다. 장착 위치 `(2.0, 0.0, 1.5) m`와 축에 대한 사용자 승인으로 개발용 TF가 활성화됐으며, 발행은 `system_bringup_pkg`가 소유한다. 물리 정합 실측 검증은 별도다. 출력 관측은 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)에 따라 원본 scan의 측정시각을 유지한다.
 
 ## 통합 전 자체 확인
 

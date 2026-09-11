@@ -35,3 +35,8 @@ TEST(Detector, InvalidParametersAndOversizedClusters) {
   EXPECT_TRUE(detect(cloud,c).boxes.empty());
   c.leaf_size=0; EXPECT_THROW(detect(cloud,c),std::invalid_argument);
 }
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

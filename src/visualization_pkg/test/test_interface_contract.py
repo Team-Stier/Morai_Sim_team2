@@ -23,7 +23,11 @@ class VisualizationContractTest(unittest.TestCase):
             "/molit/localization/status": "common_msgs_pkg/LocalizationStatus",
         }
         self.assertEqual(visualizer["public_nodes"], ["vehicle_visualizer_node"])
-        self.assertEqual(set(visualizer["inputs"]), set(expected))
+        self.assertEqual(set(visualizer["inputs"]), set(expected) | {"/molit/perception/lidar/observations"})
+        lidar = next(t for t in contract["topics"] if t["name"] == "/molit/perception/lidar/observations")
+        self.assertEqual(lidar["data_type"], "common_msgs_pkg/LidarObservationArray")
+        self.assertEqual(lidar["producers"], ["lidar_perception_node"])
+        self.assertIn("vehicle_visualizer_node", lidar["consumers"])
         self.assertEqual(visualizer["outputs"], [])
         topics = {entry["name"]: entry for entry in contract["topics"]}
         for name, data_type in expected.items():

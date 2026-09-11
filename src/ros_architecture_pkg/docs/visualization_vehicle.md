@@ -88,3 +88,20 @@ offset 변환, frame/stamp 유지, invalid·stale·reset 시 삭제와 RViz 실�
 포함한다. 합성 입력 테스트는 별도 ROS master에서 수행해야 하며 실제 센서
 master에 가짜 Localization 또는 clock을 주입하지 않는다. RViz 실행 성공과
 합성 입력 표시는 실제 시뮬레이터 Localization 정확도 검증과 구분한다.
+
+## LiDAR 표시 확장 (2026-09-11)
+
+사용자 요청에 따라 기존 `/molit/perception/lidar/observations`의 읽기 전용 consumer에
+`vehicle_visualizer_node`를 추가한다. producer는 `lidar_perception_node`, 타입은
+`common_msgs_pkg/LidarObservationArray`를 유지한다. World Model의 융합·추적 및
+Planner 입력은 변경하지 않는다. 시각화 내부 `/molit/internal/visualization/lidar_markers`
+MarkerArray는 같은 패키지 RViz만 구독한다.
+
+박스는 원본 `lidar_link`와 scan stamp를 유지하고 `frame_locked=false`로 RViz가
+측정시각 TF를 적용한다. Visualizer도 같은 시각의 TF 존재를 확인하며 latest TF로
+대체하지 않는다. TF는 중앙에서 승인한 `map → odom → base_link → lidar_link`를 사용한다.
+장착 위치 `[2.0, 0.0, 1.5] m`를 코드에 중복 적용하지 않는다.
+표시 timeout과 wall clock stall 검사는 기존 차량 표시 파라미터를 사용한다.
+invalid, stale, 미래/역행 시각, clock 정지/역행 때 박스를 삭제한다.
+미검증 calibration/freshness 관측은 분홍색 개발용 geometry로만 표시한다.
+이 표시가 World Model 입력 승인이나 장애물 검출 완전성의 증거는 아니다.

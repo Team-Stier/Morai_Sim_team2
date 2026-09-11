@@ -28,9 +28,10 @@ schema provider다.
 
 **공개 node (exact):** 없음
 
-`ComponentStatus`, `EgoState`, `LocalizationStatus`의 `.msg`, catkin 메시지 생성
-설정과 순수 검증 함수를 구현했다. 나머지 타입과 런타임 노드는 미구현이다.
-필드의 원본은 중앙 `config/messages/core_messages.yaml`이며
+`ComponentStatus`, `EgoState`, `LocalizationStatus`, `LidarObjectObservation`,
+`LidarObservationArray`의 `.msg`, catkin 메시지 생성 설정과 순수 검증 함수를 구현했다.
+나머지 타입은 미구현이며 이 패키지는 런타임 노드를 갖지 않는다.
+필드의 원본은 중앙 `config/messages/core_messages.yaml`과 `lidar_messages.yaml`이며
 [필드·이식·테스트 지침](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 검증 함수는 자동으로 callback에 적용되지 않으며 추정기나 Safety 구현을 대신하지 않는다.
 `RELOCALIZING`은 map/local pose validity=false와 `stop_required=true`를 요구한다.
@@ -50,3 +51,6 @@ schema provider다.
 - `launch/`: 타입/contract 검사 실행용 placeholder
 - `src/`: 생성 타입 보조 검증 코드
 - `msg/`, `srv/`, `action/`: 중앙 승인 후에만 사용
+
+LiDAR 관측은 [중앙 LiDAR 계약](../ros_architecture_pkg/docs/lidar_detection_contract.md)을 따른다.
+`validate_lidar(..., for_fusion=True)`는 보정·freshness 미검증 관측을 거부한다.
