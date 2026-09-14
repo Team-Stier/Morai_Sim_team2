@@ -40,6 +40,7 @@
 |---|---|---|
 | 입력 | `/molit/sensors/lidar/points` | `sensor_msgs/PointCloud2` |
 | 입력 | `/molit/sensors/lidar/status` | `std_msgs/Bool` |
+| 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
 | 출력 | `/molit/perception/lidar/observations` | `common_msgs_pkg/LidarObservationArray` |
 | 출력 | `/molit/perception/lidar/status` | `common_msgs_pkg/ComponentStatus` |
 
@@ -48,6 +49,12 @@
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 이 패키지의 ROI·VoxelGrid·DBSCAN 노드는 구현됐으며 지면·빈 공간·속도 추정은
 이번 객체 검출 범위에 포함하지 않는다. downstream 런타임은 아직 미구현이다.
+
+기본 DBSCAN 경로는 스캔 시각의 EgoState 자세로 roll/pitch를 수평화한 뒤
+ROI·VoxelGrid·군집화를 수행한다. EgoState는 자세 전처리에만 사용하며 전역
+객체 융합·추적을 수행하지 않는다. 출력 박스와 private `filtered_points`는
+원래 `lidar_link`로 역변환한다. 자세 입력이 없으면 보정 없이 진행하지 않고
+invalid 관측을 발행한다. 실행·좌표·시간 정책은 [수평화](docs/horizontalization.md)를 따른다.
 
 오래된 장애물을 현재 관측처럼 유지하지 않고, sparse VLP16 환경에서의 miss와 uncertainty를 명시한다.
 

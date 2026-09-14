@@ -1,7 +1,7 @@
 # 기존 LiDAR 검출부 이식 계약
 
 [설계] 기존 ROI → VoxelGrid → DBSCAN → 축 정렬 bounding box를 이식한다.
-공개 토픽·노드·frame은 변경하지 않는다. `messages/lidar_messages.yaml`이
+공개 출력 토픽·노드·frame은 변경하지 않는다. `messages/lidar_messages.yaml`이
 새 메시지 필드의 단일 원본이다. 생산자는 `lidar_perception_node`, 소비자는
 예약된 `world_model_node`이며 소비자 런타임 구현은 이번 범위가 아니다.
 
@@ -21,6 +21,31 @@ calibration_verified=false, freshness_verified=false인 관측은 개발 진단�
 World Model은 이 관측으로 planner-ready scene을 만들면 안 된다.
 ComponentStatus는 DEGRADED, ready=false, stop_required=true를 유지한다.
 현재 입력의 ingress_fallback 시각을 보존하며 TF는 발행하지 않는다.
+
+## Roll/pitch 수평화 입력 확장 (2026-09-14)
+
+사용자가 요청한 `horizontal_pkg/Paik` 로직 이식을 위해 DBSCAN producer의
+입력에 `/molit/localization/ego_state`를 추가한다. 구현 소유자는
+`lidar_perception_pkg`이며 용도는 스캔 시각의 roll/pitch에 의한 센서 로컬
+전처리뿐이다. World Model이 소유한 전역 좌표 객체 융합·추적·센서 동기화는
+수행하지 않는다. localization producer의 wire 형식과 주기는 그대로다.
+
+스캔 시각을 양쪽에서 감싸는 유효 자세를 SLERP하며 시간 외삽은 금지한다.
+`messages/lidar_runtime.yaml#horizontalization`의 개발 시간·큐 제한을 적용하고,
+pose_valid의 roll/pitch/yaw, frame, quaternion, 단조 시각, reset_id를 검사한다.
+초기화 경계·잘못된 자세에서는 이력을 비우고 대기 중 스캔을 무효화한다.
+자세 단절·누락·과도한 간격에서 원본 점군으로 조용히 대체하지 않는다.
+
+중앙 static `base_link → lidar_link`의 회전을 조회하여 장착각을 포함한다.
+수평화의 원점은 LiDAR이고 yaw는 유지한다. ROI 수치는 이 임시 수평 좌표에서
+적용한다. 이후 박스 8개 모서리를 역회전한 enclosing AABB와 voxel 점군을
+`lidar_link`로 반환한다. 기존 public 관측/consumer·ROS1 MD5·측정 stamp는
+변하지 않는다. 새 TF/frame/공개 점군 토픽은 발행하지 않는다. 이 변환은
+거리 노이즈 제거·지면 추정·scan 내 motion deskew가 아니다.
+
+기존 미보정 비교는 `leveling_enabled:=false`로 명시적으로 선택한다.
+사전학습 대체 backend에는 이 전처리를 적용하지 않는다. 개발 validity와
+주행 readiness는 구별하며 ready=false, stop_required=true를 유지한다.
 
 개발 중 입력 수신 감시는 기존 bridge watchdog의 1초·2Hz 계약을 사용한다.
 이는 검출 결과의 승인된 주행 freshness 임계값이 아니다. 별도 max_scan_age_sec는

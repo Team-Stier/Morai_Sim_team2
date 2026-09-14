@@ -9,6 +9,9 @@ UNKNOWN 박스다. 새 `LidarObjectObservation` 스키마로 함께 빌드해야
 `roslaunch visualization_pkg lidar_debug.launch`를 사용한다. Fixed Frame은
 승인된 `lidar_link`이며 TF를 추가 발행하지 않는다. 이 개발용 내부 표시 노드는
 기존 vehicle_visualizer_node의 LiDAR 마커와 동시에 실행하지 않는다.
+표시 노드 자체는 Localization이 필요 없지만, 기본 LiDAR DBSCAN의 수평화
+전처리는 EgoState와 중앙 sensor mount TF가 필요하다. 보정 후 관측과 점군도
+원래 `lidar_link`로 반환되므로 이 RViz 설정의 좌표계는 바꾸지 않는다.
 
 승인된 로컬리제이션 추정값을 받아 차량 크기의 사각형과 전방 화살표를 한 RViz
 화면에 표시한다. 기본은 위에서 본 footprint이며 유효한 추정값이 없으면

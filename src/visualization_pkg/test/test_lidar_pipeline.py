@@ -9,7 +9,7 @@ from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs.point_cloud2 import create_cloud_xyz32
 from std_msgs.msg import Header, Bool
-from common_msgs_pkg.msg import LidarObservationArray
+from common_msgs_pkg.msg import EgoState, LidarObservationArray
 from visualization_msgs.msg import Marker, MarkerArray
 
 
@@ -20,14 +20,28 @@ class PipelineTest(unittest.TestCase):
                 rospy.Subscriber('/molit/internal/visualization/lidar_markers', MarkerArray, markers.append)]
         points = rospy.Publisher('/molit/sensors/lidar/points', PointCloud2, queue_size=1)
         transport = rospy.Publisher('/molit/sensors/lidar/status', Bool, queue_size=1, latch=True)
+        attitude = rospy.Publisher('/molit/localization/ego_state', EgoState, queue_size=1)
         broadcaster = tf2_ros.StaticTransformBroadcaster()
+        # Leveling requires the approved sensor mount, independently of map TF.
+        mount = TransformStamped()
+        mount.header.frame_id, mount.child_frame_id = 'base_link', 'lidar_link'
+        mount.transform.translation.x, mount.transform.translation.z = 2.0, 1.5
+        mount.transform.rotation.w = 1
+        broadcaster.sendTransform(mount)
         end = time.monotonic() + 5
-        while points.get_num_connections() == 0 and time.monotonic() < end:
+        while (points.get_num_connections() == 0 or attitude.get_num_connections() == 0) and time.monotonic() < end:
             time.sleep(.02)
         self.assertGreater(points.get_num_connections(), 0)
         transport.publish(Bool(data=True))
         time.sleep(.2)
         stamp = rospy.Time.now()
+        ego = EgoState()
+        ego.header = Header(stamp=stamp, frame_id='map')
+        ego.child_frame_id = 'base_link'
+        ego.pose_valid = [True]*6
+        ego.pose.pose.orientation.z = ego.pose.pose.orientation.w = 2**-.5
+        attitude.publish(ego)
+        time.sleep(.03)
         blob = [(2+i*.05, j*.05, k*.05) for i in range(4) for j in range(4) for k in range(2)]
         points.publish(create_cloud_xyz32(Header(stamp=stamp, frame_id='lidar_link'), blob))
         end = time.monotonic()+.4
@@ -37,12 +51,7 @@ class PipelineTest(unittest.TestCase):
         self.assertTrue(observations[-1].objects_valid)
         self.assertEqual(len(observations[-1].objects), 1)
         self.assertFalse(any(m.action == Marker.ADD for a in markers for m in a.markers))
-        # Supply missing TF before the pending observation expires.
-        mount = TransformStamped()
-        mount.header.frame_id, mount.child_frame_id = 'base_link', 'lidar_link'
-        mount.header.stamp = stamp
-        mount.transform.translation.x, mount.transform.translation.z = 2.0, 1.5
-        mount.transform.rotation.w = 1
+        # Supply missing map TF before the pending observation expires.
         pose = TransformStamped()
         pose.header.frame_id, pose.child_frame_id = 'map', 'base_link'
         pose.header.stamp = stamp

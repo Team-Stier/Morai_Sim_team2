@@ -6,3 +6,11 @@ development_watchdog_sec: 1.0
 max_scan_age_sec: 0.0
 status_period_sec: 0.5
 calibration_id: "user-confirmed-lidar-mount:2026-09-11:2.0,0.0,1.5:rpy0,0,0"
+# Development scan/attitude alignment, not validated competition timing limits.
+# Source attitude is EgoState estimate_valid_time in the same live/replay clock.
+horizontalization:
+  max_gap_sec: 0.10
+  max_wait_sec: 0.25
+  history_sec: 2.0
+  attitude_wall_timeout_sec: 0.30
+  max_pending_scans: 3

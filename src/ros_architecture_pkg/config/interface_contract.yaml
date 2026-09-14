@@ -212,7 +212,7 @@ nodes:
     owner_package: lidar_perception_pkg
     executable: lidar_perception_node
     development_alternative_executables: [learned_lidar_node.py]
-    implementation_note: Mutually exclusive DBSCAN or pretrained PointPillars backend; same public node and topics, never both.
+    implementation_note: DBSCAN uses scan-time EgoState attitude for internal roll/pitch leveling and restores lidar_link outputs. Optional pretrained backend is mutually exclusive and does not use leveling.
     visibility: public_boundary
     status: development_not_runtime_verified
     diagram_description_ko: 점군에서 장애물과 지면 및 빈 공간을 추출
@@ -617,7 +617,7 @@ topics:
   - name: /molit/localization/ego_state
     owner_package: localization_pkg
     producers: [localization_node]
-    consumers: [global_route_manager_node, world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node]
+    consumers: [global_route_manager_node, world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node, lidar_perception_node]
     status: development_estimator_active
     visibility: public
     data_meaning: Best map-referenced ego pose motion uncertainty and validity
@@ -1084,6 +1084,7 @@ package_boundaries:
     inputs:
       - /molit/sensors/lidar/points
       - /molit/sensors/lidar/status
+      - /molit/localization/ego_state
     outputs:
       - /molit/perception/lidar/observations
       - /molit/perception/lidar/status
