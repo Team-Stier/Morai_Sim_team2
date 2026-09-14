@@ -8,12 +8,15 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/String.h>
 #include <tf2_ros/transform_listener.h>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 namespace {
 using Steady = std::chrono::steady_clock;
@@ -23,7 +26,7 @@ double elapsed(Steady::time_point t) {
 class Node {
   ros::NodeHandle nh_, private_{"~"};
   ros::Subscriber points_, transport_, attitude_;
-  ros::Publisher observations_, status_, debug_;
+  ros::Publisher observations_, status_, debug_, audit_;
   ros::WallTimer timer_, alignment_timer_;
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_{tf_buffer_};
@@ -252,6 +255,20 @@ class Node {
       clearDebug(message->header);
     }
     observations_.publish(output);
+    if (output.objects_valid && audit_.getNumSubscribers()>0) {
+      // Package-private diagnostic: the actual matrix used above, not an
+      // independently reconstructed attitude or a newly labelled point frame.
+      std::ostringstream json;
+      json << std::setprecision(17) << "{\"stamp_ns\":\"" << message->header.stamp.toNSec()
+           << "\",\"leveling_enabled\":" << (leveling_enabled_ ? "true" : "false")
+           << ",\"rotation\":[";
+      for (int r=0;r<3;++r) for (int c=0;c<3;++c) {
+        if (r || c) json << ',';
+        json << rotation(r,c);
+      }
+      json << "],\"processing_ms\":" << health_.processing_latency_sec*1000 << '}';
+      std_msgs::String audit; audit.data=json.str(); audit_.publish(audit);
+    }
     setStatus(health_.reason, !output.objects_valid);
   }
 public:
@@ -279,6 +296,7 @@ public:
     observations_=nh_.advertise<common_msgs_pkg::LidarObservationArray>("/molit/perception/lidar/observations",2);
     status_=nh_.advertise<common_msgs_pkg::ComponentStatus>("/molit/perception/lidar/status",1,true);
     debug_=private_.advertise<sensor_msgs::PointCloud2>("filtered_points",1);
+    audit_=private_.advertise<std_msgs::String>("horizontalization_audit",10);
     if (leveling_enabled_) {
       for (const auto& setting : {std::make_pair("max_gap_sec",&attitude_gap_),
           std::make_pair("max_wait_sec",&attitude_wait_), std::make_pair("history_sec",&attitude_history_),

@@ -25,8 +25,9 @@ if(CATKIN_ENABLE_TESTING)
   add_rostest(test/horizontalization.test)
   add_rostest(test/learned.test)
   catkin_add_nosetests(test/test_learned.py)
+  catkin_add_nosetests(test/test_horizontalization_metrics.py)
 endif()
-catkin_install_python(PROGRAMS test/test_node.py test/test_horizontalization_node.py test/test_learned_node.py src/learned_lidar_node.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+catkin_install_python(PROGRAMS test/test_node.py test/test_horizontalization_node.py test/test_learned_node.py src/learned_lidar_node.py src/measure_horizontalization.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 install(TARGETS lidar_detector lidar_perception_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

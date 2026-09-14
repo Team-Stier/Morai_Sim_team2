@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """EgoState producer -> scan-time leveling -> existing lidar_link consumer."""
 import time
+import json
 import unittest
 import numpy as np
 import rospy
 import rostest
 import tf2_ros
 from tf.transformations import quaternion_from_euler, quaternion_matrix
-from std_msgs.msg import Bool, Header
+from std_msgs.msg import Bool, Header, String
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs.point_cloud2 import create_cloud_xyz32, read_points
 from geometry_msgs.msg import TransformStamped
@@ -16,9 +17,10 @@ from common_msgs_pkg.msg import EgoState, LidarObservationArray
 
 class HorizontalizationTest(unittest.TestCase):
     def test_alignment_geometry_failure_and_reset(self):
-        outputs, filtered = [], []
+        outputs, filtered, audits = [], [], []
         obs_sub = rospy.Subscriber('/molit/perception/lidar/observations', LidarObservationArray, outputs.append)
         roi_sub = rospy.Subscriber('/lidar_perception_node/filtered_points', PointCloud2, filtered.append)
+        audit_sub = rospy.Subscriber('/lidar_perception_node/horizontalization_audit', String, lambda m: audits.append(json.loads(m.data)))
         scan_pub = rospy.Publisher('/molit/sensors/lidar/points', PointCloud2, queue_size=5)
         ego_pub = rospy.Publisher('/molit/localization/ego_state', EgoState, queue_size=10)
         transport = rospy.Publisher('/molit/sensors/lidar/status', Bool, queue_size=1, latch=True)
@@ -80,6 +82,10 @@ class HorizontalizationTest(unittest.TestCase):
         xyz=np.array(list(read_points(debug,field_names=('x','y','z'),skip_nans=True)))
         self.assertTrue(np.all(xyz[:,2]>1))
         self.assertEqual(debug.header.frame_id,'lidar_link')
+        audit=[a for a in audits if int(a['stamp_ns'])==stamp.to_nsec()][-1]
+        self.assertTrue(audit['leveling_enabled'])
+        np.testing.assert_allclose(np.array(audit['rotation']).reshape(3,3),rotation,atol=1e-12)
+        self.assertGreaterEqual(audit['processing_ms'],0)
 
         # Missing future bracket cannot reuse the latest attitude indefinitely.
         time.sleep(.1); stamp=rospy.Time.now(); scan(stamp)

@@ -55,6 +55,8 @@ ROI·VoxelGrid·군집화를 수행한다. EgoState는 자세 전처리에만 �
 객체 융합·추적을 수행하지 않는다. 출력 박스와 private `filtered_points`는
 원래 `lidar_link`로 역변환한다. 자세 입력이 없으면 보정 없이 진행하지 않고
 invalid 관측을 발행한다. 실행·좌표·시간 정책은 [수평화](docs/horizontalization.md)를 따른다.
+보정 전후 기울기·높이 편차·형상 보존·처리율은
+[수평화 정량 평가](docs/horizontalization_metrics.md)의 읽기 전용 도구로 측정한다.
 
 오래된 장애물을 현재 관측처럼 유지하지 않고, sparse VLP16 환경에서의 miss와 uncertainty를 명시한다.
 
