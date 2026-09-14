@@ -140,7 +140,7 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
         enabled = {name for name, channel in self.contract["channels"].items()
                    if channel["runtime_activation_allowed"]}
         self.assertEqual(enabled, {
-            "camera_front", "camera_left", "camera_right", "gps",
+            "camera_front", "camera_left", "camera_right", "gps", "imu",
         })
         probe_enabled = {name for name, channel in self.contract["channels"].items()
                          if channel.get("isolated_probe_activation_allowed")}

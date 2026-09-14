@@ -9,11 +9,12 @@ flowchart LR
     classDef externalEndpoint fill:#f3e8ff,color:#581c87,stroke:#9333ea,stroke-width:3px;
 
     subgraph INPUTS["입력 (구독)"]
-        input_000["/molit/localization/ego_state<br/>설명: 지도 기준 차량 자세·움직임·불확실성<br/>메시지: common_msgs_pkg/EgoState<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
-        input_001["/molit/localization/local/odometry<br/>설명: 연속적인 차량 상대 이동이며 절대 지도 위치가 아님<br/>메시지: nav_msgs/Odometry<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
-        input_002["/molit/localization/status<br/>설명: 위치추정 모드·품질·유효성<br/>메시지: common_msgs_pkg/LocalizationStatus<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
+        input_000["/molit/perception/lidar/observations<br/>설명: LiDAR 객체·장애물·지면·빈 공간 관측<br/>메시지: common_msgs_pkg/LidarObservationArray<br/>상태: 설계 예약·미구현"]
+        input_001["/molit/localization/ego_state<br/>설명: 지도 기준 차량 자세·움직임·불확실성<br/>메시지: common_msgs_pkg/EgoState<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
+        input_002["/molit/localization/local/odometry<br/>설명: 연속적인 차량 상대 이동이며 절대 지도 위치가 아님<br/>메시지: nav_msgs/Odometry<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
+        input_003["/molit/localization/status<br/>설명: 위치추정 모드·품질·유효성<br/>메시지: common_msgs_pkg/LocalizationStatus<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
     end
-    subgraph PACKAGE["패키지 처리<br/>visualization_pkg<br/>위치 추정값을 차량 크기 사각형으로 단일 RViz 화면에 표시"]
+    subgraph PACKAGE["패키지 처리<br/>visualization_pkg<br/>위치 추정 차량과 LiDAR 검출 박스를 측정시각 TF로 RViz에 표시"]
         local_node_000["vehicle_visualizer_node<br/>역할: 위치 추정값과 상태를 차량 사각형 표시로 변환<br/>실행: vehicle_visualizer_node.py<br/>상태: 시각화 개발 실행·추정 입력 대기"]
     end
     subgraph OUTPUTS["출력 (발행)"]
@@ -24,8 +25,10 @@ flowchart LR
     input_000 --> local_node_000
     input_001 --> local_node_000
     input_002 --> local_node_000
+    input_003 --> local_node_000
 
     class local_node_000 reservedNode;
-    class input_000 liveTopic;
+    class input_000 reservedTopic;
     class input_001 liveTopic;
     class input_002 liveTopic;
+    class input_003 liveTopic;

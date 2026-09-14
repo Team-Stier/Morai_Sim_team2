@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Runtime entities will be added after central contract approval. -->
+  <!-- Standalone development/replay only. Does not enable MORAI UDP or TF. -->
+  <node pkg="lidar_perception_pkg" type="lidar_perception_node"
+        name="lidar_perception_node" ns="/" output="screen">
+    <rosparam command="load" file="$(find lidar_perception_pkg)/config/detector.yaml"/>
+    <rosparam command="load" ns="contract"
+      file="$(find ros_architecture_pkg)/config/messages/lidar_runtime.yaml"/>
+  </node>
 </launch>

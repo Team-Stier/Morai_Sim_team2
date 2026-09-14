@@ -1,0 +1,45 @@
+{
+  "scope": "live MORAI read-only observation; no synthetic injection",
+  "duration_sec": 10,
+  "ros_time": 1789097943.2711136,
+  "counts": {
+    "/molit/sensors/lidar/points": 0,
+    "/molit/sensors/lidar/status": 21,
+    "/molit/perception/lidar/observations": 0,
+    "/molit/internal/visualization/lidar_markers": 0,
+    "/molit/sensors/gps/fix": 49,
+    "/molit/sensors/imu/data": 288
+  },
+  "latest": {
+    "/molit/sensors/lidar/status": {
+      "data": false
+    },
+    "/molit/sensors/imu/data": {
+      "frame": "imu_link",
+      "stamp": 1789097943.158932
+    },
+    "/molit/sensors/gps/fix": {
+      "frame": "gps_link",
+      "stamp": 1789097943.0428746
+    }
+  },
+  "observed_rate_hz": {
+    "/molit/sensors/lidar/status": 2.01899616332291,
+    "/molit/sensors/imu/data": 29.022067662384135,
+    "/molit/sensors/gps/fix": 5.029781923481071
+  },
+  "lidar_mount": {
+    "translation": [
+      2.0,
+      0.0,
+      1.5
+    ],
+    "quaternion": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "limitation": "No LiDAR scans received; simulator running -force-glcore reports unsupported asynchronous readback and failed GPU texture read. Actual detections and alignment not verified."
+}

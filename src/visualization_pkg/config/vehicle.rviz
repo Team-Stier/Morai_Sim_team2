@@ -34,6 +34,13 @@ Visualization Manager:
       Queue Size: 10
       Namespaces: {}
     - Class: rviz/MarkerArray
+      Name: LiDAR detections (development)
+      Enabled: true
+      Value: true
+      Marker Topic: /molit/internal/visualization/lidar_markers
+      Queue Size: 2
+      Namespaces: {}
+    - Class: rviz/MarkerArray
       Name: HD Map
       Enabled: true
       Value: true

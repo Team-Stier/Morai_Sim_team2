@@ -77,6 +77,9 @@ runtime_readiness_policy:
     last_gps_fix_must_not_be_reused_as_current_position_truth: true
 
 contract_modules:
+  lidar_messages:
+    path: messages/lidar_messages.yaml
+    required_contract_version: 0.1.0
   core_messages:
     path: messages/core_messages.yaml
     required_contract_version: 0.1.0
@@ -209,7 +212,7 @@ nodes:
     owner_package: lidar_perception_pkg
     executable: lidar_perception_node
     visibility: public_boundary
-    status: reserved_not_implemented
+    status: development_not_runtime_verified
     diagram_description_ko: 점군에서 장애물과 지면 및 빈 공간을 추출
   - name: localization_node
     owner_package: localization_pkg
@@ -561,8 +564,8 @@ topics:
   - name: /molit/perception/lidar/observations
     owner_package: lidar_perception_pkg
     producers: [lidar_perception_node]
-    consumers: [world_model_node]
-    status: reserved_type_schema_not_implemented
+    consumers: [world_model_node, vehicle_visualizer_node]
+    status: development_not_runtime_verified
     visibility: public
     data_meaning: Timestamped LiDAR objects obstacles ground and free-space observations
     diagram_description_ko: LiDAR 객체·장애물·지면·빈 공간 관측
@@ -578,7 +581,7 @@ topics:
     owner_package: lidar_perception_pkg
     producers: [lidar_perception_node]
     consumers: [world_model_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: schema_implemented_runtime_not_implemented
+    status: development_not_runtime_verified
     visibility: public
     data_meaning: LiDAR input freshness processing health and observation validity
     diagram_description_ko: 점군 신선도·처리 상태·관측 유효성
@@ -881,6 +884,25 @@ topics:
     timeout_sec: display_only_configurable_not_driving_freshness
     invalid_data_policy: Delete vehicle on invalid_stale_reset_or_missing_pose_and_show_waiting_annotation
 
+  - name: /molit/internal/visualization/lidar_markers
+    owner_package: visualization_pkg
+    producers: [vehicle_visualizer_node]
+    consumers: [vehicle_rviz]
+    status: development_visualization_only
+    visibility: package_internal
+    data_meaning: Read-only LiDAR object boxes; never fusion tracking or control input
+    diagram_description_ko: 측정시각 TF로 LiDAR 검출 박스 표시
+    data_type: visualization_msgs/MarkerArray
+    unit: m_rad_and_rgba
+    frame: not_applicable
+    marker_frames: [lidar_link]
+    frame_policy: Preserve lidar_link and use scan-time TF to the RViz fixed frame; never use latest TF.
+    timestamp_source: visualization_marker_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_2_latched
+    timeout_sec: display_only_configurable_not_driving_freshness
+    invalid_data_policy: Delete boxes on invalid_stale_reset_or_clock_stall; wait for scan-time TF
+
 messages:
   - type: visualization_msgs/MarkerArray
     status: approved_standard_type_visualization_only
@@ -907,8 +929,12 @@ messages:
     schema: messages/core_messages.yaml#ComponentStatus
   - type: common_msgs_pkg/CameraObservationArray
     status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/LidarObjectObservation
+    status: development_not_runtime_verified
+    schema: messages/lidar_messages.yaml#LidarObjectObservation
   - type: common_msgs_pkg/LidarObservationArray
-    status: type_name_reserved_schema_not_implemented
+    status: development_not_runtime_verified
+    schema: messages/lidar_messages.yaml#LidarObservationArray
   - type: common_msgs_pkg/HdMap
     status: type_name_reserved_schema_not_implemented
   - type: common_msgs_pkg/EgoState
@@ -1051,7 +1077,7 @@ package_boundaries:
       - /molit/perception/camera/status
   lidar_perception_pkg:
     diagram_summary_ko: LiDAR 점군에서 장애물·지면·주행 가능 영역 관측 생성
-    runtime_status: public_contract_reserved_not_implemented
+    runtime_status: development_not_runtime_verified
     public_nodes: [lidar_perception_node]
     inputs:
       - /molit/sensors/lidar/points
@@ -1205,10 +1231,11 @@ package_boundaries:
       - /molit/evaluation/metrics
 
   visualization_pkg:
-    diagram_summary_ko: 위치 추정값을 차량 크기 사각형으로 단일 RViz 화면에 표시
+    diagram_summary_ko: 위치 추정 차량과 LiDAR 검출 박스를 측정시각 TF로 RViz에 표시
     runtime_status: development_visualization_only
     public_nodes: [vehicle_visualizer_node]
     inputs:
+      - /molit/perception/lidar/observations
       - /molit/localization/ego_state
       - /molit/localization/local/odometry
       - /molit/localization/status

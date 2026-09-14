@@ -54,11 +54,14 @@ class LiveMoraiSensorIngressProfileTest(unittest.TestCase):
         for channel_name in self.profile["excluded_channels"]:
             with self.subTest(channel=channel_name):
                 self.assertIn(channel_name, self.udp_contract["channels"])
-                self.assertFalse(
-                    self.udp_contract["channels"][channel_name][
-                        "runtime_activation_allowed"
-                    ]
-                )
+                channel = self.udp_contract["channels"][channel_name]
+                if channel_name == "imu":
+                    # Excluded from phase1, but centrally approved for localization development.
+                    self.assertTrue(channel["runtime_activation_allowed"])
+                    self.assertEqual(channel["activation_scope"], "development_only")
+                    self.assertFalse(channel["autonomous_driving_ready"])
+                else:
+                    self.assertFalse(channel["runtime_activation_allowed"])
 
     def test_launch_matches_phase1_profile(self):
         use_sim_time = next(
