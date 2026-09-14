@@ -5,7 +5,7 @@
 `lidar_perception_node`는 측정시각 EgoState의 roll/pitch로 임시 수평화한 점에
 ROI → voxel → DBSCAN을 적용한다. 검출용 voxel 중심점마다 원본 입력 인덱스를
 유지하고, 채택된 군집의 원본 PointCloud2 레코드만 복사한다. 기본 ROI는
-X 0~40 m, Y -15~15 m, Z -1.5~1 m이며 임시 수평 좌표 기준이다.
+X -20~50 m, Y -15~15 m, Z -1.5~1 m이며 임시 수평 좌표 기준이다.
 
 공개 출력 `/molit/perception/lidar/cluster_points`의 이름·소유자·소비자·시각 정책은
 `ros_architecture_pkg/config/interface_contract.yaml`과 timestamp 계약이 원본이다.
@@ -30,6 +30,8 @@ ROS publisher별로 달라질 수 있는 header.seq를 측정 ID로 사용하지
 private `/molit/internal/visualization/lidar_markers`에 POINTS marker를 발행하며
 원본 XYZ, 원본 stamp/frame, identity pose, `frame_locked=false`를 사용한다.
 RViz **LiDAR raw cluster points**, Fixed Frame **map**에서 다음 변환을 적용한다.
+점 표시 크기는 `vehicle_display.yaml`의 `lidar_point_size_m: 0.18`로 설정한다.
+이 크기는 가시성 조절용이며 원본 점 좌표나 실제 장애물 크기를 바꾸지 않는다.
 
 ```text
 p_map(t) = T_map_odom(t) × T_odom_base_link(t) × T_base_link_lidar_link × p_raw
