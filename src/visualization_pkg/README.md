@@ -1,5 +1,15 @@
 # visualization_pkg
 
+LiDAR 사전학습 관측은 보행자 초록, 차량 파랑, 기타 학습 클래스 주황으로
+표시하며 원 모델 클래스와 보정되지 않은 점수를 붙인다. 기존 DBSCAN은 분홍
+UNKNOWN 박스다. 새 `LidarObjectObservation` 스키마로 함께 빌드해야 한다.
+측정시각·scan-time TF·표시 만료 검증은 동일하게 적용한다.
+
+차량 위치 추정 없이 센서 좌표에서 raw/ROI 점군과 분류 박스를 확인하려면
+`roslaunch visualization_pkg lidar_debug.launch`를 사용한다. Fixed Frame은
+승인된 `lidar_link`이며 TF를 추가 발행하지 않는다. 이 개발용 내부 표시 노드는
+기존 vehicle_visualizer_node의 LiDAR 마커와 동시에 실행하지 않는다.
+
 승인된 로컬리제이션 추정값을 받아 차량 크기의 사각형과 전방 화살표를 한 RViz
 화면에 표시한다. 기본은 위에서 본 footprint이며 유효한 추정값이 없으면
 `WAITING FOR LOCALIZATION`을 표시하고 차량 도형은 지운다.
@@ -37,6 +47,7 @@ roslaunch visualization_pkg visualization_pkg.launch
 
 | 구분 | Topic | Type |
 |---|---|---|
+| 입력 | `/molit/perception/lidar/observations` | `common_msgs_pkg/LidarObservationArray` |
 | 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
 | 입력 | `/molit/localization/local/odometry` | `nav_msgs/Odometry` |
 | 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
@@ -84,7 +95,7 @@ MORAI 제원 문서의 기준은 후륜 사이 중심이다. 이 기준과 `base
 
 `display_timeout_sec`와 `clock_stall_sec`는 그림을 지우는 표시용 제한이다.
 센서 freshness나 Localization의 주행 준비 기준을 승인하지 않는다.
-중앙 TF 계약은 개발용 GPS/IMU와 map/odom/base_link만 허용한다.
+중앙 TF 계약은 개발용 GPS/IMU/LiDAR와 map/odom/base_link를 허용한다.
 추정기가 실행되지 않으면 RViz에 frame 관련 경고가 나올 수 있다.
 선택한 Fixed Frame과 같은 frame의 마커는 표시되며, 이 경고를 없애려고 가짜 TF를
 발행하지 않는다. 다른 frame의 센서·지도 정합은 실제 TF가 검증·발행된 뒤 가능하다.
@@ -121,3 +132,16 @@ RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 
 추정값마다 원본 측정시각을 유지한 pose와 대응 status를 발행한다. 입력이 없을 때는 status heartbeat가 10 Hz로 동작한다.
 차량 마커는 exact pose/status 쌍 수신 즉시 갱신하며 별도의 10 Hz 표시 제한을 두지 않는다.
 표시 watchdog은 입력 중단·clock 이상을 계속 검사한다. RViz 렌더링 상한은 60 FPS다.
+
+## LiDAR 검출 결과
+
+RViz의 **LiDAR detections (development)**에 검출 박스를 분홍색으로 표시한다.
+`lidar_link`의 원본 scan stamp로 TF를 적용하며 장착 offset을 중복 적용하지 않는다.
+측정시각 TF가 없으면 기다리고, invalid/stale/clock 정지 때 기존 결과를 삭제한다.
+TF는 bringup과 Localization이 발행한다. 관측이 없으면 박스도 없다.
+표시 내부 토픽은 `/molit/internal/visualization/lidar_markers`이며 RViz만 사용한다.
+검출기는 `roslaunch lidar_perception_pkg lidar_perception_pkg.launch`로 실행한다.
+LiDAR UDP bridge와 watchdog은 [격리 센서 연결 절차](../lidar_perception_pkg/docs/sim_input_review.md)를 따른다.
+이들은 중앙 UDP 계약상 system bringup 자동 실행에 추가할 수 없는 수동 개발 시험 채널이다.
+
+검사 결과와 실제 MORAI 수신 한계는 [LiDAR 검증 기록](docs/lidar_display_validation.md)에 기록했다.

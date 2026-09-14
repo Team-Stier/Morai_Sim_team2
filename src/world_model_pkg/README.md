@@ -1,5 +1,9 @@
 # world_model_pkg
 
+LiDAR 객체 메시지 v0.2.0은 학습 분류와 보정되지 않은 모델 점수를 포함한다.
+새 공통 메시지로 빌드하되 `validate_lidar(..., for_fusion=True)` gate를 유지한다.
+분류값이 있어도 calibration/freshness 미검증 관측을 주행 scene으로 승격하지 않는다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.

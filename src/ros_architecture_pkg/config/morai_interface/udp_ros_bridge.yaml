@@ -293,7 +293,7 @@ channels:
 global_rules:
   - Bounding-box UDP packets are not published or used.
   - isolated_probe_activation_allowed permits only a manual sensor connectivity test and never authorizes system bringup or downstream driving use.
-  - Only centrally approved development GPS/IMU TF may publish; Camera/LiDAR TF remains disabled.
+  - Only centrally enabled TF in tf/frame_contract.yaml may publish; TF approval does not enable UDP channels.
   - Receive-time fallback is captured immediately after recvfrom, not after parsing.
   - Runtime timestamp_source values packet and receive map through runtime_timestamp_parameter_mapping and are not new central clock names.
   - No ROS-to-MORAI control sender is part of this import.

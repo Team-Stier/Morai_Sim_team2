@@ -3,10 +3,11 @@ project(lidar_perception_pkg)
 
 add_compile_options(-std=c++14 -Wall -Wextra)
 find_package(catkin REQUIRED COMPONENTS common_msgs_pkg ros_architecture_pkg
-  roscpp sensor_msgs std_msgs pcl_conversions pcl_ros)
+  roscpp rospy sensor_msgs std_msgs pcl_conversions pcl_ros)
+catkin_python_setup()
 find_package(PCL REQUIRED COMPONENTS common filters search kdtree)
 catkin_package(CATKIN_DEPENDS common_msgs_pkg ros_architecture_pkg
-  roscpp sensor_msgs std_msgs pcl_conversions pcl_ros)
+  roscpp rospy sensor_msgs std_msgs pcl_conversions pcl_ros)
 include_directories(src ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 add_library(lidar_detector src/detector.cpp)
@@ -21,8 +22,10 @@ if(CATKIN_ENABLE_TESTING)
   endif()
   find_package(rostest REQUIRED)
   add_rostest(test/detection.test)
+  add_rostest(test/learned.test)
+  catkin_add_nosetests(test/test_learned.py)
 endif()
-catkin_install_python(PROGRAMS test/test_node.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+catkin_install_python(PROGRAMS test/test_node.py test/test_learned_node.py src/learned_lidar_node.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 install(TARGETS lidar_detector lidar_perception_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

@@ -43,8 +43,8 @@ flowchart LR
     subgraph pkg_004["camera_perception_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_014["camera_perception_node<br/>exec: camera_perception_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
-    subgraph pkg_005["lidar_perception_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_015["lidar_perception_node<br/>exec: lidar_perception_node<br/>state: RESERVED (reserved_not_implemented)"]
+    subgraph pkg_005["lidar_perception_pkg<br/>runtime: development_not_runtime_verified"]
+        node_015["lidar_perception_node<br/>exec: lidar_perception_node<br/>state: RESERVED (development_not_runtime_verified)"]
     end
     subgraph pkg_006["localization_pkg<br/>runtime: development_estimator_active"]
         node_016["localization_node<br/>exec: localization_estimator_node.py<br/>state: LIVE (development_estimator_active)"]
@@ -112,6 +112,7 @@ flowchart LR
     topic_033["/molit/safety/state<br/>type: common_msgs_pkg/SafetyState<br/>state: RESERVED"]
     topic_034["/molit/evaluation/metrics<br/>type: common_msgs_pkg/RunMetrics<br/>state: RESERVED"]
     topic_035["/molit/internal/visualization/vehicle_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_036["/molit/internal/visualization/lidar_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
 
     node_000 --> topic_000
     topic_000 --> node_014
@@ -164,6 +165,7 @@ flowchart LR
     topic_016 --> node_024
     node_015 --> topic_017
     topic_017 --> node_019
+    topic_017 --> node_025
     node_015 --> topic_018
     topic_018 --> node_019
     topic_018 --> node_022
@@ -241,6 +243,8 @@ flowchart LR
     node_024 --> topic_034
     node_025 --> topic_035
     topic_035 --> node_026
+    node_025 --> topic_036
+    topic_036 --> node_026
     external_ingress --> node_000
     external_ingress --> node_001
     external_ingress --> node_002
@@ -314,3 +318,4 @@ flowchart LR
     class topic_033 reservedTopic;
     class topic_034 reservedTopic;
     class topic_035 reservedTopic;
+    class topic_036 reservedTopic;

@@ -51,7 +51,7 @@
 
 오래된 장애물을 현재 관측처럼 유지하지 않고, sparse VLP16 환경에서의 miss와 uncertainty를 명시한다.
 
-LiDAR frame과 후보 장착 위치는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)을 따른다. Raw point 축이 REP-103으로 정규화됐는지 확인하기 전에는 TF를 발행하지 않는다. 출력 관측은 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)에 따라 원본 scan의 측정시각을 유지한다.
+LiDAR frame과 후보 장착 위치는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)을 따른다. 장착 위치 `(2.0, 0.0, 1.5) m`와 축에 대한 사용자 승인으로 개발용 TF가 활성화됐으며, 발행은 `system_bringup_pkg`가 소유한다. 물리 정합 실측 검증은 별도다. 출력 관측은 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)에 따라 원본 scan의 측정시각을 유지한다.
 
 ## 통합 전 자체 확인
 
@@ -76,3 +76,14 @@ LiDAR frame과 후보 장착 위치는 중앙 [`TF 계약`](../ros_architecture_
 현재 MORAI 수신 가능 조건과 수정 내역은
 [시뮬레이터 입력 점검](docs/sim_input_review.md)에 기록한다.
 단독 검출 launch 외에 LiDAR UDP bridge와 watchdog을 별도로 실행해야 한다.
+
+## 사전학습 보행자·차량 검출
+
+`roslaunch lidar_perception_pkg learned_lidar.launch`로 공식 nuScenes
+PointPillars-MultiHead 가중치를 사용하는 대체 backend를 선택한다. 기존
+DBSCAN launch와 동시에 실행하지 않는다. 설치·클래스·ROI·오류 처리·검증
+범위는 [사전학습 모델 연결](docs/pretrained.md)을 따른다.
+
+보행자와 차량 계열을 분류하며 성별·성인 여부는 판별하지 않는다. raw XYZI만
+사용하고 scenario JSON의 정답을 읽지 않는다. 단일 VLP16 scan의 분포 차이로
+정확도는 미검증이며 주행 readiness는 계속 false다.
