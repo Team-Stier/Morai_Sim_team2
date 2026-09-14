@@ -5,7 +5,8 @@ object_detector.cpp의 ROI → VoxelGrid → DBSCAN → AABB를 재사용했다.
 dbscan.h를 가져오고 표준 헤더를 명시했으며 이미 처리한 이웃을 새 군집에
 다시 삽입하는 경로를 방지했다. 최소 이웃 수는 검색 결과의 자기 자신을 포함한다.
 
-config/detector.yaml은 cfg/config.cfg 초기값을 옮긴 개발 비교 기준이다.
+config/detector.yaml은 cfg/config.cfg 초기값을 바탕으로 한 개발 비교 기준이다.
+2026-09-14 사용자 요청으로 z_min만 -0.5 m에서 -1.5 m로 확장했다.
 minClusterSize=0은 비어 있지 않은 군집 허용이라는 같은 의미의 1로 정규화했다.
 ddd.cfg는 별도 저장 스냅샷이며 launch 참조가 확인되지 않아 기본값으로 채택하지 않았다.
 이 값은 MORAI에 최적화된 ROI/지면 높이/군집 파라미터가 아니다.
