@@ -1,0 +1,5 @@
+# Development single-scan inference. No accuracy calibration or driving readiness.
+score_threshold: 0.3
+# Monotonic receive-to-result execution budget, not a measured freshness limit.
+processing_budget_sec: 0.8
+checkpoint_sha256: 0d241edcfc089a1d1901c2747ea9cb8cb3eec80c9e86a551727ac526e063e77d

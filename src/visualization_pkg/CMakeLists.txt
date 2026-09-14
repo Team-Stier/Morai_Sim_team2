@@ -7,7 +7,7 @@ catkin_python_setup()
 catkin_package(CATKIN_DEPENDS
   hd_map_pkg ros_architecture_pkg common_msgs_pkg geometry_msgs nav_msgs rospy tf2_ros visualization_msgs)
 
-catkin_install_python(PROGRAMS src/vehicle_visualizer_node.py
+catkin_install_python(PROGRAMS src/vehicle_visualizer_node.py src/lidar_debug_display.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 if(CATKIN_ENABLE_TESTING)

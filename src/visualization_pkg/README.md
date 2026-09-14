@@ -1,5 +1,15 @@
 # visualization_pkg
 
+LiDAR 사전학습 관측은 보행자 초록, 차량 파랑, 기타 학습 클래스 주황으로
+표시하며 원 모델 클래스와 보정되지 않은 점수를 붙인다. 기존 DBSCAN은 분홍
+UNKNOWN 박스다. 새 `LidarObjectObservation` 스키마로 함께 빌드해야 한다.
+측정시각·scan-time TF·표시 만료 검증은 동일하게 적용한다.
+
+차량 위치 추정 없이 센서 좌표에서 raw/ROI 점군과 분류 박스를 확인하려면
+`roslaunch visualization_pkg lidar_debug.launch`를 사용한다. Fixed Frame은
+승인된 `lidar_link`이며 TF를 추가 발행하지 않는다. 이 개발용 내부 표시 노드는
+기존 vehicle_visualizer_node의 LiDAR 마커와 동시에 실행하지 않는다.
+
 승인된 로컬리제이션 추정값을 받아 차량 크기의 사각형과 전방 화살표를 한 RViz
 화면에 표시한다. 기본은 위에서 본 footprint이며 유효한 추정값이 없으면
 `WAITING FOR LOCALIZATION`을 표시하고 차량 도형은 지운다.

@@ -61,9 +61,23 @@ class LidarDisplay:
             marker.scale.y = max(obj.size.y, 0.03)
             marker.scale.z = max(obj.size.z, 0.03)
             marker.color.r, marker.color.g, marker.color.b, marker.color.a = 1.0, 0.3, 0.7, 0.45
+            if obj.learned_box:
+                rgb = {1: (0.2, 1.0, 0.3), 2: (0.2, 0.55, 1.0), 3: (1.0, 0.65, 0.1)}[obj.semantic_class]
+                marker.color.r, marker.color.g, marker.color.b = rgb
             marker.lifetime = rospy.Duration(self.config.display_timeout_sec)
             marker.frame_locked = False
             markers.append(marker)
+            if obj.learned_box:
+                label = copy.deepcopy(marker)
+                label.ns = 'lidar_model_labels_unverified'
+                label.type = Marker.TEXT_VIEW_FACING
+                label.pose.position.z += obj.size.z/2 + 0.3
+                label.scale.x = label.scale.y = 0
+                label.scale.z = 0.45
+                label.color.a = 1.0
+                group = {1: 'PEDESTRIAN', 2: 'VEHICLE', 3: 'OTHER'}[obj.semantic_class]
+                label.text = '{} {} {:.2f}'.format(group, obj.model_class, obj.model_score)
+                markers.append(label)
         self.publisher.publish(MarkerArray(markers=markers))
         self.shown_stamp, self.visible = msg.header.stamp, True
 

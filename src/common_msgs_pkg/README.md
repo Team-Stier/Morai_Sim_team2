@@ -1,5 +1,11 @@
 # common_msgs_pkg
 
+LiDAR 객체 스키마 v0.2.0은 보행자·차량·기타 분류와 원 모델 클래스/점수를
+포함한다. `lidar_validation.validate_lidar`가 geometry/semantic 일관성을
+검사하며, 보정되지 않은 모델 점수는 confidence로 사용하지 않는다.
+중앙 `messages/lidar_messages.yaml`과 `docs/lidar_detection_contract.md`가
+의미의 원본이다. ROS1 MD5 변경으로 producer/consumer 동시 재빌드가 필요하다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 이 패키지는
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)에
 > 이름이 예약된 공유 타입만 구현한다. 타입 이름과 field 계약을 독립 변경하지 않는다.

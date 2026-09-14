@@ -1,0 +1,10 @@
+<launch>
+  <test test-name="learned_lidar_test" pkg="lidar_perception_pkg" type="test_learned_node.py" time-limit="25">
+    <rosparam command="load" file="$(find lidar_perception_pkg)/config/detector.yaml"/>
+    <rosparam command="load" file="$(find lidar_perception_pkg)/config/learned.yaml"/>
+    <rosparam command="load" ns="contract" file="$(find ros_architecture_pkg)/config/messages/lidar_runtime.yaml"/>
+    <param name="processing_budget_sec" value="0.25"/>
+    <param name="model_repository" value="test-injected"/>
+    <param name="checkpoint" value="test-injected"/>
+  </test>
+</launch>

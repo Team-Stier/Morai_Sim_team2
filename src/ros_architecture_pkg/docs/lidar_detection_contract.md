@@ -33,3 +33,33 @@ scan과 transport 콜백은 상태를 갱신하며 오류도 다음 heartbeat에
 
 2026-09-11 시각화 확장: `vehicle_visualizer_node`가 같은 관측을 읽고
 scan-time TF로 RViz 박스를 표시한다. World Model 융합 허용 여부는 그대로 유지한다.
+
+## 사전학습 분류 확장 (2026-09-14, messages v0.2.0)
+
+사용자가 요청한 사전학습 모델 연결을 위해 객체 메시지에 `semantic_class`,
+`learned_box`, `model_class`, `model_score`를 추가한다. producer는
+`lidar_perception_node`, 현재 consumer는 `vehicle_visualizer_node`와 공통
+검증기다. 예약 consumer World Model도 새 메시지로 빌드해야 한다.
+ROS1 MD5가 변경되므로 producer/consumer를 함께 재시작한다. 토픽 이름·
+frame·단위·원 측정 stamp·개발 안전 gate는 유지한다.
+
+- `semantic_class`: UNKNOWN=0, PEDESTRIAN=1, VEHICLE=2, OTHER=3.
+  pedestrian은 나이·성별 의미가 없다. 차량은 car/truck/construction_vehicle/
+  bus/trailer이며, motorcycle/bicycle/barrier/traffic_cone는 OTHER다.
+- `learned_box=false`: 기존 DBSCAN이며 UNKNOWN, 빈 model_class,
+  model_score=0. point_count는 ROI/VoxelGrid 이후 cluster 점 개수다.
+- `learned_box=true`: 공식 nuScenes PointPillars-MultiHead의 예측 OBB를
+  완전히 포함하는 lidar_link AABB다. point_count는 OBB 내부 유한 raw XYZI
+  점 개수(>0)다. 회전 차량의 AABB size를 차체 실측 크기로 해석하지 않는다.
+- model_class는 위 10개 원 모델 클래스 중 하나이며 semantic_class와
+  일치해야 한다. model_score는 [0,1]의 보정되지 않은 모델 점수다.
+  confidence는 -1을 유지하며 점수와 혼용하지 않는다.
+- 지면·free-space·occupancy·velocity capability는 계속 false다.
+  모델 실패는 invalid empty observation 또는 시각/epoch 무효 시 status만
+  발행한다. 정상 검출 0개는 free-space 증명이 아니다.
+- standalone 대체 executable `learned_lidar_node.py`는 기존 node와 상호
+  배타적으로 실행한다. 모델 입력 전처리·임계값은 패키지 로컬 설정에 둔다.
+
+현재 consumer는 semantic fields를 검증한 뒤 진단 색상/라벨에만 사용한다.
+World Model의 for_fusion 검증은 개발 관측을 계속 거부한다. 추가 학습,
+VLP16 정확도 평가와 주행 readiness 승인은 이번 확장에서 하지 않는다.

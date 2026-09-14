@@ -6,6 +6,12 @@ Caller additionally enforces measured age, source reset and status freshness.
 import math
 from .validation import require, validate_header
 
+MODEL_CLASSES = {
+    'pedestrian': 1,
+    'car': 2, 'truck': 2, 'construction_vehicle': 2, 'bus': 2, 'trailer': 2,
+    'barrier': 3, 'motorcycle': 3, 'bicycle': 3, 'traffic_cone': 3,
+}
+
 
 def validate_lidar(message, for_fusion=False):
     validate_header(message.header, 'lidar_link')
@@ -26,6 +32,15 @@ def validate_lidar(message, for_fusion=False):
             require(math.isfinite(value) and value >= 0, 'invalid box size')
         require(obj.confidence == -1 or (math.isfinite(obj.confidence) and
                                         0 <= obj.confidence <= 1), 'invalid confidence')
+        if obj.learned_box:
+            require(obj.model_class in MODEL_CLASSES, 'unsupported model class')
+            require(obj.semantic_class == MODEL_CLASSES[obj.model_class], 'class mapping mismatch')
+            require(math.isfinite(obj.model_score) and 0 <= obj.model_score <= 1,
+                    'invalid uncalibrated model score')
+            require(obj.confidence == -1, 'pretrained confidence is not calibrated')
+        else:
+            require(obj.semantic_class == 0 and obj.model_class == '' and obj.model_score == 0,
+                    'geometric clusters must not claim learned semantics')
     if for_fusion:
         require(message.objects_valid and message.calibration_verified and
                 message.freshness_verified, 'development observation cannot enter live scene')

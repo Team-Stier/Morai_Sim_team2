@@ -79,7 +79,7 @@ runtime_readiness_policy:
 contract_modules:
   lidar_messages:
     path: messages/lidar_messages.yaml
-    required_contract_version: 0.1.0
+    required_contract_version: 0.2.0
   core_messages:
     path: messages/core_messages.yaml
     required_contract_version: 0.1.0
@@ -211,6 +211,8 @@ nodes:
   - name: lidar_perception_node
     owner_package: lidar_perception_pkg
     executable: lidar_perception_node
+    development_alternative_executables: [learned_lidar_node.py]
+    implementation_note: Mutually exclusive DBSCAN or pretrained PointPillars backend; same public node and topics, never both.
     visibility: public_boundary
     status: development_not_runtime_verified
     diagram_description_ko: 점군에서 장애물과 지면 및 빈 공간을 추출
