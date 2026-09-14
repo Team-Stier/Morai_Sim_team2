@@ -34,11 +34,11 @@
     },
     {
       "png": "src/lidar_perception_pkg/docs/interface_io.png",
-      "png_sha256": "c4e07a65fc4f92d68e4cf57948e8ef41e71680a4304a385f239953afd85d5068",
+      "png_sha256": "5bd0d3fa3d4aefa4eaeff9e66be50b65bba95be76719b2205ebff63be27dd169",
       "source": "src/lidar_perception_pkg/docs/interface_io.mmd",
-      "source_sha256": "64899f0e58905492522d684e42e5ab45b44a5c17b771d5947b0a5808c01ab352",
+      "source_sha256": "20e6eb349d0e822bfd68fe4450b309d82d5840393832abf786d509b6bb912800",
       "svg": "src/lidar_perception_pkg/docs/interface_io.svg",
-      "svg_sha256": "c125849b7bb48c3eef9941c5eab7fd6902f235c5a7edec12ab9e680d9bf49a63"
+      "svg_sha256": "75da2ffce0e9197824196148ebd23e0cf79dfafc7cab3d1f60518f0882eef07a"
     },
     {
       "png": "src/localization_pkg/docs/interface_io.png",
@@ -74,11 +74,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "2a4916454cf9abb368b020eafd4fcf011c9b24350964991083f49a88b2ebd36c",
+      "png_sha256": "0cc74ddead33d7ff491ca3029917e4dcf309afc09edde2e9154eab99ca4c8dc6",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "1219ed39ffd5326e7b60454fbd7435c9f6eb7128ba2174820143205ee0dfe403",
+      "source_sha256": "3e2886a94355383089dbf42b1a3bbcd80871f223fb62c0df716b9477af3d6a25",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "d55b84353a3cb2491eb0a4418484d69768003ff6eb4677d39444a9a0e10a5b9f"
+      "svg_sha256": "d2b13f4cf43e77f2cbc5dd656529a3d0ff7fb603e0dc94feeaeb7be3ace9490e"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
@@ -130,11 +130,11 @@
     },
     {
       "png": "src/visualization_pkg/docs/interface_io.png",
-      "png_sha256": "9f9648c4f75da4ab61c4414813f5197eae1250d9278069ecfd07ba64d047194f",
+      "png_sha256": "6963862401bf35222a7b0eaea05d03b7fb1ae98c2a932a79344cfac6a4f5e88e",
       "source": "src/visualization_pkg/docs/interface_io.mmd",
-      "source_sha256": "1d8a3c229f16fedf023e5a7464d1e2ca3eb1022b825939404c95cc4ed79503d0",
+      "source_sha256": "5a476947251a77f572a5ded9440bfb42fb93a097d47316bd75a5e894f3c42a77",
       "svg": "src/visualization_pkg/docs/interface_io.svg",
-      "svg_sha256": "b3fa69fcc834fd937f01d2625cfdc359483040eaa9841cca6db4d35d64fa8b29"
+      "svg_sha256": "49e9ab3fb237e5b9971d5b1fe4627a83b04bf851fe369ab7de48d5e1fea283f8"
     },
     {
       "png": "src/world_model_pkg/docs/interface_io.png",
@@ -150,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "4dfba06f6904140f4bed9466a9ec10debe9ab8854b1c1ca41dd78154f3cc6435"
+  "source_of_truth_sha256": "7f6a438b576ecf1af41dfdc57fdbf385c3d1a4dd123746a0aa5df0c4671a5547"
 }

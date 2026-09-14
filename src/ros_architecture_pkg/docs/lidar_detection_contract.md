@@ -47,6 +47,31 @@ pose_valid의 roll/pitch/yaw, frame, quaternion, 단조 시각, reset_id를 검�
 사전학습 대체 backend에는 이 전처리를 적용하지 않는다. 개발 validity와
 주행 readiness는 구별하며 ready=false, stop_required=true를 유지한다.
 
+## 원본 군집 점 표시 확장 (2026-09-14)
+
+사용자의 HD Map 위 원본 장애물 점 표시 요청에 따라 공개 표시용
+`/molit/perception/lidar/cluster_points` (`sensor_msgs/PointCloud2`)를 승인한다.
+producer는 `lidar_perception_node`, consumer는 `vehicle_visualizer_node`다.
+World Model·Planner 입력이나 지면/전체 occupancy 출력으로 사용하지 않는다.
+
+채택된 DBSCAN voxel에 속한 모든 ROI 내 raw point record를 원본 순서로 복사한다.
+원래 필드 바이트와 `lidar_link`, 원 scan stamp를 유지하고 UINT32 `cluster_id`
+(같은 스캔의 observation scan_local_id), `source_index`(원본 row-major 인덱스)를
+추가한다. ROI는 수평 좌표로 판단하지만 발행 XYZ는 역회전 계산값도 아닌 원본
+바이트다. noise·ROI 밖·거절된 군집의 점은 포함하지 않는다. 출력은 height=1의
+비조직 점군이며 원본 record padding은 보존, 원본 row padding은 제거한다.
+
+Voxel은 PCL과 같은 global cell 좌표와 x-fastest 정렬을 사용하되 sparse map에
+원본 인덱스를 보존한다. centroid 계산은 double 누적 후 float으로 변환하므로
+기존 PCL centroid와 극소수 수치 차이는 가능하다. dense leaf layout은 사용하지
+않는다. 대표 점군의 PCL 결과와 허용 오차 내 일치를 검사한다.
+
+잘못된 입력이나 정렬 실패는 빈 점군으로 표시를 지우고, 입력 단절은 consumer의
+ROS/wall timeout으로 삭제한다. 시각화는 기존 private MarkerArray에서 POINTS를
+기본으로 사용하며 scan-time TF만 허용한다. XYZ 높이를 HD Map 평면에 맞춰
+덮어쓰지 않는다. Localization reset 이전 스캔도 새 표시로 재사용하지 않는다.
+기존 observation의 wire 형식·박스 데이터는 유지하며 RViz 장애물 표시는 점이다.
+
 개발 중 입력 수신 감시는 기존 bridge watchdog의 1초·2Hz 계약을 사용한다.
 이는 검출 결과의 승인된 주행 freshness 임계값이 아니다. 별도 max_scan_age_sec는
 기본 0(미확정)이며 수신 timeout으로 대체하지 않는다. 개별 점군의 age,

@@ -10,7 +10,7 @@ catkin_package(CATKIN_DEPENDS common_msgs_pkg ros_architecture_pkg
   roscpp rospy sensor_msgs std_msgs pcl_conversions pcl_ros tf2_ros)
 include_directories(src ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
-add_library(lidar_detector src/detector.cpp src/horizontalization.cpp)
+add_library(lidar_detector src/detector.cpp src/horizontalization.cpp src/cluster_points.cpp)
 target_link_libraries(lidar_detector ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 add_executable(lidar_perception_node src/lidar_perception_node.cpp)
 add_dependencies(lidar_perception_node ${catkin_EXPORTED_TARGETS})

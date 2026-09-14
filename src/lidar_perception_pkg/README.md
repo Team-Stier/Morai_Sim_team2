@@ -42,6 +42,7 @@
 | 입력 | `/molit/sensors/lidar/status` | `std_msgs/Bool` |
 | 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
 | 출력 | `/molit/perception/lidar/observations` | `common_msgs_pkg/LidarObservationArray` |
+| 출력 | `/molit/perception/lidar/cluster_points` | `sensor_msgs/PointCloud2` |
 | 출력 | `/molit/perception/lidar/status` | `common_msgs_pkg/ComponentStatus` |
 
 공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`와
@@ -57,6 +58,12 @@ ROI·VoxelGrid·군집화를 수행한다. EgoState는 자세 전처리에만 �
 invalid 관측을 발행한다. 실행·좌표·시간 정책은 [수평화](docs/horizontalization.md)를 따른다.
 보정 전후 기울기·높이 편차·형상 보존·처리율은
 [수평화 정량 평가](docs/horizontalization_metrics.md)의 읽기 전용 도구로 측정한다.
+
+DBSCAN이 채택한 voxel에 속한 원본 점들은 `cluster_points`에 별도로 발행한다.
+XYZ·intensity 등 원본 record의 바이트와 scan stamp/frame을 보존하고,
+`cluster_id`, `source_index`(원본 row-major 인덱스)를 UINT32로 덧붙인다.
+Voxel 평균점이나 박스 모서리를 원본 점처럼 내보내지 않는다. 상세 경로와
+교차검증은 [원본 군집 점 표시](docs/cluster_points.md)를 따른다.
 
 오래된 장애물을 현재 관측처럼 유지하지 않고, sparse VLP16 환경에서의 miss와 uncertainty를 명시한다.
 

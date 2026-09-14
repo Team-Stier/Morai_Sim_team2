@@ -47,6 +47,11 @@ class LidarDisplay:
             rospy.logwarn_throttle(2, 'LiDAR display waiting for scan-time TF %s <- %s',
                                    self.config.reference_frame, msg.header.frame_id)
             return
+        markers = self.make_markers(msg)
+        self.publisher.publish(MarkerArray(markers=markers))
+        self.shown_stamp, self.visible = msg.header.stamp, True
+
+    def make_markers(self, msg):
         markers = [Marker(action=Marker.DELETEALL)]
         for index, obj in enumerate(msg.objects):
             marker = Marker()
@@ -78,8 +83,7 @@ class LidarDisplay:
                 group = {1: 'PEDESTRIAN', 2: 'VEHICLE', 3: 'OTHER'}[obj.semantic_class]
                 label.text = '{} {} {:.2f}'.format(group, obj.model_class, obj.model_score)
                 markers.append(label)
-        self.publisher.publish(MarkerArray(markers=markers))
-        self.shown_stamp, self.visible = msg.header.stamp, True
+        return markers
 
     def ingest(self, message, now, wall):
         self.update(now, wall)

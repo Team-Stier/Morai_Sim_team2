@@ -17,10 +17,11 @@ from common_msgs_pkg.msg import EgoState, LidarObservationArray
 
 class HorizontalizationTest(unittest.TestCase):
     def test_alignment_geometry_failure_and_reset(self):
-        outputs, filtered, audits = [], [], []
+        outputs, filtered, audits, cluster_clouds = [], [], [], []
         obs_sub = rospy.Subscriber('/molit/perception/lidar/observations', LidarObservationArray, outputs.append)
         roi_sub = rospy.Subscriber('/lidar_perception_node/filtered_points', PointCloud2, filtered.append)
         audit_sub = rospy.Subscriber('/lidar_perception_node/horizontalization_audit', String, lambda m: audits.append(json.loads(m.data)))
+        cluster_sub = rospy.Subscriber('/molit/perception/lidar/cluster_points',PointCloud2,cluster_clouds.append)
         scan_pub = rospy.Publisher('/molit/sensors/lidar/points', PointCloud2, queue_size=5)
         ego_pub = rospy.Publisher('/molit/localization/ego_state', EgoState, queue_size=10)
         transport = rospy.Publisher('/molit/sensors/lidar/status', Bool, queue_size=1, latch=True)
@@ -86,6 +87,13 @@ class HorizontalizationTest(unittest.TestCase):
         self.assertTrue(audit['leveling_enabled'])
         np.testing.assert_allclose(np.array(audit['rotation']).reshape(3,3),rotation,atol=1e-12)
         self.assertGreaterEqual(audit['processing_ms'],0)
+        clustered=[m for m in cluster_clouds if m.header.stamp==stamp][-1]
+        self.assertEqual(clustered.header,out.header)
+        self.assertEqual(clustered.width,len(raw))
+        entries=list(read_points(clustered,field_names=('x','y','z','cluster_id','source_index')))
+        for x,y,z,cluster,index in entries:
+            self.assertEqual(cluster,0)
+            np.testing.assert_array_equal(np.array([x,y,z],dtype=np.float32),raw[index].astype(np.float32))
 
         # Missing future bracket cannot reuse the latest attitude indefinitely.
         time.sleep(.1); stamp=rospy.Time.now(); scan(stamp)

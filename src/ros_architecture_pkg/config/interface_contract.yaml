@@ -579,6 +579,23 @@ topics:
     queue_policy: publisher_queue_2_drop_old
     timeout_sec: pending_processing_latency_and_jitter_measurement
     invalid_data_policy: publish_explicit_invalid_status_never_retimestamp_old_result
+  - name: /molit/perception/lidar/cluster_points
+    owner_package: lidar_perception_pkg
+    producers: [lidar_perception_node]
+    consumers: [vehicle_visualizer_node]
+    status: development_visualization_only
+    visibility: public
+    data_meaning: Original raw records belonging to accepted DBSCAN voxel clusters, with scan-local cluster_id and row-major source_index; visualization only
+    diagram_description_ko: 장애물 군집에 속한 원본 LiDAR 점과 원본 인덱스
+    data_type: sensor_msgs/PointCloud2
+    unit: m_and_original_sensor_field_units
+    frame: lidar_link
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: display_only_configurable_not_driving_freshness
+    invalid_data_policy: Empty on invalid/no_clusters; consumer deletes on stale/reset/clock_stall and waits for scan-time TF
+    field_policy: Preserve all original field bytes; append UINT32 cluster_id and source_index. No re-rotation, voxel centroids or height flattening in this output.
   - name: /molit/perception/lidar/status
     owner_package: lidar_perception_pkg
     producers: [lidar_perception_node]
@@ -892,8 +909,8 @@ topics:
     consumers: [vehicle_rviz]
     status: development_visualization_only
     visibility: package_internal
-    data_meaning: Read-only LiDAR object boxes; never fusion tracking or control input
-    diagram_description_ko: 측정시각 TF로 LiDAR 검출 박스 표시
+    data_meaning: Read-only original LiDAR cluster points by default; optional legacy boxes; never fusion tracking or control input
+    diagram_description_ko: 측정시각 TF로 원본 LiDAR 장애물 점 표시
     data_type: visualization_msgs/MarkerArray
     unit: m_rad_and_rgba
     frame: not_applicable
@@ -903,7 +920,7 @@ topics:
     expected_rate_hz: 10.0
     queue_policy: publisher_queue_2_latched
     timeout_sec: display_only_configurable_not_driving_freshness
-    invalid_data_policy: Delete boxes on invalid_stale_reset_or_clock_stall; wait for scan-time TF
+    invalid_data_policy: Delete geometry on invalid_stale_reset_or_clock_stall; wait for scan-time TF
 
 messages:
   - type: visualization_msgs/MarkerArray
@@ -1087,6 +1104,7 @@ package_boundaries:
       - /molit/localization/ego_state
     outputs:
       - /molit/perception/lidar/observations
+      - /molit/perception/lidar/cluster_points
       - /molit/perception/lidar/status
   localization_pkg:
     diagram_summary_ko: 센서와 지도를 융합해 차량 위치·움직임과 추정 품질 계산
@@ -1234,11 +1252,12 @@ package_boundaries:
       - /molit/evaluation/metrics
 
   visualization_pkg:
-    diagram_summary_ko: 위치 추정 차량과 LiDAR 검출 박스를 측정시각 TF로 RViz에 표시
+    diagram_summary_ko: 차량과 LiDAR 군집 원본 점 표시
     runtime_status: development_visualization_only
     public_nodes: [vehicle_visualizer_node]
     inputs:
       - /molit/perception/lidar/observations
+      - /molit/perception/lidar/cluster_points
       - /molit/localization/ego_state
       - /molit/localization/local/odometry
       - /molit/localization/status

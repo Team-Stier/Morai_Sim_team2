@@ -4,6 +4,7 @@
   <node pkg="visualization_pkg" type="vehicle_visualizer_node.py" name="vehicle_visualizer_node">
     <param name="show_hd_map" value="false"/>
     <param name="display_timeout_sec" value="1.0"/>
+    <param name="lidar_display_mode" value="boxes"/>
   </node>
   <test pkg="visualization_pkg" type="test_lidar_pipeline.py" test-name="lidar_pipeline" time-limit="30"/>
 </launch>

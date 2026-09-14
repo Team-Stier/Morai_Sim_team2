@@ -93,6 +93,7 @@ EXPECTED_TOPIC_FRAME_CONTRACT = {
     },
     "/molit/perception/camera/status": {"frame": "not_applicable"},
     "/molit/perception/lidar/observations": {"frame": "lidar_link"},
+    "/molit/perception/lidar/cluster_points": {"frame": "lidar_link"},
     "/molit/perception/lidar/status": {"frame": "not_applicable"},
     "/molit/localization/local/odometry": {
         "frame": "odom",

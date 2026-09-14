@@ -9,6 +9,8 @@ import rospy
 import tf2_ros
 from common_msgs_pkg.msg import LidarObservationArray
 from visualization_pkg.lidar_display import LidarDisplay
+from visualization_pkg.cluster_points_display import ClusterPointsDisplay
+from sensor_msgs.msg import PointCloud2
 from common_msgs_pkg.msg import EgoState, LocalizationStatus
 from nav_msgs.msg import Odometry
 from visualization_msgs.msg import MarkerArray
@@ -34,7 +36,12 @@ class VehicleVisualizerNode:
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         self.lidar_publisher = rospy.Publisher(
             "/molit/internal/visualization/lidar_markers", MarkerArray, queue_size=2, latch=True)
-        self.lidar_display = LidarDisplay(self.config, self.tf_buffer, self.lidar_publisher)
+        lidar_mode=rospy.get_param('~lidar_display_mode','points')
+        if lidar_mode not in ('points','boxes'):
+            raise ValueError('lidar_display_mode must be points or boxes')
+        self.lidar_display = (ClusterPointsDisplay(self.config,self.tf_buffer,self.lidar_publisher,
+                              rospy.get_param('~lidar_point_size_m',.06),rospy.get_param('~lidar_max_points',100000))
+                              if lidar_mode=='points' else LidarDisplay(self.config,self.tf_buffer,self.lidar_publisher))
         self._lidar_reset_id = None
         self.map_publisher = None
         if rospy.get_param("~show_hd_map", True):
@@ -47,7 +54,8 @@ class VehicleVisualizerNode:
             except (OSError, ValueError, KeyError, TypeError) as error:
                 rospy.logerr("HD map display unavailable: %s", error)
         self.subscribers = [
-            rospy.Subscriber("/molit/perception/lidar/observations", LidarObservationArray,
+            rospy.Subscriber("/molit/perception/lidar/cluster_points" if lidar_mode=='points' else "/molit/perception/lidar/observations",
+                             PointCloud2 if lidar_mode=='points' else LidarObservationArray,
                              self._lidar, queue_size=2),
             rospy.Subscriber('/molit/localization/ego_state', EgoState,
                              self._ego, queue_size=100, tcp_nodelay=True),
@@ -82,7 +90,9 @@ class VehicleVisualizerNode:
     def _status(self, message):
         with self._lock:
             if self._lidar_reset_id is not None and message.reset_id != self._lidar_reset_id:
-                self.lidar_display.clear()
+                if isinstance(self.lidar_display,ClusterPointsDisplay):
+                    self.lidar_display.reset_epoch(message.header.stamp)
+                else:self.lidar_display.clear()
             self._lidar_reset_id = message.reset_id
             self.display.ingest_status(message, stamp_ns(rospy.Time.now()), time.monotonic())
             self._publish_changed()

@@ -1,5 +1,6 @@
 #include "detector.h"
 #include "horizontalization.h"
+#include "cluster_points.h"
 #include <common_msgs_pkg/EgoState.h>
 #include <common_msgs_pkg/LidarObservationArray.h>
 #include <common_msgs_pkg/LidarObjectObservation.h>
@@ -26,7 +27,7 @@ double elapsed(Steady::time_point t) {
 class Node {
   ros::NodeHandle nh_, private_{"~"};
   ros::Subscriber points_, transport_, attitude_;
-  ros::Publisher observations_, status_, debug_, audit_;
+  ros::Publisher observations_, status_, debug_, audit_, clusters_;
   ros::WallTimer timer_, alignment_timer_;
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_{tf_buffer_};
@@ -51,6 +52,7 @@ class Node {
     pcl::toROSMsg(lidar_perception::Cloud(),empty);
     empty.header=header;
     debug_.publish(empty);
+    clusters_.publish(lidar_perception::clusterPoints(empty,{}));
   }
   void rejectPending(const Pending& pending, const std::string& reason) {
     const auto& h=pending.message->header;
@@ -198,6 +200,7 @@ class Node {
     const auto start=Steady::now();
     const auto now=ros::Time::now();
     common_msgs_pkg::LidarObservationArray output;
+    sensor_msgs::PointCloud2 clustered;
     output.header=message->header;
     output.calibration_id=calibration_id_;
     output.timestamp_provenance="ingress_fallback";
@@ -220,6 +223,7 @@ class Node {
         if (std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z)) {any_finite=true; break;}
       if (!any_finite) throw std::runtime_error("no finite XYZ points");
       const auto result=lidar_perception::detect(lidar_perception::rotateCloud(cloud,rotation), config_);
+      clustered=lidar_perception::clusterPoints(*message,result.raw_cluster_ids);
       for (const auto& level_box : result.boxes) {
         const auto box=lidar_perception::boxInSensorFrame(level_box,rotation);
         common_msgs_pkg::LidarObjectObservation object;
@@ -254,6 +258,7 @@ class Node {
       health_.reason="scan expired or clock reset during processing";
       clearDebug(message->header);
     }
+    if (output.objects_valid) clusters_.publish(clustered);
     observations_.publish(output);
     if (output.objects_valid && audit_.getNumSubscribers()>0) {
       // Package-private diagnostic: the actual matrix used above, not an
@@ -294,6 +299,7 @@ public:
       throw std::runtime_error("invalid central data-age/status period policy");
     health_.processing_latency_sec=-1;
     observations_=nh_.advertise<common_msgs_pkg::LidarObservationArray>("/molit/perception/lidar/observations",2);
+    clusters_=nh_.advertise<sensor_msgs::PointCloud2>("/molit/perception/lidar/cluster_points",2);
     status_=nh_.advertise<common_msgs_pkg::ComponentStatus>("/molit/perception/lidar/status",1,true);
     debug_=private_.advertise<sensor_msgs::PointCloud2>("filtered_points",1);
     audit_=private_.advertise<std_msgs::String>("horizontalization_audit",10);

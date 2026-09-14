@@ -16,3 +16,6 @@ clock_stall_sec: 0.5
 buffer_size: 100
 # Watchdog frequency only; valid markers publish on matching localization callbacks.
 marker_publish_rate_hz: 10.0
+lidar_display_mode: points
+lidar_point_size_m: 0.06
+lidar_max_points: 100000

@@ -1,0 +1,9 @@
+<launch>
+  <include file="$(find lidar_perception_pkg)/launch/lidar_perception_pkg.launch"/>
+  <node pkg="visualization_pkg" type="vehicle_visualizer_node.py" name="vehicle_visualizer_node">
+    <param name="show_hd_map" value="false"/>
+    <param name="lidar_display_mode" value="points"/>
+    <param name="display_timeout_sec" value="2.0"/>
+  </node>
+  <test pkg="visualization_pkg" type="test_cluster_points_pipeline.py" test-name="cluster_points_pipeline" time-limit="30"/>
+</launch>
