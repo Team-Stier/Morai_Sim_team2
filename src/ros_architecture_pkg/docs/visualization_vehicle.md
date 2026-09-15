@@ -13,7 +13,9 @@ GPS/IMU 개발 추정·TF를 별도 중앙 계약에 추가했으며, 제어 기
 | `localization_node` | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` | `vehicle_visualizer_node` |
 | `localization_node` | `/molit/localization/local/odometry` | `nav_msgs/Odometry` | `vehicle_visualizer_node` |
 | `localization_node` | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` | `vehicle_visualizer_node` |
+| `world_model_node` | `/molit/world_model/scene` | `common_msgs_pkg/WorldModel` | `vehicle_visualizer_node` |
 | `vehicle_visualizer_node` | `/molit/internal/visualization/vehicle_markers` | `visualization_msgs/MarkerArray` | `vehicle_rviz` |
+| `vehicle_visualizer_node` | `/molit/internal/visualization/world_model_markers` | `visualization_msgs/MarkerArray` | `vehicle_rviz` |
 
 기존 Localization 공개 topic·메시지·주기·producer는 유지하고 consumer만 추가한다.
 `vehicle_visualizer_node`는 root namespace의 공개 경계 node이며 공개 출력은 없다.
@@ -105,3 +107,11 @@ MarkerArray는 같은 패키지 RViz만 구독한다.
 invalid, stale, 미래/역행 시각, clock 정지/역행 때 박스를 삭제한다.
 미검증 calibration/freshness 관측은 분홍색 개발용 geometry로만 표시한다.
 이 표시가 World Model 입력 승인이나 장애물 검출 완전성의 증거는 아니다.
+
+## World Model map track 표시 확장 (2026-09-15)
+
+`vehicle_visualizer_node`는 `/molit/world_model/scene`을 읽어 map-frame track box를
+`/molit/internal/visualization/world_model_markers`로 변환한다. 좌표와 fusion stamp를
+그대로 유지하고 TF를 다시 적용하지 않는다. reset, invalid/stale scene, ROS clock
+정지·역행 때 기존 marker를 삭제한다. 미검증 개발 scene은 하늘색으로 구분하며,
+이 MarkerArray는 같은 패키지 RViz만 소비하고 계획·제어 입력이 될 수 없다.

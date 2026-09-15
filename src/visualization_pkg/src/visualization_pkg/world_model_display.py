@@ -1,0 +1,103 @@
+"""Read-only RViz markers for map-frame World Model tracks."""
+
+import copy
+
+import rospy
+from visualization_msgs.msg import Marker, MarkerArray
+
+from common_msgs_pkg.world_model_validation import validate_world_model
+
+
+class WorldModelDisplay:
+    def __init__(self, config, publisher):
+        self.config = config
+        self.publisher = publisher
+        self.pending = None
+        self.received = 0.0
+        self.last_stamp = None
+        self.last_reset_id = None
+        self.last_clock = None
+        self.clock_changed = 0.0
+        self.shown_stamp = None
+        self.visible = False
+
+    def clear(self):
+        self.pending = None
+        self.shown_stamp = None
+        if self.visible:
+            self.publisher.publish(MarkerArray(markers=[Marker(action=Marker.DELETEALL)]))
+        self.visible = False
+
+    @staticmethod
+    def _color(marker, state, verified):
+        if not verified:
+            marker.color.r, marker.color.g, marker.color.b = 0.15, 0.75, 1.0
+        elif state == 0:
+            marker.color.r, marker.color.g, marker.color.b = 1.0, 0.85, 0.15
+        elif state == 2:
+            marker.color.r, marker.color.g, marker.color.b = 1.0, 0.45, 0.1
+        else:
+            marker.color.r, marker.color.g, marker.color.b = 0.15, 0.9, 0.35
+        marker.color.a = 0.30 if state == 2 else 0.62
+
+    def _publish(self, message):
+        markers = [Marker(action=Marker.DELETEALL)]
+        for obj in message.objects:
+            marker = Marker()
+            marker.header = copy.deepcopy(message.header)
+            marker.ns = "world_model_track_unverified" if not message.objects_verified else "world_model_track"
+            marker.id = int(obj.track_id & 0x7FFFFFFF)
+            marker.type = Marker.CUBE
+            marker.action = Marker.ADD
+            marker.pose = copy.deepcopy(obj.pose)
+            marker.scale = copy.deepcopy(obj.size)
+            self._color(marker, obj.track_state, message.objects_verified)
+            marker.lifetime = rospy.Duration(self.config.display_timeout_sec)
+            marker.frame_locked = False
+            markers.append(marker)
+        self.publisher.publish(MarkerArray(markers=markers))
+        self.shown_stamp = message.header.stamp
+        self.visible = bool(message.objects)
+
+    def update(self, now, wall):
+        if self.last_clock is None or now != self.last_clock:
+            if self.last_clock is not None and now < self.last_clock:
+                self.clear()
+                self.last_stamp = None
+                self.last_reset_id = None
+            self.last_clock, self.clock_changed = now, wall
+        if wall - self.clock_changed > self.config.clock_stall_sec:
+            self.clear()
+        message = self.pending
+        if message is None:
+            return
+        age = (now - message.header.stamp).to_sec()
+        if not 0.0 <= age <= self.config.display_timeout_sec or wall - self.received > self.config.display_timeout_sec:
+            self.clear()
+            return
+        if self.shown_stamp == message.header.stamp:
+            return
+        self._publish(message)
+
+    def ingest(self, message, now, wall):
+        self.update(now, wall)
+        try:
+            validate_world_model(message, for_planning=False)
+            if self.last_reset_id is not None and message.localization_reset_id != self.last_reset_id:
+                self.clear()
+                self.last_stamp = None
+            if self.last_stamp is not None and message.header.stamp <= self.last_stamp:
+                raise ValueError("duplicate or regressing World Model scene")
+            if not 0.0 <= (now - message.header.stamp).to_sec() <= self.config.display_timeout_sec:
+                raise ValueError("future or stale World Model scene")
+        except (ValueError, TypeError, AttributeError) as error:
+            self.clear()
+            rospy.logwarn_throttle(2, "World Model display rejected scene: %s", error)
+            return
+        self.last_stamp = message.header.stamp
+        self.last_reset_id = message.localization_reset_id
+        if not message.objects_valid:
+            self.clear()
+            return
+        self.pending, self.received = message, wall
+        self.update(now, wall)

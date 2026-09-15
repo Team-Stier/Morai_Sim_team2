@@ -29,7 +29,7 @@ schema provider다.
 **공개 node (exact):** 없음
 
 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `LidarObjectObservation`,
-`LidarObservationArray`의 `.msg`, catkin 메시지 생성 설정과 순수 검증 함수를 구현했다.
+`LidarObservationArray`, `TrackedObject`, `WorldModel`의 `.msg`, catkin 메시지 생성 설정과 순수 검증 함수를 구현했다.
 나머지 타입은 미구현이며 이 패키지는 런타임 노드를 갖지 않는다.
 필드의 원본은 중앙 `config/messages/core_messages.yaml`과 `lidar_messages.yaml`이며
 [필드·이식·테스트 지침](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
@@ -54,3 +54,5 @@ schema provider다.
 
 LiDAR 관측은 [중앙 LiDAR 계약](../ros_architecture_pkg/docs/lidar_detection_contract.md)을 따른다.
 `validate_lidar(..., for_fusion=True)`는 보정·freshness 미검증 관측을 거부한다.
+World Model은 중앙 `messages/world_model_messages.yaml`을 따르며
+`validate_world_model(..., for_planning=True)`는 `planner_ready=false`인 개발 장면을 거부한다.

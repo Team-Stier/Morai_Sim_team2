@@ -52,8 +52,8 @@ flowchart LR
     subgraph pkg_007["global_route_manager_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_018["global_route_manager_node<br/>exec: global_route_manager_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
-    subgraph pkg_008["world_model_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_019["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (reserved_not_implemented)"]
+    subgraph pkg_008["world_model_pkg<br/>runtime: development_map_object_tracking_unverified"]
+        node_019["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (development_map_object_tracking_unverified)"]
     end
     subgraph pkg_009["path_planning_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_020["path_planner_node<br/>exec: path_planner_node<br/>state: RESERVED (reserved_not_implemented)"]
@@ -113,6 +113,7 @@ flowchart LR
     topic_034["/molit/evaluation/metrics<br/>type: common_msgs_pkg/RunMetrics<br/>state: RESERVED"]
     topic_035["/molit/internal/visualization/vehicle_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
     topic_036["/molit/internal/visualization/lidar_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_037["/molit/internal/visualization/world_model_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
 
     node_000 --> topic_000
     topic_000 --> node_014
@@ -211,6 +212,7 @@ flowchart LR
     topic_025 --> node_020
     topic_025 --> node_023
     topic_025 --> node_024
+    topic_025 --> node_025
     node_019 --> topic_026
     topic_026 --> node_020
     topic_026 --> node_022
@@ -245,6 +247,8 @@ flowchart LR
     topic_035 --> node_026
     node_025 --> topic_036
     topic_036 --> node_026
+    node_025 --> topic_037
+    topic_037 --> node_026
     external_ingress --> node_000
     external_ingress --> node_001
     external_ingress --> node_002
@@ -319,3 +323,4 @@ flowchart LR
     class topic_034 reservedTopic;
     class topic_035 reservedTopic;
     class topic_036 reservedTopic;
+    class topic_037 reservedTopic;

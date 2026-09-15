@@ -34,6 +34,7 @@ class PublicInterfaceContractTest(unittest.TestCase):
     def test_validator_requires_all_versioned_contract_modules(self):
         required_paths = {
             "core_messages": ("path",),
+            "world_model_messages": ("path",),
             "package_registry": ("path",),
             "tf": ("frame_contract", "sensor_extrinsics", "map_projection"),
             "timestamp": ("timestamp_contract",),

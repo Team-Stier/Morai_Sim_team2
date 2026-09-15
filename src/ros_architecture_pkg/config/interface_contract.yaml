@@ -80,6 +80,9 @@ contract_modules:
   lidar_messages:
     path: messages/lidar_messages.yaml
     required_contract_version: 0.1.0
+  world_model_messages:
+    path: messages/world_model_messages.yaml
+    required_contract_version: 0.1.0
   core_messages:
     path: messages/core_messages.yaml
     required_contract_version: 0.1.0
@@ -240,7 +243,12 @@ nodes:
     owner_package: world_model_pkg
     executable: world_model_node
     visibility: public_boundary
-    status: reserved_not_implemented
+    status: development_map_object_tracking_unverified
+    implementation_note: >-
+      First vertical slice transforms LiDAR AABBs with exact scan-time TF into
+      map-aligned boxes and assigns bounded persistent track IDs. It publishes
+      diagnostic geometry only while LiDAR calibration freshness and uncertainty
+      remain unverified; planner_ready stays false.
     diagram_description_ko: 지도와 센서 관측을 시각과 좌표 기준으로 통합
   - name: path_planner_node
     owner_package: path_planning_pkg
@@ -702,24 +710,28 @@ topics:
   - name: /molit/world_model/scene
     owner_package: world_model_pkg
     producers: [world_model_node]
-    consumers: [path_planner_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    consumers: [path_planner_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node]
+    status: development_map_object_tracking_unverified
     visibility: public
-    data_meaning: Time-aligned map ego tracked objects occupancy free-space and traffic context
-    diagram_description_ko: 시각 정렬된 지도·차량·객체·주행 공간
+    data_meaning: Time-aligned map-frame tracked objects with explicit capability and driving-readiness flags
+    diagram_description_ko: 측정시각 map 좌표 추적 객체와 기능별 유효성
     data_type: common_msgs_pkg/WorldModel
     unit: m_rad_m_per_sec_confidence_and_semantics
     frame: map
     timestamp_source: fusion_reference_time
-    expected_rate_hz: 20.0
+    expected_rate_hz: 10.0
     queue_policy: publisher_queue_2_drop_old
-    timeout_sec: pending_fusion_latency_and_jitter_measurement
-    invalid_data_policy: preserve_source_age_uncertainty_and_partial_observation_flags
+    timeout_sec: 0.50
+    activation_scope: development_only
+    invalid_data_policy: >-
+      preserve source stamp age provenance and partial capability flags; require
+      exact scan-time TF; unverified inputs force planner_ready false; clear tracks
+      on localization reset clock reset or regressing observations
   - name: /molit/world_model/status
     owner_package: world_model_pkg
     producers: [world_model_node]
     consumers: [path_planner_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: schema_implemented_runtime_not_implemented
+    status: development_map_object_tracking_unverified
     visibility: public
     data_meaning: Fusion freshness transform availability and scene validity
     diagram_description_ko: 융합 신선도·TF 사용 가능 여부·장면 유효성
@@ -729,7 +741,8 @@ topics:
     timestamp_source: status_evaluation_time
     expected_rate_hz: 2.0
     queue_policy: publisher_queue_1_latched
-    timeout_sec: pending_fusion_latency_and_jitter_measurement
+    timeout_sec: 1.0
+    activation_scope: development_only
     invalid_data_policy: degraded_or_fault_when_required_pose_or_observation_is_stale
   - name: /molit/planning/trajectory
     owner_package: path_planning_pkg
@@ -903,6 +916,24 @@ topics:
     timeout_sec: display_only_configurable_not_driving_freshness
     invalid_data_policy: Delete boxes on invalid_stale_reset_or_clock_stall; wait for scan-time TF
 
+  - name: /molit/internal/visualization/world_model_markers
+    owner_package: visualization_pkg
+    producers: [vehicle_visualizer_node]
+    consumers: [vehicle_rviz]
+    status: development_visualization_only
+    visibility: package_internal
+    data_meaning: Read-only map-frame World Model track boxes; never a planning or control input
+    diagram_description_ko: map 좌표에 고정된 개발용 추적 객체 표시
+    data_type: visualization_msgs/MarkerArray
+    unit: m_and_rgba
+    frame: map
+    frame_policy: Preserve WorldModel map poses and source fusion stamp; no TF lookup or frame relabeling.
+    timestamp_source: visualization_marker_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_2_latched
+    timeout_sec: display_only_configurable_not_driving_freshness
+    invalid_data_policy: Delete tracks on invalid_stale_reset_or_clock_stall
+
 messages:
   - type: visualization_msgs/MarkerArray
     status: approved_standard_type_visualization_only
@@ -946,7 +977,11 @@ messages:
   - type: common_msgs_pkg/RouteContext
     status: type_name_reserved_schema_not_implemented
   - type: common_msgs_pkg/WorldModel
-    status: type_name_reserved_schema_not_implemented
+    status: development_map_object_tracking_unverified
+    schema: messages/world_model_messages.yaml#WorldModel
+  - type: common_msgs_pkg/TrackedObject
+    status: development_map_object_tracking_unverified
+    schema: messages/world_model_messages.yaml#TrackedObject
   - type: common_msgs_pkg/Trajectory
     status: type_name_reserved_schema_not_implemented
   - type: common_msgs_pkg/ActuatorCommand
@@ -1116,7 +1151,7 @@ package_boundaries:
       - /molit/route/status
   world_model_pkg:
     diagram_summary_ko: 지도·차량 상태·센서 관측을 측정시각 기준으로 통합
-    runtime_status: public_contract_reserved_not_implemented
+    runtime_status: development_map_object_tracking_unverified
     public_nodes: [world_model_node]
     inputs:
       - /molit/map/hd_map
@@ -1231,11 +1266,12 @@ package_boundaries:
       - /molit/evaluation/metrics
 
   visualization_pkg:
-    diagram_summary_ko: 위치 추정 차량과 LiDAR 검출 박스를 측정시각 TF로 RViz에 표시
+    diagram_summary_ko: 위치 추정 차량·LiDAR 검출·map 추적 객체를 RViz에 표시
     runtime_status: development_visualization_only
     public_nodes: [vehicle_visualizer_node]
     inputs:
       - /molit/perception/lidar/observations
+      - /molit/world_model/scene
       - /molit/localization/ego_state
       - /molit/localization/local/odometry
       - /molit/localization/status
