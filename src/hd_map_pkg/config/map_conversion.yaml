@@ -62,3 +62,16 @@ validation:
 references:
   simulator_scene_file: ../../참고파일들/2026_molit_comp_sample_scene.json
   simulator_global_path: ../../참고파일들/2026_molit_comp_global_path (3).txt
+
+# [규정] 전 구간 60 km/h. 다만 고속주회로 진입부터 톨게이트까지는 예외다.
+# 경계는 규정에 명시된 link의 진행 방향 시작/끝을 사용한다. road_ids는
+# 고정 MGeo와 제공 전역경로를 정합해 확인한 병렬 차로 전체의 원본 road_id다.
+competition_speed_policy:
+  default_limit_kph: 60
+  exemption:
+    id: high_speed_course_to_tollgate
+    label: 고속주회로 진입 ~ 톨게이트
+    source: 공식 대회 규정 v1.1 속도제한 미션
+    start_link_id: A2256W000411
+    end_link_id: A2256W000153
+    road_ids: [4002838, 4002876, 4002841, 4002846, 4002845]

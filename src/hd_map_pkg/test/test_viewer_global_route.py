@@ -27,6 +27,7 @@ class _Dataset(object):
             "points": [[0.0, 0.0, 0.0], [1.0, 1.0, 0.0]],
             "max_speed": 30,
             "related_signal": "straight",
+            "road_id": "ROAD-1",
         }
     }
 
@@ -218,6 +219,37 @@ class ViewerGlobalRouteTest(unittest.TestCase):
         self.assertIn('data-layer="laneControlSignals"', html)
         self.assertIn("터널 차로제어신호(LCS)", html)
         self.assertIn("function laneControlSignal", html)
+
+    def test_viewer_marks_competition_speed_exception_and_boundaries(self):
+        with tempfile.TemporaryDirectory(prefix="hd-map-speed-zone-") as directory:
+            root = pathlib.Path(directory)
+            data = build_viewer_data(
+                _Dataset(), _IdentityTransformer(), {
+                    "conversion": {"viewer_simplification_m": 0.2},
+                    "source": {}, "coordinates": {}, "lane_boundary": {},
+                    "competition_speed_policy": {
+                        "default_limit_kph": 60,
+                        "exemption": {
+                            "id": "high_speed_course_to_tollgate",
+                            "label": "high speed course",
+                            "start_link_id": "L1",
+                            "end_link_id": "L1",
+                            "road_ids": ["ROAD-1"],
+                        },
+                    },
+                })
+            html = write_viewer(data, root / "preview.html").read_text(
+                encoding="utf-8")
+
+        self.assertTrue(data["centerlines"][0]["speed_limit_exempt"])
+        self.assertEqual(data["metadata"]["counts"]["speed_exempt_links"], 1)
+        policy = data["competitionSpeedPolicy"]
+        self.assertEqual(policy["default_limit_kph"], 60)
+        self.assertEqual(policy["start_point"], [0.0, 0.0])
+        self.assertEqual(policy["end_point"], [1.0, 1.0])
+        self.assertIn('data-layer="speedException"', html)
+        self.assertIn("고속주회로 60 km/h 예외", html)
+        self.assertIn("START ${p.start_link_id}", html)
 
 
 if __name__ == "__main__":

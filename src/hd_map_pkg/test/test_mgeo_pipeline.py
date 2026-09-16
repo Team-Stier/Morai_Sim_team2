@@ -313,6 +313,15 @@ class MGeoPipelineTest(unittest.TestCase):
                 "road_border_codes": [531],
                 "stop_line_codes": [530],
             },
+            "competition_speed_policy": {
+                "default_limit_kph": 60,
+                "exemption": {
+                    "id": "fixture_high_speed_zone",
+                    "start_link_id": "L1",
+                    "end_link_id": "L2",
+                    "road_ids": ["ROAD-1"],
+                },
+            },
         }
         cls.osm_path = cls.root / "fixture.osm"
         cls.routing_path = cls.root / "routing.json"
@@ -612,6 +621,10 @@ class MGeoPipelineTest(unittest.TestCase):
                 tags = _tags(lanelet)
                 self.assertEqual(tags["speed_limit"], speed)
                 self.assertEqual(tags["turn_direction"], turn)
+                self.assertEqual(tags["molit:competition_speed_limit_kph"], "60")
+                self.assertEqual(tags["molit:competition_speed_limit_exempt"], "yes")
+                self.assertEqual(tags["molit:competition_speed_zone"],
+                                 "fixture_high_speed_zone")
 
                 members = {
                     member.attrib["role"]: int(member.attrib["ref"])
@@ -635,6 +648,16 @@ class MGeoPipelineTest(unittest.TestCase):
                 self.assertEqual(center_tags["mgeo:id"], link_id)
             self.assertEqual(observed_left_ids, left_ids)
             self.assertEqual(observed_right_ids, right_ids)
+
+    def test_competition_speed_policy_validation_passes(self):
+        checks = {check["name"]: check for check in validate_osm(
+            self.osm_path, self.dataset, self.routing_path, self.config)}
+        policy = checks["competition_speed_policy"]
+
+        self.assertEqual(policy["status"], "pass")
+        self.assertEqual(policy["metrics"]["default_limit_kph"], 60)
+        self.assertEqual(policy["metrics"]["exempt_source_links"], 2)
+        self.assertGreater(policy["metrics"]["exempt_lanelets"], 0)
 
     def test_lanelet_segment_metadata_covers_each_source_link(self):
         source_lengths = {"L1": 10.0, "L2": 10.0}

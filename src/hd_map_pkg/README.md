@@ -104,6 +104,13 @@ routing graph에는 적용하지 않는다.
 터널의 `LCS01`/`LCS02`는 일반 교차로 신호와 분리해 주황색 마름모의
 `터널 차로제어신호(LCS)` 레이어로 표시하고 원본 subtype과 연결 정보를 보존한다.
 
+공식 대회 규정 v1.1의 속도제한 미션은 전 구간 60 km/h를 기본으로 하고,
+`A2256W000411` 시작점부터 `A2256W000153` 끝점까지를 예외로 둔다.
+고정 MGeo와 제공 전역경로를 정합해 확인한 5개 road, 21개 병렬 차로 link에
+동일한 예외 zone을 부여한다. HTML은 이 차로를 자홍색으로 강조하고 시작/종료
+경계를 별도 마커로 표시한다. 이 레이어는 정적 규정 annotation이며 실시간 ego pose나
+route 진행 상태가 아니다.
+
 ## Lanelet2 매핑
 
 - canonical MGeo link 하나는 boundary fragment의 의미 변화 지점에서 잘려 하나 이상의
@@ -114,7 +121,10 @@ routing graph에는 적용하지 않는다.
 - relation member는 `left`, `right`, 명시적 `centerline`, 필요 시
   `regulatory_element`다. 원본 boundary way는 감사용으로 그대로 두고 lanelet member에는
   해당 chainage에 맞춰 자른 boundary way를 사용한다.
-- 제한속도는 `speed_limit="N km/h"`, `related_signal`은
+- 원본 제한속도는 `speed_limit="N km/h"`로 보존한다. 대회 미션 기본 60 km/h와
+  고속주회로 예외는 `molit:competition_speed_limit_kph`,
+  `molit:competition_speed_limit_exempt`, `molit:competition_speed_zone`으로 별도 표시해
+  원본 도로 속성과 채점 규정을 섞지 않는다. `related_signal`은
   `turn_direction=straight|left|right`다. U-turn은 `mgeo:maneuver=uturn`으로 보존한다.
 - source가 없는 쪽은 `type=virtual`, `mgeo:synthetic=yes`인 폭 기반 경계를 만든다.
 - lateral bound는 source boundary ID, 선 의미, 잘린 전체 geometry와 endpoint identity가
@@ -191,6 +201,7 @@ catkin_test_results
 - 명시적 routing graph의 source/segment predecessor·successor, lane-change 필드와 relation ID 대응
 - 파생 intersection hull의 크기 warning
 - 제공 SIM 전역경로의 centerline 좌표 정합
+- 대회 기본 60 km/h와 `A2256W000411` 시작 → `A2256W000153` 끝 예외 tag coverage
 
 ## 담당 범위
 

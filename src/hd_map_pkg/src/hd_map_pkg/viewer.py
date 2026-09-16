@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .geometry import convex_hull, simplify_rdp
 from .lanelet2_export import boundary_tags, surface_marking_maneuver
+from .speed_policy import competition_speed_policy
 
 
 def _xy(transformer, points, tolerance):
@@ -97,6 +98,8 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
     tolerance = float(config.get("conversion", {}).get("viewer_simplification_m", 0.2))
     mapping = config.get("lane_boundary", {})
     signal_links = dataset.traffic_light_link_ids()
+    speed_policy = competition_speed_policy(dataset, config)
+    exempt_link_ids = set(speed_policy["link_ids"]) if speed_policy else set()
     boundaries = []
     for boundary_id, boundary in sorted(dataset.lane_boundaries.items()):
         points = _xy(transformer, boundary.get("points") or [], tolerance)
@@ -128,6 +131,11 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
             "id": link_id,
             "p": points,
             "speed": link.get("max_speed"),
+            "competition_speed_limit_kph": (
+                speed_policy["default_limit_kph"] if speed_policy else None),
+            "speed_limit_exempt": link_id in exempt_link_ids,
+            "competition_speed_zone": (
+                speed_policy["id"] if link_id in exempt_link_ids else ""),
             "direction": link.get("related_signal") or ",".join(
                 sorted(marking_maneuvers.get(link_id, set()))),
             "predecessors": dataset.predecessors.get(link_id, []),
@@ -223,6 +231,23 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
         if not all_points:
             all_points = [[0.0, 0.0], [1.0, 1.0]]
         bounds = _bounds(all_points)
+    if speed_policy:
+        speed_policy_data = {
+            "id": speed_policy["id"],
+            "label": speed_policy["label"],
+            "source": speed_policy["source"],
+            "default_limit_kph": speed_policy["default_limit_kph"],
+            "start_link_id": speed_policy["start_link_id"],
+            "end_link_id": speed_policy["end_link_id"],
+            "road_ids": list(speed_policy["road_ids"]),
+            "link_ids": list(speed_policy["link_ids"]),
+            "start_point": [round(value, 3) for value in transformer.mgeo_to_sim(
+                speed_policy["start_point"])[:2]],
+            "end_point": [round(value, 3) for value in transformer.mgeo_to_sim(
+                speed_policy["end_point"])[:2]],
+        }
+    else:
+        speed_policy_data = None
     return {
         "metadata": {
             "title": "KATRI MGeo 3.0 → Lanelet2",
@@ -244,6 +269,8 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
                     item["category"] == "tunnel_lane_control" for item in signals),
                 "intersections": len(intersections),
                 "global_route_points": global_route["point_count"],
+                "speed_exempt_links": len([
+                    item for item in centerlines if item["speed_limit_exempt"]]),
             },
         },
         "centerlines": centerlines,
@@ -253,6 +280,7 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
         "signals": signals,
         "intersections": intersections,
         "globalRoute": global_route,
+        "competitionSpeedPolicy": speed_policy_data,
     }
 
 
@@ -282,8 +310,12 @@ input { accent-color: #32d3a2; }
 .swatch.blue { border-color:#39a9ff; }.swatch.cyan { border-color:#3ce5e7; }
 .swatch.red { border-color:#ff5c72; }.swatch.purple { border-color:#b88cff; }
 .swatch.green { border-color:#39ff88; box-shadow:0 0 5px rgba(57,255,136,.65); }
+.swatch.magenta { border-color:#ff3bbd; box-shadow:0 0 6px rgba(255,59,189,.7); }
 .signal-icon { display:inline-grid; width:22px; place-items:center; font-size:14px; }
 .signal-icon.lcs { color:#ffb347; text-shadow:0 0 6px rgba(255,179,71,.75); }
+.policy { margin-top:12px; padding:10px; border:1px solid #74305f; border-radius:7px;
+  background:rgba(89,20,70,.28); color:#ffd5f2; font-size:12px; line-height:1.5; }
+.policy b { color:#ff86d4; }
 .stats { display:grid; grid-template-columns:1fr 1fr; gap:7px; font-size:12px; }
 .stat { background:#102432; padding:8px; border-radius:6px; }.stat b { display:block; font-size:17px; color:#f5fbff; }
 #inspect { min-height:100px; padding:10px; border:1px solid #294655; background:#091721; border-radius:7px;
@@ -297,8 +329,10 @@ input { accent-color: #32d3a2; }
   <h1 id="title"></h1>
   <div class="subtitle" id="subtitle"></div>
   <span class="badge">immutable candidate</span>
+  <div class="policy" id="speedPolicy"></div>
   <h2>Layers</h2>
   <label><input data-layer="globalRoute" type="checkbox" checked><span class="swatch green"></span>전역경로 TXT</label>
+  <label><input data-layer="speedException" type="checkbox" checked><span class="swatch magenta"></span>고속주회로 60 km/h 예외</label>
   <label><input data-layer="intersections" type="checkbox"><span class="swatch purple"></span>교차로 영역(파생)</label>
   <label><input data-layer="centerlines" type="checkbox" checked><span class="swatch cyan"></span>차선 중심선</label>
   <label><input data-layer="solid" type="checkbox" checked><span class="swatch"></span>실선 경계</label>
@@ -323,6 +357,8 @@ const enabled = {}; document.querySelectorAll('[data-layer]').forEach(el => {
 });
 document.getElementById('title').textContent=MAP.metadata.title;
 document.getElementById('subtitle').textContent=`${MAP.metadata.scene} · ${MAP.metadata.coordinate_frame}\ncommit ${MAP.metadata.source_commit}`;
+const speedPolicy=document.getElementById('speedPolicy');
+if(MAP.competitionSpeedPolicy){const p=MAP.competitionSpeedPolicy;speedPolicy.innerHTML=`<b>속도제한 미션</b><br>기본 ${p.default_limit_kph} km/h<br>예외: ${p.start_link_id} 시작점 → ${p.end_link_id} 끝점`;}else{speedPolicy.hidden=true;}
 document.getElementById('stats').innerHTML=Object.entries(MAP.metadata.counts).map(([k,v])=>`<div class="stat"><b>${v.toLocaleString()}</b>${k}</div>`).join('');
 let dpr=window.devicePixelRatio||1, scale=1, ox=0, oy=0, dragging=false, last=null;
 function resize(){const r=canvas.getBoundingClientRect();canvas.width=r.width*dpr;canvas.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);fit();}
@@ -332,6 +368,7 @@ function path(points,close=false){if(!points.length)return;let q=s(points[0]);ct
 function stroke(item,color,width,dash=[]){path(item.p);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.stroke();ctx.setLineDash([]);}
 function boundaryColor(item){if(item.color==='yellow')return '#ffd84e';if(item.color==='blue')return '#39a9ff';return '#edf5f7';}
 function arrow(a,b){const p=s(a),q=s(b),ang=Math.atan2(q[1]-p[1],q[0]-p[0]);ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(q[0],q[1]);ctx.lineTo(q[0]-5*Math.cos(ang-.6),q[1]-5*Math.sin(ang-.6));ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]-5*Math.cos(ang+.6),q[1]-5*Math.sin(ang+.6));ctx.stroke();}
+function speedBoundary(point,label,color){const p=s(point);ctx.beginPath();ctx.arc(p[0],p[1],6,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();ctx.font='bold 11px ui-monospace';ctx.fillStyle='#fff';ctx.fillText(label,p[0]+10,p[1]-9);}
 function laneControlSignal(item){const p=s(item.p),r=5;ctx.save();ctx.translate(p[0],p[1]);ctx.rotate(Math.PI/4);ctx.fillStyle='#ffb347';ctx.fillRect(-r,-r,r*2,r*2);ctx.strokeStyle='#3b2205';ctx.lineWidth=1.4;ctx.strokeRect(-r,-r,r*2,r*2);ctx.beginPath();ctx.moveTo(-2.8,-2.8);ctx.lineTo(2.8,2.8);ctx.moveTo(2.8,-2.8);ctx.lineTo(-2.8,2.8);ctx.stroke();ctx.restore();ctx.font='bold 10px ui-monospace';ctx.fillStyle='#ffe0ad';ctx.fillText(item.id,p[0]+8,p[1]-7);}
 const centers=Object.fromEntries(MAP.centerlines.map(v=>[v.id,v]));
 function draw(){const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0,0,w,h);ctx.fillStyle='#071018';ctx.fillRect(0,0,w,h);ctx.lineJoin='round';ctx.lineCap='round';
@@ -342,9 +379,10 @@ function draw(){const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0
  if(enabled.surfaceMarkings){ctx.fillStyle='rgba(60,229,231,.30)';ctx.strokeStyle='#3ce5e7';ctx.lineWidth=.8;MAP.surfaceMarkings.forEach(x=>{path(x.p,true);ctx.fill();ctx.stroke();});}
  if(enabled.topology){ctx.strokeStyle='rgba(255,143,77,.42)';ctx.lineWidth=.8;MAP.centerlines.forEach(x=>x.successors.forEach(id=>{const y=centers[id];if(y)arrow(x.p[x.p.length-1],y.p[0]);}));}
  if(enabled.globalRoute&&MAP.globalRoute.p.length){stroke(MAP.globalRoute,'rgba(2,9,12,.92)',5.4);stroke(MAP.globalRoute,'#39ff88',2.8);}
+ if(enabled.speedException&&MAP.competitionSpeedPolicy){MAP.centerlines.filter(x=>x.speed_limit_exempt).forEach(x=>{stroke(x,'rgba(5,6,12,.9)',7);stroke(x,'#ff3bbd',4);});const p=MAP.competitionSpeedPolicy;speedBoundary(p.start_point,`START ${p.start_link_id}`,'#28d17c');speedBoundary(p.end_point,`END ${p.end_link_id}`,'#ff5c72');}
  if(enabled.signals){ctx.font='10px ui-monospace';MAP.signals.filter(x=>x.category!=='tunnel_lane_control').forEach(x=>{const p=s(x.p);ctx.fillStyle=x.category==='pedestrian'?'#55b7ff':'#ff5f65';ctx.beginPath();ctx.arc(p[0],p[1],3.3,0,Math.PI*2);ctx.fill();if(scale>.55){ctx.fillStyle='#f6d9dc';ctx.fillText(x.id,p[0]+5,p[1]-5);}});}
  if(enabled.laneControlSignals)MAP.signals.filter(x=>x.category==='tunnel_lane_control').forEach(laneControlSignal);
- if(enabled.labels&&scale>.12){ctx.font='9px ui-monospace';ctx.fillStyle='#b8f3d0';MAP.centerlines.forEach(x=>{const p=s(x.p[Math.floor(x.p.length/2)]);ctx.fillText(`${x.speed||'?'} ${x.direction||''}`,p[0]+3,p[1]-3);});}
+ if(enabled.labels&&scale>.12){ctx.font='9px ui-monospace';ctx.fillStyle='#b8f3d0';MAP.centerlines.forEach(x=>{const p=s(x.p[Math.floor(x.p.length/2)]),mission=x.speed_limit_exempt?'60예외':`cap${x.competition_speed_limit_kph||'?'}`;ctx.fillText(`src${x.speed||'?'} ${mission} ${x.direction||''}`,p[0]+3,p[1]-3);});}
 }
 canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,wx=(mx-ox)/scale,wy=-(my-oy)/scale,f=Math.exp(-e.deltaY*.001);scale*=f;ox=mx-wx*scale;oy=my+wy*scale;draw();},{passive:false});
 canvas.addEventListener('mousedown',e=>{dragging=true;last=[e.clientX,e.clientY];canvas.classList.add('dragging');});

@@ -9,6 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from .geometry import point_segment_distance_2d, polyline_length
+from .speed_policy import competition_speed_policy
 
 
 def _check(name, status, summary, metrics=None, samples=None):
@@ -332,6 +333,47 @@ def validate_osm(osm_path, dataset, routing_path=None, config=None):
          "segmented_source_links": segmented_links,
          "speed_limits": speed_count, "turn_directions": turn_count,
          "derived_boundary_lanelets": derived_count}, malformed))
+
+    speed_policy = competition_speed_policy(dataset, config)
+    if speed_policy:
+        policy_errors = []
+        exempt_links = set(speed_policy["link_ids"])
+        exempt_lanelets = 0
+        for link_id, entries in sorted(lanelets_by_mgeo.items()):
+            expected_exempt = link_id in exempt_links
+            for relation_id, relation in entries:
+                tags = relation["tags"]
+                if tags.get("molit:competition_speed_limit_kph") != str(
+                        speed_policy["default_limit_kph"]):
+                    policy_errors.append(
+                        "lanelet {} has wrong competition default limit".format(
+                            relation_id))
+                if tags.get("molit:competition_speed_limit_exempt") != (
+                        "yes" if expected_exempt else "no"):
+                    policy_errors.append(
+                        "lanelet {} has wrong competition exemption".format(
+                            relation_id))
+                if expected_exempt:
+                    exempt_lanelets += 1
+                    if tags.get("molit:competition_speed_zone") != speed_policy["id"]:
+                        policy_errors.append(
+                            "lanelet {} has wrong competition speed zone".format(
+                                relation_id))
+                elif "molit:competition_speed_zone" in tags:
+                    policy_errors.append(
+                        "lanelet {} has an unexpected competition speed zone".format(
+                            relation_id))
+        checks.append(_check(
+            "competition_speed_policy",
+            "pass" if not policy_errors else "fail",
+            "60 km/h default and the official high-speed-course exemption are explicit"
+            if not policy_errors else "competition speed-policy tags differ from config",
+            {"default_limit_kph": speed_policy["default_limit_kph"],
+             "exempt_source_links": len(exempt_links),
+             "exempt_lanelets": exempt_lanelets,
+             "start_link_id": speed_policy["start_link_id"],
+             "end_link_id": speed_policy["end_link_id"]},
+            policy_errors))
 
     boundary_ids = {}
     incomplete_boundaries = []

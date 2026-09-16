@@ -49,6 +49,20 @@ MGeo와 scene local 좌표의 평행이동은 `[+2795, -1300, 0]`이다.
 gRPC map export도 성공하지 않았으므로, 이것이 runtime map과 byte-identical하다는
 주장은 보류한다.
 
+## 대회 속도제한 정책
+
+공식 대회 규정 v1.1은 전 구간 60 km/h를 기본으로 하되,
+`A2256W000411` 시작점에서 `A2256W000153` 끝점까지를 예외로 명시한다.
+두 link는 고정 KATRI snapshot에 존재하며, 제공 전역경로 4,430점을 원본
+link centerline에 정합했을 때 순서대로 나타난다. 그 사이의 road ID는
+`4002838`, `4002876`, `4002841`, `4002846`, `4002845`이며 해당 road의 병렬
+차로 21개를 하나의 정적 예외 zone으로 표시한다.
+
+원본 `link.max_speed`는 삭제하거나 60으로 덮어쓰지 않는다. Lanelet2에서는
+원본 값을 `speed_limit`으로 보존하고, 대회 채점 규정은 `molit:competition_*`
+tag로 분리한다. 예외는 과속 의무나 안전 속도 상향을 의미하지 않으며,
+실제 목표 속도는 향후 Planner/Safety 계약에서 별도로 검증해야 한다.
+
 ## 원본 hash 주의
 
 `global_info.mgeo_file_hash`의 18개 선언값 중 다수는 repository의 LF 파일을 CRLF로

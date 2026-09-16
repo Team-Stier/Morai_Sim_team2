@@ -24,6 +24,7 @@ from .geometry import (
     simplify_rdp,
     slice_polyline,
 )
+from .speed_policy import competition_speed_policy, competition_speed_tags
 
 
 class _UnionFind(object):
@@ -283,6 +284,7 @@ class Lanelet2Exporter(object):
         self.dataset = dataset
         self.transformer = transformer
         self.config = config
+        self.competition_speed_policy = competition_speed_policy(dataset, config)
         conversion = config.get("conversion", {})
         self.tolerance = float(conversion.get("geometry_simplification_m", 0.02))
         self.default_width = float(conversion.get("default_lane_width_m", 3.5))
@@ -877,6 +879,8 @@ class Lanelet2Exporter(object):
                 speed = link.get("max_speed")
                 if speed is not None and float(speed) > 0.0:
                     tags["speed_limit"] = "{} km/h".format(int(float(speed)))
+                tags.update(competition_speed_tags(
+                    link_id, self.competition_speed_policy))
                 turn_direction = self._turn_direction(link.get("related_signal"))
                 if turn_direction:
                     tags["turn_direction"] = turn_direction

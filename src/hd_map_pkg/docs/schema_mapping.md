@@ -18,7 +18,8 @@
 | 교차로 | `junction_set.road_id_list` | `mgeo:derived=yes`인 convex-hull `intersection_area` multipolygon |
 | 선행·후행 | link `from_node_idx/to_node_idx` | 안전한 경우 공유 bound endpoint Point IDs; 항상 explicit routing JSON v2에 보존 |
 | 측방 연결 | lateral destination, `can_move_*` | 완전히 동일한 bound만 공유; source 관계는 routing JSON에 보존 |
-| 제한속도 | `link.max_speed` | 모든 lanelet segment에 `speed_limit="N km/h"` |
+| 원본 제한속도 | `link.max_speed` | 모든 lanelet segment에 `speed_limit="N km/h"` |
+| 대회 속도 정책 | 공식 규정 v1.1 + 경계 link/road config | 기본 `molit:competition_speed_limit_kph=60`; 고속주회로에 `molit:competition_speed_limit_exempt=yes`, zone ID |
 | 진행방향 | `link.related_signal`, surface arrow | `turn_direction`; U-turn은 `mgeo:maneuver` |
 
 ## Source link 1:N lanelet 분할
