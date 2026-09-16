@@ -1,4 +1,8 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Runtime entities will be added after central contract approval. -->
+  <arg name="config_file" default="$(find world_model_pkg)/config/world_model.yaml"/>
+  <node pkg="world_model_pkg" type="world_model_node"
+        name="world_model_node" ns="/" output="screen" required="true">
+    <param name="config_file" value="$(arg config_file)"/>
+  </node>
 </launch>

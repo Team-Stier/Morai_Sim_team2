@@ -8,5 +8,12 @@
   <buildtool_depend>catkin</buildtool_depend>
   <depend>common_msgs_pkg</depend>
   <depend>ros_architecture_pkg</depend>
+  <depend>roscpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>pcl_ros</depend>
+  <depend>pcl_conversions</depend>
+  <test_depend>rostest</test_depend>
+  <test_depend>rospy</test_depend>
   <export />
 </package>

@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Camera UDP Bridge 노드 실행 진입점. 로직은 morai_udp_bridge.camera_node에 있다.
+여러 카메라는 이 노드를 각각 다른 name/port/topic으로 여러 인스턴스 실행한다."""
+
+import morai_udp_bridge
+
+if getattr(morai_udp_bridge, "RUNTIME_OWNER_PACKAGE", None) != "morai_interface_pkg":
+    raise ImportError("다른 workspace의 morai_udp_bridge가 선택되었습니다")
+
+from morai_udp_bridge.camera_node import main
+
+if __name__ == "__main__":
+    main()

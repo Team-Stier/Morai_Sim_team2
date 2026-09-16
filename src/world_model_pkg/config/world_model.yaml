@@ -1,0 +1,19 @@
+# Development-only map object tracking. These values do not approve driving readiness.
+reference_frame: map
+lidar_frame: lidar_link
+status_period_sec: 0.5
+observation_timeout_sec: 0.5
+tf_wait_sec: 0.15
+pending_queue_size: 4
+allow_unverified_lidar_geometry: true
+tracking:
+  association_distance_m: 2.0
+  maximum_coast_sec: 0.6
+  minimum_confirmation_hits: 2
+  minimum_velocity_hits: 3
+  position_alpha: 0.65
+  size_alpha: 0.5
+  velocity_alpha: 0.4
+  maximum_speed_mps: 25.0
+  maximum_prediction_sec: 0.3
+  velocity_stddev_mps: 2.0

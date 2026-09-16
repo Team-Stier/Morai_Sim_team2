@@ -8,6 +8,12 @@
 
   <buildtool_depend>catkin</buildtool_depend>
   <depend>ros_architecture_pkg</depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <test_depend>python3-yaml</test_depend>
+  <test_depend>python3-nose</test_depend>
 
   <export />
 </package>

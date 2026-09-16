@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find lidar_perception_pkg)/launch/lidar_perception_pkg.launch"/>
+  <test test-name="lidar_node_contract" pkg="lidar_perception_pkg"
+        type="test_node.py" time-limit="40"/>
+</launch>

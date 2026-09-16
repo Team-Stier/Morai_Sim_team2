@@ -1,0 +1,41 @@
+schema_version: 1
+profile_name: live_morai_sensor_ingress_v1
+status: development_runtime_profile
+mode: live_morai
+
+contract_references:
+  interface_contract: ros_architecture_pkg/config/interface_contract.yaml
+  morai_udp_contract: ros_architecture_pkg/config/morai_interface/udp_ros_bridge.yaml
+
+clock:
+  use_sim_time: false
+  reason: live_morai_clock_not_verified
+
+required_channels:
+  - camera_front
+  - camera_left
+  - camera_right
+  - gps
+
+optional_channels: []
+
+excluded_channels:
+  imu: runtime_activation_allowed_false
+  lidar: runtime_activation_allowed_false
+  lidar_status: runtime_activation_allowed_false
+  vehicle_status: runtime_activation_allowed_false
+  collision: runtime_activation_allowed_false
+  control: runtime_activation_allowed_false
+
+composition:
+  morai_interface_pkg: enabled
+  system_readiness_node: disabled_not_implemented
+  downstream_autonomy: disabled_not_implemented
+  static_sensor_tf: disabled_publish_gate_not_approved
+  morai_control: disabled_not_implemented
+
+purpose: >-
+  First-stage live MORAI sensor-ingress integration profile. It starts only
+  centrally approved runtime-active MORAI ingress channels and does not claim
+  readiness, localization, perception, planning, control, safety, or closed-loop
+  driving availability.

@@ -1,6 +1,8 @@
 # lidar_perception_pkg
 
-> **INTERFACE LOCK:** 이 패키지는 [`ros_architecture_pkg`](../ros_architecture_pkg/README.md)의 중앙 ROS 계약을 따른다. 구체 node/topic/message/frame 이름은 여기서 정의하지 않는다.
+> **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
+> [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
+> 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
 
 ## 담당 범위
 
@@ -19,15 +21,44 @@
 
 - 3D LiDAR는 최대 1대이며 `VLP16`, Intensity 방식만 허용된다.
 - 회전율은 최대 15 Hz이고 공지 권장은 10 Hz 이하이다.
-- 현재 센서 설정 파일에는 LiDAR가 없으므로 장착 위치·회전율·포트를 추측하지 않는다.
+- 저장소의 제공 Camera 설정에는 LiDAR가 없다. 로컬 MORAI 저장 프로필에서 확인된 LiDAR 위치는 활성 loadout 검증 전까지 후보값으로만 사용한다.
 - sample scene의 객체 목록이나 Ground Truth를 검출 결과로 사용하지 않는다.
 
-## 논리 입출력
+## 공개 ROS 입출력
 
-- 입력: 정규화된 point cloud와 중앙에서 승인한 calibration 정보
-- 출력: 센서 관측 좌표의 timestamped 3D object/obstacle/free-space와 품질 상태
+현재 상태는 **기존 객체 검출부 개발 구현, ROS/MORAI 실행 검증 대기**다. 공개 경계 노드는
+`lidar_perception_node`다.
+
+![LiDAR Perception 공개 입출력](docs/interface_io.svg)
+
+- [Mermaid 원본](docs/interface_io.mmd)
+- [PNG 이미지](docs/interface_io.png)
+
+**공개 node (exact):** `lidar_perception_node`
+
+| 구분 | Topic | Type |
+|---|---|---|
+| 입력 | `/molit/sensors/lidar/points` | `sensor_msgs/PointCloud2` |
+| 입력 | `/molit/sensors/lidar/status` | `std_msgs/Bool` |
+| 출력 | `/molit/perception/lidar/observations` | `common_msgs_pkg/LidarObservationArray` |
+| 출력 | `/molit/perception/lidar/status` | `common_msgs_pkg/ComponentStatus` |
+
+공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`와
+`LidarObservationArray`, `LidarObjectObservation` 스키마가 구현됐다.
+해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
+이 패키지의 ROI·VoxelGrid·DBSCAN 노드는 구현됐으며 지면·빈 공간·속도 추정은
+이번 객체 검출 범위에 포함하지 않는다. downstream 런타임은 아직 미구현이다.
 
 오래된 장애물을 현재 관측처럼 유지하지 않고, sparse VLP16 환경에서의 miss와 uncertainty를 명시한다.
+
+LiDAR frame과 후보 장착 위치는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)을 따른다. 장착 위치 `(2.0, 0.0, 1.5) m`와 축에 대한 사용자 승인으로 개발용 TF가 활성화됐으며, 발행은 `system_bringup_pkg`가 소유한다. 물리 정합 실측 검증은 별도다. 출력 관측은 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)에 따라 원본 scan의 측정시각을 유지한다.
+
+## 통합 전 자체 확인
+
+- 노드의 통합 실행 이름이 정확히 `lidar_perception_node`인지 확인한다.
+- 위 입력과 출력의 topic/type/frame/stamp가 중앙 계약과 일치해야 한다.
+- 내부 topic은 `/molit/internal/lidar_perception/...` 또는 private name만 사용한다.
+- 공개 이름을 remap하지 않고 중앙 계약 생성 검사를 통과시킨다.
 
 ## 디렉터리
 
@@ -35,3 +66,13 @@
 - `docs/`: calibration, 데이터 특성, 알고리즘과 평가 근거
 - `launch/`: LiDAR Perception 단독 실행
 - `src/`: point cloud 처리와 observation 생성 구현
+
+## LiDAR 검출부 개발 구현 (2026-09-10)
+
+`LidarObservationArray`, `LidarObjectObservation` 필드와 검출 노드는 개발 구현 상태다.
+중앙 [LiDAR 계약](../ros_architecture_pkg/docs/lidar_detection_contract.md)과
+[검출부 실행·검증](../lidar_perception_pkg/docs/legacy_port.md)을 따른다.
+
+현재 MORAI 수신 가능 조건과 수정 내역은
+[시뮬레이터 입력 점검](docs/sim_input_review.md)에 기록한다.
+단독 검출 launch 외에 LiDAR UDP bridge와 watchdog을 별도로 실행해야 한다.

@@ -1,0 +1,13 @@
+# Camera Front (제공 센서셋 Camera-1: pos 1.9/0/1.2, pitch 2deg, destPort 9291)
+# 2026-09-03 현재 실행 중 MORAI에서 9290 -> 9291 패킷을 확인했다.
+bind_ip: "0.0.0.0"
+port: 9291
+topic: "/molit/sensors/camera/front/image/compressed"
+frame_id: "camera_front_optical_frame"
+timestamp_source: "packet"
+max_frame_bytes: 2000000
+frame_timeout_sec: 0.5
+check_chunk_index: true           # live 확인: 0,1,2 순서 반복
+receive_buffer_bytes: 65536
+socket_timeout_sec: 0.5
+stats_log_period_sec: 5.0

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Launch only visualization. Full system composition belongs to system_bringup_pkg. -->
+  <arg name="reference_frame" default="map" doc="map: EgoState; odom: Local Odometry"/>
+  <arg name="display_mode" default="footprint" doc="footprint or box (vertical center remains provisional)"/>
+  <arg name="show_hd_map" default="true"/>
+  <arg name="rviz" default="true"/>
+  <node pkg="visualization_pkg" type="vehicle_visualizer_node.py"
+        name="vehicle_visualizer_node" ns="/" output="screen">
+    <rosparam command="load" file="$(find visualization_pkg)/config/vehicle_display.yaml"/>
+    <param name="reference_frame" value="$(arg reference_frame)"/>
+    <rosparam command="load" file="$(find visualization_pkg)/config/hd_map_display.yaml"/>
+    <param name="show_hd_map" value="$(arg show_hd_map)"/>
+    <param name="display_mode" value="$(arg display_mode)"/>
+  </node>
+  <node if="$(arg rviz)" pkg="rviz" type="rviz" name="vehicle_rviz" ns="/"
+        args="-d $(find visualization_pkg)/config/vehicle.rviz -f $(arg reference_frame)"
+        output="screen">
+    <env name="DISABLE_ROS1_EOL_WARNINGS" value="1"/>
+  </node>
+</launch>

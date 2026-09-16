@@ -1,0 +1,9 @@
+<launch>
+  <!-- GPS UDP Bridge: MORAI GPS(NMEA) UDP -> sensor_msgs/NavSatFix -->
+  <arg name="config" default="$(find morai_interface_pkg)/config/gps_bridge.yaml"/>
+
+  <node pkg="morai_interface_pkg" type="gps_receiver_node"
+        name="morai_gps_bridge" output="screen" required="true">
+    <rosparam command="load" file="$(arg config)"/>
+  </node>
+</launch>

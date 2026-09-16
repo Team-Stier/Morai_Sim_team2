@@ -1,0 +1,14 @@
+# Six-state development estimator model parameters. Timing is read directly
+# from ros_architecture_pkg/config/timestamp/timestamp_contract.yaml.
+# The C++ diagnostic mode only uses status rate and clock stall.
+status_publish_rate_hz: 10.0
+clock_stall_sec: 0.5
+gravity_mps2: 9.80665
+gps_position_stddev_floor_m: 0.25
+gps_altitude_stddev_floor_m: 0.5
+orientation_stddev_floor_rad: 0.02
+accelerometer_noise_stddev_mps2: 0.5
+initial_velocity_stddev_mps: 2.0
+# Above this value, immediately accept the GPS as a new map anchor and reset velocity.
+gps_innovation_gate_chi2: 25.0
+ingress_timing_stddev_sec: 0.03

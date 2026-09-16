@@ -1,0 +1,6 @@
+# LiDAR watchdog: /molit/sensors/lidar/points 수신 감시(velodyne 외부 드라이버 담당)
+input_topic: "/molit/sensors/lidar/points"
+status_topic: "/molit/sensors/lidar/status"     # std_msgs/Bool (True=EXTERNAL_OK)
+timeout_sec: 1.0                                 # 이 시간 미수신이면 NO_POINTS
+check_period_sec: 0.5
+publish_status: true

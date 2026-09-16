@@ -1,0 +1,8 @@
+{
+  "deterministicIds": true,
+  "deterministicIDSeed": "molit-public-interface-v1",
+  "securityLevel": "strict",
+  "themeVariables": {
+    "fontFamily": "Noto Sans CJK KR, sans-serif"
+  }
+}

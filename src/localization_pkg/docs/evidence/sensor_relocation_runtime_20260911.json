@@ -1,0 +1,40 @@
+{
+  "measurement_time_local": "2026-09-11T00:49:22.643016+09:00",
+  "policy": "immediate_gps_reinitialization_when_chi2_exceeds_threshold",
+  "duration_wall_sec": 12.012032199003443,
+  "gps_innovation_gate_chi2": 25.0,
+  "obsolete_relocation_parameters_present": false,
+  "counts": {
+    "status": 120,
+    "vehicle_markers": 1
+  },
+  "source_stamp_rate_hz": {},
+  "mode_counts": {
+    "1": 120
+  },
+  "observed_reset_ids": [
+    0
+  ],
+  "validated_pose_status_pairs": 0,
+  "validation_errors": [],
+  "latest_vehicle": {
+    "shapes": 0
+  },
+  "latest_status": {
+    "mode": 1,
+    "gps_fix_valid": false,
+    "map_pose_valid": false,
+    "local_odometry_valid": false,
+    "gps_age_sec": -1.0,
+    "reset_id": 0,
+    "reason": "development only; ingress fallback; physical alignment unverified; IMU input stale"
+  },
+  "scope": "Estimator restart and initializing heartbeat verified. No GPS/IMU received during this window; actual live GPS-triggered reset and closed-loop driving not exercised.",
+  "input_interruption": {
+    "last_gps_ingress_local_approx": "2026-09-11T00:47:45.635+09:00",
+    "last_imu_ingress_local_approx": "2026-09-11T00:47:45.705+09:00",
+    "simulator_log_modified_local": "2026-09-11T00:47:46.914+09:00",
+    "simulator_process_present_at_check": false,
+    "crash_stack": "vk::ImagePool::ProcessFrontImage -> vk::Texture::FreeUnusedPoolImagesImmediate -> GfxDeviceVK::FlushTexturePools_Internal"
+  }
+}

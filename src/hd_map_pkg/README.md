@@ -6,8 +6,8 @@ WGS84 기반 Lanelet2 OSM으로 변환·검증하며 브라우저에서 시각 �
 
 > **INTERFACE LOCK:** 이 패키지는
 > [`ros_architecture_pkg`](../ros_architecture_pkg/README.md)의 중앙 ROS 계약을
-> 따른다. 현재 계약에 node/topic/frame이 없으므로 ROS publisher나 임의의 `map`
-> frame을 만들지 않는다. 미리보기는 ROS와 독립된 로컬 HTML Canvas이다.
+> 따른다. 공개 ROS 이름은 승인되어 있지만 런타임 구현은 예약 상태다.
+> 이 오프라인 도구는 ROS publisher나 TF를 발행하지 않는다. 미리보기는 ROS와 독립된 로컬 HTML Canvas이다.
 
 ![KATRI HD Map 미리보기](docs/katri_hd_map_preview.png)
 
@@ -198,6 +198,35 @@ catkin_test_results
 동적 신호 상태·객체, route 진행 상태, local trajectory와 제어는 각각 해당 패키지의
 책임이며 여기서 publish하지 않는다.
 
+## 공개 ROS 입출력
+
+현재 상태는 **이름 승인, 구현 예약**이며 공개 경계 노드는
+`hd_map_server_node`다. ROS 입력은 없고 검증된 immutable 지도 파일과 config만
+읽는다.
+
+![HD Map 공개 입출력](docs/interface_io.svg)
+
+- [Mermaid 원본](docs/interface_io.mmd)
+- [PNG 이미지](docs/interface_io.png)
+
+**공개 node (exact):** `hd_map_server_node`
+
+| 구분 | Topic | Type |
+|---|---|---|
+| 출력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
+| 출력 | `/molit/map/status` | `common_msgs_pkg/ComponentStatus` |
+
+공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
+나머지 custom type과 런타임 노드는 아직 미구현이다.
+
+## 통합 전 자체 확인
+
+- 노드의 통합 실행 이름이 정확히 `hd_map_server_node`인지 확인한다.
+- 지도 version/hash/frame 검증 전에는 공개 출력을 valid로 발행하지 않는다.
+- 내부 topic은 `/molit/internal/hd_map/...` 또는 private name만 사용한다.
+- 공개 이름을 remap하지 않고 중앙 계약 생성 검사를 통과시킨다.
+
 ## 디렉터리
 
 - `config/`: 원본 pin, 좌표계, layer mapping, validation 설정
@@ -207,3 +236,14 @@ catkin_test_results
 - `test/`: dependency-free 회귀 테스트
 - `vendor/verdict_sdk/`: 공식 원본을 가리키는 고정 submodule
 - `data/derived/`: 재생성 가능한 비커밋 산출물
+
+## RViz HD Map + Localization
+
+`roslaunch system_bringup_pkg localization_visualization.launch`는 기본으로 HD Map 차선(밝은 회색),
+도로 중심선(청록색)과 로컬리제이션 차량을 같은 `map` 좌표계에 표시한다. GPS/IMU 수신은 먼저 실행해야 한다.
+`show_hd_map:=false`로 지도 표시를 끌 수 있다. 지도 원본은 `hd_map_pkg`의 고정 MGeo submodule을 사용하고,
+변환 원점은 중앙 `config/tf/map_projection.yaml`에서 읽는다. 지도는 화면에서만 평면으로 투영된다.
+지도 마커는 visualization 내부 RViz 표시 전용이며 Localization의 입력이나 공개 HdMap 메시지가 아니다.
+
+RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 30 m + 북쪽 지정 경계 확장을 사용한다.
+`hd_map_pkg/config/map_conversion.yaml`의 crop 설정을 공유하고 전역경로는 초록색으로 표시한다.

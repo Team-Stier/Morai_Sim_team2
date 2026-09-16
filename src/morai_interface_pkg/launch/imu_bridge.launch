@@ -1,0 +1,11 @@
+<launch>
+  <!-- IMU UDP Bridge: MORAI IMU UDP(115B) -> sensor_msgs/Imu -->
+  <arg name="enable" default="false"/>
+  <arg name="config" default="$(find morai_interface_pkg)/config/imu_bridge.yaml"/>
+
+  <node pkg="morai_interface_pkg" type="imu_receiver_node"
+        name="morai_imu_bridge" output="screen" required="true"
+        if="$(arg enable)">
+    <rosparam command="load" file="$(arg config)"/>
+  </node>
+</launch>

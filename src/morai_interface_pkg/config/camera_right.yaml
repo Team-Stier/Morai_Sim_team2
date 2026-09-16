@@ -1,0 +1,13 @@
+# Camera Right (제공 센서셋 Camera-3: pos 1.15/-0.65/1.2, pitch 10 yaw 290, destPort 9295)
+# 2026-09-03 현재 실행 중 MORAI에서 9294 -> 9295 패킷을 확인했다.
+bind_ip: "0.0.0.0"
+port: 9295
+topic: "/molit/sensors/camera/right/image/compressed"
+frame_id: "camera_right_optical_frame"
+timestamp_source: "packet"
+max_frame_bytes: 2000000
+frame_timeout_sec: 0.5
+check_chunk_index: true           # live 확인: 단일 chunk 프레임 index 0
+receive_buffer_bytes: 65536
+socket_timeout_sec: 0.5
+stats_log_period_sec: 5.0
