@@ -1,0 +1,60 @@
+schema_version: 1
+contract_version: 0.1.0
+authority: ros_architecture_pkg
+implementation_owner: common_msgs_pkg
+status: candidate_schema_implemented_pending_runtime_validation
+
+source_evidence:
+  competition_rule:
+    allowed_channels: [Ego Ctrl Cmd, CollisionData, Competition Vehicle Status]
+    ego_ctrl_cmd_constraints:
+      command_type: 1
+      control_mode: 2
+    competition_vehicle_status_rule: >-
+      Use the MORAI EgoVehicleStatus UDP example while not consuming the
+      competition-withheld position, lateral/vertical velocity, linear
+      acceleration, or tire-dynamics fields.
+  morai_network_module:
+    repository: https://github.com/MORAI-Autonomous/MORAI-NetworkModule
+    ref: 24.R2.0
+    ego_ctrl_cmd: lib/define/EgoCtrlCmd.py
+    collision_data: lib/define/CollisionData.py
+    ego_vehicle_status: lib/define/EgoVehicleStatus.py
+
+rules:
+  - ActuatorCommand is a ROS-domain safety-gated command, not the MORAI wire packet.
+  - morai_control_sender fixes cmd_type=1 and ctrl_mode=2; upstream nodes cannot override them.
+  - steering_rad remains a ROS-domain value until the rad-to-MORAI-normalized conversion is physically verified.
+  - CollisionEvent intentionally excludes CollisionData pose/globalOffset geometry until its frame semantics are verified.
+  - Missing Competition Vehicle Status fields must never be synthesized as zero-valued observations.
+
+messages:
+  ActuatorCommand:
+    wire_definition: |
+      # Schema authority: ros_architecture_pkg/config/messages/competition_io_messages.yaml
+      uint8 GEAR_MANUAL=0
+      uint8 GEAR_PARK=1
+      uint8 GEAR_REVERSE=2
+      uint8 GEAR_NEUTRAL=3
+      uint8 GEAR_DRIVE=4
+      uint8 GEAR_LOW=5
+      # command_generation_time; frame_id must be base_link.
+      std_msgs/Header header
+      bool valid
+      # ROS-domain steering angle. Do not equate this to MORAI normalized steer without calibration.
+      float64 steering_rad
+      float64 accel
+      float64 brake
+      uint8 gear
+  CollisionEvent:
+    wire_definition: |
+      # Schema authority: ros_architecture_pkg/config/messages/competition_io_messages.yaml
+      # MORAI interface ingress time; frame_id is empty because geometry is not exposed here.
+      std_msgs/Header header
+      # Source packet sec/nsec when available; zero means unavailable.
+      time source_stamp
+      bool collision_detected
+      uint8 object_count
+      int16[] object_types
+      int16[] object_ids
+      uint32 raw_data_length
