@@ -1,9 +1,10 @@
-# Competition Vehicle Status UDP Bridge 개발용 파라미터.
-# 공식 규정은 MORAI 24.R2.0 EgoVehicleStatus UDP 예제 활용을 지시하지만,
+# Competition Vehicle Status UDP Bridge 통신 시험 파라미터.
+# 현재 MORAI simulator save/load에서 destination port가 803으로 복원되는 동작을 기준으로 맞춘다.
+# Linux에서 1024 미만 포트 bind는 별도 권한 설정이 필요하다.
 # Competition Vehicle Status의 실제 datagram 길이는 현장 packet으로 최종 확인한다.
 
 bind_ip: "0.0.0.0"
-port: 7803
+port: 803
 
 # Competition에서 허용된 종방향 정보만 사용한다.
 timestamp_source: "receive"          # receive | packet
