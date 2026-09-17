@@ -51,9 +51,14 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
             channel = self.contract["channels"][channel_name]
             local = load_yaml(os.path.join(PACKAGE_ROOT, "config", filename))
             self.assertEqual(local["port"], channel["port"], channel_name)
-            self.assertEqual(local["frame_id"], channel["frame_id"], channel_name)
+            # Public frames are fixed by the central contract. Some probe configs
+            # intentionally do not expose frame_id as a runtime parameter.
+            if "frame_id" in local:
+                self.assertEqual(local["frame_id"], channel["frame_id"], channel_name)
             if "topic" in local:
                 self.assertEqual(local["topic"], channel["topic"], channel_name)
+        self.assertEqual(
+            self.contract["channels"]["vehicle_status"]["frame_id"], "base_link")
 
     def test_camera_measurement_stamp_is_selected(self):
         mapping = self.contract["runtime_timestamp_parameter_mapping"]["packet"]
@@ -107,7 +112,9 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
             "imu_bridge.launch": ("enable", "false"),
             "lidar_bridge.launch": ("enable", "false"),
             "lidar_watchdog.launch": ("enable", "false"),
-            "vehicle_status_bridge.launch": ("allow_legacy", "false"),
+            "vehicle_status_bridge.launch": ("enable", "false"),
+            "collision_bridge.launch": ("enable", "false"),
+            "control_sender.launch": ("enable", "false"),
         }
         for filename, expected in expected_gate.items():
             root = ET.parse(os.path.join(PACKAGE_ROOT, "launch", filename)).getroot()
@@ -216,18 +223,43 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
         for topic in topics.values():
             self.assertIn(topic["data_type"], message_types, topic["name"])
 
-    def test_ros_to_morai_control_files_are_absent(self):
-        forbidden = (
+    def test_competition_io_probe_files_are_isolated(self):
+        # Old imported control bridge names remain forbidden. The competition
+        # implementation uses explicit probe-only names and is not system bringup.
+        forbidden_legacy = (
             "scripts/ctrl_cmd_sender_node",
             "src/morai_udp_bridge/ctrl_cmd_node.py",
-            "src/morai_udp_bridge/udp_sender.py",
-            "src/morai_udp_bridge/protocol/ego_ctrl_cmd_packet.py",
             "launch/ctrl_cmd_bridge.launch",
             "config/ctrl_cmd_bridge.yaml",
         )
-        for relative_path in forbidden:
+        for relative_path in forbidden_legacy:
             self.assertFalse(os.path.exists(os.path.join(PACKAGE_ROOT, relative_path)),
                              relative_path)
+
+        required_probe_files = (
+            "scripts/control_sender_node",
+            "scripts/collision_receiver_node",
+            "src/morai_udp_bridge/control_node.py",
+            "src/morai_udp_bridge/collision_node.py",
+            "src/morai_udp_bridge/udp_sender.py",
+            "src/morai_udp_bridge/protocol/ego_ctrl_cmd_packet.py",
+            "src/morai_udp_bridge/protocol/collision_packet.py",
+            "src/morai_udp_bridge/protocol/competition_vehicle_status_packet.py",
+            "launch/control_sender.launch",
+            "launch/collision_bridge.launch",
+            "config/control_sender.yaml",
+            "config/collision_bridge.yaml",
+        )
+        for relative_path in required_probe_files:
+            self.assertTrue(os.path.exists(os.path.join(PACKAGE_ROOT, relative_path)),
+                            relative_path)
+
+        self.assertFalse(
+            self.contract["channels"]["control"]["runtime_activation_allowed"])
+        self.assertFalse(
+            self.contract["channels"]["collision"]["runtime_activation_allowed"])
+        self.assertFalse(
+            self.contract["channels"]["vehicle_status"]["runtime_activation_allowed"])
 
     def test_entrypoints_fail_closed_on_namespace_collision(self):
         scripts_dir = os.path.join(PACKAGE_ROOT, "scripts")
