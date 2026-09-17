@@ -30,8 +30,11 @@ RViz는 같은 패키지의 내부 MarkerArray만 읽고, 유효한 추정값이
 대기 상태를 표시한다. 나머지는
 `reserved_not_implemented` 또는 disabled/prohibited 상태다.
 `ComponentStatus`, `EgoState`, `LocalizationStatus`와 LiDAR의
-`LidarObjectObservation`, `LidarObservationArray` 스키마는 구현됐으며 나머지는 예약 상태다.
+`LidarObjectObservation`, `LidarObservationArray`, World Model의
+`TrackedObject`, `WorldModel` 스키마는 구현됐으며 나머지는 예약 상태다.
 LiDAR 검출은 개발 구현이며 [LiDAR 계약](docs/lidar_detection_contract.md)을 따른다.
+[World Model의 LiDAR map tracking](docs/world_model_tracking.md)은 개발 구현됐지만
+미검증 입력을 주행 장면으로 승격하지 않아 `planner_ready=false`를 유지한다.
 [기반 메시지 계약](docs/core_messages.md)을 따른다. 내부 LiDAR packet과
 Visualization MarkerArray topic은 공개 topic 수에서 제외한다.
 

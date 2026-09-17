@@ -1,0 +1,413 @@
+#!/usr/bin/env python3
+"""LiDAR-only development World Model with exact scan-time map tracking."""
+
+import math
+import threading
+import time
+from collections import deque
+from dataclasses import dataclass
+
+import rospy
+import tf2_ros
+import yaml
+from common_msgs_pkg.lidar_validation import validate_lidar
+from common_msgs_pkg.world_model_validation import validate_world_model
+from common_msgs_pkg.msg import (
+    ComponentStatus,
+    LidarObservationArray,
+    LocalizationStatus,
+    TrackedObject,
+    WorldModel,
+)
+
+from world_model_pkg import Detection, MultiObjectTracker, TrackerConfig, transform_aabb
+
+
+OBSERVATION_TOPIC = "/molit/perception/lidar/observations"
+LIDAR_STATUS_TOPIC = "/molit/perception/lidar/status"
+LOCALIZATION_STATUS_TOPIC = "/molit/localization/status"
+SCENE_TOPIC = "/molit/world_model/scene"
+STATUS_TOPIC = "/molit/world_model/status"
+
+
+@dataclass(frozen=True)
+class _Pending:
+    message: object
+    received_wall: float
+
+
+def _load_config(path):
+    with open(path, "r", encoding="utf-8") as stream:
+        value = yaml.safe_load(stream)
+    if not isinstance(value, dict):
+        raise ValueError("world model config root must be a mapping")
+    return value
+
+
+def _stamp_ns(stamp):
+    return int(stamp.secs) * 1000000000 + int(stamp.nsecs)
+
+
+def _time_from_ns(value):
+    return rospy.Time(int(value // 1000000000), int(value % 1000000000))
+
+
+class WorldModelNode:
+    def __init__(self):
+        config = _load_config(rospy.get_param("~config_file"))
+        self._reference_frame = str(config["reference_frame"])
+        self._lidar_frame = str(config["lidar_frame"])
+        self._status_period = float(config["status_period_sec"])
+        self._observation_timeout = float(config["observation_timeout_sec"])
+        self._tf_wait = float(config["tf_wait_sec"])
+        self._pending_limit = int(config["pending_queue_size"])
+        self._allow_unverified = bool(config["allow_unverified_lidar_geometry"])
+        if self._reference_frame != "map" or self._lidar_frame != "lidar_link":
+            raise ValueError("public World Model frames are locked to map <- lidar_link")
+        for value, name in (
+            (self._status_period, "status period"),
+            (self._observation_timeout, "observation timeout"),
+            (self._tf_wait, "TF wait"),
+        ):
+            if not math.isfinite(value) or value <= 0.0:
+                raise ValueError(name + " must be finite and positive")
+        if self._pending_limit <= 0:
+            raise ValueError("pending queue size must be positive")
+        tracking = config["tracking"]
+        self._tracker = MultiObjectTracker(TrackerConfig(
+            association_distance_m=float(tracking["association_distance_m"]),
+            maximum_coast_sec=float(tracking["maximum_coast_sec"]),
+            minimum_confirmation_hits=int(tracking["minimum_confirmation_hits"]),
+            minimum_velocity_hits=int(tracking["minimum_velocity_hits"]),
+            position_alpha=float(tracking["position_alpha"]),
+            size_alpha=float(tracking["size_alpha"]),
+            velocity_alpha=float(tracking["velocity_alpha"]),
+            maximum_speed_mps=float(tracking["maximum_speed_mps"]),
+            maximum_prediction_sec=float(tracking["maximum_prediction_sec"]),
+            velocity_stddev_mps=float(tracking["velocity_stddev_mps"]),
+        ))
+
+        self._lock = threading.RLock()
+        self._pending = deque()
+        self._localization_status = None
+        self._localization_received_wall = None
+        self._lidar_status = None
+        self._reset_id = None
+        self._last_received_stamp = rospy.Time()
+        self._last_scene_stamp = rospy.Time()
+        self._last_scene_wall = None
+        self._last_clock = rospy.Time()
+        self._last_clock_change_wall = time.monotonic()
+        self._processed = 0
+        self._dropped = 0
+        self._invalid = 0
+        self._last_latency = -1.0
+        self._health_state = ComponentStatus.INITIALIZING
+        self._health_reason = "waiting for localization status and LiDAR observations"
+
+        self._tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(10.0))
+        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
+        self._scene_publisher = rospy.Publisher(SCENE_TOPIC, WorldModel, queue_size=2)
+        self._status_publisher = rospy.Publisher(STATUS_TOPIC, ComponentStatus, queue_size=1, latch=True)
+        self._observation_subscriber = rospy.Subscriber(
+            OBSERVATION_TOPIC, LidarObservationArray, self._on_observation, queue_size=2
+        )
+        self._lidar_status_subscriber = rospy.Subscriber(
+            LIDAR_STATUS_TOPIC, ComponentStatus, self._on_lidar_status, queue_size=2
+        )
+        self._localization_status_subscriber = rospy.Subscriber(
+            LOCALIZATION_STATUS_TOPIC, LocalizationStatus, self._on_localization_status, queue_size=10
+        )
+        self._stop = threading.Event()
+        self._worker = threading.Thread(target=self._run, name="world_model_wall_worker")
+        self._worker.daemon = True
+        rospy.on_shutdown(self.shutdown)
+        self._worker.start()
+        self._publish_status()
+        rospy.loginfo("World Model development tracker ready; planner_ready is fail-closed")
+
+    def _reset_tracks(self, reason, reset_id=None):
+        self._tracker.clear(reset_id)
+        self._pending.clear()
+        self._last_received_stamp = rospy.Time()
+        self._last_scene_stamp = rospy.Time()
+        self._last_scene_wall = None
+        self._health_state = ComponentStatus.DEGRADED
+        self._health_reason = reason
+
+    def _clock_ok(self, now, wall):
+        if not self._last_clock.is_zero() and now < self._last_clock:
+            self._reset_tracks("ROS clock regressed; tracks cleared", self._reset_id)
+            self._last_clock = now
+            self._last_clock_change_wall = wall
+            return False
+        if self._last_clock.is_zero() or now != self._last_clock:
+            self._last_clock = now
+            self._last_clock_change_wall = wall
+        return not now.is_zero()
+
+    def _on_localization_status(self, message):
+        with self._lock:
+            if message.header.stamp.is_zero():
+                self._invalid += 1
+                self._health_state = ComponentStatus.FAULT
+                self._health_reason = "zero localization status stamp"
+                return
+            if self._reset_id is not None and int(message.reset_id) != self._reset_id:
+                self._reset_tracks("localization reset changed; tracks cleared", int(message.reset_id))
+            self._reset_id = int(message.reset_id)
+            self._localization_status = message
+            self._localization_received_wall = time.monotonic()
+            self._drain_pending()
+
+    def _on_lidar_status(self, message):
+        with self._lock:
+            self._lidar_status = message
+
+    def _reject_observation(self, reason, message=None, publish_invalid=False):
+        self._invalid += 1
+        self._health_state = ComponentStatus.FAULT
+        self._health_reason = reason
+        self._tracker.clear(self._reset_id)
+        self._pending.clear()
+        if publish_invalid and message is not None and not message.header.stamp.is_zero():
+            output = WorldModel()
+            output.header.stamp = message.header.stamp
+            output.header.frame_id = self._reference_frame
+            output.localization_reset_id = self._reset_id or 0
+            output.reason = reason
+            self._scene_publisher.publish(output)
+            self._last_scene_stamp = output.header.stamp
+            self._last_scene_wall = time.monotonic()
+
+    def _on_observation(self, message):
+        with self._lock:
+            wall = time.monotonic()
+            now = rospy.Time.now()
+            if not self._clock_ok(now, wall):
+                self._reject_observation("ROS clock unavailable or regressed", message)
+                return
+            try:
+                validate_lidar(message, for_fusion=False)
+                if message.header.frame_id != self._lidar_frame:
+                    raise ValueError("LiDAR observation frame mismatch")
+                age = (now - message.header.stamp).to_sec()
+                if age < 0.0 or age > self._observation_timeout:
+                    raise ValueError("LiDAR observation is future or stale")
+                if not self._last_received_stamp.is_zero() and message.header.stamp <= self._last_received_stamp:
+                    raise ValueError("LiDAR observation stamp duplicated or regressed")
+                if not message.objects_valid:
+                    raise ValueError("LiDAR object geometry is invalid")
+                if not self._allow_unverified and (
+                    not message.calibration_verified or not message.freshness_verified
+                ):
+                    raise ValueError("unverified LiDAR geometry is disabled")
+            except (ValueError, TypeError, AttributeError) as error:
+                self._reject_observation(str(error), message, publish_invalid=True)
+                return
+            self._last_received_stamp = message.header.stamp
+            if len(self._pending) >= self._pending_limit:
+                self._pending.popleft()
+                self._dropped += 1
+            self._pending.append(_Pending(message, wall))
+            self._drain_pending()
+
+    def _localization_reason(self):
+        status = self._localization_status
+        if status is None:
+            return "missing localization status"
+        now = rospy.Time.now()
+        age = (now - status.header.stamp).to_sec()
+        if age < 0.0 or age > self._observation_timeout:
+            return "localization status is future or stale"
+        if (
+            self._localization_received_wall is None
+            or time.monotonic() - self._localization_received_wall > self._observation_timeout
+        ):
+            return "localization status reception is stale"
+        if not status.map_pose_valid:
+            return "localization map pose is invalid"
+        if self._reset_id != int(status.reset_id):
+            return "localization reset epoch mismatch"
+        return ""
+
+    def _drain_pending(self):
+        while self._pending:
+            pending = self._pending[0]
+            message = pending.message
+            wall = time.monotonic()
+            if wall - pending.received_wall > self._tf_wait:
+                self._pending.popleft()
+                self._dropped += 1
+                self._reject_observation(
+                    "exact scan-time map<-lidar_link TF unavailable before deadline",
+                    message,
+                    publish_invalid=True,
+                )
+                continue
+            localization_reason = self._localization_reason()
+            if localization_reason:
+                self._health_state = ComponentStatus.INITIALIZING
+                self._health_reason = localization_reason
+                return
+            if not self._tf_buffer.can_transform(
+                self._reference_frame,
+                self._lidar_frame,
+                message.header.stamp,
+                rospy.Duration(0.0),
+            ):
+                return
+            try:
+                transform = self._tf_buffer.lookup_transform(
+                    self._reference_frame,
+                    self._lidar_frame,
+                    message.header.stamp,
+                    rospy.Duration(0.0),
+                )
+                self._pending.popleft()
+                self._process(message, transform)
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException, ValueError) as error:
+                self._pending.popleft()
+                self._reject_observation("scan-time transform failed: " + str(error), message, publish_invalid=True)
+
+    def _process(self, message, transform):
+        started = time.monotonic()
+        translation = transform.transform.translation
+        rotation = transform.transform.rotation
+        detections = []
+        stamp_ns = _stamp_ns(message.header.stamp)
+        for source in message.objects:
+            mapped = transform_aabb(
+                (source.center.x, source.center.y, source.center.z),
+                (source.size.x, source.size.y, source.size.z),
+                (translation.x, translation.y, translation.z),
+                (rotation.x, rotation.y, rotation.z, rotation.w),
+            )
+            detections.append(Detection(
+                center=mapped.center,
+                size=mapped.size,
+                source_stamp_ns=stamp_ns,
+                source_frame_id=message.header.frame_id,
+                source_local_id=int(source.scan_local_id),
+                timestamp_provenance=str(message.timestamp_provenance),
+                calibration_id=str(message.calibration_id),
+                calibration_verified=bool(message.calibration_verified),
+                semantic_class=int(getattr(source, "semantic_class", 0)),
+                confidence=float(source.confidence),
+            ))
+        views = self._tracker.update(detections, stamp_ns, self._reset_id)
+        output = WorldModel()
+        output.header.stamp = message.header.stamp
+        output.header.frame_id = self._reference_frame
+        output.localization_reset_id = self._reset_id
+        output.objects_valid = True
+        output.tracking_valid = True
+        # The current upstream explicitly marks calibration/freshness unverified,
+        # and this vertical slice cannot yet bound object position uncertainty.
+        output.objects_verified = False
+        output.map_context_valid = False
+        output.route_context_valid = False
+        output.occupancy_valid = False
+        output.free_space_valid = False
+        output.traffic_context_valid = False
+        output.planner_ready = False
+        output.reason = (
+            "development map-frame LiDAR tracks; calibration/freshness/uncertainty "
+            "unverified; no HD-map/route/free-space fusion"
+        )
+        for view in views:
+            item = TrackedObject()
+            item.track_id = view.track_id
+            item.source_stamp = _time_from_ns(view.source_stamp_ns)
+            item.source_frame_id = view.source_frame_id
+            item.source_local_id = view.source_local_id
+            item.timestamp_provenance = view.timestamp_provenance
+            item.calibration_id = view.calibration_id
+            item.calibration_verified = view.calibration_verified
+            item.pose.position.x, item.pose.position.y, item.pose.position.z = view.center
+            item.pose.orientation.w = 1.0
+            item.size.x, item.size.y, item.size.z = view.size
+            item.twist.linear.x, item.twist.linear.y, item.twist.linear.z = view.velocity
+            item.velocity_valid = view.velocity_valid
+            item.semantic_class = view.semantic_class
+            item.confidence = view.confidence
+            item.track_state = view.state
+            item.observation_count = view.observation_count
+            item.age_since_observation_sec = view.age_sec
+            item.position_stddev_m = -1.0
+            item.velocity_stddev_mps = view.velocity_stddev_mps
+            output.objects.append(item)
+        validate_world_model(output, for_planning=False)
+        self._scene_publisher.publish(output)
+        self._last_scene_stamp = output.header.stamp
+        self._last_scene_wall = time.monotonic()
+        self._last_latency = self._last_scene_wall - started
+        self._processed += 1
+        self._health_state = ComponentStatus.DEGRADED
+        self._health_reason = output.reason
+
+    def _evaluate_and_publish_status(self):
+        now = rospy.Time.now()
+        wall = time.monotonic()
+        if not self._clock_ok(now, wall):
+            self._health_state = ComponentStatus.FAULT
+            self._health_reason = "ROS clock unavailable or regressed"
+        elif wall - self._last_clock_change_wall > self._observation_timeout:
+            self._tracker.clear(self._reset_id)
+            self._health_state = ComponentStatus.FAULT
+            self._health_reason = "ROS clock stalled; tracks cleared"
+        elif self._last_scene_wall is None or wall - self._last_scene_wall > self._observation_timeout:
+            self._tracker.clear(self._reset_id)
+            self._health_state = ComponentStatus.FAULT
+            self._health_reason = "no recent map-frame World Model scene; tracks cleared"
+        self._publish_status(now)
+
+    def _run(self):
+        next_status = time.monotonic() + self._status_period
+        while not self._stop.is_set() and not rospy.is_shutdown():
+            with self._lock:
+                self._drain_pending()
+                wall = time.monotonic()
+                if wall >= next_status:
+                    self._evaluate_and_publish_status()
+                    next_status = wall + self._status_period
+            self._stop.wait(0.01)
+
+    def shutdown(self):
+        self._stop.set()
+        if threading.current_thread() is not self._worker:
+            self._worker.join(timeout=1.0)
+
+    def _publish_status(self, now=None):
+        now = rospy.Time.now() if now is None else now
+        if now.is_zero():
+            return
+        message = ComponentStatus()
+        message.header.stamp = now
+        message.component = "world_model_pkg"
+        message.state = self._health_state
+        # Development geometry is intentionally never driving-ready.
+        message.ready = False
+        message.stop_required = True
+        message.data_stamp = self._last_scene_stamp
+        message.data_age_sec = (
+            -1.0
+            if self._last_scene_stamp.is_zero()
+            else max(0.0, (now - self._last_scene_stamp).to_sec())
+        )
+        message.processing_latency_sec = self._last_latency
+        message.processed_count = self._processed
+        message.dropped_count = self._dropped
+        message.invalid_count = self._invalid
+        message.reason = self._health_reason
+        self._status_publisher.publish(message)
+
+
+def main():
+    rospy.init_node("world_model_node", anonymous=False)
+    WorldModelNode()
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()

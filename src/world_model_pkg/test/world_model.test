@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="world_model_pkg" type="world_model_node"
+        name="world_model_node" ns="/" output="screen" required="true">
+    <param name="config_file" value="$(find world_model_pkg)/config/world_model.yaml"/>
+  </node>
+  <test test-name="world_model_pipeline" pkg="world_model_pkg"
+        type="test_world_model_node.py" time-limit="20"/>
+</launch>

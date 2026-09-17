@@ -38,13 +38,15 @@ roslaunch visualization_pkg visualization_pkg.launch
 | 구분 | Topic | Type |
 |---|---|---|
 | 입력 | `/molit/perception/lidar/observations` | `common_msgs_pkg/LidarObservationArray` |
+| 입력 | `/molit/world_model/scene` | `common_msgs_pkg/WorldModel` |
 | 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
 | 입력 | `/molit/localization/local/odometry` | `nav_msgs/Odometry` |
 | 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
 
 공개 출력은 없다. 패키지 내부 `vehicle_rviz`만
-`/molit/internal/visualization/vehicle_markers` (`visualization_msgs/MarkerArray`)를
-구독한다. 마커는 위치 추정이나 주행 판단의 입력이 아니다. raw GPS/IMU, 다른
+`/molit/internal/visualization/vehicle_markers`, `lidar_markers`,
+`world_model_markers` (`visualization_msgs/MarkerArray`)를 구독한다. 마커는 위치 추정이나
+주행 판단의 입력이 아니다. raw GPS/IMU, 다른
 패키지 내부 topic, Ground Truth를 사용하지 않으며 제어·초기 위치·목표 전송 도구도 없다.
 
 ## 차량 크기와 기준점
@@ -135,3 +137,11 @@ LiDAR UDP bridge와 watchdog은 [격리 센서 연결 절차](../lidar_perceptio
 이들은 중앙 UDP 계약상 system bringup 자동 실행에 추가할 수 없는 수동 개발 시험 채널이다.
 
 검사 결과와 실제 MORAI 수신 한계는 [LiDAR 검증 기록](docs/lidar_display_validation.md)에 기록했다.
+
+## World Model 추적 결과
+
+RViz의 **World Model tracks (map-frame diagnostic)**는
+`/molit/world_model/scene`의 map 좌표 box를 하늘색으로 표시한다. 이 박스는 차량이
+움직여도 정적 객체의 map 위치와 track ID를 유지하며, TF를 다시 적용하지 않는다.
+원본 분홍 LiDAR box와 겹쳐 비교할 수 있다. 현재 결과는 calibration·freshness·위치
+불확실성이 검증되지 않았으므로 시각화 전용이며 주행 판단에는 사용할 수 없다.

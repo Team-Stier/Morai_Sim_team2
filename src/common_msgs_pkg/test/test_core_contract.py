@@ -38,6 +38,8 @@ class CoreContractTest(unittest.TestCase):
                             if topic['name'] == '/molit/perception/lidar/status'
                             else 'development_estimator_active'
                             if topic['name'].startswith('/molit/localization/')
+                            else 'development_map_object_tracking_unverified'
+                            if topic['name'] == '/molit/world_model/status'
                             else 'schema_implemented_runtime_not_implemented')
                 self.assertEqual(topic['status'], expected)
 

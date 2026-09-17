@@ -7,8 +7,9 @@ from dataclasses import fields
 
 import rospy
 import tf2_ros
-from common_msgs_pkg.msg import LidarObservationArray
+from common_msgs_pkg.msg import LidarObservationArray, WorldModel
 from visualization_pkg.lidar_display import LidarDisplay
+from visualization_pkg.world_model_display import WorldModelDisplay
 from common_msgs_pkg.msg import EgoState, LocalizationStatus
 from nav_msgs.msg import Odometry
 from visualization_msgs.msg import MarkerArray
@@ -35,6 +36,13 @@ class VehicleVisualizerNode:
         self.lidar_publisher = rospy.Publisher(
             "/molit/internal/visualization/lidar_markers", MarkerArray, queue_size=2, latch=True)
         self.lidar_display = LidarDisplay(self.config, self.tf_buffer, self.lidar_publisher)
+        self.world_model_publisher = rospy.Publisher(
+            "/molit/internal/visualization/world_model_markers",
+            MarkerArray,
+            queue_size=2,
+            latch=True,
+        )
+        self.world_model_display = WorldModelDisplay(self.config, self.world_model_publisher)
         self._lidar_reset_id = None
         self.map_publisher = None
         if rospy.get_param("~show_hd_map", True):
@@ -49,6 +57,8 @@ class VehicleVisualizerNode:
         self.subscribers = [
             rospy.Subscriber("/molit/perception/lidar/observations", LidarObservationArray,
                              self._lidar, queue_size=2),
+            rospy.Subscriber("/molit/world_model/scene", WorldModel,
+                             self._world_model, queue_size=2),
             rospy.Subscriber('/molit/localization/ego_state', EgoState,
                              self._ego, queue_size=100, tcp_nodelay=True),
             rospy.Subscriber('/molit/localization/local/odometry', Odometry,
@@ -73,6 +83,10 @@ class VehicleVisualizerNode:
         with self._lock:
             self.lidar_display.ingest(message, rospy.Time.now(), time.monotonic())
 
+    def _world_model(self, message):
+        with self._lock:
+            self.world_model_display.ingest(message, rospy.Time.now(), time.monotonic())
+
     def _ego(self, message):
         self._ingest(self.display.ingest_ego, message)
 
@@ -83,6 +97,7 @@ class VehicleVisualizerNode:
         with self._lock:
             if self._lidar_reset_id is not None and message.reset_id != self._lidar_reset_id:
                 self.lidar_display.clear()
+                self.world_model_display.clear()
             self._lidar_reset_id = message.reset_id
             self.display.ingest_status(message, stamp_ns(rospy.Time.now()), time.monotonic())
             self._publish_changed()
@@ -90,6 +105,7 @@ class VehicleVisualizerNode:
     def _publish_changed(self):
         now_ns = stamp_ns(rospy.Time.now())
         self.lidar_display.update(rospy.Time.now(), time.monotonic())
+        self.world_model_display.update(rospy.Time.now(), time.monotonic())
         state = self.display.evaluate(now_ns, time.monotonic())
         wall = time.monotonic()
         previous = self._last_valid_display
@@ -126,6 +142,7 @@ class VehicleVisualizerNode:
         # A final explicit delete also works when RViz's ROS clock is paused.
         try:
             self.lidar_display.clear()
+            self.world_model_display.clear()
             state = DisplayState(False, 'visualizer stopped', self.config.reference_frame)
             self.publisher.publish(render_markers(state, self.config, stamp_ns(rospy.Time.now())))
         except rospy.ROSException:
