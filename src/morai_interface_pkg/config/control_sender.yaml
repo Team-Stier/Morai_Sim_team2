@@ -1,0 +1,17 @@
+# Competition Ego Ctrl Cmd UDP egress probe.
+# MORAI Network Settings > Ego-0 > Cmd Control의 destination과 동일하게 맞춘다.
+destination_ip: "127.0.0.1"
+port: 7805
+
+# 기본은 실제 UDP 송신 금지. 현장 통신 시험에서만 false로 바꾼다.
+dry_run: true
+allow_motion_commands: false
+
+# command freshness guard
+max_command_age_sec: 0.25
+future_tolerance_sec: 0.05
+
+# ROS 계약은 steering_rad, MORAI wire는 -1..1 normalized steer이다.
+# 실제 변환 비율 검증 전에는 non-zero steering을 송신하지 않는다.
+steering_conversion_verified: false
+steering_normalized_per_rad: 1.0
