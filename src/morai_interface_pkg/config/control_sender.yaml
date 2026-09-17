@@ -1,7 +1,8 @@
 # Competition Ego Ctrl Cmd UDP egress probe.
 # MORAI Network Settings > Ego-0 > Cmd Control의 destination과 동일하게 맞춘다.
+# 현재 simulator save/load 기본값을 기준으로 9094를 사용한다.
 destination_ip: "127.0.0.1"
-port: 7805
+port: 9094
 
 # 기본은 실제 UDP 송신 금지. 현장 통신 시험에서만 false로 바꾼다.
 dry_run: true
