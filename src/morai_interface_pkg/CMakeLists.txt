@@ -28,6 +28,8 @@ catkin_install_python(PROGRAMS
   scripts/imu_receiver_node
   scripts/lidar_watchdog_node
   scripts/vehicle_status_receiver_node
+  scripts/collision_receiver_node
+  scripts/control_sender_node
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -45,4 +47,8 @@ if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_watchdog_util.py)
   catkin_add_nosetests(test/test_interface_contract_alignment.py)
   catkin_add_nosetests(test/test_timestamp_guard.py)
+  catkin_add_nosetests(test/test_ego_ctrl_cmd_packet.py)
+  catkin_add_nosetests(test/test_collision_packet.py)
+  catkin_add_nosetests(test/test_competition_vehicle_status_packet.py)
+  catkin_add_nosetests(test/test_competition_io_launch_contract.py)
 endif()

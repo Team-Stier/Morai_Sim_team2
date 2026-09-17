@@ -1,0 +1,10 @@
+<launch>
+  <arg name="enable" default="false"/>
+  <arg name="config" default="$(find morai_interface_pkg)/config/control_sender.yaml"/>
+
+  <node pkg="morai_interface_pkg" type="control_sender_node"
+        name="morai_control_sender" output="screen" required="true"
+        if="$(arg enable)">
+    <rosparam command="load" file="$(arg config)"/>
+  </node>
+</launch>
