@@ -1,25 +1,21 @@
-# morai_udp_bridge - Vehicle Status(EgoVehicleStatus) UDP Bridge 파라미터 (~ namespace)
-#
-# 경고: 이 파일은 구형 EgoVehicleStatus 229B용이다. 대회 Competition Vehicle
-# Status 명세와 대조되기 전에는 launch의 allow_legacy를 활성화하지 않는다.
+# Competition Vehicle Status UDP Bridge 개발용 파라미터.
+# 공식 규정은 MORAI 24.R2.0 EgoVehicleStatus UDP 예제 활용을 지시하지만,
+# Competition Vehicle Status의 실제 datagram 길이는 현장 packet으로 최종 확인한다.
 
 bind_ip: "0.0.0.0"
-port: 7803                  # <PLACEHOLDER> MORAI Vehicle Status UDP 수신 port로 교체
-topic: "/molit/vehicle/twist"
-frame_id: "base_link"
+port: 7803
 
-# --- 미확정 항목(실측 전까지 기본값, 하드코딩 아님) ---
+# Competition에서 허용된 종방향 정보만 사용한다.
 timestamp_source: "receive"          # receive | packet
-velocity_source: "vel_xy"            # vel_xy(vel_x,vel_y 벡터) | signed_vel(종방향 scalar)
-velocity_scale: 1.0                  # 좌표계/단위 미확정. m/s면 1.0, km/h면 0.2777778
-publish_angular: true                # ang_vel_z -> twist.angular.z 발행 여부
-angular_velocity_scale: 1.0          # 단위 미확정
+velocity_source: "vel_x"            # vel_x | signed_vel
+velocity_scale: 1.0
+angular_velocity_scale: 1.0
 
-# 공분산 placeholder(실제 정확도 아님). 길이 36(6x6 row-major), 대각 양수.
+# 공분산은 개발용 placeholder이며 실제 정확도 근거가 아니다.
 twist_covariance:
   [0.04, 0.0,  0.0, 0.0, 0.0, 0.0,
-   0.0,  0.04, 0.0, 0.0, 0.0, 0.0,
-   0.0,  0.0,  1.0, 0.0, 0.0, 0.0,
+   0.0,  9999.0, 0.0, 0.0, 0.0, 0.0,
+   0.0,  0.0,  9999.0, 0.0, 0.0, 0.0,
    0.0,  0.0,  0.0, 1.0, 0.0, 0.0,
    0.0,  0.0,  0.0, 0.0, 1.0, 0.0,
    0.0,  0.0,  0.0, 0.0, 0.0, 0.04]
