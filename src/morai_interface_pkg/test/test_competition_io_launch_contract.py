@@ -24,15 +24,15 @@ class CompetitionIoLaunchContractTest(unittest.TestCase):
             self.assertEqual(nodes[0].attrib['name'], expected_node)
             self.assertEqual(nodes[0].attrib.get('if'), '$(arg enable)')
 
-    def test_linux_probe_ports_are_four_digit_and_distinct(self):
-        ports = []
-        for name in ('vehicle_status_bridge.yaml', 'collision_bridge.yaml', 'control_sender.yaml'):
+    def test_probe_ports_match_persisted_simulator_defaults(self):
+        expected = {
+            'vehicle_status_bridge.yaml': 803,
+            'collision_bridge.yaml': 9092,
+            'control_sender.yaml': 9094,
+        }
+        for name, expected_port in expected.items():
             config = yaml.safe_load((PKG / 'config' / name).read_text())
-            port = int(config['port'])
-            self.assertGreaterEqual(port, 1000)
-            self.assertLessEqual(port, 9999)
-            ports.append(port)
-        self.assertEqual(len(set(ports)), len(ports))
+            self.assertEqual(int(config['port']), expected_port, name)
 
     def test_control_defaults_fail_closed(self):
         config = yaml.safe_load((PKG / 'config/control_sender.yaml').read_text())
