@@ -1,7 +1,8 @@
 # Competition CollisionData UDP ingress probe.
 # MORAI Network Settings의 CollisionData destination port와 반드시 동일하게 맞춘다.
+# 현재 simulator save/load 기본값을 기준으로 9092를 사용한다.
 bind_ip: "0.0.0.0"
-port: 7804
+port: 9092
 receive_buffer_bytes: 2048
 socket_timeout_sec: 0.5
 stats_log_period_sec: 5.0
