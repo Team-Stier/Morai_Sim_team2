@@ -10,13 +10,16 @@ catkin_package(CATKIN_DEPENDS common_msgs_pkg ros_architecture_pkg
   roscpp rospy sensor_msgs std_msgs pcl_conversions pcl_ros tf2_ros)
 include_directories(src ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
-add_library(lidar_detector src/detector.cpp src/horizontalization.cpp src/cluster_points.cpp src/self_filter.cpp)
+add_library(lidar_detector src/detector.cpp src/horizontalization.cpp src/cluster_points.cpp src/self_filter.cpp src/ground_filter.cpp)
+# Keep the complete point-cloud pipeline within a VLP16 scan period even in
+# the default workspace build. Preserve IEEE NaN semantics (no fast-math).
+target_compile_options(lidar_detector PRIVATE -O2)
 target_link_libraries(lidar_detector ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 add_executable(lidar_perception_node src/lidar_perception_node.cpp)
 add_dependencies(lidar_perception_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(lidar_perception_node lidar_detector ${catkin_LIBRARIES})
 if(CATKIN_ENABLE_TESTING)
-  catkin_add_gtest(test_lidar_detector test/test_detector.cpp test/test_horizontalization.cpp)
+  catkin_add_gtest(test_lidar_detector test/test_detector.cpp test/test_horizontalization.cpp test/test_ground_filter.cpp)
   if(TARGET test_lidar_detector)
     target_link_libraries(test_lidar_detector lidar_detector ${catkin_LIBRARIES})
   endif()

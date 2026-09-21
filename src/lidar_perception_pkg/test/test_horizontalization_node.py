@@ -145,6 +145,31 @@ class HorizontalizationTest(unittest.TestCase):
             np.testing.assert_array_equal(np.array([x,y,z],dtype=np.float32),mixed[index].astype(np.float32))
 
 
+        # Real sloped ground still rises in the gravity-aligned frame. Remove it
+        # before the ROI, retaining a 10 cm obstacle and raw record provenance.
+        time.sleep(.2)
+        road=np.array([(x*.5,y*.5,-1.9+.11*x*.5)
+                       for x in range(-20,61) for y in range(-20,21)])
+        low=np.array([(6+i*.05,2+j*.05,-1.9+.11*(6+i*.05)+.10)
+                      for i in range(5) for j in range(5)])
+        mixed=np.vstack((road,low)) @ rotation
+        stamp=rospy.Time.now()-rospy.Duration(.03)
+        ego(stamp-rospy.Duration(.02),epoch=1); scan(stamp,mixed)
+        ego(stamp+rospy.Duration(.02),epoch=1)
+        self.assertTrue(result(stamp).objects_valid)
+        time.sleep(.1)
+        clustered=[m for m in cluster_clouds if m.header.stamp==stamp][-1]
+        entries=list(read_points(clustered,field_names=('x','y','z','source_index')))
+        kept={int(v[3]) for v in entries}
+        self.assertTrue(set(range(len(road),len(mixed))).issubset(kept))
+        self.assertFalse(any(i<len(road) and 2<=road[i,0]<=12 and abs(road[i,1])<5 for i in kept))
+        for x,y,z,i in entries:
+            np.testing.assert_array_equal(np.array([x,y,z],np.float32),mixed[int(i)].astype(np.float32))
+        audit=[a for a in audits if int(a['stamp_ns'])==stamp.to_nsec()][-1]
+        self.assertGreater(audit['ground_removed'],1000)
+        self.assertGreater(audit['ground_supported_cells'],0)
+
+
 if __name__=='__main__':
     rospy.init_node('horizontalization_test')
     rostest.rosrun('lidar_perception_pkg','lidar_horizontalization_contract',HorizontalizationTest)

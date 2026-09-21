@@ -3,7 +3,7 @@
 ## 데이터 경로
 
 `lidar_perception_node`는 측정시각 EgoState의 roll/pitch로 임시 수평화한 점에
-ROI → voxel → DBSCAN을 적용한다. 검출용 voxel 중심점마다 원본 입력 인덱스를
+구역별 지면 제거 → ROI → voxel → DBSCAN을 적용한다. 검출용 voxel 중심점마다 원본 입력 인덱스를
 유지하고, 채택된 군집의 원본 PointCloud2 레코드만 복사한다. 기본 ROI는
 X -20~50 m, Y -15~15 m, Z -1.5~1 m이며 임시 수평 좌표 기준이다.
 
@@ -19,7 +19,7 @@ ROS publisher별로 달라질 수 있는 header.seq를 측정 ID로 사용하지
   누적 평균은 double로 계산하므로 기존 PCL float 누적과 미세한 차이가 날 수 있다.
   대표 입력에서 PCL 중심점과 1e-6 m 이내 일치하는 단위 테스트를 포함한다.
 - 복원할 때 역회전한 voxel 평균점이나 최근접 중심점 배정을 사용하지 않는다.
-  ROI 제외점, DBSCAN noise 및 크기 제한으로 탈락한 군집은 출력하지 않는다.
+  자차·지면·ROI 제외점, DBSCAN noise 및 크기 제한으로 탈락한 군집은 출력하지 않는다.
 - 군집 ID는 스캔 내 번호다. 색상은 객체 종류나 시간에 걸친 추적 ID가 아니다.
 - 처리 실패/빈 결과에는 빈 cloud를 보내 기존 화면을 지운다. 기존 observations
   출력과 private filtered_points 진단은 유지된다. filtered_points는 voxel 중심점이다.

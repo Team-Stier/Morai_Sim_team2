@@ -1,6 +1,7 @@
 #include "detector.h"
 #include "horizontalization.h"
 #include "self_filter.h"
+#include "ground_filter.h"
 #include "cluster_points.h"
 #include <common_msgs_pkg/EgoState.h>
 #include <common_msgs_pkg/LidarObservationArray.h>
@@ -42,6 +43,7 @@ class Node {
   Steady::time_point attitude_received_=Steady::now();
   lidar_perception::Config config_;
   lidar_perception::SelfFilterConfig self_filter_;
+  lidar_perception::GroundConfig ground_filter_;
   ros::Time last_stamp_, last_clock_;
   Steady::time_point last_received_=Steady::now(), transport_received_=Steady::now();
   bool transport_ok_=false;
@@ -203,6 +205,7 @@ class Node {
     const auto now=ros::Time::now();
     common_msgs_pkg::LidarObservationArray output;
     sensor_msgs::PointCloud2 clustered;
+    size_t ground_removed=0, ground_cells=0;
     output.header=message->header;
     output.calibration_id=calibration_id_;
     output.timestamp_provenance="ingress_fallback";
@@ -227,7 +230,9 @@ class Node {
       cloud=lidar_perception::maskSelfReturns(cloud,self_filter_);
       // Apply attitude BEFORE ROI: otherwise braking pitch can admit road points
       // or discard obstacle points that a downstream map transform cannot recover.
-      const auto result=lidar_perception::detect(lidar_perception::rotateCloud(cloud,rotation), config_);
+      const auto ground=lidar_perception::removeGround(lidar_perception::rotateCloud(cloud,rotation),ground_filter_);
+      ground_removed=ground.removed; ground_cells=ground.supported_cells;
+      const auto result=lidar_perception::detect(ground.cloud, config_);
       clustered=lidar_perception::clusterPoints(*message,result.raw_cluster_ids);
       for (const auto& level_box : result.boxes) {
         const auto box=lidar_perception::boxInSensorFrame(level_box,rotation);
@@ -246,7 +251,9 @@ class Node {
       filtered.header=message->header;
       debug_.publish(filtered);
       health_.reason=leveling_enabled_
-          ? "roll/pitch leveled DBSCAN; scan-time SLERP; lidar_link output; development calibration/freshness unverified"
+          ? (ground_filter_.enabled
+             ? "leveled DBSCAN with local ground rejection; unsupported surfaces retained; development calibration/freshness unverified"
+             : "roll/pitch leveled DBSCAN; scan-time SLERP; lidar_link output; development calibration/freshness unverified")
           : "development object geometry only; calibration/freshness unverified; no ground/free-space/velocity";
     } catch (const std::exception& error) {
       output.objects.clear(); output.objects_valid=false;
@@ -276,7 +283,7 @@ class Node {
         if (r || c) json << ',';
         json << rotation(r,c);
       }
-      json << "],\"processing_ms\":" << health_.processing_latency_sec*1000 << '}';
+      json << "],\"ground_removed\":" << ground_removed << ",\"ground_supported_cells\":" << ground_cells << ",\"processing_ms\":" << health_.processing_latency_sec*1000 << '}';
       std_msgs::String audit; audit.data=json.str(); audit_.publish(audit);
     }
     setStatus(health_.reason, !output.objects_valid);
@@ -301,6 +308,26 @@ public:
     private_.param("self_filter/z_min",self_filter_.z_min,self_filter_.z_min);
     private_.param("self_filter/z_max",self_filter_.z_max,self_filter_.z_max);
     self_filter_.validate();
+    private_.param("ground_filter/cell_size",ground_filter_.cell_size,ground_filter_.cell_size);
+    private_.param("ground_filter/sample_size",ground_filter_.sample_size,ground_filter_.sample_size);
+    private_.param("ground_filter/max_range",ground_filter_.max_range,ground_filter_.max_range);
+    private_.param("ground_filter/expected_z",ground_filter_.expected_z,ground_filter_.expected_z);
+    private_.param("ground_filter/seed_radius",ground_filter_.seed_radius,ground_filter_.seed_radius);
+    private_.param("ground_filter/seed_tolerance",ground_filter_.seed_tolerance,ground_filter_.seed_tolerance);
+    private_.param("ground_filter/max_slope_deg",ground_filter_.max_slope_deg,ground_filter_.max_slope_deg);
+    private_.param("ground_filter/fit_distance",ground_filter_.fit_distance,ground_filter_.fit_distance);
+    private_.param("ground_filter/remove_distance",ground_filter_.remove_distance,ground_filter_.remove_distance);
+    private_.param("ground_filter/min_span",ground_filter_.min_span,ground_filter_.min_span);
+    private_.param("ground_filter/min_inlier_ratio",ground_filter_.min_inlier_ratio,ground_filter_.min_inlier_ratio);
+    private_.param("ground_filter/continuity_distance",ground_filter_.continuity_distance,ground_filter_.continuity_distance);
+    private_.param("ground_filter/min_support",ground_filter_.min_support,ground_filter_.min_support);
+    private_.param("ground_filter/iterations",ground_filter_.iterations,ground_filter_.iterations);
+    private_.param("ground_filter/enabled",ground_filter_.enabled,ground_filter_.enabled);
+    ground_filter_.validate();
+    if (!leveling_enabled_ && ground_filter_.enabled) {
+      ROS_WARN("Ground filtering disabled for explicit unlevelled comparison");
+      ground_filter_.enabled=false;
+    }
     if (!private_.getParam("contract/development_watchdog_sec",watchdog_sec_) ||
         !std::isfinite(watchdog_sec_) || watchdog_sec_<=0 ||
         !private_.getParam("contract/calibration_id",calibration_id_) || calibration_id_.empty())

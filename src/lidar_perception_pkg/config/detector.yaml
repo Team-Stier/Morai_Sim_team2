@@ -29,3 +29,23 @@ self_filter:
   y_max: 0.946
   z_min: -1.500
   z_max: 0.934
+
+# Local ground estimation AFTER leveling, BEFORE the height ROI.
+# Conservative development prior: observed sensor-to-road height ~1.9 m.
+# Unsupported/discontinuous surfaces are retained; this is not free-space output.
+ground_filter:
+  enabled: true
+  cell_size: 4.0
+  sample_size: 0.5
+  max_range: 55.0
+  expected_z: -1.9
+  seed_radius: 8.0
+  seed_tolerance: 0.25
+  max_slope_deg: 18.0
+  fit_distance: 0.05
+  remove_distance: 0.07
+  min_span: 3.0
+  min_inlier_ratio: 0.6
+  continuity_distance: 0.08
+  min_support: 12
+  iterations: 64

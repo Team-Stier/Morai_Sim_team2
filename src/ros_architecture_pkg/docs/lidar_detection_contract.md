@@ -11,8 +11,8 @@
 않고 ComponentStatus로만 알린다. 결과에 과거 객체를 재사용하지 않는다.
 
 객체 중심·크기는 lidar_link의 m 단위이며 ID는 해당 스캔에서만 유효하다.
-confidence=-1은 확률 보정 미실시다. 속도·지면·free-space·occupancy는 이번
-검출기에 구현하지 않으며 해당 기능을 추정했다고 표시하지 않는다.
+confidence=-1은 확률 보정 미실시다. 속도·공개 지면·free-space·occupancy 관측은
+구현하지 않는다. 내부 지면 제거 전처리는 공개 ground capability를 뜻하지 않는다.
 
 [미확정] 현재 센서 축·활성 loadout·장착 위치 검증이 끝나지 않았다.
 calibration_id는 중앙에서 사용자 승인한 2026-09-11 장착 위치 `(2, 0, 1.5)`와
@@ -39,7 +39,8 @@ pose_valid의 roll/pitch/yaw, frame, quaternion, 단조 시각, reset_id를 검�
 중앙 static `base_link → lidar_link`의 회전을 조회하여 장착각을 포함한다.
 수평화의 원점은 LiDAR이고 yaw는 유지한다. ROI 수치는 이 임시 수평 좌표에서
 적용한다. `z_min`은 센서 원점 기준 수평 높이이며 도로 기준 높이가 아니다.
-하한과 상한은 포함한다. 보정 후에도 ROI 안에 있는 지면은 자동으로 제거되지 않는다.
+하한과 상한은 포함한다. 수평화만으로 ROI 안에 있는 지면이 제거되지는 않는다. 기본 DBSCAN은 이후
+별도 구역별 지면 제거 전처리를 적용한다.
 이후 박스 8개 모서리를 역회전한 enclosing AABB와 voxel 점군을
 `lidar_link`로 반환한다. 기존 public 관측/consumer·ROS1 MD5·측정 stamp는
 변하지 않는다. 수평화용 새 TF/frame/공개 점군 토픽은 발행하지 않는다. 이 변환은
@@ -60,7 +61,7 @@ World Model·Planner 입력이나 지면/전체 occupancy 출력으로 사용하
 원래 필드 바이트와 `lidar_link`, 원 scan stamp를 유지하고 UINT32 `cluster_id`
 (같은 스캔의 observation scan_local_id), `source_index`(원본 row-major 인덱스)를
 추가한다. ROI는 수평 좌표로 판단하지만 발행 XYZ는 역회전 계산값도 아닌 원본
-바이트다. noise·ROI 밖·거절된 군집의 점은 포함하지 않는다. 출력은 height=1의
+바이트다. 자차·지면 제거점, noise·ROI 밖·거절된 군집의 점은 포함하지 않는다. 출력은 height=1의
 비조직 점군이며 원본 record padding은 보존, 원본 row padding은 제거한다.
 
 Voxel은 PCL과 같은 global cell 좌표와 x-fastest 정렬을 사용하되 sparse map에
@@ -124,3 +125,14 @@ DBSCAN producer는 원래 `lidar_link`에서 로컬 `self_filter` AABB 안의 �
 표시하고 관측·cluster_points에는 포함하지 않는다. 자차만 관측한 경우 정상
 빈 검출이며 지면/free-space/주행 readiness를 승인하지 않는다. 치수와 후보
 높이의 한계는 LiDAR README에 기록하며 센서 원본은 변경하지 않는다.
+
+## 내부 구역별 지면 제거 (2026-09-21)
+
+DBSCAN은 자차 제외 → 측정시각 수평화 → 구역별 지면 제거 → ROI → voxel →
+군집화 순서다. 지면 추정은 높이 ROI 이전 유한 점을 사용하며 파라미터는
+LiDAR 패키지의 `ground_filter`가 소유한다. 지지점 부족·불연속·범위 밖 점은
+보존하고, 신뢰 조건을 충족한 지면 주변 점만 원본 인덱스를 유지한 채 제외한다.
+지면 모델은 scan마다 새로 계산한다. 원본 센서 입력과 public record/frame/stamp는
+변하지 않으며 consumer 변경이나 새 TF/topic은 없다. public ground/free-space
+capability와 주행 readiness는 계속 false다. 사전학습 backend에는 적용하지 않는다.
+private horizontalization audit에는 제거점 수와 지지 구역 수를 추가한다.

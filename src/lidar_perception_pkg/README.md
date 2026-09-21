@@ -48,13 +48,13 @@
 공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`와
 `LidarObservationArray`, `LidarObjectObservation` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-이 패키지의 ROI·VoxelGrid·DBSCAN 노드는 구현됐으며 지면·빈 공간·속도 추정은
-이번 객체 검출 범위에 포함하지 않는다. downstream 런타임은 아직 미구현이다.
+이 패키지의 구역별 지면 제거·ROI·VoxelGrid·DBSCAN 노드는 구현됐다.
+지면 제거는 내부 전처리이며 공개 지면·빈 공간·속도 관측은 제공하지 않는다. downstream 런타임은 아직 미구현이다.
 
 기본 DBSCAN 경로는 스캔 시각의 EgoState 자세로 roll/pitch를 수평화한 뒤
-ROI·VoxelGrid·군집화를 수행한다. 현재 ROI는 X `[-20,50]`, Y `[-15,15]`,
+구역별 지면 제거·ROI·VoxelGrid·군집화를 수행한다. 현재 ROI는 X `[-20,50]`, Y `[-15,15]`,
 Z `[-1.5,1]` m이며 센서 원점의 임시 수평 좌표 기준이다. `z_min` 경계는 포함되며
-수평화는 지면 제거가 아니다. EgoState는 자세 전처리에만 사용하며 전역
+수평화 자체는 지면 제거가 아니며, 뒤에서 별도 [지면 필터](docs/ground_filter.md)를 적용한다. EgoState는 자세 전처리에만 사용하며 전역
 객체 융합·추적을 수행하지 않는다. 출력 박스와 private `filtered_points`는
 원래 `lidar_link`로 역변환한다. 자세 입력이 없으면 보정 없이 진행하지 않고
 invalid 관측을 발행한다. 실행·좌표·시간 정책은 [수평화](docs/horizontalization.md)를 따른다.
@@ -108,7 +108,7 @@ DBSCAN launch와 동시에 실행하지 않는다. 설치·클래스·ROI·오�
 
 ## 자차 반사점 제외 (2026-09-21)
 
-기본 DBSCAN 경로는 **센서 좌표 자차 마스크 → roll/pitch 수평화 → ROI → voxel
+기본 DBSCAN 경로는 **센서 좌표 자차 마스크 → roll/pitch 수평화 → 구역별 지면 제거 → ROI → voxel
 → DBSCAN** 순서다. `config/detector.yaml`의 `self_filter`로 설정하며 기본 활성화한다.
 자차는 센서와 함께 기울어지므로 마스크는 수평화 이전 `lidar_link`에 적용한다.
 
@@ -132,3 +132,16 @@ mesh/축 높이 검증값은 아니다. 장착 위치·각도가 바뀌면 이 �
 출력 프레임 수는 같지 않으며 프레임별 retention 비율을 의미하지 않는다.
 증거는 `/home/paik/morai-artifacts/live-paik-20260921/self-filter-live.json`이다.
 전체 주행 및 근접 장애물 실측 검증은 포함하지 않는다.
+
+## 구역별 지면 제거 (2026-09-21)
+
+`ground_filter` 설정으로 수평화 후·높이 ROI 전에 지면을 제거한다. 4 m 구역과
+인접 구역의 낮은 점을 이용해 경사 평면을 추정하고, 충분한 지지점·공간 범위·
+근거리 높이 기준·이웃 연속성을 확인한 표면만 제거한다. 추정 실패나 미지원
+구역의 점은 그대로 남긴다. scan 간 지면 모델은 재사용하지 않는다.
+
+기존 ROI와 사용자 cluster 크기 설정은 유지한다. 원본 점 좌표/인덱스,
+공개 frame·stamp·타입과 개발 readiness 정책도 동일하다. 비교 시
+`ground_filter/enabled=false`로 지면 필터만 끌 수 있으며, 명시적
+`leveling_enabled=false` 비교에서는 지면 필터도 경고 후 비활성화한다.
+알고리즘·한계·시험 결과는 [지면 제거](docs/ground_filter.md)를 따른다.
