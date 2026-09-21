@@ -43,6 +43,14 @@ Visualization MarkerArray topic은 공개 topic 수에서 제외한다.
 4. 필요한 공유 타입을 `common_msgs_pkg`에 구현한다.
 5. producer·consumer·launch·config·문서·계약 테스트를 같은 변경 단위로 갱신한다.
 
+## LiDAR 검출 전 자세 보정 경계
+
+`lidar_perception_pkg`의 DBSCAN은 Localization이 발행한 측정시각 EgoState의
+roll/pitch와 중앙 static 장착 회전을 사용해 ROI 이전에 수평화한다. 전역 융합은
+World Model 소유이며, 이 예외는 센서 원점 기준 로컬 검출 전처리에 한정한다.
+공개 출력은 `lidar_link` 및 원 scan stamp를 유지한다. 자세가 없으면 invalid로
+보고하며 보정 없이 계속하지 않는다. [중앙 LiDAR 계약](docs/lidar_detection_contract.md)을 따른다.
+
 ## v1 모듈형 Planning 경계
 
 - 공개 경계는 `path_planning_pkg` / `path_planner_node`를 유지한다.

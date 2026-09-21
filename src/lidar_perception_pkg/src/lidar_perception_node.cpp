@@ -114,8 +114,8 @@ class Node {
           !attitudes_.interpolate(p.message->header.stamp.toNSec(),attitude_gap_,orientation)) break;
       pending_.pop_front();
       try {
-        // Central mount is static. No latest dynamic attitude lookup is used.
-        const auto mount=tf_buffer_.lookupTransform("base_link","lidar_link",ros::Time(0));
+        // Use the scan stamp for the central mount as well; never request latest TF.
+        const auto mount=tf_buffer_.lookupTransform("base_link","lidar_link",p.message->header.stamp);
         const auto& q=mount.transform.rotation;
         const auto rotation=lidar_perception::levelRotation(orientation,Eigen::Quaterniond(q.w,q.x,q.y,q.z));
         process(p.message,rotation);
@@ -222,6 +222,8 @@ class Node {
       for (const auto& p : cloud)
         if (std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z)) {any_finite=true; break;}
       if (!any_finite) throw std::runtime_error("no finite XYZ points");
+      // Apply attitude BEFORE ROI: otherwise braking pitch can admit road points
+      // or discard obstacle points that a downstream map transform cannot recover.
       const auto result=lidar_perception::detect(lidar_perception::rotateCloud(cloud,rotation), config_);
       clustered=lidar_perception::clusterPoints(*message,result.raw_cluster_ids);
       for (const auto& level_box : result.boxes) {

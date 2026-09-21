@@ -25,7 +25,7 @@ yaw ±π 경계와 q/-q 표현을 처리한다. 별도 저역통과 필터는 �
 
 1. 원본 `lidar_link` scan + 같은 시각의 localization attitude.
 2. roll/pitch 수평화. yaw를 0 방향으로 정렬하는 처리는 하지 않는다.
-3. 수평 좌표에서 ROI X `[0,40]`, Y `[-15,15]`, Z `[-1.5,1]` m 적용.
+3. 수평 좌표에서 ROI X `[-20,50]`, Y `[-15,15]`, Z `[-1.5,1]` m 적용.
 4. VoxelGrid → DBSCAN → 수평 좌표의 AABB.
 5. AABB 모서리와 필터 점군을 원래 lidar_link로 역회전하여 기존 관측/디버그 출력.
 
@@ -34,6 +34,19 @@ RViz Fixed Frame이 `lidar_link`이면 지면은 여전히 센서 기준으로 �
 수 있다. 출력 좌표를 수평으로 잘못 재명명하지 않기 때문이다. 수평화는
 ROI·군집화에 적용됐으며 Fixed Frame `odom`에서는 측정시각 TF로 world 수직축에
 맞춰 보인다. 실제 도로 경사 자체를 평면으로 만드는 기능은 아니다.
+
+## 제동 시 바닥 유입과 z_min
+
+제동으로 차체 앞쪽이 숙여지면 센서 좌표의 바닥 z가 ROI 안으로 들어올 수 있다.
+수평화는 **ROI 전에** 수행하므로 기울기로 인한 유입을 줄인다. `z_min=-1.5`는
+LiDAR 원점에서 수평 방향으로 1.5 m 아래를 의미하며 지면으로부터의 높이가 아니다.
+경계값은 포함되므로 보정 후 바닥이 정확히 -1.5 m이거나 그보다 높으면 여전히
+군집 후보가 된다. 차체 높이 변화·실제 경사로·지면 분리는 별도 문제다.
+설정값을 바꿀 때 낮은 장애물까지 제거되지 않는지 확인해야 한다.
+
+RViz의 원본 군집 점은 sensor frame 좌표를 보존한다. 수평으로 돌아간 좌표를
+발행하는 기능이 아니라, 수평 좌표에서 어느 점을 검출에 사용할지 판정하는 기능이다.
+`leveling_enabled`의 실행 기본값은 launch의 true이며 사전학습 backend에는 적용되지 않는다.
 
 ## 시간 및 실패 처리
 
@@ -99,3 +112,25 @@ roslaunch lidar_perception_pkg lidar_perception_pkg.launch
 로컬 증거: `/home/paik/morai-artifacts/lidar-horizontalization-20260914/live-audit.json`,
 같은 디렉터리의 `rviz.png`. 큰 경사에서의 부호·물리 장착 정합과 실제 주행
 정확도는 이번 정지/소각도 수신 검사로 검증된 것이 아니다.
+
+## paik 브랜치 재검증 (2026-09-21)
+
+기존 검출 전 수평화 구현을 유지하고 중앙 장착 TF 조회도 원 scan stamp로
+통일했다. 중앙 계약과 AGENTS의 소유권 예외, 현재 ROI 설명을 맞췄다.
+
+- 전체 `catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3 -j4 -l4` 성공.
+- LiDAR·공유 메시지·Visualization 패키지 테스트 통과. catkin 결과 집계는
+  각각 38/34/32 tests, errors/failures/skipped 모두 0이다.
+- 중앙 TF·timestamp·공개 계약 unittest 46개와 다이어그램 `--check` 통과.
+  graph와 그림은 동일하며 manifest의 중앙 계약 해시만 갱신했다.
+- 제동 합성 단위 테스트: roll 0.08 rad, pitch 0.12 rad에서 미보정 검출은
+  바닥과 장애물 2개 군집, 보정 검출은 장애물 1개 군집이다. 바닥은 수평 기준
+  z=-1.65 m로 하한 -1.5 m보다 낮게 설정했다. 경계 안의 지면 제거를 입증하지 않는다.
+- ROS producer-consumer 테스트에서도 roll/pitch 보정 후 바닥 인덱스 제외,
+  장애물 원본 XYZ 바이트·source_index·lidar_link·scan stamp 보존을 확인했다.
+- YAML·launch XML 파싱 및 git diff 공백 검사 통과.
+
+이번 검증은 합성 입력이며 실제 MORAI 제동·경사로·낮은 장애물 closed-loop
+주행은 수행하지 않았다. 실행 중인 노드를 재시작하거나 UDP/제어를 변경하지 않았다.
+빌드·테스트 로그는 `/home/paik/morai-artifacts/lidar-leveling-20260921/`의
+`paik-build.log`, `paik-tests.log`에 보관했다.

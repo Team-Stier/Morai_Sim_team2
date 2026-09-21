@@ -27,6 +27,18 @@ public_interface_policy:
     - Only morai_control_sender may send the approved final command to MORAI.
     - Runtime evaluation is read-only and cannot appear in a command-producing path.
 
+lidar_preprocessing_policy:
+  owner_package: lidar_perception_pkg
+  scope: scan_time_roll_pitch_before_roi_voxel_dbscan
+  attitude_source: /molit/localization/ego_state
+  mount_source: tf/frame_contract.yaml
+  temporary_basis: gravity_aligned_lidar_origin_body_heading_preserved
+  output_frame: lidar_link
+  output_stamp: source_sensor_measurement_time
+  publishes_level_tf: false
+  global_fusion_owner: world_model_pkg
+  details: docs/lidar_detection_contract.md
+
 runtime_evidence_policy:
   expected_rate_hz: design_or_configured_target_until_runtime_measured
   numeric_rate_is_not_live_rate_evidence: true

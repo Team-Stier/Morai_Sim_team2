@@ -252,7 +252,10 @@ Planner가 accel/brake/steer 또는 UDP packet을 직접 만들어
 Camera와 LiDAR 인식 결과를 각 인식 패키지가 직접 전역좌표로
 변환하여 조립하지 않는다. `world_model_pkg`가 관측 시각의 pose
 history와 승인된 calibration을 사용해 좌표 변환, 시간 동기화,
-cross-sensor fusion과 tracking을 전담한다. Planner는 raw sensor나 개별
+cross-sensor fusion과 tracking을 전담한다. LiDAR 검출 전 roll/pitch 수평화는
+승인된 로컬 전처리 예외다. LiDAR 패키지는 측정시각 EgoState 자세로 ROI와
+군집화를 수행한 뒤 원래 `lidar_link` 좌표와 scan stamp로 출력한다.
+Planner는 raw sensor나 개별
 Perception 관측을 직접 구독하지 않고 World Model의 통합 scene을 사용한다.
 
 ### 11.1 Nominal data/control 흐름

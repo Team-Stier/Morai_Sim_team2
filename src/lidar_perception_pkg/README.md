@@ -52,7 +52,9 @@
 이번 객체 검출 범위에 포함하지 않는다. downstream 런타임은 아직 미구현이다.
 
 기본 DBSCAN 경로는 스캔 시각의 EgoState 자세로 roll/pitch를 수평화한 뒤
-ROI·VoxelGrid·군집화를 수행한다. EgoState는 자세 전처리에만 사용하며 전역
+ROI·VoxelGrid·군집화를 수행한다. 현재 ROI는 X `[-20,50]`, Y `[-15,15]`,
+Z `[-1.5,1]` m이며 센서 원점의 임시 수평 좌표 기준이다. `z_min` 경계는 포함되며
+수평화는 지면 제거가 아니다. EgoState는 자세 전처리에만 사용하며 전역
 객체 융합·추적을 수행하지 않는다. 출력 박스와 private `filtered_points`는
 원래 `lidar_link`로 역변환한다. 자세 입력이 없으면 보정 없이 진행하지 않고
 invalid 관측을 발행한다. 실행·좌표·시간 정책은 [수평화](docs/horizontalization.md)를 따른다.

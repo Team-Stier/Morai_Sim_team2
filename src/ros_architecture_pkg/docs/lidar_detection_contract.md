@@ -38,9 +38,11 @@ pose_valid의 roll/pitch/yaw, frame, quaternion, 단조 시각, reset_id를 검�
 
 중앙 static `base_link → lidar_link`의 회전을 조회하여 장착각을 포함한다.
 수평화의 원점은 LiDAR이고 yaw는 유지한다. ROI 수치는 이 임시 수평 좌표에서
-적용한다. 이후 박스 8개 모서리를 역회전한 enclosing AABB와 voxel 점군을
+적용한다. `z_min`은 센서 원점 기준 수평 높이이며 도로 기준 높이가 아니다.
+하한과 상한은 포함한다. 보정 후에도 ROI 안에 있는 지면은 자동으로 제거되지 않는다.
+이후 박스 8개 모서리를 역회전한 enclosing AABB와 voxel 점군을
 `lidar_link`로 반환한다. 기존 public 관측/consumer·ROS1 MD5·측정 stamp는
-변하지 않는다. 새 TF/frame/공개 점군 토픽은 발행하지 않는다. 이 변환은
+변하지 않는다. 수평화용 새 TF/frame/공개 점군 토픽은 발행하지 않는다. 이 변환은
 거리 노이즈 제거·지면 추정·scan 내 motion deskew가 아니다.
 
 기존 미보정 비교는 `leveling_enabled:=false`로 명시적으로 선택한다.

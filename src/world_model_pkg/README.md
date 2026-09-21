@@ -12,6 +12,11 @@ LiDAR 객체 메시지 v0.2.0은 학습 분류와 보정되지 않은 모델 점
 
 Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서로 다른 timestamp, calibration과 pose를 사용해 Planner에서 충돌한다. 이 패키지가 지도·ego·동적 객체 융합의 단일 소유자가 된다.
 
+LiDAR의 검출 전 roll/pitch 수평화는 센서 로컬 전처리이며, 공개 관측은 이미
+원래 `lidar_link`로 반환되어 있다. 소비 시 수평화 회전을 추가로 적용하지 않고
+측정시각의 전체 지도 변환을 적용한다. `paik`에서는 World Model 런타임이
+예약 상태이며, 별도 `cluster_points` 출력은 Visualization 표시용이다.
+
 ## 담당 범위
 
 - 관측 timestamp에 해당하는 ego pose history 조회와 보간

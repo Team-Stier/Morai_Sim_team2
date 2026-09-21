@@ -206,6 +206,12 @@ derived_message_contract:
   perception:
     stamp: source_sensor_measurement_time
     rule: Inference completion must not replace the source image or scan stamp.
+    lidar_preprocessing: >-
+      Align EgoState attitude to the LiDAR scan stamp using an exact sample or
+      bounded SLERP bracket in the same clock domain. Never extrapolate or replace
+      missing attitude with the latest sample. Clear history and pending scans on
+      localization reset or clock regression; enforce monotonic wall wait limits.
+      See messages/lidar_runtime.yaml horizontalization for development bounds.
   world_model:
     stamp: fusion_reference_time
     rule: Every fused element must retain source stamp, age and provenance internally.

@@ -49,9 +49,9 @@ class HorizontalizationTest(unittest.TestCase):
             m.pose.pose.orientation.x,m.pose.pose.orientation.y,m.pose.pose.orientation.z,m.pose.pose.orientation.w=quaternion
             ego_pub.publish(m); time.sleep(.025)
 
-        def scan(stamp):
+        def scan(stamp, xyz=raw):
             transport.publish(Bool(data=True)); time.sleep(.03)
-            scan_pub.publish(create_cloud_xyz32(Header(stamp=stamp,frame_id='lidar_link'),raw))
+            scan_pub.publish(create_cloud_xyz32(Header(stamp=stamp,frame_id='lidar_link'),xyz))
 
         def result(stamp):
             end=time.monotonic()+2
@@ -118,6 +118,29 @@ class HorizontalizationTest(unittest.TestCase):
         ego(stamp-rospy.Duration(.07),epoch=1); scan(stamp)
         ego(stamp+rospy.Duration(.07),epoch=1)
         self.assertFalse(result(stamp).objects_valid)
+
+        # Braking attitude: road enters raw z ROI, but is removed before DBSCAN.
+        # Retained obstacle records still carry original sensor XYZ and indices.
+        time.sleep(.2)
+        ground=np.array([(10+i*.05,j*.05,-1.65) for i in range(4) for j in range(4)])
+        mixed=np.vstack((ground,level)) @ rotation
+        self.assertTrue(np.all(mixed[:len(ground),2]>-1.5))
+        self.assertTrue(np.all(mixed[:len(ground),2]<1.0))
+        stamp=rospy.Time.now()-rospy.Duration(.03)
+        ego(stamp-rospy.Duration(.02),epoch=1); scan(stamp,mixed)
+        ego(stamp+rospy.Duration(.02),epoch=1)
+        out=result(stamp)
+        self.assertTrue(out.objects_valid)
+        self.assertEqual(len(out.objects),1)
+        time.sleep(.05)
+        clustered=[m for m in cluster_clouds if m.header.stamp==stamp][-1]
+        self.assertEqual(clustered.header.frame_id,'lidar_link')
+        entries=list(read_points(clustered,field_names=('x','y','z','cluster_id','source_index')))
+        self.assertEqual(len(entries),len(level))
+        for x,y,z,cluster,index in entries:
+            self.assertGreaterEqual(index,len(ground))
+            self.assertEqual(cluster,0)
+            np.testing.assert_array_equal(np.array([x,y,z],dtype=np.float32),mixed[index].astype(np.float32))
 
 
 if __name__=='__main__':
