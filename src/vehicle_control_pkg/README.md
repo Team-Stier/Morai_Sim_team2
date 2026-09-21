@@ -87,10 +87,9 @@ roslaunch vehicle_control_pkg vehicle_control_pkg.launch
 - 원본의 검사·제한은 유지하고 별도 입력 검증·watchdog·추가 제한은 넣지 않았다.
   Producer가 중앙 스키마 조건을 만족해야 한다.
 
-Planner, Safety와 System Readiness 노드는 현재 main에서 미구현이다.
-따라서 지금 연결된 범위는 네 ROS 입력부터 nominal command/status까지다.
-개발 Localization의 `stop_required=true`는 Controller에도 전달된다.
-MORAI 주행과 조향 부호·스케일은 별도 확인이 필요하다.
+일반 실행은 네 ROS 입력부터 nominal command/status까지 연결하며 개발
+Localization의 `stop_required=true`도 전달한다. 별도 개발 실행은 중앙
+global_path_demo 또는 frenet_runtime 프로필의 readiness 적용 범위를 따른다.
 
 [원본 출처와 변경 범위](docs/closedteam2_import.md),
 [원본 파일 해시](docs/upstream_manifest.yaml)를 함께 보관한다.
@@ -117,3 +116,11 @@ ROS publisher/subscriber 연결 및 상류 정지 상태 전달을 확인한다.
 실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
 
 전역경로 실행은 `config/global_path_demo.yaml`의 lookahead 튜닝을 사용한다. 원본 알고리즘은 동일하며 Planner의 현재 구간 속도를 추종한다. 일반 상한 58·고주로 목표 150 km/h 규칙은 중앙 코스 정책에 있다.
+
+## Frenet 속도 프로파일 연결
+
+`frenet_rddf.launch`에서만 `longitudinal/reference_preview_sec=0.5`로 설정한다.
+현재 측정 속도에서 시작하는 가속 궤적의 0.5초 앞 속도를 PI 목표로 사용한다.
+다른 실행의 기본값은 0초다. 종점 속도가 0인 짧은 정지 궤적은 lateral
+lookahead가 부족해도 기존 정지 브레이크를 유효한 명령으로 전달한다.
+가속 preview와 짧은 종점 정지는 Controller 단위시험으로 검사한다.

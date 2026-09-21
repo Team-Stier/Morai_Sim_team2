@@ -1,0 +1,21 @@
+contract_version: 0.1.0
+activation_scope: user_authorized_morai_development_only
+node: path_planner_node
+executable: frenet_planner_node.py
+geometry_inputs: [RouteContext, WorldModel]
+localization_inputs: [EgoState, Odometry, LocalizationStatus]
+status_inputs: [route_status, world_model_status]
+output: /molit/planning/trajectory
+output_frame: odom
+decision_rate_hz: 5.0
+trajectory_rate_hz: 10.0
+prediction_horizon_sec: 8.0
+object_geometry: original_cluster_points_at_source_stamp
+object_margin_m: 0.0
+raw_sensor_subscription_allowed: false
+world_model_readiness_override: development_objects_valid_with_matching_epoch_and_fresh_source_only
+production_planner_ready_override_allowed: false
+controller_compatibility: development_global_path_only_accepts_development_localization
+controller_safety_transport: retain_existing_global_path_demo_flow
+test_speed_cap_kph: 10.0
+details: ../../../path_planning_pkg/docs/frenet_rddf.md

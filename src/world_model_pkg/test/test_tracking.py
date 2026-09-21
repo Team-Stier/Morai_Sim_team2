@@ -11,7 +11,7 @@ from world_model_pkg.tracking import Detection, MultiObjectTracker, TrackerConfi
 def detection(stamp_ns, x=10.0, y=5.0, local_id=0):
     return Detection(
         center=(x, y, 0.5),
-        size=(2.0, 1.0, 1.0),
+        points=((x, y, 0.5), (x+0.1, y, 0.5)),
         source_stamp_ns=stamp_ns,
         source_frame_id="lidar_link",
         source_local_id=local_id,
@@ -43,6 +43,7 @@ class TrackerTest(unittest.TestCase):
         second = self.tracker.update([detection(10_100_000_000, local_id=99)], 10_100_000_000, 1)
         self.assertEqual(first[0].track_id, second[0].track_id)
         self.assertEqual(second[0].source_local_id, 99)
+        self.assertEqual(second[0].points, detection(10_100_000_000).points)
 
     def test_unmatched_track_coasts_then_expires(self):
         first = self.tracker.update([detection(10_000_000_000)], 10_000_000_000, 1)
@@ -64,6 +65,14 @@ class TrackerTest(unittest.TestCase):
         second = self.tracker.update([detection(10_100_000_000)], 10_100_000_000, 2)
         self.assertNotEqual(first[0].track_id, second[0].track_id)
         self.assertEqual(second[0].state, self.tracker.TENTATIVE)
+
+    def test_fast_rear_vehicle_keeps_identity_at_ten_hz(self):
+        tracker = MultiObjectTracker(TrackerConfig(maximum_speed_mps=60.0))
+        tracks = [tracker.update([detection(10_000_000_000+i*100_000_000, x=-30.+5.*i)],
+                                 10_000_000_000+i*100_000_000, 1)[0] for i in range(6)]
+        self.assertEqual(len({t.track_id for t in tracks}), 1)
+        self.assertTrue(tracks[-1].velocity_valid)
+        self.assertAlmostEqual(tracks[-1].velocity[0], 50.0)
 
     def test_regressing_stamp_fails_and_clears_tracks(self):
         self.tracker.update([detection(10_000_000_000)], 10_000_000_000, 1)

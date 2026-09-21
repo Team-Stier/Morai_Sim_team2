@@ -14,7 +14,7 @@ from common_msgs_pkg.msg import (
     LocalizationStatus,
     WorldModel,
 )
-from geometry_msgs.msg import TransformStamped
+from geometry_msgs.msg import TransformStamped, Point
 
 
 class WorldModelPipelineTest(unittest.TestCase):
@@ -61,12 +61,8 @@ class WorldModelPipelineTest(unittest.TestCase):
         message.objects_valid = True
         detected = LidarObjectObservation()
         detected.scan_local_id = 7
-        detected.center.x = relative_x
-        detected.center.z = 0.5
-        detected.size.x = 2.0
-        detected.size.y = 1.0
-        detected.size.z = 1.0
-        detected.point_count = 20
+        detected.points = [Point(relative_x-.1,0,.5), Point(relative_x+.1,0,.5)]
+        detected.point_count = 2
         detected.confidence = -1.0
         message.objects = [detected]
         return message
@@ -133,6 +129,8 @@ class WorldModelPipelineTest(unittest.TestCase):
         self.localization_publisher.publish(localization)
         first = self.wait_for(lambda item: item.objects_valid and len(item.objects) == 1)
         self.assertAlmostEqual(first.objects[0].pose.position.x, 17.0, places=5)
+        self.assertAlmostEqual(first.objects[0].points[0].x, 16.9, places=5)
+        self.assertAlmostEqual(first.objects[0].points[1].x, 17.1, places=5)
         first_id = first.objects[0].track_id
         self.assertEqual(first.objects[0].track_state, first.objects[0].TRACK_TENTATIVE)
 

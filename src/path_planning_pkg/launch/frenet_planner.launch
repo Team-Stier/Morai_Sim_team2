@@ -1,0 +1,7 @@
+<launch>
+  <arg name="test_speed_cap_kph" default="10.0"/>
+  <node pkg="path_planning_pkg" type="frenet_planner_node.py" name="path_planner_node" output="screen">
+    <rosparam command="load" file="$(find path_planning_pkg)/config/frenet_planner.yaml"/>
+    <param name="test_speed_cap_kph" value="$(arg test_speed_cap_kph)"/>
+  </node>
+</launch>

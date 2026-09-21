@@ -18,7 +18,7 @@ flowchart LR
         input_006["/molit/world_model/status<br/>설명: 융합 신선도·TF 사용 가능 여부·장면 유효성<br/>메시지: common_msgs_pkg/ComponentStatus<br/>상태: 설계 예약·미구현"]
     end
     subgraph PACKAGE["패키지 처리<br/>path_planning_pkg<br/>위치·경로·통합 장면으로 실행 가능한 지역 궤적 생성"]
-        local_node_000["path_planner_node<br/>역할: 위치와 경로 및 통합 장면으로 지역 궤적을 생성<br/>실행: path_planner_node<br/>상태: 설계 예약·미구현"]
+        local_node_000["path_planner_node<br/>역할: 위치와 경로 및 통합 장면으로 지역 궤적을 생성<br/>실행: frenet_planner_node.py<br/>상태: 설계 예약·미구현"]
     end
     subgraph OUTPUTS["출력 (발행)"]
         output_000["/molit/planning/trajectory<br/>설명: 차량이 따라갈 시간 포함 실행 가능 지역 궤적<br/>메시지: common_msgs_pkg/Trajectory<br/>상태: 설계 예약·미구현"]

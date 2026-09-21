@@ -32,6 +32,7 @@ Config loadConfig(ros::NodeHandle& nh) {
   nh.param("longitudinal/brake_kp", c.brake_kp, c.brake_kp);
   nh.param("longitudinal/integrator_limit", c.integral_limit, c.integral_limit);
   nh.param("longitudinal/stop_brake", c.stop_brake, c.stop_brake);
+  nh.param("longitudinal/reference_preview_sec", c.reference_preview_sec, c.reference_preview_sec);
   return c;
 }
 

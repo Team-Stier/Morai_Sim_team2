@@ -127,10 +127,10 @@ RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 
 
 ## LiDAR 검출 결과
 
-RViz의 **LiDAR detections (development)**에 검출 박스를 분홍색으로 표시한다.
+RViz의 **LiDAR detections (development)**에 원본 클러스터 점을 ID별 색으로 표시한다.
 `lidar_link`의 원본 scan stamp로 TF를 적용하며 장착 offset을 중복 적용하지 않는다.
 측정시각 TF가 없으면 기다리고, invalid/stale/clock 정지 때 기존 결과를 삭제한다.
-TF는 bringup과 Localization이 발행한다. 관측이 없으면 박스도 없다.
+TF는 bringup과 Localization이 발행한다. 빈 관측은 이전 클러스터 표시를 지운다.
 표시 내부 토픽은 `/molit/internal/visualization/lidar_markers`이며 RViz만 사용한다.
 검출기는 `roslaunch lidar_perception_pkg lidar_perception_pkg.launch`로 실행한다.
 LiDAR UDP bridge와 watchdog은 [격리 센서 연결 절차](../lidar_perception_pkg/docs/sim_input_review.md)를 따른다.
@@ -141,10 +141,10 @@ LiDAR UDP bridge와 watchdog은 [격리 센서 연결 절차](../lidar_perceptio
 ## World Model 추적 결과
 
 RViz의 **World Model tracks (map-frame diagnostic)**는
-`/molit/world_model/scene`의 map 좌표 box를 하늘색으로 표시한다. 이 박스는 차량이
-움직여도 정적 객체의 map 위치와 track ID를 유지하며, TF를 다시 적용하지 않는다.
-원본 분홍 LiDAR box와 겹쳐 비교할 수 있다. 현재 결과는 calibration·freshness·위치
-불확실성이 검증되지 않았으므로 시각화 전용이며 주행 판단에는 사용할 수 없다.
+`/molit/world_model/scene`의 map 좌표 원본 점을 track ID별 색으로 표시한다.
+TF를 다시 적용하지 않으며 coast 중인 과거 점을 새 scan처럼 표시하지 않는다.
+일반 주행 readiness는 검증되지 않았다. 관측 점을 사용하는 제한된 Frenet 개발
+주행의 범위는 중앙 `frenet_runtime.yaml`에 명시한다.
 
 ## 추가 차로 RDDF
 

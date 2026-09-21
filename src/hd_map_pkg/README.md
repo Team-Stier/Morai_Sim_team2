@@ -1,5 +1,9 @@
 # hd_map_pkg
 
+Frenet 개발 실행의 hd_map_server_node는 명시한 RDDF 14개와 전역경로,
+MGeo 연결·허용 점선 구간·금지 경계·체크포인트를 HdMap으로 발행한다.
+목록은 config/map_conversion.yaml의 allowed_link_ids로 고정한다.
+
 MORAI 공식 조직의 KATRI MGeo 3.0 스냅샷을 immutable 후보로 고정하고, 이를
 WGS84 기반 Lanelet2 OSM으로 변환·검증하며 브라우저에서 시각 검사하는 오프라인
 도구다.
@@ -221,9 +225,9 @@ catkin_test_results
 | 출력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
 | 출력 | `/molit/map/status` | `common_msgs_pkg/ComponentStatus` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입 `ComponentStatus`, `HdMap`, `RouteLane`, `LaneChangeWindow`가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+런타임 노드는 전역경로·허용 RDDF·점선 연결·금지 경계와 체크포인트를 발행한다.
 
 ## 통합 전 자체 확인
 

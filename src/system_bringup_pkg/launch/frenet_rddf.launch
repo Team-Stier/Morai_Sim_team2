@@ -1,0 +1,24 @@
+<launch>
+  <!-- Existing MORAI sensors and Localization are prerequisites. -->
+  <arg name="send_to_morai" default="false"/>
+  <arg name="test_speed_cap_kph" default="10.0"/>
+  <include file="$(find hd_map_pkg)/launch/hd_map_pkg.launch"/>
+  <node pkg="global_route_manager_pkg" type="route_manager_node.py" name="global_route_manager_node" output="screen">
+    <rosparam command="load" file="$(find global_route_manager_pkg)/config/route_manager.yaml"/>
+  </node>
+  <include file="$(find lidar_perception_pkg)/launch/lidar_perception_pkg.launch"/>
+  <include file="$(find world_model_pkg)/launch/world_model_pkg.launch"/>
+  <include file="$(find path_planning_pkg)/launch/frenet_planner.launch">
+    <arg name="test_speed_cap_kph" value="$(arg test_speed_cap_kph)"/>
+  </include>
+  <include file="$(find vehicle_control_pkg)/launch/vehicle_control_pkg.launch">
+    <arg name="development_global_path_only" value="true"/>
+    <arg name="controller_config" value="$(find vehicle_control_pkg)/config/global_path_demo.yaml"/>
+  </include>
+  <node pkg="safety_supervisor_pkg" type="global_path_demo_relay.py" name="safety_supervisor_node" output="screen"/>
+  <param name="/vehicle_controller_node/longitudinal/reference_preview_sec" value="0.5"/>
+  <include file="$(find morai_interface_pkg)/launch/control_sender.launch">
+    <arg name="enable" value="$(arg send_to_morai)"/>
+    <arg name="config" value="$(find morai_interface_pkg)/config/global_path_demo.yaml"/>
+  </include>
+</launch>

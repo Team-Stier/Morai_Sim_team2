@@ -1,5 +1,13 @@
 # system_bringup_pkg
 
+`frenet_rddf.launch`는 기존 MORAI 센서·Localization 실행에 정적 지도, Route,
+LiDAR 관측, World Model, Frenet Planner와 Controller→Safety 연결을 추가한다.
+기존 global_path_demo와 중복 실행하지 않는다. 송신 기본값은 false이며,
+`send_to_morai:=true`로 개발 주행을 활성화한다. 시험 상한은 10 km/h이고
+Q 전환은 기존 MORAI sender 동작을 유지한다.
+[중앙 개발 프로필](../ros_architecture_pkg/config/messages/frenet_runtime.yaml)과
+[검증 범위](../path_planning_pkg/docs/frenet_rddf.md)를 따른다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.

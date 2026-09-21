@@ -1,5 +1,9 @@
 # global_route_manager_pkg
 
+Frenet 개발 실행의 route_manager_node.py는 HdMap과 Localization에서
+차로 진행 상태·다음 체크포인트·공통 비교 종점을 RouteContext로 발행한다.
+체크포인트는 실제 추정 이동 선분이 반경을 통과해야 완료로 기록한다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
@@ -47,9 +51,9 @@
 | 출력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` |
 | 출력 | `/molit/route/status` | `common_msgs_pkg/ComponentStatus` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `HdMap`, `RouteContext`가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+런타임 노드는 정적 지도와 자차 위치로 경로 진행·체크포인트 순서를 발행한다.
 
 ## 통합 전 자체 확인
 

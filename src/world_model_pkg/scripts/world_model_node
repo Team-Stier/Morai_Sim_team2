@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import rospy
 import tf2_ros
 import yaml
+from geometry_msgs.msg import Point
 from common_msgs_pkg.lidar_validation import validate_lidar
 from common_msgs_pkg.world_model_validation import validate_world_model
 from common_msgs_pkg.msg import (
@@ -20,7 +21,7 @@ from common_msgs_pkg.msg import (
     WorldModel,
 )
 
-from world_model_pkg import Detection, MultiObjectTracker, TrackerConfig, transform_aabb
+from world_model_pkg import Detection, MultiObjectTracker, TrackerConfig, transform_points
 
 
 OBSERVATION_TOPIC = "/molit/perception/lidar/observations"
@@ -80,7 +81,6 @@ class WorldModelNode:
             minimum_confirmation_hits=int(tracking["minimum_confirmation_hits"]),
             minimum_velocity_hits=int(tracking["minimum_velocity_hits"]),
             position_alpha=float(tracking["position_alpha"]),
-            size_alpha=float(tracking["size_alpha"]),
             velocity_alpha=float(tracking["velocity_alpha"]),
             maximum_speed_mps=float(tracking["maximum_speed_mps"]),
             maximum_prediction_sec=float(tracking["maximum_prediction_sec"]),
@@ -267,7 +267,8 @@ class WorldModelNode:
                 self._pending.popleft()
                 self._process(message, transform)
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException, ValueError) as error:
-                self._pending.popleft()
+                if self._pending and self._pending[0] is pending:
+                    self._pending.popleft()
                 self._reject_observation("scan-time transform failed: " + str(error), message, publish_invalid=True)
 
     def _process(self, message, transform):
@@ -277,15 +278,14 @@ class WorldModelNode:
         detections = []
         stamp_ns = _stamp_ns(message.header.stamp)
         for source in message.objects:
-            mapped = transform_aabb(
-                (source.center.x, source.center.y, source.center.z),
-                (source.size.x, source.size.y, source.size.z),
+            mapped = transform_points(
+                [(p.x, p.y, p.z) for p in source.points],
                 (translation.x, translation.y, translation.z),
                 (rotation.x, rotation.y, rotation.z, rotation.w),
             )
             detections.append(Detection(
-                center=mapped.center,
-                size=mapped.size,
+                center=tuple(sum(p[i] for p in mapped) / len(mapped) for i in range(3)),
+                points=mapped,
                 source_stamp_ns=stamp_ns,
                 source_frame_id=message.header.frame_id,
                 source_local_id=int(source.scan_local_id),
@@ -326,7 +326,7 @@ class WorldModelNode:
             item.calibration_verified = view.calibration_verified
             item.pose.position.x, item.pose.position.y, item.pose.position.z = view.center
             item.pose.orientation.w = 1.0
-            item.size.x, item.size.y, item.size.z = view.size
+            item.points = [Point(*p) for p in view.points]
             item.twist.linear.x, item.twist.linear.y, item.twist.linear.z = view.velocity
             item.velocity_valid = view.velocity_valid
             item.semantic_class = view.semantic_class

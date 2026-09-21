@@ -18,11 +18,11 @@
     },
     {
       "png": "src/global_route_manager_pkg/docs/interface_io.png",
-      "png_sha256": "3ba461ea9de63d3fe9e7e0180eae89a4f6fdb6d91094fbff1e95925707e640bb",
+      "png_sha256": "f619a0cd3ef7350a8d84cf4535d42a6d5f43f3472b9063a29506edea71d21511",
       "source": "src/global_route_manager_pkg/docs/interface_io.mmd",
-      "source_sha256": "fb1dffdb807dbd4f6131081227e765bef72a8e2f355a8d709f04c13d254d7452",
+      "source_sha256": "154ee6637d1c397141516e3f926c1d8ad7d1bf80d81bc866dc7040eb5fb7da80",
       "svg": "src/global_route_manager_pkg/docs/interface_io.svg",
-      "svg_sha256": "31f3703574f67d2b31fea429eb966978e8b95eab82f08c099532f9113dc3db78"
+      "svg_sha256": "c67b22b9f6bf6dfe62811f59cfcfb02d6275b49584470ff90437c3856facf01e"
     },
     {
       "png": "src/hd_map_pkg/docs/interface_io.png",
@@ -58,11 +58,11 @@
     },
     {
       "png": "src/path_planning_pkg/docs/interface_io.png",
-      "png_sha256": "5c37f1c1364872d1fb4586347bdf73939e61d03701af195ced37dd7e3ed618f4",
+      "png_sha256": "cd9b5c5dda3ab546e55a74ee29b94dde36e9c959a288a11cfcb18cec8c74e4ed",
       "source": "src/path_planning_pkg/docs/interface_io.mmd",
-      "source_sha256": "24e3171b9879935d92c81578a8a6b75d76ab01a216e36d1435a80fe68c4a1e68",
+      "source_sha256": "dae22c998f95830d836763db459070d2553dc6e068f6f39b00b15861de81bb9e",
       "svg": "src/path_planning_pkg/docs/interface_io.svg",
-      "svg_sha256": "9813ac35fe6040e357db2cfca02d7556c2060b4de2de4d6156dcb0c70a069440"
+      "svg_sha256": "053d5f4a387c364f22d8b7236db24dedd0001606f64c245960cb75d1806b1ddc"
     },
     {
       "png": "src/ros_architecture_pkg/docs/interface_io.png",
@@ -74,11 +74,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "40be748509b47c2066af6fd6e36d06e8f2d7ff51d76a1e89cf5504b40ad6e931",
+      "png_sha256": "57476e22ac2ea55c27f07e5442baee8a4de4c7b58a81ae1087247bf403169a7b",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "a6d85a1922fc369b8df38b8a982ceeb5de2267487b91980ffe11e627f0056087",
+      "source_sha256": "0fd68a7176853f230d6dd29b10f38d3210ced821c5f53c0999a0c38f0bb3138c",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "1338462a6e7a09c8e488481bfdcea9afa75b33315cfea58998f1440c6d92a2b1"
+      "svg_sha256": "a0b24ea3f7cea9fad7406e5289869b7422829aae37286f6431093e756c9a0858"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
@@ -150,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "8c52d561c294b8d643044343b97ea1b9fb534ae31961064446f96246d72db2ca"
+  "source_of_truth_sha256": "8adaf9d289c8db5ef6ea782fc18239ad94cd7c999df569c37488970aeeaef25f"
 }

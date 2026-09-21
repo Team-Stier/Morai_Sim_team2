@@ -1,5 +1,12 @@
 # path_planning_pkg
 
+## Frenet RDDF 개발 구현
+
+[Frenet Planner](docs/frenet_rddf.md)는 지정한 RDDF 14개와 전역경로를 사용해
+후보 생성 → 규정·클러스터 충돌 검사 → ETA 비용 비교 → 변경 상태 유지를 수행한다.
+`frenet_planner.launch`가 단독 실행, `system_bringup_pkg/frenet_rddf.launch`가 통합 실행이다.
+출력은 기존 odom Trajectory이며 첫 시험 상한은 10 km/h다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
@@ -34,8 +41,8 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 
 ## 공개 ROS 입출력
 
-현재 상태는 **이름 승인, 구현 예약**이며 공개 경계 노드는
-`path_planner_node`다. behavior/motion planner는 아직 미구현이며, `Trajectory` schema는
+현재 상태는 **개발용 Frenet RDDF 후보 생성·ETA 선택 구현**이며 공개 경계 노드는
+`path_planner_node`다. 실행 범위는 [Frenet 설계](docs/frenet_rddf.md)를 따르며, `Trajectory` schema는
 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)에 구현됐다.
 
 ![Path Planning 공개 입출력](docs/interface_io.svg)
@@ -64,7 +71,7 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 Trajectory의 공개 frame은 제어 연속성을 위해 `odom`으로 고정한다.
 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `WorldModel` 스키마는 구현됐으며
 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-`RouteContext`와 Planner 노드는 미구현이다. `Trajectory`는 poses/speed_mps/time_from_start의
+`RouteContext`와 Frenet Planner 노드가 구현됐다. `Trajectory`는 poses/speed_mps/time_from_start의
 동일 길이 배열과 valid/stop_required/valid_for/reset_id를 제공한다. v1에서 이 패키지가 생성하는 주행
 출력은 `/molit/planning/trajectory`뿐이며 직접 accel/brake/steer 또는
 UDP 출력은 금지한다.
