@@ -90,3 +90,12 @@ RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 
 
 제어 연결용 `Trajectory`, `ActuatorCommand`, `ControllerStatus` 스키마도 구현됐다.
 이 패키지의 예약 consumer는 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)을 따른다.
+
+## 전역경로 추종 시험 (2026-09-21)
+
+사용자가 요청한 현재 시뮬레이터 전용 실행은
+[global_path_demo 중앙 프로필](../ros_architecture_pkg/config/messages/global_path_demo.yaml)을 따른다.
+`roslaunch system_bringup_pkg global_path_demo.launch`로 기존 Localization에 연결해
+전역경로만 10 km/h로 추종한다. 일반 실행과 구분된 개발용 직접 전달 경로이며
+장애물·신호 판단을 수행하지 않는다. 별도 방어 계층은 추가하지 않았다.
+실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.

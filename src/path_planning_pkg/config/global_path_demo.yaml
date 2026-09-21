@@ -1,0 +1,4 @@
+# Route-only demonstration, no obstacle or traffic behavior.
+speed_mps: 2.7777777777777777
+forward_points: 100
+behind_points: 5

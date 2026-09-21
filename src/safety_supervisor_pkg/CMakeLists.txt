@@ -6,3 +6,5 @@ catkin_package(CATKIN_DEPENDS common_msgs_pkg ros_architecture_pkg)
 
 install(FILES README.md DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 install(DIRECTORY config docs launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION} PATTERN ".gitkeep" EXCLUDE)
+
+catkin_install_python(PROGRAMS src/global_path_demo_relay.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

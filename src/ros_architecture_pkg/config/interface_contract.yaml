@@ -77,6 +77,9 @@ runtime_readiness_policy:
     last_gps_fix_must_not_be_reused_as_current_position_truth: true
 
 contract_modules:
+  global_path_demo:
+    path: messages/global_path_demo.yaml
+    required_contract_version: 0.1.0
   controller_messages:
     path: messages/controller_messages.yaml
     required_contract_version: 0.1.0

@@ -106,3 +106,12 @@ catkin_test_results --all build/test_results
 ROS publisher/subscriber 연결 및 상류 정지 상태 전달을 확인한다.
 
 [이번 이식의 검증 결과](docs/validation.md)를 참고한다.
+
+## 전역경로 추종 시험 (2026-09-21)
+
+사용자가 요청한 현재 시뮬레이터 전용 실행은
+[global_path_demo 중앙 프로필](../ros_architecture_pkg/config/messages/global_path_demo.yaml)을 따른다.
+`roslaunch system_bringup_pkg global_path_demo.launch`로 기존 Localization에 연결해
+전역경로만 10 km/h로 추종한다. 일반 실행과 구분된 개발용 직접 전달 경로이며
+장애물·신호 판단을 수행하지 않는다. 별도 방어 계층은 추가하지 않았다.
+실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.

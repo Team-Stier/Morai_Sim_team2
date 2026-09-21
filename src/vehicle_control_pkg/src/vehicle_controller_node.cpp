@@ -38,6 +38,7 @@ Config loadConfig(ros::NodeHandle& nh) {
 class Node {
  public:
   Node() : private_("~"), controller_(loadConfig(private_)) {
+    private_.param("development_global_path_only", global_path_only_, false);
     double control_rate = 50.0, status_rate = 10.0;
     int input_queue = 2, command_queue = 2, status_queue = 1;
     bool latched = true;
@@ -68,7 +69,7 @@ class Node {
     Output o;
     if (!odometry_ || !localization_ || !trajectory_ || !planning_) {
       o = controller_.stop(now, dt, speed, "waiting_for_inputs");
-    } else if (!localization_->local_odometry_valid || localization_->stop_required ||
+    } else if (!localization_->local_odometry_valid || (localization_->stop_required && !global_path_only_) ||
                !planning_->ready || planning_->stop_required || !trajectory_->valid) {
       o = controller_.stop(now, dt, speed, "upstream_stop_required");
     } else {
@@ -84,6 +85,7 @@ class Node {
   void publishStatus(const ros::TimerEvent&) { status_pub_.publish(status_); }
   ros::NodeHandle nh_, private_;
   Controller controller_;
+  bool global_path_only_{false};
   ros::Publisher command_pub_, status_pub_;
   ros::Subscriber odom_sub_, loc_sub_, traj_sub_, plan_sub_;
   ros::Timer control_timer_, status_timer_;
