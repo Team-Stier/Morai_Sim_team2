@@ -138,14 +138,14 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertFalse(p.missed_checkpoint)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.75))
-    def test_plan_survives_input_age_but_expires_after_retention(self, _):
+    def test_plan_remains_active_until_a_new_result(self, _):
         node = self.node()
         self.assertEqual(node.c['input_age_sec'], 0.5)
         node.publish(None)
         self.assertFalse(node.trajectory.message.stop_required)
         with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(101.01)):
             node.publish(None)
-        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertFalse(node.trajectory.message.stop_required)
 
     def test_active_path_holds_one_second_and_activates_latest_result(self):
         node = self.node()

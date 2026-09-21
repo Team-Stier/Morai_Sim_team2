@@ -246,14 +246,11 @@ class Node:
                 self.pending_selection_set = False
                 self.pending_selection_stamp = None
             chosen, stamp = self.selected, self.selected_stamp
-            holding_stop = (self.pending_selection_set and self.pending_selection is None and
-                            self.pending_selection_stamp is not None)
         output = Trajectory()
         output.header.stamp, output.header.frame_id = now, 'odom'
         output.reset_id = ego.reset_id
         output.valid_for = rospy.Duration(self.c['trajectory_valid_for_sec'])
-        if (chosen is None or stamp is None or
-                ((now-stamp).to_sec() > self.c['plan_retention_sec'] and not holding_stop)):
+        if chosen is None or stamp is None:
             output.valid = True
             output.stop_required = True
             output.poses = [copy.deepcopy(odom.pose.pose), copy.deepcopy(odom.pose.pose)]
