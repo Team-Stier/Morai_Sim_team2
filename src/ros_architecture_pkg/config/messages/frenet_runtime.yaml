@@ -19,5 +19,5 @@ world_model_readiness_override: development_objects_valid_with_matching_epoch_an
 production_planner_ready_override_allowed: false
 controller_compatibility: development_global_path_only_accepts_development_localization
 controller_safety_transport: retain_existing_global_path_demo_flow
-test_speed_cap_kph: 10.0
+test_speed_cap_kph: 0.0
 details: ../../../path_planning_pkg/docs/frenet_rddf.md

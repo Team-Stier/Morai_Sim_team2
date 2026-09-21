@@ -10,6 +10,7 @@ from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, footprint_
 class FrenetTest(unittest.TestCase):
     def setUp(self):
         self.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
+        self.c['test_speed_cap_kph'] = 10.0  # Low-speed scenario fixtures.
         self.p = Planner(self.c)
         s = np.arange(0., 121., .5)
         def lane(key, y):

@@ -3,7 +3,7 @@
 `frenet_rddf.launch`는 기존 MORAI 센서·Localization 실행에 정적 지도, Route,
 LiDAR 관측, World Model, Frenet Planner와 Controller→Safety 연결을 추가한다.
 기존 global_path_demo와 중복 실행하지 않는다. 송신 기본값은 false이며,
-`send_to_morai:=true`로 개발 주행을 활성화한다. 시험 상한은 10 km/h이고
+`send_to_morai:=true`로 개발 주행을 활성화한다. 시험 상한은 기본적으로 해제하며
 Q 전환은 기존 MORAI sender 동작을 유지한다.
 [중앙 개발 프로필](../ros_architecture_pkg/config/messages/frenet_runtime.yaml)과
 [검증 범위](../path_planning_pkg/docs/frenet_rddf.md)를 따른다.

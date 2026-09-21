@@ -5,7 +5,7 @@ LiDAR 보정 복원: `c6265ad`의 측정시각 roll·pitch 보정, 자차 반사
 [복원 범위와 설정](src/lidar_perception_pkg/README.md)을 참고한다.
 
 Frenet RDDF 개발 실행은 [경로 생성·비용식·시험 범위](src/path_planning_pkg/docs/frenet_rddf.md)를
-따른다. 전역경로와 지정 RDDF 14개를 사용하며 첫 MORAI 시험 상한은 10 km/h다.
+따른다. 전역경로와 지정 RDDF 14개를 사용하며 시험 상한은 해제한 상태다.
 
 2026 국토부 KATRI 대학생 AI/SW 모빌리티 경진대회 **AI융합자율주행 부문**을 위한 Team Stier의 MORAI 기반 자율주행 프로젝트다.
 

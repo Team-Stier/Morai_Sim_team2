@@ -1,5 +1,5 @@
-# Initial MORAI validation profile. 0 removes the test-only speed cap.
-test_speed_cap_kph: 10.0
+# User course speeds apply; 0 removes the test-only speed cap.
+test_speed_cap_kph: 0.0
 decision_rate_hz: 5.0
 trajectory_rate_hz: 10.0
 trajectory_valid_for_sec: 0.5
