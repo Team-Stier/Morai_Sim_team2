@@ -7,6 +7,7 @@ import yaml
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker, MarkerArray
 from hd_map_pkg.display_geometry import load_route_display_layers
+from hd_map_pkg.course_speed import load_course_speed_policy
 
 
 def map_markers(layers, plane_z, line_width):
@@ -43,9 +44,10 @@ def map_markers(layers, plane_z, line_width):
         result.markers.append(marker)
     if 'global_route_unlimited' in layers:
         high = layers['global_route_unlimited'][0]
+        policy = load_course_speed_policy()
         for index, (point, label, color) in enumerate([
-                (high[0], 'NO LIMIT | cruise 100 km/h', (1.0, 0.25, 0.86)),
-                (high[-1], 'MAX 50 km/h', (0.2, 1.0, 0.35))]):
+                (high[0], 'NO LIMIT | cruise %g km/h' % policy['high_speed']['cruise_kph'], (1.0, 0.25, 0.86)),
+                (high[-1], 'MAX %g km/h' % policy['normal_limit_kph'], (0.2, 1.0, 0.35))]):
             marker = Marker()
             marker.header.frame_id = 'map'
             marker.ns = 'course_speed_labels'

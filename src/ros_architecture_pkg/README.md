@@ -133,4 +133,4 @@ SVG가 보존한다. 회색/점선은 이름만 예약된 경계이며 현재 �
 구현한다. `Trajectory`·`ControllerStatus` 필드는 `config/messages/controller_messages.yaml`을
 따르며, 추가 방어 계층은 넣지 않고 원본 제어기의 검사·제한과 기존 상류 상태를 따른다.
 
-[고정 코스 속도 정책](docs/course_speed_policy.md)은 사용자 지정 일반 상한 50 km/h와 고주로 목표 100 km/h, 공유 지도 색상과 검증 근거를 정의한다.
+[고정 코스 속도 정책](docs/course_speed_policy.md)은 사용자 지정 일반 상한 58 km/h와 고주로 목표 150 km/h, 공유 지도 색상과 검증 근거를 정의한다.

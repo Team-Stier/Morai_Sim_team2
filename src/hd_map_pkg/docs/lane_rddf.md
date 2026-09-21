@@ -80,4 +80,4 @@ manifest에 열거된 파일만 사용한다. 이전 실행의 TXT가 폴더에 
 일치함을 확인했다. HD Map 테스트 48개, 표시 3개, 계약 2개, catkin 빌드와
 다이어그램 검사가 통과했다. 앞서 기록한 전체 시각화 회귀의 upstream 제약은 그대로다.
 
-고정 코스 속도 정책 적용: 고주로는 분홍색, 일반 추가 RDDF는 하늘색이다. manifest의 `speed_limit_kph` 배열은 XYZ 각 점의 제한을 `null`(제한 없음) 또는 `50`으로 기록한다. `speed_sections`는 구간 색상 표시용이며 원본 XYZ를 변경하지 않는다.
+고정 코스 속도 정책 적용: 고주로는 분홍색, 일반 추가 RDDF는 하늘색이다. manifest의 `speed_limit_kph` 배열은 XYZ 각 점의 제한을 `null`(제한 없음) 또는 `58`으로 기록한다. `speed_sections`는 구간 색상 표시용이며 원본 XYZ를 변경하지 않는다.

@@ -99,4 +99,4 @@ UDP 출력은 금지한다.
 장애물·신호 판단을 수행하지 않는다. 별도 방어 계층은 추가하지 않았다.
 실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
 
-전역경로 실행의 고정 속도 규칙은 중앙 `config/map/course_speed_policy.yaml`이다. 일반 상한 50 km/h(순항 48), 고주로 제한 없음(순항 100)을 곡률·출구 전 감속 프로파일에 적용한다.
+전역경로 실행의 고정 속도 규칙은 중앙 `config/map/course_speed_policy.yaml`이다. 일반 상한 58 km/h(순항 56), 고주로 제한 없음(순항 150)을 곡률·출구 전 감속 프로파일에 적용한다.

@@ -85,7 +85,8 @@ class Planner:
         status.ready = True
         status.data_stamp = output.header.stamp
         status.reason = 'global_path_only; nearest_index=%d; zone=%s; target_kph=%.2f' % (
-            nearest, 'unlimited' if self.zones.unlimited(nearest) else 'max_50', self.speeds[nearest]*3.6)
+            nearest, 'unlimited' if self.zones.unlimited(nearest) else
+            'max_%g' % self.policy['normal_limit_kph'], self.speeds[nearest]*3.6)
         self.status.publish(status)
 
 

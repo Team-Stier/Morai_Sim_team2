@@ -14,11 +14,11 @@ class CourseSpeedTest(unittest.TestCase):
         self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), policy['reference']['sha256'])
         zones = CourseSpeedZones(read_route(source), policy)
         self.assertEqual((zones.start, zones.end), (2275, 3529))
-        self.assertEqual(policy['normal_limit_kph'], 50)
-        self.assertEqual(policy['high_speed']['cruise_kph'], 100)
+        self.assertEqual(policy['normal_limit_kph'], 58)
+        self.assertEqual(policy['high_speed']['cruise_kph'], 150)
         self.assertIsNone(policy['high_speed']['limit_kph'])
         for i in (zones.start-1, zones.end, 0, len(zones.route)-1):
-            self.assertEqual(zones.limit_kph(i), 50)
+            self.assertEqual(zones.limit_kph(i), 58)
         for i in (zones.start, zones.end-1):
             self.assertIsNone(zones.limit_kph(i))
 

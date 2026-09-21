@@ -40,6 +40,8 @@ class LaneRddfDisplayTest(unittest.TestCase):
         self.assertEqual(markers[1].color, markers[2].color)
         self.assertNotEqual(markers[0].color, markers[1].color)
         self.assertGreater(markers[1].color.r, markers[1].color.g)
+        self.assertEqual(markers[-2].text, 'NO LIMIT | cruise 150 km/h')
+        self.assertEqual(markers[-1].text, 'MAX 58 km/h')
 
     def test_layers_are_separate_lines_and_use_map_without_changing_height(self):
         layers = {'global_route': [[[0,0,28],[1,0,28]]],

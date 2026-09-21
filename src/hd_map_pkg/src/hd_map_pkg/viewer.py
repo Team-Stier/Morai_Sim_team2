@@ -313,8 +313,8 @@ input { accent-color: #32d3a2; }
   <span class="badge">immutable candidate</span>
   <h2>Layers</h2>
   <label><input data-layer="globalRoute" type="checkbox" checked><span class="swatch green"></span>전역경로 TXT</label>
-  <label><span class="swatch magenta"></span>고주로 · 속도 제한 없음 · 목표 100 km/h</label>
-  <label><span class="swatch green"></span>일반 구간 · 최대 50 km/h</label>
+  <label><span class="swatch magenta"></span><span id="highSpeedPolicy"></span></label>
+  <label><span class="swatch green"></span><span id="normalSpeedPolicy"></span></label>
   <label><input data-layer="laneRddf" type="checkbox" checked><span class="swatch sky"></span>추가 RDDF (고주로는 분홍색)</label>
   <label><input data-layer="intersections" type="checkbox"><span class="swatch purple"></span>교차로 영역(파생)</label>
   <label><input data-layer="centerlines" type="checkbox" checked><span class="swatch cyan"></span>차선 중심선</label>
@@ -339,6 +339,9 @@ const enabled = {}; document.querySelectorAll('[data-layer]').forEach(el => {
   enabled[el.dataset.layer] = el.checked; el.addEventListener('change',()=>{enabled[el.dataset.layer]=el.checked;draw();});
 });
 document.getElementById('title').textContent=MAP.metadata.title;
+if(MAP.globalRoute.speed_policy){const policy=MAP.globalRoute.speed_policy;
+ document.getElementById('highSpeedPolicy').textContent=`고주로 · 속도 제한 없음 · 목표 ${policy.high_speed.cruise_kph} km/h`;
+ document.getElementById('normalSpeedPolicy').textContent=`일반 구간 · 최대 ${policy.normal_limit_kph} km/h`;}
 document.getElementById('subtitle').textContent=`${MAP.metadata.scene} · ${MAP.metadata.coordinate_frame}\ncommit ${MAP.metadata.source_commit}`;
 document.getElementById('stats').innerHTML=Object.entries(MAP.metadata.counts).map(([k,v])=>`<div class="stat"><b>${v.toLocaleString()}</b>${k}</div>`).join('');
 let dpr=window.devicePixelRatio||1, scale=1, ox=0, oy=0, dragging=false, last=null;

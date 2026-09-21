@@ -37,6 +37,7 @@ class GlobalPathDemoTest(unittest.TestCase):
             node.path.append(p)
         node.zones = CourseSpeedZones([[float(i), 0] for i in range(20)], {
             'normal_limit_kph': 50, 'high_speed': {'start_map_xy': [10, 0], 'end_map_xy': [15, 0]}})
+        node.policy = node.zones.policy
         ego = EgoState()
         ego.pose.pose.position.x = 10.0
         ego.pose.pose.orientation.w = 1.0
@@ -77,11 +78,11 @@ class GlobalPathDemoTest(unittest.TestCase):
 
     def test_current_speed_at_exit_is_not_taken_from_points_behind_vehicle(self):
         node = self.planner()
-        node.speeds = [100/3.6]*10 + [48/3.6]*10
+        node.speeds = [150/3.6]*10 + [56/3.6]*10
         with patch.object(rospy.Time, 'now', return_value=rospy.Time(30)):
             node.update(None)
         value = node.trajectory.value
-        self.assertEqual(value.speed_mps[:3], [48/3.6]*3)
+        self.assertEqual(value.speed_mps[:3], [56/3.6]*3)
         self.assertEqual(value.time_from_start[0], rospy.Duration(0))
         self.assertTrue(all(b > a for a, b in zip(value.time_from_start, value.time_from_start[1:])))
 

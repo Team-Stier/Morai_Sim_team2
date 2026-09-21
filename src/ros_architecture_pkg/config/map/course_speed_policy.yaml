@@ -1,13 +1,13 @@
 schema_version: 1
 contract_version: 0.1.0
 authority: ros_architecture_pkg
-policy_id: katri_user_fixed_20260921
+policy_id: katri_user_58_150_20260921
 source: user_fixed_normal_limit_and_high_speed_cruise_2026_09_21
 frame: map
-normal_limit_kph: 50.0
+normal_limit_kph: 58.0
 high_speed:
   limit_kph: null  # No course speed limit; cruise speed is a separate planning target.
-  cruise_kph: 100.0
+  cruise_kph: 150.0
   start_link: A2256W000411
   start_endpoint: first
   start_map_xy: [62.073913683, 256.494927573]
