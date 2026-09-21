@@ -23,6 +23,16 @@ class Output:
 
 
 class FrenetOutputTest(unittest.TestCase):
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.75))
+    def test_plan_survives_input_age_but_expires_after_retention(self, _):
+        node = self.node()
+        self.assertEqual(node.c['input_age_sec'], 0.5)
+        node.publish(None)
+        self.assertFalse(node.trajectory.message.stop_required)
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(101.01)):
+            node.publish(None)
+        self.assertTrue(node.trajectory.message.stop_required)
+
     def node(self):
         node = module.Node.__new__(module.Node)
         node.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())

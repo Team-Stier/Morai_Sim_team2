@@ -39,3 +39,5 @@ wheelbase_m: 3.0
 max_steering_rad: 0.6981317007977318
 max_steering_rate_rps: 1.5
 input_age_sec: 0.5
+# Retain a computed plan across decision callbacks, measured from planning start.
+plan_retention_sec: 1.0

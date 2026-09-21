@@ -153,7 +153,7 @@ class Node:
         output.header.stamp, output.header.frame_id = now, 'odom'
         output.reset_id = ego.reset_id
         output.valid_for = rospy.Duration(self.c['trajectory_valid_for_sec'])
-        if chosen is None or stamp is None or (now-stamp).to_sec() > self.c['input_age_sec']:
+        if chosen is None or stamp is None or (now-stamp).to_sec() > self.c['plan_retention_sec']:
             output.valid = True
             output.stop_required = True
             output.poses = [copy.deepcopy(odom.pose.pose), copy.deepcopy(odom.pose.pose)]

@@ -45,6 +45,9 @@ roslaunch system_bringup_pkg frenet_rddf.launch send_to_morai:=false
 ```
 
 `send_to_morai:=true`는 Controller → Safety → MORAI 경로를 활성화한다.
+입력 신선도는 `input_age_sec=0.5`, 계산 시작 기준 계획 결과 보관 시간은
+`plan_retention_sec=1.0`으로 분리한다. Controller에 발행하는 각 trajectory의
+`valid_for`는 기존 0.5초를 유지한다.
 `/path_planner_node/candidate_costs`는 비용·제외 사유를 담은 private 진단이다.
 
 ## 검증 범위와 한계
