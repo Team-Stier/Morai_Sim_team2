@@ -10,9 +10,10 @@ body_center_offset_verified: false
 # Footprint uses real length/width at the reference pose plane; thickness is cosmetic.
 display_mode: footprint
 footprint_thickness_m: 0.06
-# These limits hide stale graphics; they do not approve localization freshness.
-display_timeout_sec: 0.5
-clock_stall_sec: 0.5
+# MORAI transient-delay tolerance; old graphics still expire, stamps stay unchanged.
+# These limits do not approve localization freshness or real-vehicle operation.
+display_timeout_sec: 2.0
+clock_stall_sec: 2.0
 buffer_size: 100
 # Watchdog frequency only; valid markers publish on matching localization callbacks.
 marker_publish_rate_hz: 10.0

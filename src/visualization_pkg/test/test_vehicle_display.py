@@ -4,6 +4,9 @@
 import copy
 import math
 import unittest
+from dataclasses import replace
+from pathlib import Path
+import yaml
 
 import rospy
 from common_msgs_pkg.msg import LocalizationStatus
@@ -49,6 +52,19 @@ class LocalVehicleDisplayTest(unittest.TestCase):
         state = self.display.evaluate(now_ns, 1.01)
         self.assertTrue(state.valid, state.reason)
         return state
+
+    def test_simulator_config_retains_briefly_delayed_pose_but_expires_it(self):
+        config = yaml.safe_load((Path(__file__).resolve().parents[1] /
+                                 'config/vehicle_display.yaml').read_text())
+        self.config = replace(self.config, display_timeout_sec=config['display_timeout_sec'],
+                              clock_stall_sec=config['clock_stall_sec'])
+        self.display = VehicleDisplay(self.config)
+        original = self._ready()
+        delayed = self.display.evaluate(stamp_ns(self.now + rospy.Duration(0.8)), 1.8)
+        self.assertTrue(delayed.valid)
+        self.assertEqual(delayed.stamp_ns, original.stamp_ns)
+        expired = self.display.evaluate(stamp_ns(self.now + rospy.Duration(2.1)), 3.1)
+        self.assertFalse(expired.valid)
 
     def test_local_pose_and_footprint_keep_odom_frame_and_nanosecond_stamp(self):
         state = self._ready()

@@ -123,3 +123,9 @@ Competition packet 호환이나 센서 축·단위의 실측 증거가 아니다
 - `src/morai_udp_bridge/`: 이식된 수신 transport, parser와 ROS publisher
 - `scripts/`: ROS node 진입점
 - `test/`: parser, UDP loopback과 중앙 계약 정합성 검사
+
+## MORAI 일시 지연 허용 (2026-09-21)
+
+정상 데이터가 잠깐 늦어 검출·표시가 끊기는 현상을 줄이도록 개발 기본 시간 제한을
+완화했다. 변경값, 유지하는 검사와 적용 방법은 [시뮬레이터 지연 허용](../ros_architecture_pkg/docs/simulator_delay_tolerance.md)을 따른다.
+실차 한계값이나 주행 준비 승인을 의미하지 않으며 원본 측정시각과 좌표 검사는 유지한다.

@@ -158,3 +158,9 @@ LiDAR UDP bridge와 watchdog은 [격리 센서 연결 절차](../lidar_perceptio
 
 원본 점 및 지도 좌표 교차검증은 [군집 점 표시 검증](../lidar_perception_pkg/docs/cluster_points.md)에 기록했다.
 이전 박스 모드 검증은 [LiDAR 검증 기록](docs/lidar_display_validation.md)을 참고한다.
+
+## MORAI 일시 지연 허용 (2026-09-21)
+
+정상 데이터가 잠깐 늦어 검출·표시가 끊기는 현상을 줄이도록 개발 기본 시간 제한을
+완화했다. 변경값, 유지하는 검사와 적용 방법은 [시뮬레이터 지연 허용](../ros_architecture_pkg/docs/simulator_delay_tolerance.md)을 따른다.
+실차 한계값이나 주행 준비 승인을 의미하지 않으며 원본 측정시각과 좌표 검사는 유지한다.

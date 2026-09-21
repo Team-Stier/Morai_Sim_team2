@@ -275,17 +275,19 @@ runtime_evidence_required:
 # Explicit development defaults, not measured competition limits.
 development_localization_profile:
   activation_scope: development_only
+  tuning_scope: morai_simulator_only
+  timing_policy: relaxed_transient_delay_not_measured_driving_limits
   measurement_verified: false
   autonomous_driving_ready: false
   authorization: user_requested_estimation_and_activation_2026_09_10
-  imu_timeout_sec: 0.30
-  gps_timeout_sec: 0.65
-  estimate_timeout_sec: 0.30
-  status_timeout_sec: 0.50
+  imu_timeout_sec: 1.0
+  gps_timeout_sec: 2.0
+  estimate_timeout_sec: 1.0
+  status_timeout_sec: 2.0
   reorder_delay_sec: 0.06
   max_dead_reckoning_sec: 15.0
   max_integration_step_sec: 0.30
-  clock_stall_sec: 0.50
+  clock_stall_sec: 2.0
   future_tolerance_sec: 0.0
   status_publish_rate_hz: 10.0
   status_rate_semantic: heartbeat_when_idle_plus_one_status_per_estimate

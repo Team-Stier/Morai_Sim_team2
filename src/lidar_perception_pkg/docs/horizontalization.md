@@ -52,15 +52,16 @@ RViz의 원본 군집 점은 sensor frame 좌표를 보존한다. 수평으로 �
 ## 시간 및 실패 처리
 
 중앙 `messages/lidar_runtime.yaml#horizontalization`:
-보간 양 끝 간격 최대 0.10 s, 스캔 대기 최대 0.25 s, 자세 이력 2 s,
-대기 스캔 최대 3개, 자세 wall timeout 0.30 s. 개발용 기본값이며 실제 주행
+보간 양 끝 간격 최대 0.30 s, 스캔/장착 TF 대기 최대 1.0 s, 자세 이력 5 s,
+대기 스캔 최대 16개, 자세 wall timeout 1.0 s. MORAI 전용 완화값이며 실제 주행
 타이밍의 검증값은 아니다. sensor ingress stamp를 처리 완료 시각으로 바꾸지 않는다.
 
 - 정확히 같은 시각의 자세 또는 양쪽 유효 샘플 사이의 보간만 허용한다.
 - 외삽, 최신 자세의 무기한 재사용, 미보정 fallback을 하지 않는다.
 - reset_id 변경, 잘못된 frame/validity/quaternion, 비단조 자세 시각,
   ROS clock 역행은 이력 및 대기 스캔을 비운다.
-- 시간 정렬 실패·큐 초과·mount 누락은 invalid empty observation과 오류 상태로 알린다.
+- mount TF가 늦으면 스캔을 큐에 유지하고 같은 측정시각으로 재시도한다.
+- 대기 한도 초과·큐 초과·잘못된 mount는 invalid empty observation과 오류 상태로 알린다.
 - 단일 회전이므로 스캔 내 개별 포인트 시각에 따른 motion deskew는 포함하지 않는다.
 - calibration_verified/freshness_verified=false, ready=false, stop_required=true.
 

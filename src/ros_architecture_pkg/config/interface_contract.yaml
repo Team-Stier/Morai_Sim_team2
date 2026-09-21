@@ -396,7 +396,7 @@ topics:
     timestamp_source: morai_interface_ingress_time
     expected_rate_hz: 50.0
     queue_policy: publisher_queue_10
-    timeout_sec: 0.30
+    timeout_sec: 1.0
     invalid_data_policy: reject_invalid_measurements_development_only_stop_required
   - name: /molit/vehicle/twist
     owner_package: morai_interface_pkg
@@ -445,7 +445,7 @@ topics:
     timestamp_source: steady_watchdog_time
     expected_rate_hz: 2.0
     queue_policy: publisher_queue_1_latched
-    timeout_sec: 1.0
+    timeout_sec: 3.0
     invalid_data_policy: false_when_no_points_after_timeout
   - name: /molit/events/collision
     owner_package: morai_interface_pkg
@@ -639,7 +639,7 @@ topics:
     timestamp_source: estimate_valid_time
     expected_rate_hz: 50.0
     queue_policy: publisher_queue_10_drop_old
-    timeout_sec: 0.30
+    timeout_sec: 1.0
     activation_scope: development_only
     timing_profile: timestamp/timestamp_contract.yaml#development_localization_profile
     invalid_data_policy: publish_covariance_and_stop_required_status_when_unreliable
@@ -658,7 +658,7 @@ topics:
     timestamp_source: estimate_valid_time
     expected_rate_hz: 50.0
     queue_policy: publisher_queue_10_drop_old
-    timeout_sec: 0.30
+    timeout_sec: 1.0
     activation_scope: development_only
     timing_profile: timestamp/timestamp_contract.yaml#development_localization_profile
     invalid_data_policy: retain_explicit_uncertainty_and_quality_during_gps_blackout
@@ -676,7 +676,7 @@ topics:
     timestamp_source: status_evaluation_time
     expected_rate_hz: 50.0
     queue_policy: publisher_queue_10_latched
-    timeout_sec: 0.50
+    timeout_sec: 2.0
     activation_scope: development_only
     timing_profile: timestamp/timestamp_contract.yaml#development_localization_profile
     invalid_data_policy: lost_or_stop_required_when_pose_contract_cannot_be_met

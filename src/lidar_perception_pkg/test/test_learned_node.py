@@ -92,7 +92,8 @@ class NodeTest(unittest.TestCase):
         wait(lambda: any(s.state==s.FAULT for s in statuses))
         self.assertTrue(all(not s.ready and s.stop_required for s in statuses))
         stop.set()
-        wait(lambda: statuses and 'no recent' in statuses[-1].reason)
+        wait(lambda: statuses and 'no recent' in statuses[-1].reason,
+             seconds=node.watchdog + 2 * node.period + .2)
         self.assertTrue(subs)
 
     def test_model_load_failure_has_fault_heartbeat(self):

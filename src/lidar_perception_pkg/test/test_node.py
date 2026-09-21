@@ -36,7 +36,7 @@ class DetectionTest(unittest.TestCase):
             self.fail('no matching scan output')
 
         blob=[(2+i*.05,j*.05,k*.05) for i in range(4) for j in range(4) for k in range(2)]
-        # Unmeasured scan age is not replaced by the one-second transport watchdog.
+        # Unmeasured scan age is not replaced by the transport watchdog.
         msg=send(blob,age=2)
         self.assertTrue(msg.objects_valid)
         self.assertFalse(msg.freshness_verified)
@@ -60,7 +60,7 @@ class DetectionTest(unittest.TestCase):
         self.assertTrue(msg.objects_valid); self.assertEqual(len(msg.objects),0)
         msg=send([])
         self.assertFalse(msg.objects_valid); self.assertEqual(len(msg.objects),0)
-        time.sleep(1.6)
+        time.sleep(rospy.get_param('/lidar_perception_node/contract/development_watchdog_sec') + .6)
         self.assertTrue(statuses[-1].stop_required)
         self.assertFalse(statuses[-1].ready)
         self.assertEqual(statuses[-1].state, ComponentStatus.FAULT)

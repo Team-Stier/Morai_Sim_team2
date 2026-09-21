@@ -145,3 +145,9 @@ mesh/축 높이 검증값은 아니다. 장착 위치·각도가 바뀌면 이 �
 `ground_filter/enabled=false`로 지면 필터만 끌 수 있으며, 명시적
 `leveling_enabled=false` 비교에서는 지면 필터도 경고 후 비활성화한다.
 알고리즘·한계·시험 결과는 [지면 제거](docs/ground_filter.md)를 따른다.
+
+## MORAI 일시 지연 허용 (2026-09-21)
+
+정상 데이터가 잠깐 늦어 검출·표시가 끊기는 현상을 줄이도록 개발 기본 시간 제한을
+완화했다. 변경값, 유지하는 검사와 적용 방법은 [시뮬레이터 지연 허용](../ros_architecture_pkg/docs/simulator_delay_tolerance.md)을 따른다.
+실차 한계값이나 주행 준비 승인을 의미하지 않으며 원본 측정시각과 좌표 검사는 유지한다.

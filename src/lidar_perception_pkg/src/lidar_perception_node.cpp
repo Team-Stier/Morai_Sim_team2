@@ -110,19 +110,23 @@ class Node {
     while (!pending_.empty()) {
       const Pending p=pending_.front();
       if (elapsed(p.received)>attitude_wait_) {
-        rejectPending(p,"no scan-time attitude within leveling wait limit");
+        rejectPending(p,"no scan-time attitude/mount TF within leveling wait limit");
         pending_.pop_front(); continue;
       }
       Eigen::Quaterniond orientation;
       if (elapsed(attitude_received_)>attitude_timeout_ ||
           !attitudes_.interpolate(p.message->header.stamp.toNSec(),attitude_gap_,orientation)) break;
-      pending_.pop_front();
       try {
         // Use the scan stamp for the central mount as well; never request latest TF.
         const auto mount=tf_buffer_.lookupTransform("base_link","lidar_link",p.message->header.stamp);
+        pending_.pop_front();
         const auto& q=mount.transform.rotation;
         const auto rotation=lidar_perception::levelRotation(orientation,Eigen::Quaterniond(q.w,q.x,q.y,q.z));
         process(p.message,rotation);
+      } catch (const tf2::TransformException&) {
+        // A late TF is retryable within the same bounded scan wait budget.
+        // Leave the original scan in the queue; do not substitute latest TF.
+        break;
       } catch (const std::exception& e) {
         rejectPending(p,std::string("leveling mount/attitude unavailable: ")+e.what());
       }

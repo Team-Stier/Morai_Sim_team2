@@ -251,7 +251,7 @@ channels:
     queue_size: 1
     timestamp_source: steady_watchdog_time
     configured_rate_hz: 2.0
-    timeout_sec: 1.0
+    timeout_sec: 3.0
     limitation: Boolean status does not replace a structured transport health contract.
   collision:
     runtime_activation_allowed: false

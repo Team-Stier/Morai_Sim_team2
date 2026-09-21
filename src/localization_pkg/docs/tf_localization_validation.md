@@ -17,7 +17,8 @@ GPS 높이 datum은 개발 가정이며 경로 고도로 맞추지 않았다.
 GPS는 60 ms reorder buffer와 IMU 양 끝 자세 보간을 사용한다. 오른쪽 IMU가
 늦으면 최대 중앙 integration bound까지 기다리고, 너무 오래된 관측은 거부한다.
 IMU freshness 0.30 s, GPS 0.65 s, estimate 0.30 s, clock stall 0.50 s는
-중앙 개발 profile에서 직접 읽는다. 메시지는 원본 IMU 정수 ns stamp를 보존한다.
+당시 중앙 개발 profile 값이었다. 현재 MORAI 완화값은
+[지연 허용 문서](../../ros_architecture_pkg/docs/simulator_delay_tolerance.md)를 따른다. 메시지는 원본 IMU 정수 ns stamp를 보존한다.
 상태는 wall loop에서 10 Hz로 발행하며 clock 정지에도 invalid를 전달한다.
 입력 큐·IMU 이력은 bounded이고 clock 역행에 clear/reset_id 증가를 수행한다.
 

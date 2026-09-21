@@ -30,7 +30,6 @@ class HorizontalizationTest(unittest.TestCase):
         mount.header.frame_id, mount.child_frame_id = 'base_link', 'lidar_link'
         mount.transform.translation.x, mount.transform.translation.z = 2., 1.5
         mount.transform.rotation.w = 1.
-        broadcaster.sendTransform(mount)
         deadline = time.monotonic()+5
         while time.monotonic()<deadline and (scan_pub.get_num_connections()==0 or ego_pub.get_num_connections()==0):
             time.sleep(.02)
@@ -67,9 +66,14 @@ class HorizontalizationTest(unittest.TestCase):
         # Scan arrives before the later localization sample (real estimator delay).
         stamp=rospy.Time.now()-rospy.Duration(.08)
         ego(stamp-rospy.Duration(.02)); scan(stamp)
-        time.sleep(.03)
+        # Simulate a delayed localization callback beyond the old 250 ms budget.
+        time.sleep(.35)
         self.assertFalse(any(m.header.stamp==stamp for m in outputs))
         ego(stamp+rospy.Duration(.02))
+        # Valid attitude is now available, but a late mount must also be retried.
+        time.sleep(.05)
+        self.assertFalse(any(m.header.stamp==stamp for m in outputs))
+        broadcaster.sendTransform(mount)
         out=result(stamp)
         self.assertTrue(out.objects_valid); self.assertEqual(len(out.objects),1)
         self.assertEqual(out.header.frame_id,'lidar_link')
@@ -114,9 +118,9 @@ class HorizontalizationTest(unittest.TestCase):
         ego(stamp+rospy.Duration(.02),epoch=1)
         self.assertTrue(result(stamp).objects_valid)
         # Two samples exist, but a large bracket gap must still fail.
-        time.sleep(.2); stamp=rospy.Time.now()-rospy.Duration(.08)
-        ego(stamp-rospy.Duration(.07),epoch=1); scan(stamp)
-        ego(stamp+rospy.Duration(.07),epoch=1)
+        time.sleep(.5); stamp=rospy.Time.now()-rospy.Duration(.22)
+        ego(stamp-rospy.Duration(.20),epoch=1); scan(stamp)
+        ego(stamp+rospy.Duration(.20),epoch=1)
         self.assertFalse(result(stamp).objects_valid)
 
         # Braking attitude: road enters raw z ROI, but is removed before DBSCAN.
