@@ -18,11 +18,11 @@
     },
     {
       "png": "src/global_route_manager_pkg/docs/interface_io.png",
-      "png_sha256": "f619a0cd3ef7350a8d84cf4535d42a6d5f43f3472b9063a29506edea71d21511",
+      "png_sha256": "57bdc988b97baab121e0ef356c19b019eeb56a52549569f016f4f893e56fb62b",
       "source": "src/global_route_manager_pkg/docs/interface_io.mmd",
-      "source_sha256": "154ee6637d1c397141516e3f926c1d8ad7d1bf80d81bc866dc7040eb5fb7da80",
+      "source_sha256": "633ed91e5aba8be2de22ceeb382816da12871a12f3d0721bcc400e3d15c735af",
       "svg": "src/global_route_manager_pkg/docs/interface_io.svg",
-      "svg_sha256": "c67b22b9f6bf6dfe62811f59cfcfb02d6275b49584470ff90437c3856facf01e"
+      "svg_sha256": "af552f15486c3309fe7a5078ce1336fecabbdc6e990d8ae2067309891b7cc0e3"
     },
     {
       "png": "src/hd_map_pkg/docs/interface_io.png",
@@ -58,11 +58,11 @@
     },
     {
       "png": "src/path_planning_pkg/docs/interface_io.png",
-      "png_sha256": "cd9b5c5dda3ab546e55a74ee29b94dde36e9c959a288a11cfcb18cec8c74e4ed",
+      "png_sha256": "1d64249e784437809b66ce1f2544939bb43d5cebeca6c7bd86a2c9bfa9511eff",
       "source": "src/path_planning_pkg/docs/interface_io.mmd",
-      "source_sha256": "dae22c998f95830d836763db459070d2553dc6e068f6f39b00b15861de81bb9e",
+      "source_sha256": "9462e6e8c787aaadbaf4c6ffc0124ed8d14b03b520f67dc37980723889007c11",
       "svg": "src/path_planning_pkg/docs/interface_io.svg",
-      "svg_sha256": "053d5f4a387c364f22d8b7236db24dedd0001606f64c245960cb75d1806b1ddc"
+      "svg_sha256": "5c467ea006ea87ab376fb609c49e87041f15d53fe0faa9ac9583bdc0db7a1831"
     },
     {
       "png": "src/ros_architecture_pkg/docs/interface_io.png",
@@ -74,11 +74,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "57476e22ac2ea55c27f07e5442baee8a4de4c7b58a81ae1087247bf403169a7b",
+      "png_sha256": "5165b75be3c6dd576d814591f32271e008e644b04862f630938b2b53f8c7fa14",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "0fd68a7176853f230d6dd29b10f38d3210ced821c5f53c0999a0c38f0bb3138c",
+      "source_sha256": "7b63cf9559176aa0f68f91d62a4c7c54851eff5bc899764872a4562ef1f2e8a3",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "a0b24ea3f7cea9fad7406e5289869b7422829aae37286f6431093e756c9a0858"
+      "svg_sha256": "f651d2dd35e1bc96a4442d470f2d56604670350733a9f9a2143406dc2a0e8b8b"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
@@ -90,27 +90,27 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_nominal_flow.png",
-      "png_sha256": "13fb47aaf501fabf1fd77a88ecd7bd2cdfc9638ef919d21898c7206aed612f00",
+      "png_sha256": "7c2655874028db2efa1c8c65ec5460c4a047bda1e2753c11e500630080dbf9b6",
       "source": "src/ros_architecture_pkg/docs/system_nominal_flow.mmd",
-      "source_sha256": "ff36d5fbdf56c51827ceaf0a5375e364e13d664ca093b1d2069f8b2f0dc8142a",
+      "source_sha256": "a71289f5120c3b016f4b43e7d706c4b1c7d430df2177f6fff12bcc51fe3c9958",
       "svg": "src/ros_architecture_pkg/docs/system_nominal_flow.svg",
-      "svg_sha256": "c9e504b696084af8b02760ca207fa774f219e00a176411c97864bdeeeddb0c8f"
+      "svg_sha256": "ebbd0ed9e09e177f0fb1042826b5f9e8d2db93cfc6d467c2e6b926a2150fad99"
     },
     {
       "png": "src/runtime_evaluation_pkg/docs/interface_io.png",
-      "png_sha256": "42a347edee01586aeccc0137554cfe98f0e63544268cefadb5e4a43e84c800c3",
+      "png_sha256": "47cee60cdb2874e61ea6bdc3b32e66d4426fdece50708d342454d1a5e214a4b1",
       "source": "src/runtime_evaluation_pkg/docs/interface_io.mmd",
-      "source_sha256": "3a2f7d1f3c173562f497fd95b86a3d48dc899e3fa4c8f3ceeb21fc5831bd62bf",
+      "source_sha256": "973f5fe4e8fb7545d42bf3dbc54cecaa3898437e4c46173451783eadeb29587d",
       "svg": "src/runtime_evaluation_pkg/docs/interface_io.svg",
-      "svg_sha256": "a6d8778e641e57c97530a54e795bfeb8feab2de4611f577cdd1a3442a9861e46"
+      "svg_sha256": "67af14a36889484fb67125db7538fca34279b94ba584c53199e20448c9fe6a02"
     },
     {
       "png": "src/safety_supervisor_pkg/docs/interface_io.png",
-      "png_sha256": "b24a27adb63cc9a01bb3a1a2380a1fcf5339e26686a57cdb398c157dd03f1350",
+      "png_sha256": "afe8d2579292b2bb71b7f313956e8d87071974a6c2694b4fbf0b5fe85e27dcf7",
       "source": "src/safety_supervisor_pkg/docs/interface_io.mmd",
-      "source_sha256": "15988602cc475a9093b1652eb8115a2688a16c70401997c10a1d4ad54c61362a",
+      "source_sha256": "91bac9c14689f4f8dd2941d13ec4bf1ee1f64e7c84bc389137774af9da87f42e",
       "svg": "src/safety_supervisor_pkg/docs/interface_io.svg",
-      "svg_sha256": "04bcf39ba2de68de1089449a0987f3db019cbe4c5b3e6e867a12764643d30115"
+      "svg_sha256": "3cb827096e4f016f3889dc9ac579a7a352d49776c192175d6cd0d08f9038013b"
     },
     {
       "png": "src/system_bringup_pkg/docs/interface_io.png",
@@ -138,11 +138,11 @@
     },
     {
       "png": "src/world_model_pkg/docs/interface_io.png",
-      "png_sha256": "21a60f1b2a35fb111b6e41f913f33ee7a08ea605c958058046ed7d0ef83a1bca",
+      "png_sha256": "48d74faccb646113acead9dfc686b758e515b3e6ba3f6bcca2125106784b30e6",
       "source": "src/world_model_pkg/docs/interface_io.mmd",
-      "source_sha256": "54dca0dda01ba7b91c7e033386d7113d34f583e0061cfabf8c23293e2fa39bab",
+      "source_sha256": "fe1fa3036efcc4d9394a42cf97f0e64421ad2040be5d6b97da69cc13599e80fa",
       "svg": "src/world_model_pkg/docs/interface_io.svg",
-      "svg_sha256": "0c0171beafad4e5e34fb2997f720434332d3a43cc3253ab0e4b540da26f955df"
+      "svg_sha256": "89da4e319a987460fdc5b1e3a36c71772333d60ae9080770a5e3400047533b17"
     }
   ],
   "renderer": "@mermaid-js/mermaid-cli@11.16.0",
@@ -150,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "8adaf9d289c8db5ef6ea782fc18239ad94cd7c999df569c37488970aeeaef25f"
+  "source_of_truth_sha256": "bb2e404d757a19c1dd2660b2f4b35e4e51ab3481ade0bb0cb0fd5175069383d3"
 }

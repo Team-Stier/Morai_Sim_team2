@@ -13,7 +13,7 @@ from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
-from common_msgs_pkg.msg import ComponentStatus, EgoState, LocalizationStatus, RouteContext, Trajectory, WorldModel
+from common_msgs_pkg.msg import ComponentStatus, EgoState, HdMap, LocalizationStatus, RouteContext, Trajectory, WorldModel
 from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, Candidate, geometry
 
 
@@ -28,14 +28,14 @@ class Node:
         self.route = self.world = self.state = self.selected = None
         self.selected_stamp = None
         self.epoch = None
-        self.map_id = None
-        self.boundaries = []
+        self.static_map = None
         self.route_status = self.world_status = self.localization_status = None
         self.lock = threading.Lock()
         self.trajectory = rospy.Publisher('/molit/planning/trajectory', Trajectory, queue_size=2)
         self.status = rospy.Publisher('/molit/planning/status', ComponentStatus, queue_size=1, latch=True)
         self.audit = rospy.Publisher('~candidate_costs', String, queue_size=1)
         self.path_markers = rospy.Publisher('~trajectory_markers', MarkerArray, queue_size=1, latch=True)
+        rospy.Subscriber('/molit/map/hd_map', HdMap, self.on_map, queue_size=1)
         rospy.Subscriber('/molit/route/context', RouteContext, lambda m:setattr(self, 'route', m), queue_size=1)
         rospy.Subscriber('/molit/world_model/scene', WorldModel, lambda m:setattr(self, 'world', m), queue_size=1)
         rospy.Subscriber('/molit/route/status', ComponentStatus, lambda m:setattr(self,'route_status',m),queue_size=1)
@@ -51,6 +51,34 @@ class Node:
     def on_state(self, ego, odom):
         self.state = ego, odom
 
+    def on_map(self, message):
+        if self.static_map is not None and self.static_map[0] == message.map_id:
+            return
+        lanes = {}
+        for lane in message.lanes:
+            xyz = np.array([[p.pose.position.x, p.pose.position.y, p.pose.position.z] for p in lane.centerline.poses])
+            s = np.asarray(lane.route_s)
+            keep = np.r_[True, np.diff(s) > 1e-6]
+            lanes[lane.id] = Lane(lane.id, xyz[keep], s[keep], np.asarray(lane.speed_limits_mps)[keep], list(lane.successors))
+        windows = []
+        for w in message.lane_changes:
+            lane = lanes[w.source_lane]
+            local = np.r_[0., np.cumsum(np.linalg.norm(np.diff(lane.xy[:, :2], axis=0), axis=1))]
+            begin, end = ((w.source_s_start, w.source_s_end) if w.source_lane == 'global_route' else
+                          np.interp([w.source_s_start, w.source_s_end], local, lane.s))
+            windows.append(Window(w.source_lane, w.target_lane, begin, end))
+        # Cache exactly the same route-envelope boundary set previously sent by Route.
+        points = np.array([[p.pose.position.x, p.pose.position.y]
+                           for lane in message.lanes for p in lane.centerline.poses])
+        low = points.min(axis=0)-self.c['map_boundary_margin_m']
+        high = points.max(axis=0)+self.c['map_boundary_margin_m']
+        boundaries = []
+        for line in message.forbidden_boundaries:
+            xyz = np.array([[p.x, p.y, p.z] for p in line.points])
+            if np.all(xyz[:, :2].max(axis=0) >= low) and np.all(xyz[:, :2].min(axis=0) <= high):
+                boundaries.append(xyz)
+        self.static_map = (message.map_id, lanes, windows, boundaries)
+
     def report(self, reason, ready=False, latency=0.):
         m = ComponentStatus(component='path_planning_pkg', state=ComponentStatus.READY if ready else ComponentStatus.DEGRADED,
                             ready=ready, stop_required=not ready, processing_latency_sec=latency, reason=reason)
@@ -62,10 +90,11 @@ class Node:
 
     def plan(self, _):
         started = time.monotonic()
-        route, world, state = self.route, self.world, self.state
-        if route is None or world is None or state is None:
-            self.report('waiting_for_route_world_localization')
+        route, world, state, static_map = self.route, self.world, self.state, self.static_map
+        if route is None or world is None or state is None or static_map is None:
+            self.report('waiting_for_map_route_world_localization')
             return
+        map_id, lanes, windows, boundaries = static_map
         ego, odom = state
         now = rospy.Time.now()
         if self.route_status is not None and self.route_status.state == ComponentStatus.FAULT:
@@ -73,7 +102,7 @@ class Node:
                 self.selected = None
             self.report('required_checkpoint_missed',True)
             return
-        if (not world.objects_valid or world.localization_reset_id != ego.reset_id or
+        if (map_id != route.map_id or not world.objects_valid or world.localization_reset_id != ego.reset_id or
                 any(not 0 <= (now-stamp).to_sec() <= self.c['input_age_sec'] for stamp in
                     (ego.header.stamp, world.header.stamp, route.header.stamp))):
             with self.lock:
@@ -83,19 +112,6 @@ class Node:
         if self.epoch != ego.reset_id:
             self.planner.committed = self.planner.pending = None
             self.epoch = ego.reset_id
-        lanes = {}
-        for lane in route.lanes:
-            xyz = np.array([[p.pose.position.x, p.pose.position.y, p.pose.position.z] for p in lane.centerline.poses])
-            s = np.asarray(lane.route_s)
-            keep = np.r_[True, np.diff(s) > 1e-6]
-            lanes[lane.id] = Lane(lane.id, xyz[keep], s[keep], np.asarray(lane.speed_limits_mps)[keep], list(lane.successors))
-        windows = []
-        for w in route.lane_changes:
-            lane = lanes[w.source_lane]
-            local = np.r_[0., np.cumsum(np.linalg.norm(np.diff(lane.xy[:, :2], axis=0), axis=1))]
-            begin, end = ((w.source_s_start, w.source_s_end) if w.source_lane == 'global_route' else
-                          np.interp([w.source_s_start, w.source_s_end], local, lane.s))
-            windows.append(Window(w.source_lane, w.target_lane, begin, end))
         p = ego.pose.pose.position
         position = np.array([p.x, p.y, p.z])
         speed = max(0., odom.twist.twist.linear.x)
@@ -121,10 +137,6 @@ class Node:
         objects = [Obstacle(np.array([[p.x, p.y, p.z] for p in o.points]),
                             np.array([o.twist.linear.x, o.twist.linear.y]), o.velocity_valid,
                             (now-o.source_stamp).to_sec()) for o in world.objects]
-        if self.map_id != route.map_id:
-            self.map_id = route.map_id
-            self.boundaries = [np.array([[p.x,p.y,p.z] for p in line.points]) for line in route.forbidden_boundaries]
-        boundaries = self.boundaries
         for candidate in candidates:
             self.planner.evaluate(candidate, speed, objects, boundaries, goal_s)
             index = min(np.searchsorted(candidate.route_s,goal_s),len(candidate.xy)-1)

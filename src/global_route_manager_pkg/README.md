@@ -1,5 +1,9 @@
 # global_route_manager_pkg
 
+`RouteContext`는 5 Hz 진행 상태 메시지다. 정적 차로·경계·체크포인트 목록은
+`HdMap`만 소유하며, 소비자는 `map_id`로 캐시와 연결한다. Route는 현재 차로,
+진행도, 다음 체크포인트, 비교 목표와 완료 상태만 갱신한다.
+
 Frenet 개발 실행의 route_manager_node.py는 HdMap과 Localization에서
 차로 진행 상태·다음 체크포인트·공통 비교 종점을 RouteContext로 발행한다.
 체크포인트는 실제 추정 이동 선분이 반경을 통과해야 완료로 기록한다.

@@ -54,6 +54,7 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 
 | 구분 | Topic | Type |
 |---|---|---|
+| 입력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
 | 입력 | `/molit/localization/local/odometry` | `nav_msgs/Odometry` |
 | 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
 | 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
@@ -82,7 +83,7 @@ UDP 출력은 금지한다.
 ## 통합 전 자체 확인
 
 - 노드의 통합 실행 이름이 정확히 `path_planner_node`인지 확인한다.
-- Localization, Route와 World Model 입력의 freshness·frame·timestamp를
+- 정적 HdMap의 map_id와 Localization, Route 및 World Model 입력의 freshness·frame·timestamp를
   검사하고, 승인되지 않은 raw sensor 또는 Perception topic을 구독하지 않는다.
 - 재계획 이유와 trajectory 유효성을 status에 남기고 stale trajectory를
   계속 출력하지 않게 검증한다.

@@ -7,7 +7,7 @@ from geometry_msgs.msg import Point
 from nav_msgs.msg import Path
 from common_msgs_pkg.msg import ComponentStatus, EgoState, HdMap, LocalizationStatus, RouteContext
 
-from global_route_manager_pkg.progress import RouteProgress, corridor_bounds, overlaps_bounds
+from global_route_manager_pkg.progress import RouteProgress
 
 
 class RouteManagerNode:
@@ -15,12 +15,10 @@ class RouteManagerNode:
         self.map = self.map_status = self.localization_status = self.ego = None
         self.progress = None
         self.context = None
-        self.forbidden_boundaries = []
         self.last_stamp = None
         self.reset_id = None
         self.config = {key: rospy.get_param('~'+key) for key in (
-            'initialize_from_current_position', 'matching_backward_m', 'matching_forward_m',
-            'boundary_context_margin_m')}
+            'initialize_from_current_position', 'matching_backward_m', 'matching_forward_m')}
         self.path_publisher = rospy.Publisher('/molit/route/global_path', Path, queue_size=1, latch=True)
         self.context_publisher = rospy.Publisher('/molit/route/context', RouteContext, queue_size=2)
         self.status_publisher = rospy.Publisher('/molit/route/status', ComponentStatus, queue_size=1, latch=True)
@@ -37,9 +35,6 @@ class RouteManagerNode:
                  for lane in message.lanes]
         checkpoints = [(point.x, point.y, point.z) for point in message.checkpoints]
         self.progress = RouteProgress(lanes, checkpoints, message.checkpoint_radius_m, self.config)
-        bounds = corridor_bounds(lanes, self.config['boundary_context_margin_m'])
-        self.forbidden_boundaries = [line for line in message.forbidden_boundaries
-                                     if overlaps_bounds([(point.x, point.y) for point in line.points], bounds)]
         self.map = message
         self.last_stamp = None
         path = next(lane.centerline for lane in message.lanes if lane.id == 'global_route')
@@ -71,10 +66,7 @@ class RouteManagerNode:
         yaw = math.atan2(2*(q.w*q.z+q.x*q.y), 1-2*(q.y*q.y+q.z*q.z))
         state = self.progress.update((pose.position.x, pose.position.y, pose.position.z), yaw)
         message = RouteContext(header=ego.header, map_id=self.map.map_id,
-                               reference_sha256=self.map.reference_sha256,
-                               lanes=self.map.lanes, lane_changes=self.map.lane_changes,
-                               checkpoints=self.map.checkpoints,
-                               forbidden_boundaries=self.forbidden_boundaries)
+                               reference_sha256=self.map.reference_sha256)
         for field in ('current_lane', 'progress', 'next_checkpoint', 'comparison_goal_s', 'route_complete'):
             setattr(message, field, state[field])
         message.comparison_goal = Point(*state['comparison_goal'])
@@ -95,7 +87,7 @@ class RouteManagerNode:
             status.processed_count = len(self.progress.passed_checkpoints)
             status.reason = 'lane={}; progress={:.2f}; rddf={}; windows={}; next_checkpoint={}; development_start_checkpoint={}; passed={}'.format(
                 self.context.current_lane, self.context.progress,
-                len(self.context.lanes)-1, len(self.context.lane_changes), self.context.next_checkpoint,
+                len(self.map.lanes)-1, len(self.map.lane_changes), self.context.next_checkpoint,
                 self.progress.start_checkpoint_index, self.progress.passed_checkpoints)
             if self.progress.missed_checkpoint:
                 status.state = ComponentStatus.FAULT

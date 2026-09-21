@@ -2,7 +2,9 @@ contract_version: 0.1.0
 activation_scope: user_authorized_morai_development_only
 node: path_planner_node
 executable: frenet_planner_node.py
-geometry_inputs: [RouteContext, WorldModel]
+geometry_inputs: [HdMap, WorldModel]
+route_progress_input: RouteContext
+static_geometry_cache: HdMap_arrays_and_boundary_index_reused_until_map_id_changes
 localization_inputs: [EgoState, Odometry, LocalizationStatus]
 status_inputs: [route_status, world_model_status]
 output: /molit/planning/trajectory

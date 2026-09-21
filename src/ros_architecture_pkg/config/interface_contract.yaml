@@ -51,6 +51,8 @@ planning_policy:
   public_boundary_node: path_planner_node
   implementation_status: reserved_not_implemented
   input_groups:
+    static_map:
+      - /molit/map/hd_map
     localization:
       - /molit/localization/local/odometry
       - /molit/localization/ego_state
@@ -70,7 +72,7 @@ planning_policy:
       frame: not_applicable
   direct_actuator_output_allowed: false
   rules:
-    - Path Planning consumes only approved Localization, Route and World Model public topics.
+    - Path Planning consumes only approved HD Map, Localization, Route and World Model public topics.
     - Raw Camera and LiDAR inputs remain owned by their sensor and perception packages.
     - Planning reports input validity, replanning state and trajectory validity on planning status.
     - Path Planning never bypasses vehicle_controller_node or safety_supervisor_node.
@@ -94,7 +96,7 @@ contract_modules:
     required_contract_version: 0.1.0
   rddf_planning_messages:
     path: messages/rddf_planning_messages.yaml
-    required_contract_version: 0.1.0
+    required_contract_version: 0.2.0
   course_speed_policy:
     path: map/course_speed_policy.yaml
     required_contract_version: 0.1.0
@@ -506,7 +508,7 @@ topics:
   - name: /molit/map/hd_map
     owner_package: hd_map_pkg
     producers: [hd_map_server_node]
-    consumers: [localization_node, global_route_manager_node, world_model_node]
+    consumers: [localization_node, global_route_manager_node, world_model_node, path_planner_node]
     status: development_frenet_rddf_unverified
     visibility: public
     data_meaning: Versioned immutable HD map layers and topology
@@ -728,13 +730,13 @@ topics:
     consumers: [world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node]
     status: development_frenet_rddf_unverified
     visibility: public
-    data_meaning: Route progress upcoming geometry checkpoints speed rules and mission context
-    diagram_description_ko: 진행도·앞 경로·체크포인트·속도·미션 정보
+    data_meaning: Dynamic route progress current lane next checkpoint and comparison goal keyed by cached HdMap map_id
+    diagram_description_ko: 지도 ID·진행도·현재 차로·다음 체크포인트
     data_type: common_msgs_pkg/RouteContext
     unit: m_ratio_index_m_per_sec_and_enum
     frame: map
     timestamp_source: ego_pose_time_used_for_route_matching
-    expected_rate_hz: 20.0
+    expected_rate_hz: 5.0
     queue_policy: publisher_queue_2_drop_old
     timeout_sec: pending_localization_jitter_measurement
     invalid_data_policy: invalid_when_progress_is_discontinuous_or_pose_is_unusable
@@ -1227,6 +1229,7 @@ package_boundaries:
     runtime_status: public_contract_reserved_not_implemented
     public_nodes: [path_planner_node]
     inputs:
+      - /molit/map/hd_map
       - /molit/localization/local/odometry
       - /molit/localization/ego_state
       - /molit/localization/status

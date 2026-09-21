@@ -1,5 +1,5 @@
 schema_version: 1
-contract_version: 0.1.0
+contract_version: 0.2.0
 authority: ros_architecture_pkg
 implementation_owner: common_msgs_pkg
 status: development_frenet_rddf
@@ -78,11 +78,7 @@ messages:
 
       string reference_sha256
 
-      common_msgs_pkg/RouteLane[] lanes
-
-      common_msgs_pkg/LaneChangeWindow[] lane_changes
-
-      geometry_msgs/Point[] checkpoints
+      # Static geometry is cached from HdMap with this map_id.
 
       uint32 next_checkpoint
 
@@ -95,10 +91,5 @@ messages:
       float64 comparison_goal_s
 
       bool route_complete
-
-      # Original solid/center/restricted/unknown boundary polylines; no joins across
-      IDs.
-
-      geometry_msgs/Polygon[] forbidden_boundaries
 
       '

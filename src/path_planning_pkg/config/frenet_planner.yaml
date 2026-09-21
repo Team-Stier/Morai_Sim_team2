@@ -7,6 +7,7 @@ prediction_horizon_sec: 8.0
 spatial_step_m: 0.5
 collision_step_m: 0.2
 map_height_tolerance_m: 1.5
+map_boundary_margin_m: 15.0
 collision_time_step_sec: 0.05
 tail_m: 40.0
 minimum_path_m: 20.0

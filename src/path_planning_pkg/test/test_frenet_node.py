@@ -1,4 +1,5 @@
 import importlib.util
+import io
 from pathlib import Path
 import threading
 import unittest
@@ -7,9 +8,10 @@ from unittest.mock import patch
 import numpy as np
 import rospy
 import yaml
-from common_msgs_pkg.msg import EgoState
+from common_msgs_pkg.msg import EgoState, HdMap, RouteLane, RouteContext, WorldModel
+from geometry_msgs.msg import PoseStamped, Point, Point32, Polygon
 from nav_msgs.msg import Odometry
-from path_planning_pkg.frenet import Candidate
+from path_planning_pkg.frenet import Candidate, Planner
 
 
 spec = importlib.util.spec_from_file_location('frenet_node', Path(__file__).parents[1]/'src/frenet_planner_node.py')
@@ -23,6 +25,75 @@ class Output:
 
 
 class FrenetOutputTest(unittest.TestCase):
+    def static_map(self):
+        message = HdMap(map_id='map-a', reference_sha256='reference-a')
+        lane = RouteLane(id='global_route', route_s=[0.,10.,20.,30.], speed_limits_mps=[16.]*4)
+        for x in lane.route_s:
+            pose = PoseStamped()
+            pose.pose.position.x = x
+            pose.pose.orientation.w = 1.
+            lane.centerline.poses.append(pose)
+        message.lanes = [lane]
+        message.checkpoints = [Point(20.,0.,0.)]
+        message.checkpoint_radius_m = 3.
+        message.forbidden_boundaries = [Polygon(points=[Point32(0.,5.,0.),Point32(30.,5.,0.)]),
+                                        Polygon(points=[Point32(0.,500.,0.),Point32(30.,500.,0.)])]
+        return message
+
+    def test_static_map_is_cached_until_version_changes(self):
+        node = self.node()
+        node.static_map = None
+        message = self.static_map()
+        node.on_map(message)
+        cached = node.static_map
+        self.assertEqual(len(cached[3]), 1)
+        node.on_map(message)
+        self.assertIs(node.static_map, cached)
+        message.map_id = 'map-b'
+        node.on_map(message)
+        self.assertEqual(node.static_map[0], 'map-b')
+        self.assertIsNot(node.static_map, cached)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_route_producer_sends_progress_and_planner_uses_static_cache(self, _):
+        source = Path(__file__).parents[2]/'global_route_manager_pkg/src/route_manager_node.py'
+        spec = importlib.util.spec_from_file_location('route_producer',source)
+        producer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(producer)
+        route = producer.RouteManagerNode.__new__(producer.RouteManagerNode)
+        route.config = dict(initialize_from_current_position=True,matching_backward_m=15.,matching_forward_m=120.)
+        route.path_publisher = Output()
+        route.context_publisher = Output()
+        route.reset_id = None
+        route.inputs_ready = lambda: True
+        node = self.node()
+        route.ego = node.state[0]
+        route.ego.header.stamp = rospy.Time(100)
+        message = self.static_map()
+        route.on_map(message)
+        route.publish_context(None)
+        context = route.context_publisher.message
+        self.assertEqual(context.map_id, message.map_id)
+        self.assertAlmostEqual(context.progress,10.)
+        self.assertEqual(context.comparison_goal, message.checkpoints[0])
+        self.assertFalse(hasattr(context,'lanes'))
+        wire = io.BytesIO()
+        context.serialize(wire)
+        self.assertLess(len(wire.getvalue()),300)
+        node.static_map = None
+        node.on_map(message)
+        node.route = context
+        node.world = WorldModel(objects_valid=True,localization_reset_id=12)
+        node.world.header.stamp = rospy.Time(100)
+        node.route_status = None
+        node.epoch = 12
+        node.planner = Planner(node.c)
+        node.audit = Output()
+        node.report = lambda *args: None
+        node.plan(None)
+        self.assertIsNotNone(node.selected)
+        self.assertEqual(node.selected.target, 'global_route')
+
     @patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.75))
     def test_plan_survives_input_age_but_expires_after_retention(self, _):
         node = self.node()

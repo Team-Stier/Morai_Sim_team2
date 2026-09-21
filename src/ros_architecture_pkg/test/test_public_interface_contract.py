@@ -180,7 +180,7 @@ class PublicInterfaceContractTest(unittest.TestCase):
             )
         )
 
-        for input_group in ("localization", "route", "world_model"):
+        for input_group in ("static_map", "localization", "route", "world_model"):
             altered = copy.deepcopy(self.contract)
             altered["planning_policy"]["input_groups"][input_group].pop()
             mutations.append(
@@ -279,6 +279,7 @@ class PublicInterfaceContractTest(unittest.TestCase):
 
     def test_planning_policy_matches_modular_topic_graph_and_package_boundary(self):
         expected_groups = {
+            "static_map": ["/molit/map/hd_map"],
             "localization": [
                 "/molit/localization/local/odometry",
                 "/molit/localization/ego_state",
@@ -295,7 +296,7 @@ class PublicInterfaceContractTest(unittest.TestCase):
         }
         expected_inputs = [
             topic_name
-            for group_name in ("localization", "route", "world_model")
+            for group_name in ("static_map", "localization", "route", "world_model")
             for topic_name in expected_groups[group_name]
         ]
         expected_outputs = [
