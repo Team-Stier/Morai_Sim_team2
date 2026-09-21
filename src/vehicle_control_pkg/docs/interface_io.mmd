@@ -15,11 +15,11 @@ flowchart LR
         input_003["/molit/planning/status<br/>설명: 입력 신선도·계획 가능 여부·궤적 유효성<br/>메시지: common_msgs_pkg/ComponentStatus<br/>상태: 설계 예약·미구현"]
     end
     subgraph PACKAGE["패키지 처리<br/>vehicle_control_pkg<br/>지역 궤적을 추종할 조향·가속·제동 명령 계산"]
-        local_node_000["vehicle_controller_node<br/>역할: 궤적 추종용 조향과 가속 및 제동을 계산<br/>실행: vehicle_controller_node<br/>상태: 설계 예약·미구현"]
+        local_node_000["vehicle_controller_node<br/>역할: 궤적 추종용 조향과 가속 및 제동을 계산<br/>실행: vehicle_controller_node<br/>상태: 제어 코어 개발 실행·주행 검증 전"]
     end
     subgraph OUTPUTS["출력 (발행)"]
-        output_000["/molit/control/nominal_command<br/>설명: Safety 검사 전 조향·가속·제동 요청<br/>메시지: common_msgs_pkg/ActuatorCommand<br/>상태: 설계 예약·미구현"]
-        output_001["/molit/control/status<br/>설명: 추종 오차·포화·명령 유효성·제어기 상태<br/>메시지: common_msgs_pkg/ControllerStatus<br/>상태: 설계 예약·미구현"]
+        output_000["/molit/control/nominal_command<br/>설명: Safety 검사 전 조향·가속·제동 요청<br/>메시지: common_msgs_pkg/ActuatorCommand<br/>상태: 제어 코어 개발 실행·주행 검증 전"]
+        output_001["/molit/control/status<br/>설명: 추종 오차·포화·명령 유효성·제어기 상태<br/>메시지: common_msgs_pkg/ControllerStatus<br/>상태: 제어 코어 개발 실행·주행 검증 전"]
     end
 
     input_000 --> local_node_000

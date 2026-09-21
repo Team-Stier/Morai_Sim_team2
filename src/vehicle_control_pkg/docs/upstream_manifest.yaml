@@ -1,0 +1,54 @@
+repository: https://github.com/Team-Stier/Closedteam2.git
+commit: ff8eb424585183790165ef2f50042ec7c8517e4b
+files:
+- source: control_pkg/hybrid_path_tracking/include/hybrid_path_tracking/control_types.hpp
+  destination: src/imported/hybrid_path_tracking/control_types.hpp
+  sha256: 4404ed4d1080b0926d8ac550a3311704dc520270913d3b976d7e692b0a83f9f0
+- source: control_pkg/hybrid_path_tracking/include/hybrid_path_tracking/path_geometry.hpp
+  destination: src/imported/hybrid_path_tracking/path_geometry.hpp
+  sha256: 52530d1a4a87f926c5f94bd255666981227caabe2846466c9fa874429f981a21
+- source: control_pkg/hybrid_path_tracking/include/hybrid_path_tracking/pure_pursuit.hpp
+  destination: src/imported/hybrid_path_tracking/pure_pursuit.hpp
+  sha256: 905d66855ff47670bc90cc795d991c4226cdb44fe1433086095a45055ca622ef
+- source: control_pkg/hybrid_path_tracking/include/hybrid_path_tracking/stanley.hpp
+  destination: src/imported/hybrid_path_tracking/stanley.hpp
+  sha256: c730a61c4d1057cfc0809732442ae0006871371ad091210bcbe3c26abadea734
+- source: control_pkg/hybrid_path_tracking/include/hybrid_path_tracking/hybrid_supervisor.hpp
+  destination: src/imported/hybrid_path_tracking/hybrid_supervisor.hpp
+  sha256: cc37e7eb0e0c2d457b8ec49f4f14a167715e3e3b07081731c6b77c199e9cf403
+- source: control_pkg/hybrid_path_tracking/include/hybrid_path_tracking/path_source_manager.hpp
+  destination: src/imported/hybrid_path_tracking/path_source_manager.hpp
+  sha256: 2b4b89c77f89ce436a104b504a618bf90fe1fc8f0e111a85281b5e3cb672d438
+- source: control_pkg/hybrid_path_tracking/src/path_geometry.cpp
+  destination: src/imported/path_geometry.cpp
+  sha256: bb9a8afab7dee2e798e597a16a157046e7c9218b564d95dc0ec3298ee19f0ba5
+- source: control_pkg/hybrid_path_tracking/test/test_path_geometry.cpp
+  destination: test/imported/test_path_geometry.cpp
+  sha256: 972e48adece31ca492403890a59b96c2ceb2cf60796086411a105d85b549e2d5
+- source: control_pkg/hybrid_path_tracking/src/pure_pursuit.cpp
+  destination: src/imported/pure_pursuit.cpp
+  sha256: 0bc39d8ff11d7857cb4b0cdeefab3e6165d24ae6a7ca7efba803dba7975862a4
+- source: control_pkg/hybrid_path_tracking/test/test_pure_pursuit.cpp
+  destination: test/imported/test_pure_pursuit.cpp
+  sha256: ae0f2fbd4ab361b3bd445d1e751ffa2f7454391ef24a610b7f4c52ae49bd2aea
+- source: control_pkg/hybrid_path_tracking/src/stanley.cpp
+  destination: src/imported/stanley.cpp
+  sha256: a56e18529e338c665fe13e868ee1af834667aae81ea6ed90d31a3f5157dd6b2a
+- source: control_pkg/hybrid_path_tracking/test/test_stanley.cpp
+  destination: test/imported/test_stanley.cpp
+  sha256: eff9e17806b344cfed34cc25ff43190d15784b284a217e2aa03ac22cc5a5446d
+- source: control_pkg/hybrid_path_tracking/src/hybrid_supervisor.cpp
+  destination: src/imported/hybrid_supervisor.cpp
+  sha256: 7e9ffbc144c3f2e7a42d1c633417e145b03062eb4057957ef4c39f406a1258d9
+- source: control_pkg/hybrid_path_tracking/test/test_hybrid_supervisor.cpp
+  destination: test/imported/test_hybrid_supervisor.cpp
+  sha256: 2d2eb4de1c32569c7c355176c6f508e700d088dcc68bb0bec8c77665e94b5a84
+- source: control_pkg/hybrid_path_tracking/src/path_source_manager.cpp
+  destination: test/imported/path_source_manager.cpp
+  sha256: 19415c3538ee5e1223c908140931bc6555ba55059c747b1b83a6747a39584340
+extracted_pi:
+  source: control_pkg/longitudinal_control/src/longitudinal_control_node.cpp
+  start_line: 137
+  end_line: 188
+  class_sha256: dfcfe09f265552f9570693841e914211a80770345831fdb00e71bc251b373bbb
+  destination: src/imported/bounded_pi.hpp

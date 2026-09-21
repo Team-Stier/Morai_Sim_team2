@@ -35,8 +35,8 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 ## 공개 ROS 입출력
 
 현재 상태는 **이름 승인, 구현 예약**이며 공개 경계 노드는
-`path_planner_node`다. behavior/motion planner와 `Trajectory` schema는 아직
-구현·runtime 검증되지 않았다.
+`path_planner_node`다. behavior/motion planner는 아직 미구현이며, `Trajectory` schema는
+[중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)에 구현됐다.
 
 ![Path Planning 공개 입출력](docs/interface_io.svg)
 
@@ -64,7 +64,8 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 Trajectory의 공개 frame은 제어 연속성을 위해 `odom`으로 고정한다.
 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `WorldModel` 스키마는 구현됐으며
 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-`RouteContext`, `Trajectory`와 Planner 노드는 미구현이다. v1에서 이 패키지가 생성하는 주행
+`RouteContext`와 Planner 노드는 미구현이다. `Trajectory`는 poses/speed_mps/time_from_start의
+동일 길이 배열과 valid/stop_required/valid_for/reset_id를 제공한다. v1에서 이 패키지가 생성하는 주행
 출력은 `/molit/planning/trajectory`뿐이며 직접 accel/brake/steer 또는
 UDP 출력은 금지한다.
 

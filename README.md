@@ -459,3 +459,13 @@ Localization은 개발용 GPS/IMU 추정과 상태 전용 진단 모드를 제�
 개발 추정 출력은 주행 준비를 뜻하지 않으며 물리 정합과 전체 경로 검증은 별도다.
 나머지 골격, 예약 custom type과 `runtime_activation_allowed: false` 채널은
 실제 주행 기능이 구현·검증됐다는 뜻이 아니다.
+
+### Closedteam2 제어 코어 연결
+
+`vehicle_control_pkg`에 Pure Pursuit/Stanley 전환 제어와 bounded PI를 이식했다.
+기존 `system_bringup_pkg.launch start_vehicle_control:=true` 또는 단독
+`roslaunch vehicle_control_pkg vehicle_control_pkg.launch`로 실행한다.
+연결 범위는 Localization·Planner 공개 입력에서 nominal command/status까지다.
+Planner/Safety 구현과 MORAI 주행 검증은 아직 남아 있다.
+[제어 패키지 사용법](src/vehicle_control_pkg/README.md)과
+[중앙 계약](src/ros_architecture_pkg/docs/controller_integration.md)을 따른다.

@@ -60,7 +60,8 @@
 | 입력 | `/molit/safety/state` | `common_msgs_pkg/SafetyState` |
 | 출력 | `/molit/evaluation/metrics` | `common_msgs_pkg/RunMetrics` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `WorldModel` 스키마가 구현됐다.
+공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `WorldModel`,
+`Trajectory`, `ActuatorCommand`, `ControllerStatus` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 나머지 custom type과 Evaluator 런타임 노드는 아직 미구현이다.
 
@@ -82,3 +83,6 @@ perception status가 제공하는 공통 상태 필드에서 읽으며 raw senso
 - `docs/`: metric 정의, 판정 차이와 검증 보고서
 - `launch/`: Runtime Evaluation 단독 실행
 - `src/`: observer, metric aggregator와 report 구현
+
+제어 연결용 `Trajectory`, `ActuatorCommand`, `ControllerStatus` 스키마도 구현됐다.
+이 패키지의 예약 consumer는 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)을 따른다.

@@ -1712,6 +1712,8 @@ def _package_status_label_ko(status):
         return "GPS·IMU 개발 추정 실행·주행 검증 전"
     if normalized == "development_static_tf_active":
         return "GPS·IMU 정적 TF 개발 실행"
+    if normalized == "development_controller_unverified":
+        return "제어 코어 개발 실행·주행 검증 전"
     if normalized == "development_visualization_only":
         return "시각화 개발 실행·추정 입력 대기"
     if _runtime_kind(status) == "live":

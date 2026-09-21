@@ -74,11 +74,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "ab00840a974514ad443a978e3d1934a3317a4cddda7577b93ded9444fa1961aa",
+      "png_sha256": "8bc96372b5b5a0ee25d2a5d5b3e005568c7e4f8b85e2abaf4619be660954523c",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "f548f2fda40e23684985b775cd8feb121fa08883cd7ba7114524eca1f5c531a7",
+      "source_sha256": "664e66cda26707f2eddc2c441c03e410c5c3cf5f2e57a2d76c58cf2fb26985b3",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "86603e2d3f4a3bee4f57d5dc51c6bcd4737a6029d3c657a4da9d090dadbce0fc"
+      "svg_sha256": "ff19a8aa3621ead358254db72217bb39ecde0a8c4d280457c0c4653bd87bd54f"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
@@ -98,35 +98,35 @@
     },
     {
       "png": "src/runtime_evaluation_pkg/docs/interface_io.png",
-      "png_sha256": "ed6434bc705d8cc0dcb90319c6522dd0b0138fa2f4a3d0f4d36da103e62351f2",
+      "png_sha256": "42a347edee01586aeccc0137554cfe98f0e63544268cefadb5e4a43e84c800c3",
       "source": "src/runtime_evaluation_pkg/docs/interface_io.mmd",
-      "source_sha256": "ff5b33052fec4898d74992ab1a346289fa07e700d8aa4038bf407cf49bb33584",
+      "source_sha256": "3a2f7d1f3c173562f497fd95b86a3d48dc899e3fa4c8f3ceeb21fc5831bd62bf",
       "svg": "src/runtime_evaluation_pkg/docs/interface_io.svg",
-      "svg_sha256": "ec26c697c966d701bb6826d01f6145b99a836750402c5209fbcea272e2a7eb0b"
+      "svg_sha256": "a6d8778e641e57c97530a54e795bfeb8feab2de4611f577cdd1a3442a9861e46"
     },
     {
       "png": "src/safety_supervisor_pkg/docs/interface_io.png",
-      "png_sha256": "186a2b026d9f824fa4b58072598ec252bd4f00c5dd95637d489cbf78d7f8e0b6",
+      "png_sha256": "b24a27adb63cc9a01bb3a1a2380a1fcf5339e26686a57cdb398c157dd03f1350",
       "source": "src/safety_supervisor_pkg/docs/interface_io.mmd",
-      "source_sha256": "5706546292b00aa64356d4ce7003ac90c579b4d621b2e7e5e7ae82af77160c9c",
+      "source_sha256": "15988602cc475a9093b1652eb8115a2688a16c70401997c10a1d4ad54c61362a",
       "svg": "src/safety_supervisor_pkg/docs/interface_io.svg",
-      "svg_sha256": "591123d76d3b54a6a5d171daa4819f7979373f746b2bc3806c1a5480bd70360c"
+      "svg_sha256": "04bcf39ba2de68de1089449a0987f3db019cbe4c5b3e6e867a12764643d30115"
     },
     {
       "png": "src/system_bringup_pkg/docs/interface_io.png",
-      "png_sha256": "90635fce5bdc27fb7cf548eb198586b1febe5e66bd662612e7fe071331c61630",
+      "png_sha256": "94092e686f2bb419551c17272dd4e62d518524b00671da02f9695570433fe6f6",
       "source": "src/system_bringup_pkg/docs/interface_io.mmd",
-      "source_sha256": "476a0f67a1c1ca17d1576d7e47231c62e4282ba698f1c9507ef32e4d33968a21",
+      "source_sha256": "f4686299be414be40e5dedd4d1894ed81645c6b61b53811314d41cf910a28a78",
       "svg": "src/system_bringup_pkg/docs/interface_io.svg",
-      "svg_sha256": "645f0863a033da405afdd07a035f8c3a71dea6a1589ae109e69cd003a4d5e0f0"
+      "svg_sha256": "9a51aafebf45f220fad8517bafedbc5d4cd07a4f4b6e7aa1c426939c612ca780"
     },
     {
       "png": "src/vehicle_control_pkg/docs/interface_io.png",
-      "png_sha256": "9c4c13075532d79463bcbc6e14b8b7ae9ca524f156dbb5a5a02978971cba6ab7",
+      "png_sha256": "fc48b12001453cbaecd41b4bfeba20b24962e26933d620a8ae6c8bcd46602485",
       "source": "src/vehicle_control_pkg/docs/interface_io.mmd",
-      "source_sha256": "26b025bf0340da02ab1cd33474fb877073b4a9530e609cafdf3c82f121ae6b80",
+      "source_sha256": "e8e6f4bb280276811ac8db06823f5d322af564349cc0975642deb710cb5c0df2",
       "svg": "src/vehicle_control_pkg/docs/interface_io.svg",
-      "svg_sha256": "77f77b6fd4b7a01cd2464b96ab1ecd06e58af18ce94aff733a8725dccbc6aa70"
+      "svg_sha256": "8ae259327b7bdc0b3a2732b72f6664696183314463416875964f67b83db5398e"
     },
     {
       "png": "src/visualization_pkg/docs/interface_io.png",
@@ -150,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "a389f2e1c767892def0b607063668d817d7605a2484c8041196da28f30154b85"
+  "source_of_truth_sha256": "66d3344b49f6bdc004fb79c8dc1c05a6dbb8457b8cbd73b648004aa3d2030122"
 }

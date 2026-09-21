@@ -77,6 +77,12 @@ runtime_readiness_policy:
     last_gps_fix_must_not_be_reused_as_current_position_truth: true
 
 contract_modules:
+  controller_messages:
+    path: messages/controller_messages.yaml
+    required_contract_version: 0.1.0
+  competition_io_messages:
+    path: messages/competition_io_messages.yaml
+    required_contract_version: 0.1.0
   lidar_messages:
     path: messages/lidar_messages.yaml
     required_contract_version: 0.1.0
@@ -261,7 +267,7 @@ nodes:
     owner_package: vehicle_control_pkg
     executable: vehicle_controller_node
     visibility: public_boundary
-    status: reserved_not_implemented
+    status: development_controller_unverified
     diagram_description_ko: 궤적 추종용 조향과 가속 및 제동을 계산
   - name: system_readiness_node
     owner_package: system_bringup_pkg
@@ -748,12 +754,12 @@ topics:
     owner_package: path_planning_pkg
     producers: [path_planner_node]
     consumers: [vehicle_controller_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: Time-parameterized locally continuous feasible trajectory generated from route localization and world model
     diagram_description_ko: 차량이 따라갈 시간 포함 실행 가능 지역 궤적
     data_type: common_msgs_pkg/Trajectory
-    unit: m_rad_m_per_sec_m_per_sec2_sec
+    unit: m_rad_m_per_sec_sec
     frame: odom
     timestamp_source: planning_reference_time
     expected_rate_hz: 10.0
@@ -780,7 +786,7 @@ topics:
     owner_package: vehicle_control_pkg
     producers: [vehicle_controller_node]
     consumers: [safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: development_controller_unverified
     visibility: public
     data_meaning: Nominal steering accelerator and brake request before safety gating
     diagram_description_ko: Safety 검사 전 조향·가속·제동 요청
@@ -796,7 +802,7 @@ topics:
     owner_package: vehicle_control_pkg
     producers: [vehicle_controller_node]
     consumers: [system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: development_controller_unverified
     visibility: public
     data_meaning: Tracking error saturation command validity and controller health
     diagram_description_ko: 추종 오차·포화·명령 유효성·제어기 상태
@@ -983,11 +989,14 @@ messages:
     status: development_map_object_tracking_unverified
     schema: messages/world_model_messages.yaml#TrackedObject
   - type: common_msgs_pkg/Trajectory
-    status: type_name_reserved_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
+    schema: messages/controller_messages.yaml#Trajectory
   - type: common_msgs_pkg/ActuatorCommand
-    status: type_name_reserved_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
+    schema: messages/competition_io_messages.yaml#ActuatorCommand
   - type: common_msgs_pkg/ControllerStatus
-    status: type_name_reserved_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
+    schema: messages/controller_messages.yaml#ControllerStatus
   - type: common_msgs_pkg/SystemReadiness
     status: type_name_reserved_schema_not_implemented
   - type: common_msgs_pkg/SafetyState
@@ -1187,7 +1196,7 @@ package_boundaries:
       - /molit/planning/status
   vehicle_control_pkg:
     diagram_summary_ko: 지역 궤적을 추종할 조향·가속·제동 명령 계산
-    runtime_status: public_contract_reserved_not_implemented
+    runtime_status: development_controller_unverified
     public_nodes: [vehicle_controller_node]
     inputs:
       - /molit/localization/local/odometry

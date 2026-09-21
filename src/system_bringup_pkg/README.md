@@ -55,7 +55,7 @@ uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별�
 | 출력 | `/molit/system/readiness` | `common_msgs_pkg/SystemReadiness` |
 
 공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`, LiDAR 관측과
-World Model 객체·scene 스키마가 구현됐다.
+World Model 객체·scene과 제어 연결용 `Trajectory`·`ActuatorCommand`·`ControllerStatus` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 나머지 custom type과 readiness 런타임 노드는 아직 미구현이다.
 `/molit/system/readiness`는 Safety를 제외한 상류 필수 구성요소의 준비 상태다.
@@ -87,3 +87,6 @@ World Model 객체·scene 스키마가 구현됐다.
 
 RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 30 m + 북쪽 지정 경계 확장을 사용한다.
 `hd_map_pkg/config/map_conversion.yaml`의 crop 설정을 공유하고 전역경로는 초록색으로 표시한다.
+
+제어 연결용 `Trajectory`, `ActuatorCommand`, `ControllerStatus` 스키마도 구현됐다.
+이 패키지의 예약 consumer는 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)을 따른다.

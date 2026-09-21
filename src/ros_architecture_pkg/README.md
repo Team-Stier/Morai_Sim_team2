@@ -31,7 +31,8 @@ RViz는 같은 패키지의 내부 MarkerArray만 읽고, 유효한 추정값이
 `reserved_not_implemented` 또는 disabled/prohibited 상태다.
 `ComponentStatus`, `EgoState`, `LocalizationStatus`와 LiDAR의
 `LidarObjectObservation`, `LidarObservationArray`, World Model의
-`TrackedObject`, `WorldModel` 스키마는 구현됐으며 나머지는 예약 상태다.
+`TrackedObject`, `WorldModel`, 제어용 `Trajectory`, `ControllerStatus`,
+`ActuatorCommand` 스키마는 구현됐으며 나머지는 예약 상태다.
 LiDAR 검출은 개발 구현이며 [LiDAR 계약](docs/lidar_detection_contract.md)을 따른다.
 [World Model의 LiDAR map tracking](docs/world_model_tracking.md)은 개발 구현됐지만
 미검증 입력을 주행 장면으로 승격하지 않아 `planner_ready=false`를 유지한다.
@@ -58,8 +59,8 @@ Visualization MarkerArray topic은 공개 topic 수에서 제외한다.
   safety_supervisor_node → morai_control_sender`를 반드시 거친다.
 
 이 항목은 승인된 설계 방향이지 구현 증거가 아니다.
-`path_planner_node`와 `common_msgs_pkg/Trajectory` schema는 현재 모두
-예약·미구현 상태다.
+`path_planner_node`는 예약·미구현 상태다. `common_msgs_pkg/Trajectory` schema와
+Controller는 [Closedteam2 제어 통합 계약](docs/controller_integration.md)에 구현됐다.
 
 ## 주요 문서
 
@@ -127,3 +128,7 @@ SVG가 보존한다. 회색/점선은 이름만 예약된 경계이며 현재 �
   - `docs/timestamp/`: live/replay timestamp 운용 방법
 - `launch/`: 이 패키지만 독립 확인할 때 사용하는 launch. 전체 시스템 bringup은 `system_bringup_pkg`가 소유
 - `src/`: 향후 계약 검사 도구만 허용. 기능 알고리즘은 두지 않음
+
+제어 코어 이식은 `vehicle_controller_node`의 네 입력과 nominal command/status 출력을
+구현한다. `Trajectory`·`ControllerStatus` 필드는 `config/messages/controller_messages.yaml`을
+따르며, 추가 방어 계층은 넣지 않고 원본 제어기의 검사·제한과 기존 상류 상태를 따른다.

@@ -58,8 +58,8 @@ flowchart LR
     subgraph pkg_009["path_planning_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_020["path_planner_node<br/>exec: path_planner_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
-    subgraph pkg_010["vehicle_control_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_021["vehicle_controller_node<br/>exec: vehicle_controller_node<br/>state: RESERVED (reserved_not_implemented)"]
+    subgraph pkg_010["vehicle_control_pkg<br/>runtime: development_controller_unverified"]
+        node_021["vehicle_controller_node<br/>exec: vehicle_controller_node<br/>state: RESERVED (development_controller_unverified)"]
     end
     subgraph pkg_011["system_bringup_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_017["sensor_tf_publisher<br/>exec: sensor_tf_publisher.py<br/>state: LIVE (development_static_tf_active)"]

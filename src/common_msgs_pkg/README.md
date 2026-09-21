@@ -29,8 +29,9 @@ schema provider다.
 **공개 node (exact):** 없음
 
 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `LidarObjectObservation`,
-`LidarObservationArray`, `TrackedObject`, `WorldModel`의 `.msg`, catkin 메시지 생성 설정과 순수 검증 함수를 구현했다.
-나머지 타입은 미구현이며 이 패키지는 런타임 노드를 갖지 않는다.
+`LidarObservationArray`, `TrackedObject`, `WorldModel`, `ActuatorCommand`,
+`CollisionEvent`, `Trajectory`, `ControllerStatus`의 `.msg`와 catkin 메시지 생성을 구현했다.
+기반·LiDAR·World Model 검증 함수를 제공하며 이 패키지는 런타임 노드를 갖지 않는다.
 필드의 원본은 중앙 `config/messages/core_messages.yaml`과 `lidar_messages.yaml`이며
 [필드·이식·테스트 지침](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 검증 함수는 자동으로 callback에 적용되지 않으며 추정기나 Safety 구현을 대신하지 않는다.
@@ -56,3 +57,8 @@ LiDAR 관측은 [중앙 LiDAR 계약](../ros_architecture_pkg/docs/lidar_detecti
 `validate_lidar(..., for_fusion=True)`는 보정·freshness 미검증 관측을 거부한다.
 World Model은 중앙 `messages/world_model_messages.yaml`을 따르며
 `validate_world_model(..., for_planning=True)`는 `planner_ready=false`인 개발 장면을 거부한다.
+
+제어 연결용 `Trajectory`, `ControllerStatus`는 중앙 `messages/controller_messages.yaml`,
+기존 `ActuatorCommand`는 `messages/competition_io_messages.yaml`을 따른다.
+[중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)에 producer/consumer 영향을 기록했다.
+TrackedObject/WorldModel의 기존 `.msg`도 catkin 메시지 생성 목록에 등록했다.
