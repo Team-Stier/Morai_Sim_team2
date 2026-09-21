@@ -46,6 +46,7 @@ class FrenetOutputTest(unittest.TestCase):
         node.state = ego, odom
         node.lock = threading.Lock()
         node.trajectory = Output()
+        node.path_markers = Output()
         node.selected_stamp = rospy.Time(100)
         node.selected = Candidate('keep', 'global_route', np.array([[10.,0.,0.],[11.,0.,0.],[12.,0.,0.],[13.,0.,0.]]),
                                   np.arange(4.), np.full(4, 2.), speed=np.array([2.,1.,0.,0.]),

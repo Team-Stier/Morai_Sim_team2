@@ -148,6 +148,11 @@ TF를 다시 적용하지 않으며 coast 중인 과거 점을 새 scan처럼 �
 
 ## 추가 차로 RDDF
 
+RViz의 **Frenet trajectory (cyan) and stop (red)**는 Planner의 private
+`/path_planner_node/trajectory_markers`를 표시한다. 굵은 청록색 선은 Controller에
+전달되는 실제 궤적이고 빨간 구는 정지 위치다. 즉시 정지 출력에서는 경로가
+현재 위치로 접혀 빨간 점으로 보인다. 기존 초록 전역경로와 HD Map RDDF는 유지한다.
+
 HD Map 표시에는 하늘색 `lane_rddf`와 주황색 `lane_change_windows` namespace가
 추가된다. 기존 초록 전역경로는 보존한다. 주황선은 지도상 허용 횡단 위치이며
 주행용 차선변경 궤적이 아니다. [추출 조건과 검증](../hd_map_pkg/docs/lane_rddf.md)을 따른다.

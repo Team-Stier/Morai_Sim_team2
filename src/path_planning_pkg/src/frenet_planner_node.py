@@ -12,6 +12,7 @@ import rospy
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
+from visualization_msgs.msg import Marker, MarkerArray
 from common_msgs_pkg.msg import ComponentStatus, EgoState, LocalizationStatus, RouteContext, Trajectory, WorldModel
 from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, Candidate, geometry
 
@@ -34,6 +35,7 @@ class Node:
         self.trajectory = rospy.Publisher('/molit/planning/trajectory', Trajectory, queue_size=2)
         self.status = rospy.Publisher('/molit/planning/status', ComponentStatus, queue_size=1, latch=True)
         self.audit = rospy.Publisher('~candidate_costs', String, queue_size=1)
+        self.path_markers = rospy.Publisher('~trajectory_markers', MarkerArray, queue_size=1, latch=True)
         rospy.Subscriber('/molit/route/context', RouteContext, lambda m:setattr(self, 'route', m), queue_size=1)
         rospy.Subscriber('/molit/world_model/scene', WorldModel, lambda m:setattr(self, 'world', m), queue_size=1)
         rospy.Subscriber('/molit/route/status', ComponentStatus, lambda m:setattr(self,'route_status',m),queue_size=1)
@@ -159,7 +161,7 @@ class Node:
             output.poses = [copy.deepcopy(odom.pose.pose), copy.deepcopy(odom.pose.pose)]
             output.speed_mps = [0., 0.]
             output.time_from_start = [rospy.Duration(0), rospy.Duration(1)]
-            self.trajectory.publish(output)
+            self.emit(output)
             return
         p = ego.pose.pose.position
         position = np.array([p.x, p.y, p.z])
@@ -189,7 +191,31 @@ class Node:
         output.time_from_start = [rospy.Duration(float(t)) for t in times]
         output.valid = True
         output.stop_required = bool(np.max(speeds) < .01)
+        self.emit(output)
+
+    def emit(self, output):
         self.trajectory.publish(output)
+        line = Marker(header=output.header, ns='frenet_selected', id=0,
+                      type=Marker.LINE_STRIP, action=Marker.ADD)
+        line.pose.orientation.w = 1.
+        line.scale.x = .18
+        line.color.r, line.color.g, line.color.b, line.color.a = 0., 1., 1., 1.
+        line.lifetime = output.valid_for
+        line.points = [copy.deepcopy(p.position) for p in output.poses]
+        for p in line.points:
+            p.z += .25
+        markers = [Marker(action=Marker.DELETEALL), line]
+        stops = [i for i, speed in enumerate(output.speed_mps) if speed == 0. and (i > 0 or output.stop_required)]
+        if stops:
+            stop = Marker(header=output.header, ns='frenet_stop', id=1,
+                          type=Marker.SPHERE, action=Marker.ADD)
+            stop.pose.position = copy.deepcopy(line.points[stops[0]])
+            stop.pose.orientation.w = 1.
+            stop.scale.x = stop.scale.y = stop.scale.z = .7
+            stop.color.r, stop.color.a = 1., 1.
+            stop.lifetime = output.valid_for
+            markers.append(stop)
+        self.path_markers.publish(MarkerArray(markers=markers))
 
 
 if __name__ == '__main__':

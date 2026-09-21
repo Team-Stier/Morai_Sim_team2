@@ -11,6 +11,13 @@ Panels:
 Visualization Manager:
   Class: ""
   Displays:
+    - Class: rviz/MarkerArray
+      Name: Frenet trajectory (cyan) and stop (red)
+      Enabled: true
+      Value: true
+      Marker Topic: /path_planner_node/trajectory_markers
+      Queue Size: 1
+      Namespaces: {}
     - Class: rviz/Grid
       Name: Metre Grid
       Enabled: true
