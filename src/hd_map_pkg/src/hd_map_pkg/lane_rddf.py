@@ -60,7 +60,15 @@ def _walk(seeds, edges):
 
 def build_lane_rddf(dataset, transform, route, settings):
     cfg = settings
+    excluded = cfg.get('excluded_link_ids', [])
+    if not isinstance(excluded, list) or any(not isinstance(key, str) for key in excluded):
+        raise ValueError('excluded_link_ids must be a list of MGeo link IDs')
+    unknown = set(excluded) - set(dataset.links)
+    if unknown:
+        raise ValueError('Unknown excluded link IDs: '+', '.join(sorted(unknown)))
     for key, value in cfg.items():
+        if key == 'excluded_link_ids':
+            continue
         if not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
             raise ValueError('Invalid lane RDDF setting: '+key)
     if cfg['minimum_heading_dot'] > 1:
@@ -69,7 +77,8 @@ def build_lane_rddf(dataset, transform, route, settings):
     radius = cfg['course_corridor_m']
     route_index = SegmentIndex({'route': route})
     lines = {key: [transform.mgeo_to_sim(p) for p in link['points']]
-             for key, link in dataset.links.items() if not link.get('opp_traffic')}
+             for key, link in dataset.links.items()
+             if not link.get('opp_traffic') and key not in excluded}
     samples, distances, headings = {}, {}, {}
     totals = {key: cumulative_lengths(line)[-1] for key, line in lines.items()}
     bounds = (min(p[0] for p in route)-radius, max(p[0] for p in route)+radius,

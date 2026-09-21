@@ -57,6 +57,15 @@ class LaneRddfTest(unittest.TestCase):
         self.data.links['c']['can_move_right_lane'] = False
         self.assertFalse(self.build()['lanes'])
 
+    def test_required_intersection_exclusion_removes_lane_and_crossings(self):
+        self.config['excluded_link_ids'] = ['c']
+        result = self.build()
+        self.assertFalse(result['lanes'])
+        self.assertFalse(result['crossings'])
+        self.config['excluded_link_ids'] = ['missing']
+        with self.assertRaises(ValueError):
+            self.build()
+
     def test_overpass_is_not_a_route_seed_or_alternative(self):
         for p in self.data.links['c']['points']:
             p[2] += 5

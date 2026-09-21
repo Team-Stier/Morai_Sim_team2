@@ -65,6 +65,9 @@ references:
 
 # Static alternatives only. Unknown/solid/compound/yellow boundaries fail closed.
 lane_rddf:
+  # User-required intersection entry near checkpoint 8 (2026-09-21).
+  # Exclude the outer bypass and its continuation, even if geometrically close to the course.
+  excluded_link_ids: [A2256W000739, A2256W000849]
   sample_spacing_m: 0.5
   course_corridor_m: 15.0
   minimum_heading_dot: 0.8
