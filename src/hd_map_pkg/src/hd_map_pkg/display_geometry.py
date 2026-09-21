@@ -47,4 +47,12 @@ def load_route_display_layers(source, projection, config, reference_path):
         'centerlines': [item['p'] for item in preview['centerlines']],
         'global_route': [preview['globalRoute']['p']],
     }
+    if 'lane_rddf' in config:
+        from .lane_rddf import build_lane_rddf, read_route
+        alternatives = build_lane_rddf(dataset, transform, read_route(reference_path), config['lane_rddf'])
+        layers['lane_rddf'] = [lane['points'] for lane in alternatives['lanes']]
+        # Crossbars indicate allowed boundary crossing locations, not a steering trajectory.
+        layers['lane_change_windows'] = [c['points'] for c in alternatives['crossings']
+                                        if c['source'][1] % 20 == 0]
+        preview['metadata']['lane_rddf'] = alternatives['counts']
     return layers, preview['metadata']

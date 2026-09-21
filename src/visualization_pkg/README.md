@@ -145,3 +145,9 @@ RViz의 **World Model tracks (map-frame diagnostic)**는
 움직여도 정적 객체의 map 위치와 track ID를 유지하며, TF를 다시 적용하지 않는다.
 원본 분홍 LiDAR box와 겹쳐 비교할 수 있다. 현재 결과는 calibration·freshness·위치
 불확실성이 검증되지 않았으므로 시각화 전용이며 주행 판단에는 사용할 수 없다.
+
+## 추가 차로 RDDF
+
+HD Map 표시에는 하늘색 `lane_rddf`와 주황색 `lane_change_windows` namespace가
+추가된다. 기존 초록 전역경로는 보존한다. 주황선은 지도상 허용 횡단 위치이며
+주행용 차선변경 궤적이 아니다. [추출 조건과 검증](../hd_map_pkg/docs/lane_rddf.md)을 따른다.

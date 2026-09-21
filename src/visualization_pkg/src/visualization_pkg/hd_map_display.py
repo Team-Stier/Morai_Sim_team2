@@ -27,6 +27,11 @@ def map_markers(layers, plane_z, line_width):
         if layer == "global_route":
             color = (0.2, 1.0, 0.35, 1.0)
             marker.scale.x = line_width * 2
+        if layer == 'lane_rddf':
+            color = (0.1, 0.75, 1.0, 1.0)
+            marker.scale.x = line_width * 2
+        elif layer == 'lane_change_windows':
+            color = (1.0, 0.65, 0.1, 0.85)
         marker.color.r, marker.color.g, marker.color.b, marker.color.a = color
         # Flatten display only; authoritative source geometry and localization stay intact.
         for line in lines:

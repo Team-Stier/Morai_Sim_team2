@@ -247,3 +247,10 @@ catkin_test_results
 
 RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 30 m + 북쪽 지정 경계 확장을 사용한다.
 `hd_map_pkg/config/map_conversion.yaml`의 crop 설정을 공유하고 전역경로는 초록색으로 표시한다.
+
+## 추가 차로 RDDF와 차선변경 구간
+
+`rosrun hd_map_pkg hd_map_tool lane-rddf`로 코스에 연결된 동일 진행 방향의 추가
+차로를 XYZ TXT로 추출한다. 기존 경로는 초록색, 추가 차로는 하늘색, 확인된 흰색
+점선 횡단 위치는 주황색으로 RViz에 표시한다. 조건·파일 형식·검증 범위는
+[추가 차로 RDDF](docs/lane_rddf.md)를 따른다.
