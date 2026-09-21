@@ -16,7 +16,8 @@ roslaunch system_bringup_pkg global_path_demo.launch
 센서와 Localization은 이미 실행된 것을 사용한다. 기본 경로는 저장소
 `참고파일들/2026_molit_comp_global_path (3).txt`다. source workspace 밖에서
 실행할 때는 `path_file:=/absolute/path/to/route.txt`를 지정한다.
-속도와 앞뒤 경로 길이는 `path_planning_pkg/config/global_path_demo.yaml`에서 설정한다.
+고정 속도 규칙은 `config/map/course_speed_policy.yaml`에서 읽는다.
+감속·곡선 속도와 앞뒤 경로 길이는 `path_planning_pkg/config/global_path_demo.yaml`에서 설정한다.
 
 흐름: global_route_manager_node의 map 전역경로 → path_planner_node의 odom
 local trajectory → vehicle_controller_node → 개발용 safety_supervisor_node 단순 전달
@@ -36,8 +37,9 @@ GPS/IMU 기반 yaw가 증가해 좌회전 부호를 확인했다. 전달 배율�
 
 관측: 차량이 시작점 근처 경로에서 약 5 m 벗어난 상태로 합류한 뒤, 첫 관측
 구간의 Stanley 전륜 기준 오차는 약 0.03~0.10 m, 속도는 약 10 km/h였다.
-MORAI UI에서도 9.94 km/h와 차량 이동을 확인했다. 전체 경로 완주·교통 판단
-검증은 수행하지 않았다.
+MORAI UI에서도 9.94 km/h와 차량 이동을 확인했다. 이 최초 기록은 저속 합류
+시험이다. 이후 속도 적용 관측은 [코스 속도 검증 기록](course_speed_policy.md)을
+따른다. 교통 판단은 포함하지 않는다.
 
 기록은 `/home/paik/morai-artifacts/global-path-demo-*.jsonl`,
 `global-path-demo-live.log`, `global-path-demo-running.png`에 저장했다.

@@ -16,6 +16,11 @@ HTML을 페이지 안에서 실행하지 않으므로 파일을 내려받아 브
 
 ## 현재 산출물
 
+고주로는 **분홍색(제한 없음·목표 100 km/h)**, 일반 전역경로는
+**초록색(최대 50 km/h)**, 일반 추가 RDDF는 **하늘색**으로 표시한다.
+RDDF manifest도 각 점의 속도 제한을 `null`/`50`으로 구분한다.
+원본 지도 속성과 별도로 적용한 [고정 코스 정책](../ros_architecture_pkg/docs/course_speed_policy.md)이다.
+
 `hd_map_tool build-all`은 다음 파일을 `data/derived/`에 재현 가능하게 생성한다.
 
 | 파일 | 내용 |

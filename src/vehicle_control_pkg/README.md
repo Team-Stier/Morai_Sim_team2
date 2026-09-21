@@ -115,3 +115,5 @@ ROS publisher/subscriber 연결 및 상류 정지 상태 전달을 확인한다.
 전역경로만 10 km/h로 추종한다. 일반 실행과 구분된 개발용 직접 전달 경로이며
 장애물·신호 판단을 수행하지 않는다. 별도 방어 계층은 추가하지 않았다.
 실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
+
+전역경로 실행은 `config/global_path_demo.yaml`의 lookahead 튜닝을 사용한다. 원본 알고리즘은 동일하며 Planner의 현재 구간 속도를 추종한다. 일반 상한 50·고주로 목표 100 km/h 규칙은 중앙 코스 정책에 있다.

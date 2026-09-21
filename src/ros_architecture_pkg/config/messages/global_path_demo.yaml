@@ -3,6 +3,7 @@ contract_version: 0.1.0
 authority: ros_architecture_pkg
 profile: global_path_only
 activation_scope: development_only
+course_speed_policy: ../map/course_speed_policy.yaml
 user_authorization: 2026-09-21_run_global_path_following_now_without_added_defensive_code
 # Explicit local simulator test exceptions; nominal production contract stays unchanged.
 exceptions:
@@ -37,4 +38,4 @@ transport:
   steering_normalized_per_rad: 1.432394487827058
   steering_scale_basis: original_Closedteam2_adapter_radians_divided_by_40_degrees
   runtime_validation: stationary_0_25_normalized_produced_10_degrees_and_positive_left_yaw_observed
-  driving_observation: live_GPS_IMU_estimated_motion_and_approximately_10_kph_following_2026_09_21
+  driving_observation: live_GPS_IMU_route_following_with_100_kph_target_and_normal_50_kph_limit_2026_09_21

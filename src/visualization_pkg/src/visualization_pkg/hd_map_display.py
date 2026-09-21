@@ -32,12 +32,33 @@ def map_markers(layers, plane_z, line_width):
             marker.scale.x = line_width * 2
         elif layer == 'lane_change_windows':
             color = (1.0, 0.65, 0.1, 0.85)
+        elif layer in ('global_route_unlimited', 'lane_rddf_unlimited'):
+            color = (1.0, 0.25, 0.86, 1.0)
+            marker.scale.x = line_width * 3
         marker.color.r, marker.color.g, marker.color.b, marker.color.a = color
         # Flatten display only; authoritative source geometry and localization stay intact.
         for line in lines:
             for a, b in zip(line, line[1:]):
                 marker.points.extend([Point(a[0], a[1], plane_z), Point(b[0], b[1], plane_z)])
         result.markers.append(marker)
+    if 'global_route_unlimited' in layers:
+        high = layers['global_route_unlimited'][0]
+        for index, (point, label, color) in enumerate([
+                (high[0], 'NO LIMIT | cruise 100 km/h', (1.0, 0.25, 0.86)),
+                (high[-1], 'MAX 50 km/h', (0.2, 1.0, 0.35))]):
+            marker = Marker()
+            marker.header.frame_id = 'map'
+            marker.ns = 'course_speed_labels'
+            marker.id = index
+            marker.type = Marker.TEXT_VIEW_FACING
+            marker.action = Marker.ADD
+            marker.pose.orientation.w = 1.0
+            marker.pose.position = Point(point[0]+25, point[1], plane_z+0.2)
+            marker.scale.z = 2.0
+            marker.color.r, marker.color.g, marker.color.b = color
+            marker.color.a = 1.0
+            marker.text = label
+            result.markers.append(marker)
     return result
 
 

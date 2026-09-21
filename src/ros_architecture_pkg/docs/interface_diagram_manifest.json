@@ -150,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "c5746d29c515542fdf53d2857cf725d5ae542b76e35d69d4209bded62a621b84"
+  "source_of_truth_sha256": "ab2634430b6eaa0cdf0d1ddde675a47b5d4f0c59ece5cc812058c54c1ab084a0"
 }

@@ -77,6 +77,9 @@ runtime_readiness_policy:
     last_gps_fix_must_not_be_reused_as_current_position_truth: true
 
 contract_modules:
+  course_speed_policy:
+    path: map/course_speed_policy.yaml
+    required_contract_version: 0.1.0
   global_path_demo:
     path: messages/global_path_demo.yaml
     required_contract_version: 0.1.0

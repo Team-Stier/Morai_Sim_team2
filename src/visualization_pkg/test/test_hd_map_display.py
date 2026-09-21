@@ -33,6 +33,14 @@ class MapDisplayTest(unittest.TestCase):
 
 
 class LaneRddfDisplayTest(unittest.TestCase):
+    def test_unlimited_route_and_lane_rddf_have_same_distinct_color(self):
+        lines = [[[0, 0, 28], [1, 0, 28]]]
+        markers = map_markers(dict(global_route=lines, global_route_unlimited=lines,
+                                  lane_rddf_unlimited=lines), -0.1, 0.1).markers
+        self.assertEqual(markers[1].color, markers[2].color)
+        self.assertNotEqual(markers[0].color, markers[1].color)
+        self.assertGreater(markers[1].color.r, markers[1].color.g)
+
     def test_layers_are_separate_lines_and_use_map_without_changing_height(self):
         layers = {'global_route': [[[0,0,28],[1,0,28]]],
                   'lane_rddf': [[[0,3,28],[1,3,28]], [[5,3,28],[6,3,28]]],

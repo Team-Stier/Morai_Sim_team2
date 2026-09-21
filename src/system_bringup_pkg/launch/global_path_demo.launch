@@ -10,6 +10,7 @@
   </node>
   <include file="$(find vehicle_control_pkg)/launch/vehicle_control_pkg.launch">
     <arg name="development_global_path_only" value="true"/>
+    <arg name="controller_config" value="$(find vehicle_control_pkg)/config/global_path_demo.yaml"/>
   </include>
   <node pkg="safety_supervisor_pkg" type="global_path_demo_relay.py" name="safety_supervisor_node" ns="/" output="screen"/>
   <include file="$(find morai_interface_pkg)/launch/control_sender.launch">

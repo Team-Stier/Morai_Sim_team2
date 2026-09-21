@@ -6,6 +6,8 @@ import rospy
 from common_msgs_pkg.msg import ComponentStatus, EgoState, Trajectory
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry, Path
+from hd_map_pkg.course_speed import CourseSpeedZones, load_course_speed_policy
+from path_planning_pkg.route_speed_profile import build_speed_profile
 
 
 def yaw(q):
@@ -16,7 +18,10 @@ class Planner:
     def __init__(self):
         self.path = None
         self.state = None
-        self.speed = rospy.get_param('~speed_mps')
+        self.policy = load_course_speed_policy()
+        self.speed_parameters = [rospy.get_param('~'+key) for key in
+                                 ('normal_cruise_margin_kph', 'lateral_acceleration_mps2',
+                                  'deceleration_mps2', 'braking_preview_m')]
         self.forward_points = rospy.get_param('~forward_points')
         self.behind_points = rospy.get_param('~behind_points')
         self.path_sub = rospy.Subscriber('/molit/route/global_path', Path, self.on_path, queue_size=1)
@@ -29,6 +34,9 @@ class Planner:
         self.timer = rospy.Timer(rospy.Duration(0.1), self.update)
 
     def on_path(self, message):
+        points = [[p.pose.position.x, p.pose.position.y] for p in message.poses]
+        self.zones = CourseSpeedZones(points, self.policy)
+        self.speeds = build_speed_profile(points, self.zones, *self.speed_parameters)
         self.path = message.poses
 
     def on_state(self, ego, odom):
@@ -50,7 +58,7 @@ class Planner:
         output.reset_id = ego.reset_id
         output.valid = True
         output.valid_for = rospy.Duration(0.5)
-        distance = 0.0
+        elapsed = 0.0
         previous = None
         for offset in range(-self.behind_points, self.forward_points):
             source = self.path[(nearest+offset) % len(self.path)].pose
@@ -61,12 +69,14 @@ class Planner:
             pose.position.z = odom.pose.pose.position.z+source.position.z-position.z
             heading = yaw(source.orientation)+rotation
             pose.orientation.z, pose.orientation.w = math.sin(heading/2), math.cos(heading/2)
+            speed = self.speeds[(nearest+max(offset, 0)) % len(self.path)]
             if previous is not None:
-                distance += math.hypot(pose.position.x-previous.x, pose.position.y-previous.y)
+                distance = math.hypot(pose.position.x-previous.x, pose.position.y-previous.y)
+                elapsed += 2*distance/(output.speed_mps[-1]+speed)
             previous = pose.position
             output.poses.append(pose)
-            output.speed_mps.append(self.speed)
-            output.time_from_start.append(rospy.Duration(distance/self.speed))
+            output.speed_mps.append(speed)
+            output.time_from_start.append(rospy.Duration(elapsed))
         self.trajectory.publish(output)
         status = ComponentStatus()
         status.header.stamp = output.header.stamp
@@ -74,7 +84,8 @@ class Planner:
         status.state = ComponentStatus.READY
         status.ready = True
         status.data_stamp = output.header.stamp
-        status.reason = 'global_path_only development demonstration; nearest_index=%d' % nearest
+        status.reason = 'global_path_only; nearest_index=%d; zone=%s; target_kph=%.2f' % (
+            nearest, 'unlimited' if self.zones.unlimited(nearest) else 'max_50', self.speeds[nearest]*3.6)
         self.status.publish(status)
 
 

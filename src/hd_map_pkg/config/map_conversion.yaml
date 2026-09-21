@@ -1,3 +1,5 @@
+course_speed_policy: true  # Central config/map/course_speed_policy.yaml, also used by planning.
+
 source:
   status: immutable_candidate
   repository: https://github.com/MORAI-Autonomous/verdict-sdk.git

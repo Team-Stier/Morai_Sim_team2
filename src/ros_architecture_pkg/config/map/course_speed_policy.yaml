@@ -1,0 +1,22 @@
+schema_version: 1
+contract_version: 0.1.0
+authority: ros_architecture_pkg
+policy_id: katri_user_fixed_20260921
+source: user_fixed_normal_limit_and_high_speed_cruise_2026_09_21
+frame: map
+normal_limit_kph: 50.0
+high_speed:
+  limit_kph: null  # No course speed limit; cruise speed is a separate planning target.
+  cruise_kph: 100.0
+  start_link: A2256W000411
+  start_endpoint: first
+  start_map_xy: [62.073913683, 256.494927573]
+  end_link: A2256W000153
+  end_endpoint: last
+  end_map_xy: [70.214148834, -365.748476558]
+  interval: start_inclusive_end_exclusive_in_reference_route_direction
+reference:
+  sha256: 50658991e607d9339d76e4cd6cb169dfc733ea53b93de2c3e222460bb497cc05
+  raw_start_index: 2275
+  raw_end_index: 3529
+  index_basis: zero_based_original_4430_rows_before_deduplication

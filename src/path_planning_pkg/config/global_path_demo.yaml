@@ -1,4 +1,7 @@
 # Route-only demonstration, no obstacle or traffic behavior.
-speed_mps: 2.7777777777777777
-forward_points: 100
+normal_cruise_margin_kph: 2.0
+lateral_acceleration_mps2: 2.0
+deceleration_mps2: 2.0
+braking_preview_m: 15.0
+forward_points: 240
 behind_points: 5

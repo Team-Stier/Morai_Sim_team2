@@ -12,6 +12,7 @@
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>message_filters</exec_depend>
+  <exec_depend>hd_map_pkg</exec_depend>
   <test_depend>python3-nose</test_depend>
   <export />
 </package>

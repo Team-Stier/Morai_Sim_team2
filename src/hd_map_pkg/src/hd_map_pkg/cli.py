@@ -201,6 +201,9 @@ def command_lane_rddf(arguments):
     package_root, config, dataset, transformer, output_dir = _context(arguments)
     reference = _reference_path(package_root, config)
     result = build_lane_rddf(dataset, transformer, read_route(reference), config['lane_rddf'])
+    if config.get('course_speed_policy'):
+        from .course_speed import CourseSpeedZones, load_course_speed_policy
+        result = CourseSpeedZones(read_route(reference), load_course_speed_policy()).annotate_lanes(result)
     path = write_lane_rddf(result, output_dir / 'lane_rddf', reference, dataset)
     print(json.dumps(result['counts'], sort_keys=True))
     print(path)
