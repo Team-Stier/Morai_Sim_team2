@@ -14,7 +14,8 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
 from common_msgs_pkg.msg import ComponentStatus, EgoState, HdMap, LocalizationStatus, RouteContext, Trajectory, WorldModel
-from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, Candidate, geometry
+from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, Candidate, geometry, geometry_windows
+from hd_map_pkg.course_speed import CourseSpeedZones, load_course_speed_policy
 
 
 def yaw(q):
@@ -55,11 +56,28 @@ class Node:
         if self.static_map is not None and self.static_map[0] == message.map_id:
             return
         lanes = {}
+        geometry_only = self.c['rddf_geometry_only']
+        if geometry_only:
+            reference = next(lane for lane in message.lanes if lane.id == 'global_route')
+            reference_points = [[p.pose.position.x,p.pose.position.y] for p in reference.centerline.poses]
+            zones = CourseSpeedZones(reference_points, load_course_speed_policy())
+            reference_s = np.asarray(reference.route_s)
+            high_start, high_end = reference_s[zones.start], reference_s[zones.end]
+            route_length = reference_s[-1]
         for lane in message.lanes:
             xyz = np.array([[p.pose.position.x, p.pose.position.y, p.pose.position.z] for p in lane.centerline.poses])
             s = np.asarray(lane.route_s)
             keep = np.r_[True, np.diff(s) > 1e-6]
-            lanes[lane.id] = Lane(lane.id, xyz[keep], s[keep], np.asarray(lane.speed_limits_mps)[keep], list(lane.successors))
+            if geometry_only:
+                unlimited = (s-high_start) % route_length < (high_end-high_start) % route_length
+                limits = np.where(unlimited,-1.,zones.policy['normal_limit_kph']/3.6)
+                successors = []
+            else:
+                limits, successors = np.asarray(lane.speed_limits_mps), list(lane.successors)
+            lanes[lane.id] = Lane(lane.id, xyz[keep], s[keep], limits[keep], successors)
+        if geometry_only:
+            self.static_map = (message.map_id, lanes, geometry_windows(lanes,self.c), [])
+            return
         windows = []
         for w in message.lane_changes:
             lane = lanes[w.source_lane]
@@ -97,7 +115,8 @@ class Node:
         map_id, lanes, windows, boundaries = static_map
         ego, odom = state
         now = rospy.Time.now()
-        if self.route_status is not None and self.route_status.state == ComponentStatus.FAULT:
+        if (not self.c['rddf_geometry_only'] and self.route_status is not None
+                and self.route_status.state == ComponentStatus.FAULT):
             with self.lock:
                 self.selected = None
             self.report('required_checkpoint_missed',True)
@@ -141,7 +160,8 @@ class Node:
             self.planner.evaluate(candidate, speed, objects, boundaries, goal_s)
             index = min(np.searchsorted(candidate.route_s,goal_s),len(candidate.xy)-1)
             goal = route.comparison_goal
-            if np.linalg.norm(candidate.xy[index,:2]-[goal.x,goal.y]) > self.c['checkpoint_radius_m']:
+            if (not self.c['rddf_geometry_only'] and
+                    np.linalg.norm(candidate.xy[index,:2]-[goal.x,goal.y]) > self.c['checkpoint_radius_m']):
                 candidate.cost = candidate.eta = math.inf
                 candidate.feasible = False
                 candidate.reason = 'does_not_reach_common_checkpoint'
@@ -153,8 +173,8 @@ class Node:
                   'cost':x.cost if math.isfinite(x.cost) else None,
                   'comfort':x.comfort, 'changes':x.changes} for x in candidates]
         self.audit.publish(String(data=json.dumps(audit)))
-        self.report('frenet; selected=%s; candidates=%d; observed_clusters_only; unverified_development'%
-                    (chosen.key if chosen else 'stop', len(candidates)), True, time.monotonic()-started)
+        self.report('frenet; selected=%s; candidates=%d; rddf_geometry_only=%s; observed_clusters_only; unverified_development'%
+                    (chosen.key if chosen else 'stop', len(candidates),self.c['rddf_geometry_only']), True, time.monotonic()-started)
 
     def publish(self, _):
         if self.state is None:

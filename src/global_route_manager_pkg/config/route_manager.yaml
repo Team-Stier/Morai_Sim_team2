@@ -3,3 +3,5 @@ initialize_from_current_position: true
 matching_backward_m: 15.0
 matching_forward_m: 120.0
 context_rate_hz: 5.0
+rddf_geometry_only: true
+comparison_distance_m: 100.0

@@ -4,11 +4,12 @@ from pathlib import Path
 import threading
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 import numpy as np
 import rospy
 import yaml
-from common_msgs_pkg.msg import EgoState, HdMap, RouteLane, RouteContext, WorldModel
+from common_msgs_pkg.msg import EgoState, HdMap, RouteLane, RouteContext, WorldModel, ComponentStatus
 from geometry_msgs.msg import PoseStamped, Point, Point32, Polygon
 from nav_msgs.msg import Odometry
 from path_planning_pkg.frenet import Candidate, Planner
@@ -61,7 +62,8 @@ class FrenetOutputTest(unittest.TestCase):
         producer = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(producer)
         route = producer.RouteManagerNode.__new__(producer.RouteManagerNode)
-        route.config = dict(initialize_from_current_position=True,matching_backward_m=15.,matching_forward_m=120.)
+        route.config = dict(initialize_from_current_position=True,matching_backward_m=15.,matching_forward_m=120.,
+                            rddf_geometry_only=False,comparison_distance_m=100.)
         route.path_publisher = Output()
         route.context_publisher = Output()
         route.reset_id = None
@@ -94,6 +96,47 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertIsNotNone(node.selected)
         self.assertEqual(node.selected.target, 'global_route')
 
+        route.config['rddf_geometry_only'] = True
+        geometry_message = SimpleNamespace(map_id=message.map_id,reference_sha256=message.reference_sha256,
+            lanes=[SimpleNamespace(id=l.id,centerline=l.centerline,route_s=l.route_s) for l in message.lanes])
+        route.on_map(geometry_message)
+        route.publish_context(None)
+        self.assertEqual(route.context.next_checkpoint,0xFFFFFFFF)
+        self.assertFalse(route.progress.missed_checkpoint)
+        node.c['rddf_geometry_only'] = True
+        node.static_map = None
+        node.on_map(geometry_message)
+        node.route = route.context
+        node.route_status = ComponentStatus(state=ComponentStatus.FAULT,reason='old_checkpoint_fault')
+        node.plan(None)
+        self.assertIsNotNone(node.selected)
+        self.assertEqual(node.static_map[3],[])
+
+    def test_geometry_only_reads_no_hd_map_road_metadata(self):
+        node = self.node()
+        node.c['rddf_geometry_only'] = True
+        node.static_map = None
+        original = self.static_map()
+        # Deliberately omit every HD Map road-attribute field.
+        message = SimpleNamespace(map_id='geometry-only',lanes=[SimpleNamespace(
+            id=l.id,centerline=l.centerline,route_s=l.route_s) for l in original.lanes])
+        node.on_map(message)
+        self.assertEqual(node.static_map[3],[])
+        self.assertEqual(node.static_map[1]['global_route'].successors,[])
+        self.assertAlmostEqual(node.static_map[1]['global_route'].limits[0],58/3.6)
+
+    def test_progress_without_checkpoints_uses_forward_rddf_station(self):
+        from global_route_manager_pkg.progress import RouteProgress
+        lanes=[dict(id='global_route',points=[(0.,0.,0.),(200.,0.,0.)],route_s=[0.,200.])]
+        p=RouteProgress(lanes,[],0.,dict(initialize_from_current_position=True,
+            matching_backward_m=15.,matching_forward_m=120.,comparison_distance_m=100.))
+        result=p.update((20.,0.,0.),0.)
+        self.assertEqual(result['next_checkpoint'],0xFFFFFFFF)
+        self.assertAlmostEqual(result['comparison_goal_s'],120.)
+        self.assertFalse(p.missed_checkpoint)
+        result=p.update((150.,0.,0.),0.)
+        self.assertFalse(p.missed_checkpoint)
+
     @patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.75))
     def test_plan_survives_input_age_but_expires_after_retention(self, _):
         node = self.node()
@@ -107,6 +150,7 @@ class FrenetOutputTest(unittest.TestCase):
     def node(self):
         node = module.Node.__new__(module.Node)
         node.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
+        node.c['rddf_geometry_only'] = False
         ego, odom = EgoState(), Odometry()
         ego.reset_id = 12
         ego.pose.pose.position.x = 10.

@@ -96,7 +96,7 @@ contract_modules:
     required_contract_version: 0.1.0
   rddf_planning_messages:
     path: messages/rddf_planning_messages.yaml
-    required_contract_version: 0.2.0
+    required_contract_version: 0.3.0
   course_speed_policy:
     path: map/course_speed_policy.yaml
     required_contract_version: 0.1.0
@@ -730,7 +730,7 @@ topics:
     consumers: [world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node]
     status: development_frenet_rddf_unverified
     visibility: public
-    data_meaning: Dynamic route progress current lane next checkpoint and comparison goal keyed by cached HdMap map_id
+    data_meaning: Dynamic route progress current lane and comparison goal keyed by cached HdMap map_id; next_checkpoint is UINT32_MAX in user RDDF-only mode
     diagram_description_ko: 지도 ID·진행도·현재 차로·다음 체크포인트
     data_type: common_msgs_pkg/RouteContext
     unit: m_ratio_index_m_per_sec_and_enum

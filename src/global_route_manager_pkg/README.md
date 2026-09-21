@@ -1,5 +1,9 @@
 # global_route_manager_pkg
 
+현재 사용자 모드는 `rddf_geometry_only=true`다. 체크포인트 정보를 읽지 않고
+RDDF 위치 매칭과 같은 진행도 100 m 앞 비교 지점만 계산한다. 이 모드에서
+`next_checkpoint=4294967295`는 체크포인트 미사용을 뜻하며 누락 FAULT를 만들지 않는다.
+
 `RouteContext`는 5 Hz 진행 상태 메시지다. 정적 차로·경계·체크포인트 목록은
 `HdMap`만 소유하며, 소비자는 `map_id`로 캐시와 연결한다. Route는 현재 차로,
 진행도, 다음 체크포인트, 비교 목표와 완료 상태만 갱신한다.

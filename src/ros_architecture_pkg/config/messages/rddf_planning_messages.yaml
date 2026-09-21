@@ -1,5 +1,5 @@
 schema_version: 1
-contract_version: 0.2.0
+contract_version: 0.3.0
 authority: ros_architecture_pkg
 implementation_owner: common_msgs_pkg
 status: development_frenet_rddf
@@ -81,6 +81,9 @@ messages:
       # Static geometry is cached from HdMap with this map_id.
 
       uint32 next_checkpoint
+
+      # next_checkpoint=UINT32_MAX in RDDF-only mode; comparison goal is a forward
+      route station.
 
       string current_lane
 

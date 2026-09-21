@@ -1,5 +1,10 @@
 # User course speeds apply; 0 removes the test-only speed cap.
 test_speed_cap_kph: 0.0
+rddf_geometry_only: true
+rddf_neighbor_min_m: 1.0
+rddf_neighbor_max_m: 5.0
+rddf_heading_dot_min: 0.8
+rddf_height_difference_m: 1.5
 decision_rate_hz: 5.0
 trajectory_rate_hz: 10.0
 trajectory_valid_for_sec: 0.5

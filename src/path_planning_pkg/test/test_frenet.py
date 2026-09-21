@@ -4,13 +4,14 @@ from pathlib import Path
 import unittest
 import numpy as np
 import yaml
-from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, footprint_hit, quintic, geometry
+from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, footprint_hit, quintic, geometry, geometry_windows
 
 
 class FrenetTest(unittest.TestCase):
     def setUp(self):
         self.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
         self.c['test_speed_cap_kph'] = 10.0  # Low-speed scenario fixtures.
+        self.c['rddf_geometry_only'] = False  # Original map-rule scenarios.
         self.p = Planner(self.c)
         s = np.arange(0., 121., .5)
         def lane(key, y):
@@ -21,6 +22,22 @@ class FrenetTest(unittest.TestCase):
     def candidates(self, objects=(), boundaries=(), speed=2.):
         candidates = self.p.candidates(self.lanes, self.windows, 'global_route', 0, 80., np.array([0.,0.,0.]), 0., speed)
         return [self.p.evaluate(c, speed, objects, boundaries, 80.) for c in candidates]
+
+    def test_geometry_only_neighbors_require_near_parallel_rddfs(self):
+        windows = geometry_windows(self.lanes,self.c)
+        self.assertEqual({(w.source,w.target) for w in windows},
+                         {('global_route','side'),('side','global_route')})
+        self.lanes['side'].xy[:,1] = 10.
+        self.assertEqual(geometry_windows(self.lanes,self.c),[])
+        self.lanes['side'].xy[:,1] = 3.5
+        self.lanes['side'].xy = self.lanes['side'].xy[::-1]
+        self.assertEqual(geometry_windows(self.lanes,self.c),[])
+
+    def test_geometry_only_does_not_require_return_to_checkpoint_lane(self):
+        self.c['rddf_geometry_only'] = True
+        self.p = Planner(self.c)
+        candidates = self.candidates()
+        self.assertTrue(any(c.changes == 1 and c.feasible and c.target == 'side' for c in candidates))
 
     def test_quintic_boundary_conditions(self):
         q = np.array([0., 1e-5, 19.99999, 20.])

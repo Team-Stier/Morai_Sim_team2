@@ -4,6 +4,7 @@ string map_id
 string reference_sha256
 # Static geometry is cached from HdMap with this map_id.
 uint32 next_checkpoint
+# next_checkpoint=UINT32_MAX in RDDF-only mode; comparison goal is a forward route station.
 string current_lane
 float64 progress
 geometry_msgs/Point comparison_goal

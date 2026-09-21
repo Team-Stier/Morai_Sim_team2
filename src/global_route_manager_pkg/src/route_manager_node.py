@@ -18,7 +18,8 @@ class RouteManagerNode:
         self.last_stamp = None
         self.reset_id = None
         self.config = {key: rospy.get_param('~'+key) for key in (
-            'initialize_from_current_position', 'matching_backward_m', 'matching_forward_m')}
+            'initialize_from_current_position', 'matching_backward_m', 'matching_forward_m',
+            'rddf_geometry_only', 'comparison_distance_m')}
         self.path_publisher = rospy.Publisher('/molit/route/global_path', Path, queue_size=1, latch=True)
         self.context_publisher = rospy.Publisher('/molit/route/context', RouteContext, queue_size=2)
         self.status_publisher = rospy.Publisher('/molit/route/status', ComponentStatus, queue_size=1, latch=True)
@@ -33,8 +34,12 @@ class RouteManagerNode:
         lanes = [dict(id=lane.id, points=[(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z)
                                         for pose in lane.centerline.poses], route_s=lane.route_s)
                  for lane in message.lanes]
-        checkpoints = [(point.x, point.y, point.z) for point in message.checkpoints]
-        self.progress = RouteProgress(lanes, checkpoints, message.checkpoint_radius_m, self.config)
+        if self.config['rddf_geometry_only']:
+            checkpoints, radius = [], 0.
+        else:
+            checkpoints = [(point.x, point.y, point.z) for point in message.checkpoints]
+            radius = message.checkpoint_radius_m
+        self.progress = RouteProgress(lanes, checkpoints, radius, self.config)
         self.map = message
         self.last_stamp = None
         path = next(lane.centerline for lane in message.lanes if lane.id == 'global_route')
@@ -85,10 +90,14 @@ class RouteManagerNode:
             status.data_stamp = self.context.header.stamp
             status.data_age_sec = (status.header.stamp-status.data_stamp).to_sec()
             status.processed_count = len(self.progress.passed_checkpoints)
-            status.reason = 'lane={}; progress={:.2f}; rddf={}; windows={}; next_checkpoint={}; development_start_checkpoint={}; passed={}'.format(
-                self.context.current_lane, self.context.progress,
-                len(self.map.lanes)-1, len(self.map.lane_changes), self.context.next_checkpoint,
-                self.progress.start_checkpoint_index, self.progress.passed_checkpoints)
+            if self.config['rddf_geometry_only']:
+                status.reason = 'rddf_geometry_only; lane={}; progress={:.2f}; comparison_s={:.2f}; checkpoint_enforcement=off'.format(
+                    self.context.current_lane, self.context.progress, self.context.comparison_goal_s)
+            else:
+                status.reason = 'lane={}; progress={:.2f}; rddf={}; windows={}; next_checkpoint={}; development_start_checkpoint={}; passed={}'.format(
+                    self.context.current_lane, self.context.progress,
+                    len(self.map.lanes)-1, len(self.map.lane_changes), self.context.next_checkpoint,
+                    self.progress.start_checkpoint_index, self.progress.passed_checkpoints)
             if self.progress.missed_checkpoint:
                 status.state = ComponentStatus.FAULT
                 status.reason += '; required checkpoint was not crossed within its radius'

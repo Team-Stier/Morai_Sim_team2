@@ -4,7 +4,14 @@ node: path_planner_node
 executable: frenet_planner_node.py
 geometry_inputs: [HdMap, WorldModel]
 route_progress_input: RouteContext
-static_geometry_cache: HdMap_arrays_and_boundary_index_reused_until_map_id_changes
+static_geometry_cache: RDDF_arrays_and_geometric_neighbor_windows_reused_until_map_id_changes
+rddf_geometry_only: true
+hd_map_driving_fields: [lanes.id, lanes.centerline, lanes.route_s]
+ignored_hd_map_road_metadata: [forbidden_boundaries, checkpoints, checkpoint_radius_m, lane_changes, lanes.successors, lanes.speed_limits_mps]
+lane_change_candidates: same_direction_adjacent_rddf_geometric_overlap_without_map_permission_check
+comparison_goal: same_route_station_100m_ahead_clipped_at_route_end
+speed_source: central_user_course_speed_policy_not_hd_map_attributes
+checkpoint_enforcement: false
 localization_inputs: [EgoState, Odometry, LocalizationStatus]
 status_inputs: [route_status, world_model_status]
 output: /molit/planning/trajectory

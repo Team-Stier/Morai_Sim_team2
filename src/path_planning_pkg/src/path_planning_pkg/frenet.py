@@ -89,6 +89,40 @@ def geometry(xy):
     return s, theta, np.gradient(theta, s)
 
 
+def geometry_windows(lanes, config):
+    """Adjacent, same-direction RDDF overlaps; no map markings or topology."""
+    windows = []
+    keys = list(lanes)
+    step = config['spatial_step_m']
+    for i, source_id in enumerate(keys):
+        source = lanes[source_id]
+        for target_id in keys[i+1:]:
+            target = lanes[target_id]
+            begin, end = max(source.s[0],target.s[0]), min(source.s[-1],target.s[-1])
+            if end-begin < 2*step:
+                continue
+            qs = np.arange(begin,end,step)
+            a, b = sample(source.xy,source.s,qs), sample(target.xy,target.s,qs)
+            ta, tb = np.gradient(a[:,:2],axis=0), np.gradient(b[:,:2],axis=0)
+            ta /= np.linalg.norm(ta,axis=1)[:,None]
+            tb /= np.linalg.norm(tb,axis=1)[:,None]
+            delta = b[:,:2]-a[:,:2]
+            distance = np.linalg.norm(delta,axis=1)
+            along = np.abs(np.sum(delta*ta,axis=1))
+            valid = ((distance >= config['rddf_neighbor_min_m']) &
+                     (distance <= config['rddf_neighbor_max_m']) &
+                     (along <= config['rddf_neighbor_min_m']) &
+                     (np.sum(ta*tb,axis=1) >= config['rddf_heading_dot_min']) &
+                     (np.abs(a[:,2]-b[:,2]) <= config['rddf_height_difference_m']))
+            transitions = np.diff(np.r_[False,valid,False].astype(int))
+            for first, last in zip(np.flatnonzero(transitions==1),np.flatnonzero(transitions==-1)):
+                if last-first < 2:
+                    continue
+                windows.extend([Window(source_id,target_id,float(qs[first]),float(qs[last-1])),
+                                Window(target_id,source_id,float(qs[first]),float(qs[last-1]))])
+    return windows
+
+
 def footprint_hit(points, position, theta, c):
     """No hull or obstacle box: test actual returns against ego footprint."""
     delta = points[:, :2]-position[:2]
@@ -249,7 +283,8 @@ class Planner:
                     # Same checkpoint: a different lane must legally return when
                     # it does not meet the reference goal or ends before it.
                     at_goal = int(np.searchsorted(qs, goal_s).clip(0, len(qs)-1))
-                    if abs(d[at_goal]) > c['checkpoint_radius_m'] or target.s[-1] < goal_s:
+                    if ((not c['rddf_geometry_only'] and abs(d[at_goal]) > c['checkpoint_radius_m'])
+                            or target.s[-1] < goal_s):
                         backs = [w for w in windows if w.source in (window.target, target.id) and w.target == 'global_route']
                         backs = [w for w in backs if min(w.end-c['front_overhang_m'], goal_s)-nominal*duration >= max(w.start+c['rear_overhang_m'], stop)]
                         if not backs:
