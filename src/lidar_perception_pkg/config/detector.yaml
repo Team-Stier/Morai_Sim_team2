@@ -1,14 +1,51 @@
 # Legacy baseline with user-requested ROI adjustments for live debugging.
 # Development parameters, not validated MORAI driving tuning.
-x_min: 0.0
-x_max: 40.0
+# Default launch enables roll/pitch leveling BEFORE this ROI and DBSCAN.
+# XYZ limits are in a gravity-aligned basis about the LiDAR origin, heading preserved.
+# z_min is height relative to the sensor, not road clearance. Points on the bound
+# are included; leveling alone does not remove road points inside this interval.
+x_min: -20.0
+x_max: 50.0
 y_min: -15.0
 y_max: 15.0
-z_min: -1.5
+z_min: -1.6
 z_max: 1.0
 leaf_size: 0.03
 epsilon: 0.44
 min_points: 10
 # Legacy minimum=0 accepted any nonempty cluster; 1 preserves that meaning.
 min_cluster_size: 1
-max_cluster_size: 500
+max_cluster_size: 5000
+
+# Self-return mask in original sensor coordinates BEFORE roll/pitch leveling.
+# Central mount: base_link -> lidar_link = (2,0,1.5), zero rotation.
+# Body XY [-.790,3.845] x [-.946,.946], no extra margin.
+# Vertical envelope is provisional (base z [0,2.434]); verify against actual mesh.
+self_filter:
+  enabled: true
+  x_min: -2.790
+  x_max: 1.845
+  y_min: -0.946
+  y_max: 0.946
+  z_min: -1.500
+  z_max: 0.934
+
+# Local ground estimation AFTER leveling, BEFORE the height ROI.
+# Conservative development prior: observed sensor-to-road height ~1.9 m.
+# Unsupported/discontinuous surfaces are retained; this is not free-space output.
+ground_filter:
+  enabled: true
+  cell_size: 4.0
+  sample_size: 0.5
+  max_range: 55.0
+  expected_z: -1.9
+  seed_radius: 8.0
+  seed_tolerance: 0.25
+  max_slope_deg: 18.0
+  fit_distance: 0.05
+  remove_distance: 0.07
+  min_span: 3.0
+  min_inlier_ratio: 0.6
+  continuity_distance: 0.08
+  min_support: 12
+  iterations: 64

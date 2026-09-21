@@ -27,6 +27,18 @@ public_interface_policy:
     - Only morai_control_sender may send the approved final command to MORAI.
     - Runtime evaluation is read-only and cannot appear in a command-producing path.
 
+lidar_preprocessing_policy:
+  owner_package: lidar_perception_pkg
+  scope: scan_time_roll_pitch_before_roi_voxel_dbscan
+  attitude_source: /molit/localization/ego_state
+  mount_source: tf/frame_contract.yaml
+  temporary_basis: gravity_aligned_lidar_origin_body_heading_preserved
+  output_frame: lidar_link
+  output_stamp: source_sensor_measurement_time
+  publishes_level_tf: false
+  global_fusion_owner: world_model_pkg
+  details: docs/lidar_detection_contract.md
+
 runtime_evidence_policy:
   expected_rate_hz: design_or_configured_target_until_runtime_measured
   numeric_rate_is_not_live_rate_evidence: true
@@ -597,6 +609,23 @@ topics:
     queue_policy: publisher_queue_2_drop_old
     timeout_sec: pending_processing_latency_and_jitter_measurement
     invalid_data_policy: publish_explicit_invalid_status_never_retimestamp_old_result
+  - name: /molit/perception/lidar/cluster_points
+    owner_package: lidar_perception_pkg
+    producers: [lidar_perception_node]
+    consumers: []
+    status: development_visualization_only
+    visibility: public
+    data_meaning: Original raw records belonging to accepted DBSCAN voxel clusters, with scan-local cluster_id and row-major source_index; visualization only
+    diagram_description_ko: 장애물 군집에 속한 원본 LiDAR 점과 원본 인덱스
+    data_type: sensor_msgs/PointCloud2
+    unit: m_and_original_sensor_field_units
+    frame: lidar_link
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: display_only_configurable_not_driving_freshness
+    invalid_data_policy: Empty on invalid/no_clusters; consumer deletes on stale/reset/clock_stall and waits for scan-time TF
+    field_policy: Preserve all original field bytes; append UINT32 cluster_id and source_index. No re-rotation, voxel centroids or height flattening in this output.
   - name: /molit/perception/lidar/status
     owner_package: lidar_perception_pkg
     producers: [lidar_perception_node]
@@ -635,7 +664,7 @@ topics:
   - name: /molit/localization/ego_state
     owner_package: localization_pkg
     producers: [localization_node]
-    consumers: [global_route_manager_node, world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node]
+    consumers: [global_route_manager_node, world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node, lidar_perception_node]
     status: development_estimator_active
     visibility: public
     data_meaning: Best map-referenced ego pose motion uncertainty and validity
@@ -1132,8 +1161,10 @@ package_boundaries:
     inputs:
       - /molit/sensors/lidar/points
       - /molit/sensors/lidar/status
+      - /molit/localization/ego_state
     outputs:
       - /molit/perception/lidar/observations
+      - /molit/perception/lidar/cluster_points
       - /molit/perception/lidar/status
   localization_pkg:
     diagram_summary_ko: 센서와 지도를 융합해 차량 위치·움직임과 추정 품질 계산

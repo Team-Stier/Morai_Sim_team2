@@ -134,3 +134,9 @@ SVG가 보존한다. 회색/점선은 이름만 예약된 경계이며 현재 �
 따르며, 추가 방어 계층은 넣지 않고 원본 제어기의 검사·제한과 기존 상류 상태를 따른다.
 
 [고정 코스 속도 정책](docs/course_speed_policy.md)은 사용자 지정 일반 상한 58 km/h와 고주로 목표 150 km/h, 공유 지도 색상과 검증 근거를 정의한다.
+# LiDAR 보정 통합 안내
+
+`config/interface_contract.yaml`의 `lidar_preprocessing_policy`와
+`config/messages/lidar_runtime.yaml`이 복원한 LiDAR 자세 보정의 입력·출력·시각
+정합 설정을 정의한다. 기존 제어 계약과 공유 메시지 스키마는 유지한다.
+[계약 상세](docs/lidar_detection_contract.md)를 참고한다.

@@ -1,9 +1,11 @@
 <?xml version="1.0"?>
 <launch>
   <!-- Standalone development/replay only. Does not enable MORAI UDP or TF. -->
+  <arg name="leveling_enabled" default="true"/>
   <node pkg="lidar_perception_pkg" type="lidar_perception_node"
         name="lidar_perception_node" ns="/" output="screen">
     <rosparam command="load" file="$(find lidar_perception_pkg)/config/detector.yaml"/>
+    <param name="leveling_enabled" value="$(arg leveling_enabled)"/>
     <rosparam command="load" ns="contract"
       file="$(find ros_architecture_pkg)/config/messages/lidar_runtime.yaml"/>
   </node>

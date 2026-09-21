@@ -66,6 +66,7 @@ timestamp_source_registry:
       - /molit/perception/camera/left/observations
       - /molit/perception/camera/right/observations
       - /molit/perception/lidar/observations
+      - /molit/perception/lidar/cluster_points
   estimate_valid_time:
     kind: canonical_derived
     clock_domain: canonical_message_clock

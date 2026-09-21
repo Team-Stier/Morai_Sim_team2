@@ -68,6 +68,23 @@ launch에 추가하지 않는다.
 
 ## 공개 ROS 입출력
 
+### 로컬 MORAI Q 전환
+
+MORAI의 Driving Info → Status Initialization은 **OFF**로 설정한다.
+2026-09-22 실주행에서 ON 상태는 가속 명령 100%에도 속도가 오르지 않았고,
+OFF 전환 후 가속·감속과 전역경로 추종이 회복됐다. 이 옵션은 시뮬레이터
+설정이므로 Git checkout만으로 변경되지 않는다.
+
+`config/global_path_demo.yaml`은 `local_q_guard_enabled: true`로 로컬
+X11 MORAI 창의 Q 입력을 감지한다. Q를 누른 동안과 놓은 뒤
+`local_q_handover_sec`(0.5초) 동안 제어 UDP를 중단해 모드 전환을 허용한다.
+실행 시 자율주행으로 시작하며, Q를 한 번 누르면 송신 중단을 유지하고
+다시 누르면 새 Safety 명령의 송신을 재개한다. 키를 길게 눌러도 한 번만
+전환하며 다른 창의 Q는 무시한다. MORAI 자체 Q 전환과 함께 사용하므로
+모드 변경은 MORAI 창에서 Q로 수행한다. 별도 모드 UDP 수신은 사용하지 않는다.
+이 기능은 로컬 X11 화면 접근과
+`libX11.so.6`이 필요하며 기본 송신 설정에서는 꺼져 있다.
+
 ![MORAI Interface 공개 입출력](docs/interface_io.svg)
 
 - [Mermaid 원본](docs/interface_io.mmd)
