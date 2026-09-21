@@ -147,6 +147,49 @@ class FrenetOutputTest(unittest.TestCase):
             node.publish(None)
         self.assertTrue(node.trajectory.message.stop_required)
 
+    def test_active_path_holds_one_second_and_activates_latest_result(self):
+        node = self.node()
+        first = node.selected
+        second = Candidate('second','global_route',first.xy.copy(),first.route_s.copy(),first.limits.copy())
+        latest = Candidate('latest','global_route',first.xy.copy(),first.route_s.copy(),first.limits.copy(),
+                           speed=first.speed.copy(),times=first.times.copy())
+        node.offer_selection(second,rospy.Time.from_sec(100.4))
+        node.offer_selection(latest,rospy.Time.from_sec(100.8))
+        self.assertIs(node.selected,first)
+        self.assertIs(node.pending_selection,latest)
+        self.assertTrue(node.pending_selection_set)
+        with patch.object(rospy.Time,'now',return_value=rospy.Time.from_sec(101.0)):
+            node.publish(None)
+        self.assertIs(node.selected,latest)
+        self.assertIsNone(node.pending_selection)
+        self.assertFalse(node.pending_selection_set)
+        self.assertEqual(node.selected_stamp,rospy.Time.from_sec(101.0))
+
+    def test_deferred_stop_keeps_active_path_until_hold_finishes(self):
+        node = self.node()
+        node.report = lambda reason,ready=False,latency=0.: setattr(node,'last_report',(reason,ready))
+        with patch.object(rospy.Time,'now',return_value=rospy.Time.from_sec(100.2)):
+            node.defer_stop('input_unusable')
+        self.assertIsNotNone(node.selected)
+        self.assertTrue(node.pending_selection_set)
+        self.assertIsNone(node.pending_selection)
+        self.assertEqual(node.last_report,('input_unusable; holding_active_path',True))
+        with patch.object(rospy.Time,'now',return_value=rospy.Time.from_sec(101.19)):
+            node.publish(None)
+        self.assertFalse(node.trajectory.message.stop_required)
+        with patch.object(rospy.Time,'now',return_value=rospy.Time.from_sec(101.2)):
+            node.publish(None)
+        self.assertTrue(node.trajectory.message.stop_required)
+
+    def test_valid_path_leaves_active_stop_immediately(self):
+        node = self.node()
+        candidate = node.selected
+        node.selected = None
+        node.selected_stamp = rospy.Time.from_sec(100.0)
+        node.offer_selection(candidate,rospy.Time.from_sec(100.2))
+        self.assertIs(node.selected,candidate)
+        self.assertFalse(node.pending_selection_set)
+
     def node(self):
         node = module.Node.__new__(module.Node)
         node.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
@@ -160,6 +203,10 @@ class FrenetOutputTest(unittest.TestCase):
         odom.pose.pose.orientation.z = odom.pose.pose.orientation.w = np.sqrt(.5)
         node.state = ego, odom
         node.lock = threading.Lock()
+        node.last_lane_change_evaluation = -np.inf
+        node.pending_selection = None
+        node.pending_selection_set = False
+        node.pending_selection_stamp = None
         node.trajectory = Output()
         node.path_markers = Output()
         node.selected_stamp = rospy.Time(100)

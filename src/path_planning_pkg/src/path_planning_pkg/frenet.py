@@ -80,6 +80,7 @@ class Candidate:
     reason: str = 'unevaluated'
     feasible: bool = False
     wait: float = 0.
+    geometry_cache: tuple = None
 
 
 def geometry(xy):
@@ -87,6 +88,34 @@ def geometry(xy):
     v = np.gradient(xy[:, :2], s, axis=0)
     theta = np.unwrap(np.arctan2(v[:, 1], v[:, 0]))
     return s, theta, np.gradient(theta, s)
+
+
+def candidate_geometry(candidate):
+    if candidate.geometry_cache is None:
+        candidate.geometry_cache = geometry(candidate.xy)
+    return candidate.geometry_cache
+
+
+class ObstacleGrid:
+    """Index objects by their measured-point swept XY cells; points stay unchanged."""
+    def __init__(self, objects, config):
+        self.objects = objects
+        self.cell = config['obstacle_grid_cell_m']
+        self.radius = math.hypot(config['front_overhang_m'],config['vehicle_width_m']/2)
+        self.cells = {}
+        horizon = config['prediction_horizon_sec']
+        for index, obj in enumerate(objects):
+            start = obj.points[:,:2]+(obj.age*obj.velocity[:2] if obj.velocity_valid else 0.)
+            end = start+(horizon*obj.velocity[:2] if obj.velocity_valid else 0.)
+            low = np.floor((np.minimum(start.min(axis=0),end.min(axis=0))-self.radius)/self.cell).astype(int)
+            high = np.floor((np.maximum(start.max(axis=0),end.max(axis=0))+self.radius)/self.cell).astype(int)
+            for x in range(low[0],high[0]+1):
+                for y in range(low[1],high[1]+1):
+                    self.cells.setdefault((x,y),[]).append(index)
+
+    def near(self, position):
+        key = tuple(np.floor(position[:2]/self.cell).astype(int))
+        return [self.objects[i] for i in self.cells.get(key,())]
 
 
 def geometry_windows(lanes, config):
@@ -301,7 +330,7 @@ class Planner:
 
     def profile(self, candidate, speed, stop=math.inf, cap=None):
         c = self.c
-        s, theta, curvature = geometry(candidate.xy)
+        s, theta, curvature = candidate_geometry(candidate)
         limits = np.where(candidate.limits < 0, c['high_cruise_kph']/3.6,
                           np.maximum(0, candidate.limits-c['normal_cruise_margin_kph']/3.6))
         if c['test_speed_cap_kph'] > 0:
@@ -313,11 +342,16 @@ class Planner:
         v = limits.copy()
         for i in range(len(v)-2, -1, -1):
             v[i] = min(v[i], math.sqrt(v[i+1]**2+2*c['deceleration_mps2']*(s[i+1]-s[i])))
-        if max(speed, 0) > v[0]+c['speed_tolerance_mps']:
-            return None
-        v[0] = max(speed, 0.)
+        current_speed = max(speed, 0.)
+        overspeed = current_speed > v[0]+c['speed_tolerance_mps']
+        v[0] = current_speed
         for i in range(1, len(v)):
             v[i] = min(v[i], math.sqrt(v[i-1]**2+2*c['acceleration_mps2']*(s[i]-s[i-1])))
+            if overspeed:
+                # Keep driving while applying the configured deceleration until
+                # the candidate's geometric speed cap becomes reachable.
+                reachable_min = math.sqrt(max(0.,v[i-1]**2-2*c['deceleration_mps2']*(s[i]-s[i-1])))
+                v[i] = max(v[i],reachable_min)
         times = np.zeros(len(v))
         moving = v[1:]+v[:-1] > 1e-7
         dt = np.full(len(v)-1, math.inf)
@@ -329,7 +363,12 @@ class Planner:
         c = self.c
         # Both spatial and temporal interpolation: short clusters cannot fall
         # between coarse trajectory samples, including a fast rear vehicle.
+        obstacle_grid = objects if isinstance(objects,ObstacleGrid) else ObstacleGrid(objects,c)
+        travelled = 0.
         for i in range(len(xy)-1):
+            travelled += np.linalg.norm(xy[i+1,:2]-xy[i,:2])
+            if travelled > c['collision_precision_distance_m']:
+                break
             if not np.isfinite(times[i+1]) or times[i]+start_delay > c['prediction_horizon_sec']:
                 break
             count = max(1, int(math.ceil(np.linalg.norm(xy[i+1, :2]-xy[i, :2])/c['collision_step_m'])),
@@ -338,7 +377,7 @@ class Planner:
                 t = times[i]+u*(times[i+1]-times[i])+start_delay
                 pos = xy[i]*(1-u)+xy[i+1]*u
                 angle = theta[i]*(1-u)+theta[i+1]*u
-                for obj in objects:
+                for obj in obstacle_grid.near(pos):
                     points = obj.points.copy()
                     if obj.velocity_valid:
                         points[:, :2] += (t+obj.age)*obj.velocity[:2]
@@ -348,12 +387,13 @@ class Planner:
 
     def evaluate(self, candidate, speed, objects, boundaries, goal_s):
         c = self.c
+        obstacle_grid = objects if isinstance(objects,ObstacleGrid) else ObstacleGrid(objects,c)
+        raw_objects = obstacle_grid.objects
         result = self.profile(candidate, speed)
-        if result is None:
-            candidate.reason = 'unreachable_speed_profile'
-            return candidate
         s, theta, curvature, v, times = result
-        if np.max(np.abs(np.arctan(c['wheelbase_m']*curvature))) > c['max_steering_rad']:
+        reference_path = candidate.key in ('keep','committed')
+        if (not reference_path and
+                np.max(np.abs(np.arctan(c['wheelbase_m']*curvature))) > c['max_steering_rad']):
             candidate.reason = 'steering_limit'
             return candidate
         # All portions of a changing vehicle stay clear of forbidden boundaries.
@@ -366,11 +406,12 @@ class Planner:
         stop = max(0., boundary_stop-c['stop_margin_m'])
         known_static_stop=stop
         cap = np.full(len(s), math.inf)
-        for obj in objects:
+        precise = s <= c['collision_precision_distance_m']
+        for obj in raw_objects:
             predicted = obj.points.copy()
             if obj.velocity_valid:
                 predicted[:, :2] += obj.age*obj.velocity[:2]
-            hits = [i for i in range(len(s)) if footprint_hit(predicted, candidate.xy[i], theta[i], c)]
+            hits = [i for i in np.flatnonzero(precise) if footprint_hit(predicted, candidate.xy[i], theta[i], c)]
             if not hits:
                 continue
             index = hits[0]
@@ -387,7 +428,7 @@ class Planner:
             candidate.reason = 'insufficient_stopping_distance'
             return candidate
         s, theta, curvature, v, times = result
-        collision = self.collision(candidate.xy, theta, times, objects)
+        collision = self.collision(candidate.xy, theta, times, obstacle_grid)
         if collision is not None:
             if candidate.changes:
                 candidate.reason = 'predicted_cluster_collision'
@@ -398,7 +439,7 @@ class Planner:
                 candidate.reason = 'insufficient_stopping_distance'
                 return candidate
             s, theta, curvature, v, times = result
-            if self.collision(candidate.xy, theta, times, objects) is not None:
+            if self.collision(candidate.xy, theta, times, obstacle_grid) is not None:
                 candidate.reason = 'no_collision_free_stop'
                 return candidate
         candidate.speed, candidate.times = v, times
@@ -412,7 +453,7 @@ class Planner:
             candidate.reason = ('forbidden_boundary_stop' if math.isfinite(boundary_stop)
                                 else 'stop_wait_prediction_unresolved')
             # Evaluate finite waits only when measured moving clusters clear.
-            moving = known_static_stop>s[goal] and any(o.velocity_valid and np.linalg.norm(o.velocity[:2]) > c['stationary_speed_mps'] for o in objects)
+            moving = known_static_stop>s[goal] and any(o.velocity_valid and np.linalg.norm(o.velocity[:2]) > c['stationary_speed_mps'] for o in raw_objects)
             if moving:
                 stop_index=int(np.flatnonzero(np.isfinite(times))[-1])
                 rest=Candidate('resume',candidate.target,candidate.xy[stop_index:],candidate.route_s[stop_index:],candidate.limits[stop_index:])
@@ -422,8 +463,8 @@ class Planner:
                     if offset>c['prediction_horizon_sec']:
                         continue
                     waiting_collision=any(footprint_hit(o.points+np.r_[o.velocity[:2]*(t+o.age),0.],candidate.xy[stop_index],theta[stop_index],c)
-                                          for t in np.arange(times[stop_index],offset,c['collision_time_step_sec']) for o in objects)
-                    if not waiting_collision and self.collision(rest.xy, free[1], free[4], objects, offset) is None:
+                                          for t in np.arange(times[stop_index],offset,c['collision_time_step_sec']) for o in raw_objects)
+                    if not waiting_collision and self.collision(rest.xy, free[1], free[4], obstacle_grid, offset) is None:
                         eta = free[4][goal-stop_index]+offset
                         candidate.wait = delay
                         candidate.reason = 'waiting_for_crossing'
@@ -436,7 +477,7 @@ class Planner:
             ts, vs = cost_times, cost_speed
             steering = np.arctan(c['wheelbase_m']*cost_curvature)
             rates = np.diff(steering)/np.diff(ts)
-            if np.max(np.abs(rates)) > c['max_steering_rate_rps']:
+            if not reference_path and np.max(np.abs(rates)) > c['max_steering_rate_rps']:
                 candidate.feasible = False
                 candidate.reason = 'steering_rate_limit'
                 return candidate

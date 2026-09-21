@@ -14,7 +14,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
 from common_msgs_pkg.msg import ComponentStatus, EgoState, HdMap, LocalizationStatus, RouteContext, Trajectory, WorldModel
-from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, Candidate, geometry, geometry_windows
+from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, geometry, geometry_windows
 from hd_map_pkg.course_speed import CourseSpeedZones, load_course_speed_policy
 
 
@@ -28,9 +28,13 @@ class Node:
         self.planner = Planner(self.c)
         self.route = self.world = self.state = self.selected = None
         self.selected_stamp = None
+        self.pending_selection = None
+        self.pending_selection_set = False
+        self.pending_selection_stamp = None
         self.epoch = None
         self.static_map = None
         self.route_status = self.world_status = self.localization_status = None
+        self.last_lane_change_evaluation = -math.inf
         self.lock = threading.Lock()
         self.trajectory = rospy.Publisher('/molit/planning/trajectory', Trajectory, queue_size=2)
         self.status = rospy.Publisher('/molit/planning/status', ComponentStatus, queue_size=1, latch=True)
@@ -106,6 +110,35 @@ class Node:
             m.data_age_sec = (m.header.stamp-m.data_stamp).to_sec()
         self.status.publish(m)
 
+    def offer_selection(self, candidate, completed):
+        """Hold an activated result for one second and retain only the latest offer."""
+        with self.lock:
+            if candidate is None and self.selected is not None:
+                if not self.pending_selection_set or self.pending_selection is not None:
+                    self.pending_selection_stamp = completed
+                self.pending_selection = None
+                self.pending_selection_set = True
+                return
+            if ((self.selected is None and candidate is not None) or
+                    self.selected_stamp is None or
+                    (completed-self.selected_stamp).to_sec() >= self.c['minimum_path_hold_sec']):
+                self.selected, self.selected_stamp = candidate, completed
+                self.pending_selection = None
+                self.pending_selection_set = False
+                self.pending_selection_stamp = None
+            else:
+                self.pending_selection = candidate
+                self.pending_selection_set = True
+                self.pending_selection_stamp = completed
+
+    def defer_stop(self, reason):
+        now = rospy.Time.now()
+        with self.lock:
+            holding = (self.selected is not None and self.selected_stamp is not None and
+                       (now-self.selected_stamp).to_sec() < self.c['minimum_path_hold_sec'])
+        self.offer_selection(None,now)
+        self.report(reason+('; holding_active_path' if holding else ''),holding)
+
     def plan(self, _):
         started = time.monotonic()
         route, world, state, static_map = self.route, self.world, self.state, self.static_map
@@ -117,27 +150,24 @@ class Node:
         now = rospy.Time.now()
         if (not self.c['rddf_geometry_only'] and self.route_status is not None
                 and self.route_status.state == ComponentStatus.FAULT):
-            with self.lock:
-                self.selected = None
-            self.report('required_checkpoint_missed',True)
+            self.defer_stop('required_checkpoint_missed')
             return
         if (map_id != route.map_id or not world.objects_valid or world.localization_reset_id != ego.reset_id or
                 any(not 0 <= (now-stamp).to_sec() <= self.c['input_age_sec'] for stamp in
                     (ego.header.stamp, world.header.stamp, route.header.stamp))):
-            with self.lock:
-                self.selected = None
-            self.report('unusable_or_stale_planning_inputs')
+            self.defer_stop('unusable_or_stale_planning_inputs')
             return
         if self.epoch != ego.reset_id:
             self.planner.committed = self.planner.pending = None
+            self.pending_selection = None
+            self.pending_selection_set = False
+            self.pending_selection_stamp = None
             self.epoch = ego.reset_id
         p = ego.pose.pose.position
         position = np.array([p.x, p.y, p.z])
         speed = max(0., odom.twist.twist.linear.x)
         if route.route_complete or lanes['global_route'].s[-1]-route.progress < 2*self.c['spatial_step_m']:
-            with self.lock:
-                self.selected = None
-            self.report('route_endpoint_stop', True)
+            self.defer_stop('route_endpoint_stop')
             return
         goal_s = max(route.comparison_goal_s, route.progress+1.)
         candidates = self.planner.candidates(lanes, windows, route.current_lane, route.progress,
@@ -156,8 +186,10 @@ class Node:
         objects = [Obstacle(np.array([[p.x, p.y, p.z] for p in o.points]),
                             np.array([o.twist.linear.x, o.twist.linear.y]), o.velocity_valid,
                             (now-o.source_stamp).to_sec()) for o in world.objects]
-        for candidate in candidates:
-            self.planner.evaluate(candidate, speed, objects, boundaries, goal_s)
+        obstacle_grid = ObstacleGrid(objects,self.c)
+
+        def evaluate(candidate):
+            self.planner.evaluate(candidate, speed, obstacle_grid, boundaries, goal_s)
             index = min(np.searchsorted(candidate.route_s,goal_s),len(candidate.xy)-1)
             goal = route.comparison_goal
             if (not self.c['rddf_geometry_only'] and
@@ -165,9 +197,30 @@ class Node:
                 candidate.cost = candidate.eta = math.inf
                 candidate.feasible = False
                 candidate.reason = 'does_not_reach_common_checkpoint'
+            return candidate
+
+        # Refresh the currently-followed trajectory first. The 10 Hz publisher
+        # can use this result while lateral alternatives continue evaluating.
+        fast = next((x for x in candidates if x.key == 'committed'),candidates[0])
+        evaluate(fast)
+        completed = rospy.Time.now()
+        self.offer_selection(fast if fast.feasible else None,completed)
+
+        lateral_period = 1./self.c['lane_change_evaluation_rate_hz']
+        if time.monotonic()-self.last_lane_change_evaluation < lateral_period and fast.feasible:
+            self.audit.publish(String(data=json.dumps([{'key':fast.key,'target':fast.target,
+                'feasible':fast.feasible,'reason':fast.reason,'eta':fast.eta if math.isfinite(fast.eta) else None,
+                'cost':fast.cost if math.isfinite(fast.cost) else None,'comfort':fast.comfort,'changes':fast.changes}])))
+            self.report('frenet; selected=%s; fast_keep; rddf_geometry_only=%s; observed_clusters_only; unverified_development'%
+                        (fast.key,self.c['rddf_geometry_only']), True, time.monotonic()-started)
+            return
+
+        self.last_lane_change_evaluation = time.monotonic()
+        for candidate in candidates:
+            if candidate is not fast:
+                evaluate(candidate)
         chosen = self.planner.select(candidates, now.to_sec(), route.progress)
-        with self.lock:
-            self.selected, self.selected_stamp = chosen, now
+        self.offer_selection(chosen,rospy.Time.now())
         audit = [{'key':x.key, 'target':x.target, 'feasible':x.feasible, 'reason':x.reason,
                   'eta':x.eta if math.isfinite(x.eta) else None,
                   'cost':x.cost if math.isfinite(x.cost) else None,
@@ -180,14 +233,27 @@ class Node:
         if self.state is None:
             return
         ego, odom = self.state
-        with self.lock:
-            chosen, stamp = self.selected, self.selected_stamp
         now = rospy.Time.now()
+        with self.lock:
+            stop_mature = (self.pending_selection is None and self.pending_selection_stamp is not None and
+                           (now-self.pending_selection_stamp).to_sec() >= self.c['minimum_path_hold_sec'])
+            path_mature = (self.pending_selection is not None and self.selected_stamp is not None and
+                           (now-self.selected_stamp).to_sec() >= self.c['minimum_path_hold_sec'])
+            if self.pending_selection_set and (stop_mature or path_mature):
+                self.selected = self.pending_selection
+                self.selected_stamp = now
+                self.pending_selection = None
+                self.pending_selection_set = False
+                self.pending_selection_stamp = None
+            chosen, stamp = self.selected, self.selected_stamp
+            holding_stop = (self.pending_selection_set and self.pending_selection is None and
+                            self.pending_selection_stamp is not None)
         output = Trajectory()
         output.header.stamp, output.header.frame_id = now, 'odom'
         output.reset_id = ego.reset_id
         output.valid_for = rospy.Duration(self.c['trajectory_valid_for_sec'])
-        if chosen is None or stamp is None or (now-stamp).to_sec() > self.c['plan_retention_sec']:
+        if (chosen is None or stamp is None or
+                ((now-stamp).to_sec() > self.c['plan_retention_sec'] and not holding_stop)):
             output.valid = True
             output.stop_required = True
             output.poses = [copy.deepcopy(odom.pose.pose), copy.deepcopy(odom.pose.pose)]

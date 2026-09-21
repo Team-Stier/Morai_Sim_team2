@@ -93,7 +93,7 @@ runtime_readiness_policy:
 contract_modules:
   frenet_runtime:
     path: messages/frenet_runtime.yaml
-    required_contract_version: 0.1.0
+    required_contract_version: 0.2.0
   rddf_planning_messages:
     path: messages/rddf_planning_messages.yaml
     required_contract_version: 0.3.0

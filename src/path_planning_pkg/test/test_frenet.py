@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 import numpy as np
 import yaml
-from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, footprint_hit, quintic, geometry, geometry_windows
+from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, footprint_hit, quintic, geometry, candidate_geometry, geometry_windows
 
 
 class FrenetTest(unittest.TestCase):
@@ -77,6 +77,28 @@ class FrenetTest(unittest.TestCase):
         self.assertFalse(footprint_hit(points, np.zeros(3), 0., self.c))
         self.assertTrue(footprint_hit(np.array([[3.8,0.,0.]]), np.zeros(3), 0., self.c))
 
+    def test_obstacle_grid_returns_only_nearby_measured_clusters(self):
+        near=Obstacle(np.array([[5.,0.,0.]]),np.zeros(2))
+        far=Obstacle(np.array([[80.,20.,0.]]),np.zeros(2))
+        grid=ObstacleGrid([near,far],self.c)
+        self.assertEqual(grid.near(np.array([5.,0.,0.])),[near])
+        self.assertEqual(grid.near(np.array([80.,20.,0.])),[far])
+
+    def test_collision_precision_horizon_ignores_far_geometry_for_collision_only(self):
+        candidate=self.p.candidates(self.lanes,[], 'global_route',0.,80.,np.zeros(3),0.,2.)[0]
+        s,theta,_=candidate_geometry(candidate)
+        profile=self.p.profile(candidate,2.)
+        far=Obstacle(np.array([[60.,0.,0.]]),np.zeros(2))
+        self.assertIsNone(self.p.collision(candidate.xy,theta,profile[4],ObstacleGrid([far],self.c)))
+        near=Obstacle(np.array([[20.,0.,0.]]),np.zeros(2))
+        self.assertIsNotNone(self.p.collision(candidate.xy,theta,profile[4],ObstacleGrid([near],self.c)))
+
+    def test_candidate_geometry_is_cached(self):
+        candidate=Candidate('x','x',self.lanes['global_route'].xy,self.lanes['global_route'].s,
+                            self.lanes['global_route'].limits)
+        first=candidate_geometry(candidate)
+        self.assertIs(first,candidate_geometry(candidate))
+
     def test_both_lanes_blocked_keep_stop(self):
         obs = [Obstacle(np.array([[25.,y,0.]]),np.zeros(2)) for y in (0.,3.5)]
         candidates = self.candidates(obs)
@@ -125,6 +147,21 @@ class FrenetTest(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertLessEqual(result[3][80],56/3.6)
         self.assertLess(result[3][79],20.)
+
+    def test_speed_above_immediate_curve_cap_brakes_without_rejecting_path(self):
+        candidate=self.p.candidates(self.lanes,[], 'global_route',0.,80.,np.zeros(3),0.,12.)[0]
+        result=self.p.profile(candidate,12.)
+        self.assertIsNotNone(result)
+        self.assertEqual(result[3][0],12.)
+        self.assertGreater(result[3][1],0.)
+        self.assertLess(result[3][1],result[3][0])
+
+    def test_keep_path_is_not_rejected_by_local_rddf_curvature_noise(self):
+        candidate=self.p.candidates(self.lanes,[], 'global_route',0.,80.,np.zeros(3),0.,2.)[0]
+        candidate.xy[20,1]=2.
+        evaluated=self.p.evaluate(candidate,2.,[],[],80.)
+        self.assertTrue(evaluated.feasible)
+        self.assertNotIn(evaluated.reason,('steering_limit','steering_rate_limit'))
 
     def test_commit_is_retained_after_cost_reversal(self):
         candidates=self.candidates()

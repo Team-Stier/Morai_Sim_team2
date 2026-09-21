@@ -1,4 +1,4 @@
-contract_version: 0.1.0
+contract_version: 0.2.0
 activation_scope: user_authorized_morai_development_only
 node: path_planner_node
 executable: frenet_planner_node.py
@@ -17,8 +17,17 @@ status_inputs: [route_status, world_model_status]
 output: /molit/planning/trajectory
 output_frame: odom
 decision_rate_hz: 5.0
+lane_change_evaluation_rate_hz: 2.0
 trajectory_rate_hz: 10.0
 prediction_horizon_sec: 8.0
+precise_collision_distance_m: 40.0
+obstacle_point_index: 5m_xy_grid_over_actual_cluster_points_and_predicted_object_sweep
+evaluation_order: refresh_keep_or_committed_first_then_evaluate_lateral_candidates
+plan_retention_time_origin: evaluation_completion_stamp
+minimum_active_path_hold_sec: 1.0
+pending_result_policy: keep_latest_and_activate_after_hold
+stop_result_policy: require_continuous_result_for_minimum_hold
+shared_computation_cache: [rddf_geometry_until_map_id_change, candidate_arc_heading_curvature_within_evaluation]
 object_geometry: original_cluster_points_at_source_stamp
 object_margin_m: 0.0
 raw_sensor_subscription_allowed: false

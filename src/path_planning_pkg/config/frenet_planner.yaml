@@ -6,11 +6,15 @@ rddf_neighbor_max_m: 5.0
 rddf_heading_dot_min: 0.8
 rddf_height_difference_m: 1.5
 decision_rate_hz: 5.0
+lane_change_evaluation_rate_hz: 2.0
 trajectory_rate_hz: 10.0
 trajectory_valid_for_sec: 0.5
+minimum_path_hold_sec: 1.0
 prediction_horizon_sec: 8.0
 spatial_step_m: 0.5
 collision_step_m: 0.2
+collision_precision_distance_m: 40.0
+obstacle_grid_cell_m: 5.0
 map_height_tolerance_m: 1.5
 map_boundary_margin_m: 15.0
 collision_time_step_sec: 0.05
@@ -45,5 +49,5 @@ wheelbase_m: 3.0
 max_steering_rad: 0.6981317007977318
 max_steering_rate_rps: 1.5
 input_age_sec: 0.5
-# Retain a computed plan across decision callbacks, measured from planning start.
+# Retain a computed plan from the time its evaluation finishes.
 plan_retention_sec: 1.0
