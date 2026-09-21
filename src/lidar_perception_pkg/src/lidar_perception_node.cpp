@@ -1,5 +1,6 @@
 #include "detector.h"
 #include "horizontalization.h"
+#include "self_filter.h"
 #include "cluster_points.h"
 #include <common_msgs_pkg/EgoState.h>
 #include <common_msgs_pkg/LidarObservationArray.h>
@@ -40,6 +41,7 @@ class Node {
   int max_pending_=0;
   Steady::time_point attitude_received_=Steady::now();
   lidar_perception::Config config_;
+  lidar_perception::SelfFilterConfig self_filter_;
   ros::Time last_stamp_, last_clock_;
   Steady::time_point last_received_=Steady::now(), transport_received_=Steady::now();
   bool transport_ok_=false;
@@ -222,6 +224,7 @@ class Node {
       for (const auto& p : cloud)
         if (std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z)) {any_finite=true; break;}
       if (!any_finite) throw std::runtime_error("no finite XYZ points");
+      cloud=lidar_perception::maskSelfReturns(cloud,self_filter_);
       // Apply attitude BEFORE ROI: otherwise braking pitch can admit road points
       // or discard obstacle points that a downstream map transform cannot recover.
       const auto result=lidar_perception::detect(lidar_perception::rotateCloud(cloud,rotation), config_);
@@ -290,6 +293,14 @@ public:
     private_.param("min_cluster_size",config_.min_cluster_size,config_.min_cluster_size);
     private_.param("max_cluster_size",config_.max_cluster_size,config_.max_cluster_size);
     config_.validate();
+    private_.param("self_filter/enabled",self_filter_.enabled,self_filter_.enabled);
+    private_.param("self_filter/x_min",self_filter_.x_min,self_filter_.x_min);
+    private_.param("self_filter/x_max",self_filter_.x_max,self_filter_.x_max);
+    private_.param("self_filter/y_min",self_filter_.y_min,self_filter_.y_min);
+    private_.param("self_filter/y_max",self_filter_.y_max,self_filter_.y_max);
+    private_.param("self_filter/z_min",self_filter_.z_min,self_filter_.z_min);
+    private_.param("self_filter/z_max",self_filter_.z_max,self_filter_.z_max);
+    self_filter_.validate();
     if (!private_.getParam("contract/development_watchdog_sec",watchdog_sec_) ||
         !std::isfinite(watchdog_sec_) || watchdog_sec_<=0 ||
         !private_.getParam("contract/calibration_id",calibration_id_) || calibration_id_.empty())

@@ -134,3 +134,10 @@ roslaunch lidar_perception_pkg lidar_perception_pkg.launch
 주행은 수행하지 않았다. 실행 중인 노드를 재시작하거나 UDP/제어를 변경하지 않았다.
 빌드·테스트 로그는 `/home/paik/morai-artifacts/lidar-leveling-20260921/`의
 `paik-build.log`, `paik-tests.log`에 보관했다.
+
+## 자차 반사점 제외 (2026-09-21)
+
+수평화 전에 센서 좌표의 자차 영역을 제외한다. 살아남은 점의 원본 인덱스와
+XYZ/intensity는 보존하며 원본 센서 토픽은 변경하지 않는다. 제외 범위와
+후보 높이의 한계는 [패키지 README](../README.md#자차-반사점-제외-2026-09-21),
+설정은 `config/detector.yaml`의 `self_filter`를 따른다.

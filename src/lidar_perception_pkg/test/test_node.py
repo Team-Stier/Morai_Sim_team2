@@ -44,6 +44,11 @@ class DetectionTest(unittest.TestCase):
         self.assertTrue(msg.objects_valid); self.assertEqual(len(msg.objects),1)
         self.assertFalse(msg.calibration_verified)
         self.assertFalse(msg.freshness_verified)
+        body=[(-1.8+i*.05,-.1+j*.05,-.35) for i in range(4) for j in range(4)]
+        msg=send(body)
+        self.assertTrue(msg.objects_valid); self.assertEqual(len(msg.objects),0)
+        msg=send(body+blob)
+        self.assertTrue(msg.objects_valid); self.assertEqual(len(msg.objects),1)
         msg=send(blob,transport_ok=False)
         self.assertFalse(msg.objects_valid)
         self.assertEqual(len(msg.objects),0)

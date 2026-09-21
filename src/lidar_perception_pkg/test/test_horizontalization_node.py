@@ -123,7 +123,9 @@ class HorizontalizationTest(unittest.TestCase):
         # Retained obstacle records still carry original sensor XYZ and indices.
         time.sleep(.2)
         ground=np.array([(10+i*.05,j*.05,-1.65) for i in range(4) for j in range(4)])
-        mixed=np.vstack((ground,level)) @ rotation
+        # These body points stay in sensor coordinates even under roll/pitch.
+        body=np.array([(-1.8+i*.05,-.1+j*.05,-.35) for i in range(4) for j in range(4)])
+        mixed=np.vstack((ground @ rotation,body,level @ rotation))
         self.assertTrue(np.all(mixed[:len(ground),2]>-1.5))
         self.assertTrue(np.all(mixed[:len(ground),2]<1.0))
         stamp=rospy.Time.now()-rospy.Duration(.03)
@@ -138,7 +140,7 @@ class HorizontalizationTest(unittest.TestCase):
         entries=list(read_points(clustered,field_names=('x','y','z','cluster_id','source_index')))
         self.assertEqual(len(entries),len(level))
         for x,y,z,cluster,index in entries:
-            self.assertGreaterEqual(index,len(ground))
+            self.assertGreaterEqual(index,len(ground)+len(body))
             self.assertEqual(cluster,0)
             np.testing.assert_array_equal(np.array([x,y,z],dtype=np.float32),mixed[index].astype(np.float32))
 

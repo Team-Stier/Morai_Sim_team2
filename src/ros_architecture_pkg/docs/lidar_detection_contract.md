@@ -115,3 +115,12 @@ frame·단위·원 측정 stamp·개발 안전 gate는 유지한다.
 현재 consumer는 semantic fields를 검증한 뒤 진단 색상/라벨에만 사용한다.
 World Model의 for_fusion 검증은 개발 관측을 계속 거부한다. 추가 학습,
 VLP16 정확도 평가와 주행 readiness 승인은 이번 확장에서 하지 않는다.
+
+## 자차 제외 전처리 (2026-09-21)
+
+DBSCAN producer는 원래 `lidar_link`에서 로컬 `self_filter` AABB 안의 점을
+수평화·ROI·voxel·군집화 전에 제외한다. 외부 관측 타입·토픽·좌표·timestamp는
+변경하지 않는다. 제외점은 원본 인덱스 대응을 보존한 invalid XYZ로 내부에서만
+표시하고 관측·cluster_points에는 포함하지 않는다. 자차만 관측한 경우 정상
+빈 검출이며 지면/free-space/주행 readiness를 승인하지 않는다. 치수와 후보
+높이의 한계는 LiDAR README에 기록하며 센서 원본은 변경하지 않는다.

@@ -16,3 +16,16 @@ min_points: 10
 # Legacy minimum=0 accepted any nonempty cluster; 1 preserves that meaning.
 min_cluster_size: 1
 max_cluster_size: 500
+
+# Self-return mask in original sensor coordinates BEFORE roll/pitch leveling.
+# Central mount: base_link -> lidar_link = (2,0,1.5), zero rotation.
+# Body XY [-.790,3.845] x [-.946,.946], no extra margin.
+# Vertical envelope is provisional (base z [0,2.434]); verify against actual mesh.
+self_filter:
+  enabled: true
+  x_min: -2.790
+  x_max: 1.845
+  y_min: -0.946
+  y_max: 0.946
+  z_min: -1.500
+  z_max: 0.934

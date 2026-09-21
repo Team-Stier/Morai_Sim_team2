@@ -91,3 +91,10 @@ RViz 실화면에서 Global Status OK, HD맵·차량·LiDAR 점 동시 표시를
 호스트 검증 산출물: `/home/paik/morai-artifacts/lidar-cluster-map-20260914/`
 (`crosscheck.py`, `results.json`, `rviz.png`). 수집 스크립트는 발행/제어 없이 읽기만 수행한다.
 원본 Simulator Ground Truth나 Bounding Box 입력은 사용하지 않았다.
+
+## 자차 반사점 제외 (2026-09-21)
+
+수평화 전에 센서 좌표의 자차 영역을 제외한다. 살아남은 점의 원본 인덱스와
+XYZ/intensity는 보존하며 원본 센서 토픽은 변경하지 않는다. 제외 범위와
+후보 높이의 한계는 [패키지 README](../README.md#자차-반사점-제외-2026-09-21),
+설정은 `config/detector.yaml`의 `self_filter`를 따른다.

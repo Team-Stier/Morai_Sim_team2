@@ -1,4 +1,5 @@
 #include "horizontalization.h"
+#include "self_filter.h"
 #include <gtest/gtest.h>
 #include <limits>
 
@@ -81,4 +82,42 @@ TEST(Horizontalization, BrakingPitchRejectsRoadBeforeClusteringAndRetainsObstacl
   EXPECT_NEAR(expected.x(),box.center.x,1e-5);
   EXPECT_NEAR(expected.y(),box.center.y,1e-5);
   EXPECT_NEAR(expected.z(),box.center.z,1e-5);
+}
+
+TEST(SelfFilter, InclusiveBodyMaskPreservesIndicesAndNearbyExterior) {
+  SelfFilterConfig c;
+  Cloud raw;
+  raw.push_back(Point(-1.5,0,-.35));
+  raw.push_back(Point(c.x_min,c.y_min,c.z_min));
+  raw.push_back(Point(c.x_max,c.y_max,c.z_max));
+  raw.push_back(Point(c.x_min-.01,0,0));
+  raw.push_back(Point(c.x_max+.01,0,0));
+  raw.push_back(Point(0,c.y_min-.01,0));
+  raw.push_back(Point(0,c.y_max+.01,0));
+  raw.push_back(Point(0,0,c.z_min-.01));
+  raw.push_back(Point(0,0,c.z_max+.01));
+  const auto masked=maskSelfReturns(raw,c);
+  ASSERT_EQ(raw.size(),masked.size());
+  for (size_t i=0;i<3;++i) EXPECT_TRUE(std::isnan(masked[i].x));
+  for (size_t i=3;i<raw.size();++i)
+    EXPECT_EQ(raw[i].getVector3fMap(),masked[i].getVector3fMap());
+  EXPECT_TRUE(std::isfinite(raw[0].x));
+  c.enabled=false;
+  EXPECT_EQ(raw[0].x,maskSelfReturns(raw,c)[0].x);
+  c.x_min=c.x_max;
+  EXPECT_THROW(maskSelfReturns(raw,c),std::invalid_argument);
+}
+TEST(SelfFilter, MaskBeforeLevelingRemovesOnlyBodyClusterUnderTilt) {
+  Cloud raw;
+  for (int i=0;i<4;++i) for (int j=0;j<4;++j)
+    raw.push_back(Point(-1.8f+i*.05f,-.1f+j*.05f,-.35f));
+  const size_t body_count=raw.size();
+  for (int i=0;i<4;++i) for (int j=0;j<4;++j)
+    raw.push_back(Point(3+i*.05f,2+j*.05f,0));
+  Config detection; detection.x_min=-20;
+  const auto rotation=levelRotation(attitude(.2,.15,1.1),Eigen::Quaterniond::Identity());
+  const auto output=detect(rotateCloud(maskSelfReturns(raw,SelfFilterConfig()),rotation),detection);
+  ASSERT_EQ(1u,output.boxes.size());
+  for (size_t i=0;i<body_count;++i) EXPECT_EQ(-1,output.raw_cluster_ids[i]);
+  for (size_t i=body_count;i<raw.size();++i) EXPECT_EQ(0,output.raw_cluster_ids[i]);
 }
