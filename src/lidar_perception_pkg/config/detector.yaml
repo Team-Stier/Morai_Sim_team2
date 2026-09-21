@@ -8,14 +8,14 @@ x_min: -20.0
 x_max: 50.0
 y_min: -15.0
 y_max: 15.0
-z_min: -1.5
+z_min: -1.6
 z_max: 1.0
 leaf_size: 0.03
 epsilon: 0.44
 min_points: 10
 # Legacy minimum=0 accepted any nonempty cluster; 1 preserves that meaning.
 min_cluster_size: 1
-max_cluster_size: 500
+max_cluster_size: 5000
 
 # Self-return mask in original sensor coordinates BEFORE roll/pitch leveling.
 # Central mount: base_link -> lidar_link = (2,0,1.5), zero rotation.
