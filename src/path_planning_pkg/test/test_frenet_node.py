@@ -137,6 +137,14 @@ class FrenetOutputTest(unittest.TestCase):
         result=p.update((150.,0.,0.),0.)
         self.assertFalse(p.missed_checkpoint)
 
+    def test_route_completes_within_terminal_tracking_tolerance(self):
+        from global_route_manager_pkg.progress import RouteProgress
+        lanes=[dict(id='global_route',points=[(0.,0.,0.),(200.,0.,0.)],route_s=[0.,200.])]
+        config=dict(initialize_from_current_position=True,matching_backward_m=15.,matching_forward_m=120.,
+                    comparison_distance_m=100.,route_completion_tolerance_m=3.)
+        result=RouteProgress(lanes,[],0.,config).update((197.1,0.,0.),0.)
+        self.assertTrue(result['route_complete'])
+
     @patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.75))
     def test_plan_remains_active_until_a_new_result(self, _):
         node = self.node()

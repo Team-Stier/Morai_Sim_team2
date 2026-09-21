@@ -102,7 +102,8 @@ class RouteProgress:
             self.previous_point = point
             return dict(current_lane=self.current_lane, progress=self.progress,
                         next_checkpoint=0xFFFFFFFF, comparison_goal=goal,
-                        comparison_goal_s=goal_s, route_complete=self.progress >= self.reference_arc[-1])
+                        comparison_goal_s=goal_s,
+                        route_complete=self.progress >= self.reference_arc[-1]-self.config.get('route_completion_tolerance_m',0.))
 
         if self.next_checkpoint < len(self.checkpoints):
             target = self.checkpoints[self.next_checkpoint]
