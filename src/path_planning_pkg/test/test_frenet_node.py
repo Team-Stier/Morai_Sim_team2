@@ -282,6 +282,57 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertIs(node.selected,candidate)
         self.assertFalse(node.pending_selection_set)
 
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_incomplete_search_does_not_publish_a_temporary_stop(self, _):
+        self.check_search_publication('steering_limit', False, True)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_completed_search_without_a_candidate_still_stops(self, _):
+        self.check_search_publication('steering_limit', False, False)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_known_hazards_stop_before_alternative_search_finishes(self, _):
+        for reason in ('predicted_cluster_collision', 'insufficient_stopping_distance',
+                       'no_collision_free_stop', 'forbidden_boundary'):
+            with self.subTest(reason=reason):
+                self.check_search_publication(reason, True, True)
+
+    def check_search_publication(self, reason, interim_stop, alternative_valid):
+        import copy
+        node = self.node()
+        node.c['rddf_geometry_only'] = True
+        node.static_map = None
+        node.on_map(self.static_map())
+        node.route = RouteContext(map_id='map-a', current_lane='global_route',
+                                  progress=10., comparison_goal_s=20.)
+        node.world = WorldModel(objects_valid=True, localization_reset_id=12)
+        node.state[0].header.stamp = node.route.header.stamp = node.world.header.stamp = rospy.Time(100)
+        node.route_status = None
+        node.epoch = 12
+        node.planner = Planner(node.c)
+        node.audit = Output()
+        node.report = lambda *args: None
+        fast, alternative = copy.deepcopy(node.selected), copy.deepcopy(node.selected)
+        alternative.key = 'alternative'
+        fast.feasible, fast.reason = False, reason
+        alternative.feasible = alternative_valid
+
+        def evaluate(candidate, *args):
+            if candidate is alternative:
+                # Simulate the trajectory timer firing while alternatives are evaluated.
+                node.publish(None)
+                self.assertEqual(node.trajectory.message.stop_required, interim_stop)
+            return candidate
+
+        with patch.object(node.planner, 'candidates', return_value=[fast, alternative]), \
+                patch.object(node.planner, 'obstacle_detours', return_value=[]), \
+                patch.object(node.planner, 'evaluate', side_effect=evaluate), \
+                patch.object(node.planner, 'select', return_value=alternative if alternative_valid else None):
+            node.plan(None)
+        node.publish(None)
+        self.assertEqual(node.trajectory.message.stop_required, not alternative_valid)
+        self.assertIs(node.selected, alternative if alternative_valid else None)
+
     def node(self):
         node = module.Node.__new__(module.Node)
         node.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())

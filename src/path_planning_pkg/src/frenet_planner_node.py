@@ -197,7 +197,12 @@ class Node:
         fast = next((x for x in candidates if x.key == 'committed'),candidates[0])
         evaluate(fast)
         completed = rospy.Time.now()
-        self.offer_selection(fast if fast.feasible else None,completed,ego.reset_id)
+        # An unfinished search is not a stop result. Keep the published selection
+        # until alternatives finish, unless this evaluation found a safety hazard.
+        if fast.feasible or fast.reason in (
+                'predicted_cluster_collision', 'insufficient_stopping_distance',
+                'no_collision_free_stop', 'forbidden_boundary'):
+            self.offer_selection(fast if fast.feasible else None,completed,ego.reset_id)
 
         lateral_period = 1./self.c['lane_change_evaluation_rate_hz']
         # A feasible committed manoeuvre is retained by select regardless of
