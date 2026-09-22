@@ -99,6 +99,18 @@ class FrenetTest(unittest.TestCase):
         first=candidate_geometry(candidate)
         self.assertIs(first,candidate_geometry(candidate))
 
+    def test_near_standstill_collision_sampling_ends_at_prediction_horizon(self):
+        class RecordingGrid(ObstacleGrid):
+            def near(self, position):
+                self.positions.append(position.copy())
+                return []
+        grid=RecordingGrid([],self.c)
+        grid.positions=[]
+        self.p.collision(np.array([[0.,0.,0.],[1.,0.,0.]]),np.zeros(2),
+                         np.array([0.,1e8]),grid)
+        self.assertLessEqual(len(grid.positions),162)
+        self.assertLessEqual(grid.positions[-1][0],8e-8)
+
     def test_both_lanes_blocked_keep_stop(self):
         obs = [Obstacle(np.array([[25.,y,0.]]),np.zeros(2)) for y in (0.,3.5)]
         candidates = self.candidates(obs)

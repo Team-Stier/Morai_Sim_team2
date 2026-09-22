@@ -371,9 +371,12 @@ class Planner:
                 break
             if not np.isfinite(times[i+1]) or times[i]+start_delay > c['prediction_horizon_sec']:
                 break
-            count = max(1, int(math.ceil(np.linalg.norm(xy[i+1, :2]-xy[i, :2])/c['collision_step_m'])),
-                        int(math.ceil((times[i+1]-times[i])/c['collision_time_step_sec'])))
-            for u in np.linspace(0, 1, count+1):
+            duration = times[i+1]-times[i]
+            inspected_duration = min(duration, c['prediction_horizon_sec']-times[i]-start_delay)
+            end_fraction = inspected_duration/duration if duration > 0 else 1.
+            count = max(1, int(math.ceil(end_fraction*np.linalg.norm(xy[i+1, :2]-xy[i, :2])/c['collision_step_m'])),
+                        int(math.ceil(inspected_duration/c['collision_time_step_sec'])))
+            for u in np.linspace(0, end_fraction, count+1):
                 t = times[i]+u*(times[i+1]-times[i])+start_delay
                 pos = xy[i]*(1-u)+xy[i+1]*u
                 angle = theta[i]*(1-u)+theta[i+1]*u
