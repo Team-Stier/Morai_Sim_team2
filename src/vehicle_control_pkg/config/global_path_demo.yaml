@@ -22,8 +22,9 @@ supervisor:
   blend_duration_sec: 0.5
   max_step_rad: 0.03
 longitudinal:
-  kp: 0.06
-  ki: 0.01
+  # Bag 2026-09-22: strengthen positive speed-error response; braking unchanged.
+  kp: 0.10
+  ki: 0.02
   brake_kp: 0.08
   integrator_limit: 10.0
   stop_brake: 0.35

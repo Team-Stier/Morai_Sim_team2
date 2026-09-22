@@ -45,6 +45,7 @@ class FrenetTest(unittest.TestCase):
         self.c['test_speed_cap_kph'] = 10.0  # Low-speed scenario fixtures.
         self.c['rddf_geometry_only'] = False  # Original map-rule scenarios.
         self.c['loop_route'] = False
+        self.c['gain_confirmation_sec'] = 0.05  # Explicit delayed-selection fixtures.
         self.p = Planner(self.c)
         s = np.arange(0., 121., .5)
         def lane(key, y):
@@ -244,6 +245,26 @@ class FrenetTest(unittest.TestCase):
         self.assertEqual(self.p.select(candidates, 1., 0.).key, 'keep')
         self.assertEqual(self.p.select(candidates, 1.04, 0.).key, 'keep')
         self.assertNotEqual(self.p.select(candidates, 1.06, 0.).key, 'keep')
+
+    def test_zero_confirmation_selects_checked_detour_without_an_extra_stop_tick(self):
+        self.c['gain_confirmation_sec'] = 0.0
+        obstacle = Obstacle(np.array([[25.,-.5,0.],[25.,0.,0.],[25.,.5,0.]]), np.zeros(2))
+        candidates = self.candidates([obstacle])
+        candidates[0].feasible = False
+        chosen = self.p.select(candidates, 1., 0.)
+        self.assertIsNotNone(chosen)
+        self.assertIsNot(chosen, candidates[0])
+        self.assertTrue(chosen.feasible)
+        self.assertTrue(math.isfinite(chosen.cost))
+        _, theta, _ = geometry(chosen.xy)
+        self.assertIsNone(self.p.collision(chosen.xy, theta, chosen.times, [obstacle]))
+
+    def test_zero_confirmation_does_not_select_when_every_path_is_blocked(self):
+        self.c['gain_confirmation_sec'] = 0.0
+        obstacle = Obstacle(np.array([[0.,0.,0.]]), np.zeros(2))
+        candidates = self.candidates([obstacle])
+        self.assertFalse(any(c.feasible for c in candidates))
+        self.assertIsNone(self.p.select(candidates, 1., 0.))
 
     def test_solid_boundary_blocks_change(self):
         boundary = np.array([[0.,1.75,0.],[120.,1.75,0.]])

@@ -1,5 +1,8 @@
 # path_planning_pkg
 
+2026-09-22 bag 기반 시간 단축 설정과 검증 한계는
+[분석 기록](docs/bag_tuning_20260922.md)을 참고한다.
+
 ## Frenet RDDF 개발 구현
 
 [Frenet Planner](docs/frenet_rddf.md)는 지정한 RDDF 14개와 전역경로를 사용해

@@ -1,0 +1,92 @@
+# 2026-09-22 주행 시간 단축 설정
+
+대상은 `2026-09-22-22-35-59.bag`(464.14초, 약 3.6 GiB)이며,
+분석 기준 코드는 `205b544`다. 주행 중인 프로세스는 재시작하지 않았다.
+설정은 다음 `./run.sh` 실행부터 적용된다.
+
+## 기록에서 확인한 현상
+
+- ControllerStatus 4,641개 중 `planned_stop` 240개, `upstream_stop_required`
+  96개, `terminal_stop_approach` 62개다. 인접 기록 시각으로 합산하면
+  각각 24.0초, 9.6초, 6.2초다. 이것은 **정지 요구 상태 시간**이며
+  실제 속도 0의 지속 시간 또는 전부 제거 가능한 손실 시간이 아니다.
+- tracking 상태 목표 속도 오차 중앙값은 +0.982 m/s다. 계획이 현재 속도에서
+  시작하고 Controller가 0.5초 앞을 보기 때문에 의도한 가속분도 포함한다.
+  이 수치만으로 정상 상태 속도 편차라고 판단하지 않는다.
+- tracking 횡방향 오차 절댓값 95백분위는 0.357 m, 최댓값은 4.683 m다.
+  이번 설정은 횡제어 이득·차량 치수를 변경하지 않는다.
+- 기본 후보는 불가능하지만 유한 비용의 유효한 대체 후보가 있는 audit가
+  14개 있었다. 0.05초 확인 대기도 실제로는 다음 후보 평가까지 기다린다.
+  이는 후보 평가 주기와 계산 시간의 영향을 받는다.
+- planning 입력 불가 상태 45개 중 기록 수신 순서로 대응한 42개는 WorldModel
+  stamp가 0.5초 이상 늦었다. 두 개는 `objects_valid=false`이며 이 중 하나는
+  stale과 중복이다. 나머지 두 개는 기록과 callback 순서 차이로 원인을
+  확정하지 못했다. 이 정지는 이번 설정만으로 해결되지 않는다.
+- 최종 명령 `valid=false`는 490개다. ROS 최종 명령 기록은 MORAI 수신·실제
+  액추에이터 적용 증거가 아니며, 거부 로그도 있으므로 전체를 UDP 손실로
+  해석하면 안 된다.
+- route progress가 두 번 순환했다(약 180.2초, 417.2초). 완전한 한 순환의
+  관측 간격은 약 237초이며 bag 전체 길이를 한 랩 시간으로 사용하지 않는다.
+
+## 변경
+
+| 항목 | 디스크 기존값 | 변경값 | 목적 |
+|---|---:|---:|---|
+| Planner acceleration_mps2 | 2.0 | 2.5 | 재출발·코너 탈출의 가속 계획 강화 |
+| Planner gain_confirmation_sec | 0.05 | 0.0 | 검사를 마친 우수 후보를 추가 평가 대기 없이 선택 |
+| 개발 Controller longitudinal/kp | 0.06 | 0.10 | 양의 속도 오차에 대한 가속 응답 강화 |
+| 개발 Controller longitudinal/ki | 0.01 | 0.02 | 재시작 시 가속 적분 이득이 낮아지는 설정 차이 해소 |
+
+분석 당시 ROS parameter server의 실행값은 kp=0.08, ki=0.02,
+follow_gap_m=10이었다. bag에는 parameter snapshot이 없으므로 이를 bag 당시
+설정으로 확정하지 않는다. 디스크의 추종 간격 12 m/2초와 정밀 충돌 거리
+50 m는 그대로다. 제동 이득, 정지 여유, 충돌 검사, 입력 freshness,
+코스 속도 정책과 공개 인터페이스도 그대로다.
+
+확인 대기를 없애도 ETA 최소 이득 1.5초와 committed 경로 유지 조건은 남는다.
+충돌·조향 검사를 통과하지 못한 후보는 선택 대상이 아니다. 제어 이득은
+`global_path_demo.yaml`을 공유하는 개발용 global-path 실행에도 적용된다.
+
+## 오프라인 비교와 한계
+
+bag의 HD Map, EgoState, Odometry, RouteContext, WorldModel을 수신 순서로
+읽고 약 3초마다 155개 장면을 추출했다. 유효한 WorldModel·epoch·age 조건을
+만족한 153개 장면을 독립 평가했다. 각 장면에서 새로운 Planner로 후보와
+충돌 검사를 계산했으므로 committed 경로·비동기 타이머·차량 응답을 재현하는
+closed-loop replay가 아니다. 평균값을 누적해 랩타임 절감으로 환산하면 안 된다.
+
+| 가속 계획 | 실행 가능 후보 없음 | 유한 ETA 있음 |
+|---|---:|---:|
+| 2.0 m/s² | 3 | 146 |
+| 2.5 m/s² | 2 | 147 |
+| 3.0 m/s² | 2 | 148 |
+
+공통 146개 장면에서 2.5 설정의 100m 목표 ETA 차이는 평균 -0.266초,
+중앙값 -0.202초이며 0.01초 이상 악화한 장면은 없었다. 3.0은 평균
+-0.442초지만 한 장면에서 악화했으며 더 큰 가속을 요구하므로 2.5를 선택했다.
+이는 디스크 설정과의 비교이지 bag 당시 실행 설정과의 동일 조건 비교가 아니다.
+
+재현 스크립트와 원시 결과는 로컬
+`/home/paik/morai-artifacts/bag-tuning-20260922/`의 `probe.py`, `probe.json`,
+`extracted.json`, `live-planner.yaml`, `live-controller.yaml`에 있다.
+스크립트의 disk 기준 설정은 변경 전 205b544 값이다.
+
+가속 PI 변경은 단위시험으로 가속·감속·정지 시 출력과 적분 reset을 검사한다.
+차량 동역학이 바뀌는 closed-loop 효과는 bag으로 검증할 수 없다. 다음 주행에서
+동일 구간의 진행 시간, 정지 상태 시간, overspeed, 횡오차와 충돌을 비교해야 한다.
+입력 stale과 실제 장애물 정지는 잔여 원인이다.
+
+## 변경 후 검증
+
+- `PYTHONNOUSERSITE=1 catkin_make -j4` 통과.
+- `run_tests_path_planning_pkg`, `run_tests_vehicle_control_pkg`,
+  `run_tests_common_msgs_pkg` 통과. 패키지별 catkin 결과는 각각
+  62 / 173 / 40 tests, errors=0, failures=0이다(catkin 집계 기준).
+- 0초 확인 설정에서도 검증된 회피 후보만 즉시 선택하고 모든 경로가 막히면
+  정지하는 단위시험을 추가했다. Controller는 가속 preview 후에도 낮아진
+  trajectory 목표와 정지 요구에 제동하는 시험을 추가했다.
+- 중앙 인터페이스 다이어그램 검사, YAML·launch·manifest·I/O SVG 파싱 통과.
+- 전체 결과 폴더에는 변경 전 생성된 별도 실패 3건이 남아 있다:
+  Visualization 2건(01:49), TF/timestamp 관측 프로필 해시 1건(12:30).
+  이번 대상 테스트의 실패가 아니며 전체 저장소 테스트 통과를 주장하지 않는다.
+- MORAI 재주행·실측 랩타임·UDP 수신 결과는 이번 변경 후 검증하지 않았다.

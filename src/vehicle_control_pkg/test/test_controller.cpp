@@ -132,3 +132,28 @@ TEST(OriginalPi, StopResetsIntegral) {
   EXPECT_DOUBLE_EQ(pi.calculate(0.0, 0.0, 0.1, true).second, 0.35);
   EXPECT_DOUBLE_EQ(pi.calculate(1.0, 0.0, 0.1, false).first, 0.082);
 }
+
+TEST(Controller, TunedAccelerationStillBrakesForLowerTrajectoryAndResetsOnStop) {
+  vehicle_control::Config config;
+  config.kp = 0.10;
+  config.ki = 0.02;
+  config.reference_preview_sec = 0.5;
+  vehicle_control::Controller controller(config);
+  auto acceleration = trajectory(5.0);
+  for (size_t i = 0; i < acceleration.speed_mps.size(); ++i)
+    acceleration.speed_mps[i] = 5.0 + 2.5 * acceleration.time_from_start[i].toSec();
+  auto out = controller.step(odometry(5.0), acceleration, ros::Time(10.0), 0.02);
+  EXPECT_TRUE(out.command.valid);
+  EXPECT_NEAR(out.status.target_speed_mps, 6.25, 1e-9);
+  EXPECT_GT(out.command.accel, 0.45);
+  EXPECT_DOUBLE_EQ(out.command.brake, 0.0);
+  out = controller.step(odometry(5.0), trajectory(4.0), ros::Time(10.0), 0.02);
+  EXPECT_DOUBLE_EQ(out.command.accel, 0.0);
+  EXPECT_NEAR(out.command.brake, 0.288, 1e-9);
+  auto stop = trajectory(0.0);
+  stop.stop_required = true;
+  out = controller.step(odometry(0.0), stop, ros::Time(10.0), 0.02);
+  EXPECT_TRUE(out.status.stop_required);
+  EXPECT_DOUBLE_EQ(out.command.accel, 0.0);
+  EXPECT_DOUBLE_EQ(out.command.brake, 0.35);
+}

@@ -1,5 +1,8 @@
 # vehicle_control_pkg
 
+2026-09-22 개발 주행 가속 이득 조정과 bag 분석 근거는
+[시간 단축 설정 기록](../path_planning_pkg/docs/bag_tuning_20260922.md)을 참고한다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
