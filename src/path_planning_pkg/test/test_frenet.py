@@ -242,8 +242,8 @@ class FrenetTest(unittest.TestCase):
         alternatives = [x for x in candidates[1:] if x.feasible and math.isfinite(x.cost)]
         self.assertTrue(alternatives)
         self.assertEqual(self.p.select(candidates, 1., 0.).key, 'keep')
-        self.assertEqual(self.p.select(candidates, 1.09, 0.).key, 'keep')
-        self.assertNotEqual(self.p.select(candidates, 1.11, 0.).key, 'keep')
+        self.assertEqual(self.p.select(candidates, 1.04, 0.).key, 'keep')
+        self.assertNotEqual(self.p.select(candidates, 1.06, 0.).key, 'keep')
 
     def test_solid_boundary_blocks_change(self):
         boundary = np.array([[0.,1.75,0.],[120.,1.75,0.]])
