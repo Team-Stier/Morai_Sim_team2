@@ -147,7 +147,11 @@ roslaunch system_bringup_pkg frenet_rddf.launch send_to_morai:=false
 ```
 
 `send_to_morai:=true`는 Controller → Safety → MORAI 경로를 활성화한다.
-입력 신선도는 `input_age_sec=0.5`다. 일반 경로는
+위치·경로 입력 신선도는 `input_age_sec=0.5`다. RDDF 형상 전용 개발 모드의
+WorldModel은 `world_model_input_age_sec=0.7`을 적용하며 그 외 모드는 0.5초다.
+공개 scene의 일반 timeout 계약은 변경하지 않고 중앙 frenet_runtime 프로필의
+개발 예외로 한정한다. 객체 점·측정시각을 보존하고 실제 경과 시간으로 예측한다.
+일반 경로는
 `minimum_active_path_hold_sec=0.5` 동안 유지하고 최신 대기 결과로 교체한다.
 정지·정지 접근 결과는 즉시 활성화한다. Controller에 발행하는 각 trajectory의
 `valid_for`는 기존 0.5초를 유지한다.

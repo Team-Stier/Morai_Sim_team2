@@ -328,6 +328,45 @@ class FrenetOutputTest(unittest.TestCase):
         config = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
         self.assertEqual(config['minimum_active_path_hold_sec'], 0.5)
         self.assertEqual(config['minimum_active_path_hold_sec'], runtime['minimum_active_path_hold_sec'])
+        self.assertEqual(config['world_model_input_age_sec'], runtime['world_model_max_input_age_sec'])
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_development_scene_jitter_tolerance_keeps_other_input_gates(self, _):
+        scenarios = [
+            # geometry-only, scene age, ego age, scene valid, matching reset, accepted
+            (True, .65, .1, True, True, True),
+            (True, .7, .1, True, True, True),
+            (True, .701, .1, True, True, False),
+            (False, .65, .1, True, True, False),
+            (True, .65, .51, True, True, False),
+            (True, .65, .1, False, True, False),
+            (True, .65, .1, True, False, False),
+            (True, -.01, .1, True, True, False),
+        ]
+        for geometry_only, age, ego_age, valid, matching, accepted in scenarios:
+            with self.subTest(geometry_only=geometry_only, age=age, ego_age=ego_age,
+                              valid=valid, matching=matching):
+                node = self.node()
+                node.c['rddf_geometry_only'] = geometry_only
+                node.static_map = None
+                node.on_map(self.static_map())
+                node.route = RouteContext(map_id='map-a', current_lane='global_route',
+                                          progress=10., comparison_goal_s=20.)
+                node.route.header.stamp = rospy.Time(100)
+                node.state[0].header.stamp = rospy.Time.from_sec(100-ego_age)
+                node.world = WorldModel(objects_valid=valid, localization_reset_id=12 if matching else 11)
+                node.world.header.stamp = rospy.Time(100)-rospy.Duration(age)
+                original_stamp = node.world.header.stamp
+                node.route_status = None
+                node.epoch = 12
+                node.planner = Planner(node.c)
+                node.audit = Output()
+                node.report = lambda reason, ready=False, latency=0.: setattr(node, 'last_ready', ready)
+                node.plan(None)
+                self.assertEqual(node.last_ready, accepted)
+                self.assertEqual(node.world.header.stamp, original_stamp)
+                if not accepted:
+                    self.assertIsNone(node.selected)
 
     def test_valid_path_leaves_active_stop_immediately(self):
         node = self.node()

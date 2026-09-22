@@ -151,9 +151,12 @@ class Node:
                 and self.route_status.state == ComponentStatus.FAULT):
             self.defer_stop('required_checkpoint_missed')
             return
+        world_max_age = (self.c.get('world_model_input_age_sec', self.c['input_age_sec']) if self.c['rddf_geometry_only']
+                         else self.c['input_age_sec'])
         if (map_id != route.map_id or not world.objects_valid or world.localization_reset_id != ego.reset_id or
                 any(not 0 <= (now-stamp).to_sec() <= self.c['input_age_sec'] for stamp in
-                    (ego.header.stamp, world.header.stamp, route.header.stamp))):
+                    (ego.header.stamp, route.header.stamp)) or
+                not 0 <= (now-world.header.stamp).to_sec() <= world_max_age):
             self.defer_stop('unusable_or_stale_planning_inputs')
             return
         if self.epoch != ego.reset_id:
