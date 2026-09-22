@@ -13,7 +13,7 @@ trajectory_valid_for_sec: 0.5
 prediction_horizon_sec: 8.0
 spatial_step_m: 0.5
 collision_step_m: 0.2
-collision_precision_distance_m: 40.0
+collision_precision_distance_m: 50.0
 obstacle_grid_cell_m: 5.0
 map_height_tolerance_m: 1.5
 map_boundary_margin_m: 15.0
@@ -37,8 +37,8 @@ lateral_acceleration_mps2: 4.0
 speed_tolerance_mps: 0.5
 stop_margin_m: 5.0
 stationary_speed_mps: 0.5
-follow_gap_m: 10.0
-follow_time_sec: 1.5
+follow_gap_m: 12.0
+follow_time_sec: 2.0
 normal_cruise_margin_kph: 2.0
 high_cruise_kph: 150.0
 object_margin_m: 0.0
