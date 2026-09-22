@@ -1,0 +1,87 @@
+{
+  "date": "2026-09-22",
+  "scope": "single development recording used for parameter selection, NOT independent validation",
+  "baseline_commit": "78345f9",
+  "truth_is_evaluation_only": true,
+  "alignment_fitted": false,
+  "blackout_definition": "GPS age at IMU measurement stamp > 0.65 seconds",
+  "truth_max_interpolation_bracket_sec": 0.15,
+  "catkin_results": {
+    "reported_tests": 128,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 1
+  },
+  "closed_loop_tunnel_rerun": false,
+  "baseline": {
+    "evidence": "single recorded development run; not general accuracy",
+    "truth_never_used_as_filter_input": true,
+    "all": {
+      "samples": 1352,
+      "rmse_m": 0.8353412870312835,
+      "max_m": 2.929186567938665,
+      "p95_m": 2.481031462290696,
+      "longitudinal_rmse_m": 0.5884363070933891,
+      "longitudinal_max_abs_m": 2.048708372578778,
+      "lateral_rmse_m": 0.5929062137584458,
+      "lateral_max_abs_m": 2.673814467517623
+    },
+    "blackout": {
+      "samples": 188,
+      "rmse_m": 2.2032298758231823,
+      "max_m": 2.929186567938665,
+      "p95_m": 2.8326728503812735,
+      "longitudinal_rmse_m": 1.531282094954111,
+      "longitudinal_max_abs_m": 2.048708372578778,
+      "lateral_rmse_m": 1.5841076451405647,
+      "lateral_max_abs_m": 2.673814467517623
+    }
+  },
+  "final": {
+    "evidence": "single recorded development run; not general accuracy",
+    "truth_never_used_as_filter_input": true,
+    "all": {
+      "samples": 1352,
+      "rmse_m": 0.2763282789957079,
+      "max_m": 0.9210838726711217,
+      "p95_m": 0.7490227804605762,
+      "longitudinal_rmse_m": 0.271312791823156,
+      "longitudinal_max_abs_m": 0.9147081896887537,
+      "lateral_rmse_m": 0.052408842439559886,
+      "lateral_max_abs_m": 0.2118635222101768
+    },
+    "blackout": {
+      "samples": 188,
+      "rmse_m": 0.6605974515296004,
+      "max_m": 0.9210838726711217,
+      "p95_m": 0.8530894388996817,
+      "longitudinal_rmse_m": 0.6488298714555824,
+      "longitudinal_max_abs_m": 0.9147081896887537,
+      "lateral_rmse_m": 0.12413215084874404,
+      "lateral_max_abs_m": 0.2118635222101768
+    }
+  },
+  "input_sha256": {
+    "bag": "b7332eed4307e0ea92a1306aa5746013159ce99e32632b538fb5388b46e8e5bf",
+    "truth": "a833bd9c207e55c2363b45165e86e05ca8c6fdb2a45396efea912d2533a24518",
+    "core": "7fb76e9b7fd9bf3466049221c0d2bd049969d41c9e30f918afc588fa3a403b7e",
+    "config": "47f9601b20cc4694aa34fdefc471966b3a9f46fea82388bee55dd77b5e3d6e80"
+  },
+  "density_sensitivity": [
+    {
+      "q": 0.5,
+      "rmse_m": 1.201388096150976,
+      "max_m": 1.6145315205360915
+    },
+    {
+      "q": 1.0,
+      "rmse_m": 0.6605974515296004,
+      "max_m": 0.9210838726711217
+    },
+    {
+      "q": 2.0,
+      "rmse_m": 0.5465073753230903,
+      "max_m": 1.0029361769423297
+    }
+  ]
+}

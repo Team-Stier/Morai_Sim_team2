@@ -8,6 +8,12 @@ gps_position_stddev_floor_m: 0.25
 gps_altitude_stddev_floor_m: 0.5
 orientation_stddev_floor_rad: 0.02
 accelerometer_noise_stddev_mps2: 0.5
+# Additional continuous white-acceleration MODEL uncertainty, not a claim about
+# IMU sensor accuracy. Fade in with bias-corrected world acceleration magnitude.
+# Quiet/constant-speed calibration retains the original bias observability.
+motion_model_spectral_density_m2ps3: 1.0
+motion_model_quiet_acceleration_mps2: 0.2
+motion_model_full_acceleration_mps2: 1.0
 initial_velocity_stddev_mps: 2.0
 # Above this value, immediately accept the GPS as a new map anchor and reset velocity.
 gps_innovation_gate_chi2: 25.0

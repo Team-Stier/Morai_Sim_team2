@@ -73,6 +73,9 @@ class EstimatorConfig:
     gps_altitude_stddev_floor_m: float = 0.5
     orientation_stddev_floor_rad: float = 0.02
     accelerometer_noise_stddev_mps2: float = 0.5
+    motion_model_spectral_density_m2ps3: float = 1.0
+    motion_model_quiet_acceleration_mps2: float = 0.2
+    motion_model_full_acceleration_mps2: float = 1.0
     initial_velocity_stddev_mps: float = 2.0
     gps_innovation_gate_chi2: float = 25.0
     ingress_timing_stddev_sec: float = 0.03
@@ -89,6 +92,8 @@ class EstimatorConfig:
     def __post_init__(self):
         if any(not math.isfinite(float(v)) or v <= 0 for v in vars(self).values()):
             raise ValueError('estimator parameters must be finite and positive')
+        if self.motion_model_full_acceleration_mps2 <= self.motion_model_quiet_acceleration_mps2:
+            raise ValueError('full motion acceleration must exceed quiet threshold')
 
 
 @dataclass
@@ -226,6 +231,17 @@ class GpsImuEstimator:
             accel_noise += attitude_acceleration_jacobian.dot(
                 0.5*(self.attitude_cov+attitude_cov)).dot(attitude_acceleration_jacobian.T)
             process_noise = G.dot(accel_noise).dot(G.T)
+            # Model/ingress-time error is not independent per-sample IMU noise.
+            # Exact continuous integration keeps this term subdivision invariant.
+            model_moments = np.array([[dt**3/3., dt**2/2.],
+                                      [dt**2/2., dt]])
+            c = self.config
+            motion_weight = float(np.clip((np.linalg.norm(world_acceleration) -
+                c.motion_model_quiet_acceleration_mps2) / (
+                c.motion_model_full_acceleration_mps2 -
+                c.motion_model_quiet_acceleration_mps2), 0., 1.))
+            model_density = c.motion_model_spectral_density_m2ps3 * motion_weight
+            process_noise[:6, :6] += np.kron(model_moments, np.eye(3)) * model_density
             # Continuous body-bias random walk integrated through position and
             # velocity. Retain cross-covariances; unknown bias must grow blackout P.
             B = np.eye(9)
@@ -242,6 +258,7 @@ class GpsImuEstimator:
             self.local_position_stddev += np.sqrt(np.maximum(
                 np.diag(self.P)[3:6], 0))*dt + np.sqrt(np.diag(
                     accel_noise+R_mid.dot(self.P[6:, 6:]).dot(R_mid.T)))*dt*dt*0.5
+            self.local_position_stddev += math.sqrt(model_density*dt**3/3.)
             self.local_position += delta_position
             self.state, self.P = candidate, candidate_cov
         self.q, self.acceleration, self.omega = q, acceleration, omega

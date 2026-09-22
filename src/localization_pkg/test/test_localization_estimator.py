@@ -220,6 +220,33 @@ class LocalizationEstimatorRuntimeTest(unittest.TestCase):
         self.assertEqual(topics, {'/rosout', '/tf', '/molit/localization/ego_state',
                                  '/molit/localization/local/odometry', '/molit/localization/status'})
 
+    def test_motion_model_blackout_publication_and_consumer(self):
+        status = self._initialize()
+        initial_variance = status.map_position_stddev_m
+        input_stamps = set()
+        for _ in range(50):
+            self._advance(self.clock + .02)
+            sample = self._imu(self.clock)
+            sample.linear_acceleration.x = 2.
+            input_stamps.add(sample.header.stamp.to_nsec())
+            self.imu_pub.publish(sample)
+            time.sleep(.02)
+        self._wait(lambda: self.status.mode == LocalizationStatus.DEAD_RECKONING)
+        status = self.status
+        stamp = status.ego_state_stamp.to_nsec()
+        self._wait(lambda: stamp in self.ego and stamp in self.odom)
+        ego = self.ego[stamp]
+        validate_pair(ego, status)
+        self.assertIn(stamp, input_stamps)
+        self.assertTrue(status.stop_required)
+        self.assertGreater(status.map_position_stddev_m, initial_variance)
+        self.assertEqual(rospy.get_param('/localization_node/motion_model_spectral_density_m2ps3'), 1.)
+        display = VehicleDisplay(DisplayConfig(reference_frame='map', display_timeout_sec=1.))
+        now_ns = status.header.stamp.to_nsec()
+        self.assertTrue(display.ingest_ego(ego, now_ns, 1.))
+        self.assertTrue(display.ingest_status(status, now_ns, 1.))
+        self.assertTrue(display.evaluate(now_ns, 1.).valid)
+
     def test_invalid_and_out_of_order_input_never_produces_bad_estimate(self):
         status = self._initialize()
         epoch = status.reset_id
