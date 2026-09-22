@@ -416,8 +416,9 @@ class FrenetOutputTest(unittest.TestCase):
         output = node.trajectory.message
         self.assertFalse(output.stop_required)
         self.assertGreater(len(output.poses),20)
-        # Left in map (+y) transforms to negative odom x at this 90-degree pose.
-        self.assertLess(min(p.position.x for p in output.poses),99.)
+        # Map lateral offset transforms to negative odom x at this 90-degree pose.
+        direction = np.sign(float(node.planner.committed.key.split(':')[1]))
+        self.assertGreater(max(direction*(100.-p.position.x) for p in output.poses),1.)
         wire = io.BytesIO()
         output.serialize(wire)
         decoded = type(output)().deserialize(wire.getvalue())

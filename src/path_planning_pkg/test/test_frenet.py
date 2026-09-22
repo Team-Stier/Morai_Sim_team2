@@ -107,6 +107,29 @@ class FrenetTest(unittest.TestCase):
         self.assertTrue(chosen.key.startswith('detour:'))
         self.assertIs(self.p.committed, chosen)
 
+    def test_detours_choose_either_side_when_opposite_side_is_blocked(self):
+        for blocked_side in (-1., 1.):
+            with self.subTest(blocked_side=blocked_side):
+                planner = Planner(self.c)
+                base = planner.candidates(self.lanes, [], 'global_route', 0., 80.,
+                                          np.zeros(3), 0., 0.)[0]
+                box = Obstacle(np.array([[9., y, 0.] for y in np.linspace(-.5,.5,11)]),
+                               np.zeros(2), True)
+                wall = Obstacle(np.array([[x, blocked_side*y, 0.]
+                    for x in np.arange(1.,25.,.5) for y in np.arange(1.,5.,.25)]),
+                    np.zeros(2), True)
+                objects = [box,wall]
+                planner.evaluate(base,0.,objects,[],80.)
+                detours = planner.obstacle_detours(base,objects)
+                offsets = {float(c.key.split(':')[1]) for c in detours}
+                self.assertEqual(offsets, {-3.5,-2.5,-1.5,1.5,2.5,3.5})
+                evaluated = [planner.evaluate(c,0.,objects,[],80.) for c in detours]
+                planner.select([base]+evaluated,1.,0.)
+                chosen = planner.select([base]+evaluated,2.,0.)
+                self.assertIsNotNone(chosen)
+                self.assertTrue(math.isfinite(chosen.cost))
+                self.assertLess(float(chosen.key.split(':')[1])*blocked_side,0.)
+
     def test_local_detour_never_bypasses_a_fully_blocked_corridor(self):
         base = self.p.candidates(self.lanes, [], 'global_route', 0., 80.,
                                  np.array([0.,0.,0.]), 0., 0.)[0]
