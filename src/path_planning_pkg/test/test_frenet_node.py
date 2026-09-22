@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import numpy as np
 import rospy
 import yaml
-from common_msgs_pkg.msg import EgoState, HdMap, RouteLane, RouteContext, WorldModel, ComponentStatus
+from common_msgs_pkg.msg import EgoState, HdMap, RouteLane, RouteContext, WorldModel, ComponentStatus, TrackedObject
 from geometry_msgs.msg import PoseStamped, Point, Point32, Polygon
 from nav_msgs.msg import Odometry
 from path_planning_pkg.frenet import Candidate, Planner
@@ -335,6 +335,49 @@ class FrenetOutputTest(unittest.TestCase):
         candidate = node.selected
         node.offer_selection(candidate, rospy.Time(102), reset_id=11)
         self.assertEqual(node.selected_stamp, rospy.Time(100))
+
+    def test_world_model_box_selects_and_publishes_local_detour(self):
+        node = self.node()
+        node.c['rddf_geometry_only'] = True
+        message = self.static_map()
+        lane = message.lanes[0]
+        lane.route_s = list(np.arange(0.,151.,.5))
+        lane.centerline.poses = []
+        lane.speed_limits_mps = [16.]*len(lane.route_s)
+        for x in lane.route_s:
+            p = PoseStamped()
+            p.pose.position.x, p.pose.orientation.w = x, 1.
+            lane.centerline.poses.append(p)
+        node.static_map = None
+        node.on_map(message)
+        node.route = RouteContext(map_id='map-a',current_lane='global_route',progress=10.,comparison_goal_s=110.)
+        obj = TrackedObject(points=[Point(19., y, 0.) for y in [-.25,.5,1.2]],velocity_valid=True)
+        node.world = WorldModel(objects_valid=True,localization_reset_id=12,objects=[obj])
+        node.route_status = None
+        node.epoch = 12
+        node.planner = Planner(node.c)
+        node.audit = Output()
+        node.report = lambda *args: None
+        for sec in [100.,101.]:
+            stamp = rospy.Time.from_sec(sec)
+            node.state[0].header.stamp = node.route.header.stamp = node.world.header.stamp = obj.source_stamp = stamp
+            node.last_lane_change_evaluation = -np.inf
+            with patch.object(rospy.Time,'now',return_value=stamp):
+                node.plan(None)
+                node.publish(None)
+        self.assertTrue(node.planner.committed.key.startswith('detour:'))
+        with patch.object(rospy.Time,'now',return_value=rospy.Time(102)):
+            node.publish(None)
+        output = node.trajectory.message
+        self.assertFalse(output.stop_required)
+        self.assertGreater(len(output.poses),20)
+        # Left in map (+y) transforms to negative odom x at this 90-degree pose.
+        self.assertLess(min(p.position.x for p in output.poses),99.)
+        wire = io.BytesIO()
+        output.serialize(wire)
+        decoded = type(output)().deserialize(wire.getvalue())
+        self.assertEqual(len(decoded.speed_mps),len(decoded.poses))
+        self.assertTrue(np.all(np.diff([t.to_sec() for t in decoded.time_from_start])>0))
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
     def test_remaining_terminal_geometry_has_no_single_point_crash(self, _):

@@ -50,3 +50,10 @@ wheelbase_m: 3.0
 max_steering_rad: 0.6981317007977318
 max_steering_rate_rps: 1.5
 input_age_sec: 0.5
+# Local out-and-back candidates when a static cluster blocks the current RDDF.
+local_detour_enabled: true
+# Positive is left of the directed RDDF; current roadside-box trial uses the road side.
+local_detour_offsets_m: [1.5, 2.5, 3.5]
+local_detour_transition_m: [8.0, 12.0, 16.0]
+local_detour_clearance_m: 2.0
+local_detour_speed_kph: 10.0

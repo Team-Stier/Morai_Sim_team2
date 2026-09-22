@@ -352,6 +352,44 @@ class Planner:
                     make('%s:%.1f:%.1f'%(window.target, prepare, duration), window.target, d, limits, changes, back_end if changes==2 else stop, return_start)
         return results
 
+    def obstacle_detours(self, reference, objects):
+        """Return to the current RDDF after a nearby static measured obstruction."""
+        c = self.c
+        if not c.get('local_detour_enabled', False):
+            return []
+        s, theta, _ = candidate_geometry(reference)
+        hits = []
+        for obj in objects:
+            if obj.velocity_valid and np.linalg.norm(obj.velocity[:2]) > c['stationary_speed_mps']:
+                continue
+            points = obj.points.copy()
+            if obj.velocity_valid:
+                points[:, :2] += obj.age*obj.velocity[:2]
+            hits.extend(i for i in np.flatnonzero(s <= c['collision_precision_distance_m'])
+                        if footprint_hit(points, reference.xy[i], theta[i], c))
+        if not hits:
+            return []
+        normal = np.column_stack((-np.sin(theta), np.cos(theta)))
+        results = []
+        for length in c['local_detour_transition_m']:
+            return_begin = max(length, s[max(hits)]+c['local_detour_clearance_m'])
+            finish = return_begin+length
+            if finish >= min(s[-1], c['collision_precision_distance_m']):
+                continue
+            weight = smooth(s/length)*(1-smooth((s-return_begin)/length))
+            for offset in c['local_detour_offsets_m']:
+                xyz = reference.xy.copy()
+                xyz[:, :2] += (offset*weight)[:, None]*normal
+                limits = reference.limits.copy()
+                maneuver = s <= finish
+                limits[maneuver] = np.minimum(
+                    np.where(limits[maneuver] < 0, math.inf, limits[maneuver]),
+                    c['local_detour_speed_kph']/3.6+c['normal_cruise_margin_kph']/3.6)
+                results.append(Candidate('detour:%.1f:%.1f' % (offset, length), reference.target,
+                    xyz, reference.route_s.copy(), limits, 2,
+                    float(np.interp(finish, s, reference.route_s))))
+        return results
+
     def profile(self, candidate, speed, stop=math.inf, cap=None):
         c = self.c
         s, theta, curvature = candidate_geometry(candidate)

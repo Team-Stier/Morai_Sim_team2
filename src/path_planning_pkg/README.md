@@ -11,6 +11,10 @@
 첫 점을 차량 위치로 강제 이동하여 추종 오차를 숨기거나 꺾임을 만들지 않는다.
 Localization reset 시 활성·대기 경로를 폐기하고 새 상태로 계산한 경로를 기다린다.
 
+정적 LiDAR 클러스터로 RDDF 유지 경로가 막히면 근거리 우회·복귀 후보도 비교한다.
+`local_detour_offsets_m`의 양수는 RDDF 왼쪽이며 현재 상자 시험은 왼쪽 후보만
+사용한다. 회피 구간은 최대 10 km/h이며 차량 footprint 충돌·조향 한계를 검사한다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.

@@ -84,6 +84,45 @@ class FrenetTest(unittest.TestCase):
         self.assertEqual(self.p.select(candidates, 1., 0.).key, 'keep')
         self.assertTrue(math.isfinite(candidates[0].cost))
 
+    def test_static_box_detour_without_adjacent_rddf_window(self):
+        base = self.p.candidates(self.lanes, [], 'global_route', 0., 80.,
+                                 np.array([0.,0.,0.]), 0., 0.)[0]
+        box = Obstacle(np.array([[9.,-.25,0.],[9.,.5,0.],[9.,1.2,0.]]), np.zeros(2), True)
+        self.p.evaluate(base, 0., [box], [], 80.)
+        self.assertFalse(math.isfinite(base.cost))
+        detours = self.p.obstacle_detours(base, [box])
+        evaluated = [self.p.evaluate(x, 0., [box], [], 80.) for x in detours]
+        clear = [x for x in evaluated if x.feasible and math.isfinite(x.cost)]
+        self.assertTrue(clear)
+        for candidate in clear:
+            s, theta, curvature = geometry(candidate.xy)
+            np.testing.assert_allclose(candidate.xy[[0,-1]], base.xy[[0,-1]])
+            self.assertIsNone(self.p.collision(candidate.xy, theta, candidate.times, [box]))
+            self.assertLessEqual(np.max(np.abs(np.arctan(3*curvature))), self.c['max_steering_rad'])
+            self.assertLessEqual(np.max(candidate.speed[candidate.route_s <= candidate.change_end]),
+                                 self.c['local_detour_speed_kph']/3.6+1e-8)
+        candidates = [base]+evaluated
+        self.assertIs(self.p.select(candidates, 1., 0.), base)
+        chosen = self.p.select(candidates, 2., 0.)
+        self.assertTrue(chosen.key.startswith('detour:'))
+        self.assertIs(self.p.committed, chosen)
+
+    def test_local_detour_never_bypasses_a_fully_blocked_corridor(self):
+        base = self.p.candidates(self.lanes, [], 'global_route', 0., 80.,
+                                 np.array([0.,0.,0.]), 0., 0.)[0]
+        wall = Obstacle(np.array([[9., y, 0.] for y in np.arange(-7.,7.,.2)]), np.zeros(2), False)
+        evaluated = [self.p.evaluate(x, 0., [wall], [], 80.)
+                     for x in self.p.obstacle_detours(base, [wall])]
+        self.assertTrue(evaluated)
+        self.assertFalse(any(x.feasible and math.isfinite(x.cost) for x in evaluated))
+
+    def test_local_detours_only_for_static_obstruction(self):
+        base = self.p.candidates(self.lanes, [], 'global_route', 0., 80.,
+                                 np.array([0.,0.,0.]), 0., 0.)[0]
+        moving = Obstacle(np.array([[9.,0.,0.]]), np.array([3.,0.]), True)
+        self.assertEqual(self.p.obstacle_detours(base, [moving]), [])
+        self.assertEqual(self.p.obstacle_detours(base, []), [])
+
     def test_loop_candidate_continues_across_identical_endpoints(self):
         self.c['loop_route']=True
         angles=np.linspace(0.,2*math.pi,1001)

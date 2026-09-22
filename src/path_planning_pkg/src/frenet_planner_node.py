@@ -187,10 +187,9 @@ class Node:
         if committed is not None:
             end_s = committed.change_end
             if progress < end_s:
-                i = min(np.searchsorted(committed.route_s, progress), len(committed.route_s)-3)
+                i = max(0, min(np.searchsorted(committed.route_s, progress)-1, len(committed.route_s)-3))
                 held = Candidate('committed', committed.target, committed.xy[i:].copy(), committed.route_s[i:].copy(),
                                  committed.limits[i:].copy(), committed.changes, committed.change_end, committed.return_start)
-                held.xy[0] = position
                 candidates.append(held)
             else:
                 self.planner.committed = None
@@ -227,6 +226,8 @@ class Node:
             return
 
         self.last_lane_change_evaluation = time.monotonic()
+        if not math.isfinite(candidates[0].cost) and self.planner.committed is None:
+            candidates.extend(self.planner.obstacle_detours(candidates[0], objects))
         for candidate in candidates:
             if candidate is not fast:
                 evaluate(candidate)
