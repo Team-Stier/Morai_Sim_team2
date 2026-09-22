@@ -40,6 +40,26 @@ class FrenetTest(unittest.TestCase):
         candidates = self.candidates()
         self.assertTrue(any(c.changes == 1 and c.feasible and c.target == 'side' for c in candidates))
 
+    def test_short_rddf_returns_before_endpoint_on_curved_reference(self):
+        self.c['rddf_geometry_only'] = True
+        s = np.arange(0.,151.,.5)
+        angle = s/70.
+        ref = np.column_stack((70*np.sin(angle),70*(1-np.cos(angle)),s*0))
+        normal = np.column_stack((-np.sin(angle),np.cos(angle),s*0))
+        lanes = {'global_route':Lane('global_route',ref,s,s*0+16.)}
+        mask = s <= 80.
+        lanes['side'] = Lane('side',(ref+normal*3.5)[mask],s[mask],s[mask]*0+16.)
+        ego = lanes['side'].xy[80]
+        candidate = self.p.candidates(lanes, [], 'side', 40., 120., ego,40/70.,5.)[0]
+        after = candidate.route_s >= 80.
+        expected = np.column_stack([np.interp(candidate.route_s[after],s,ref[:,i]) for i in range(3)])
+        np.testing.assert_allclose(candidate.xy[after],expected,atol=1e-8)
+        np.testing.assert_allclose(candidate.xy[0],ego)
+        self.assertEqual(candidate.target,'global_route')
+        self.assertEqual(candidate.changes,1)
+        self.assertLess(candidate.change_end,80.)
+        self.assertLess(np.max(np.abs(np.arctan(3*geometry(candidate.xy)[2]))),self.c['max_steering_rad'])
+
     def test_quintic_boundary_conditions(self):
         q = np.array([0., 1e-5, 19.99999, 20.])
         d = quintic(1., .2, 3.5, 20., q)

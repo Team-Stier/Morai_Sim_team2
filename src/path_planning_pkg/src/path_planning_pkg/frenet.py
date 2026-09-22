@@ -296,8 +296,20 @@ class Planner:
                 limits[-1] = 0.
             results.append(Candidate(key, target, xyz, qs.copy(), limits, changes, change_end, return_start))
 
-        make('keep', current, source_d, source_limits)
         nominal = max(speed, c['lane_change_speed_mps'])
+        if c['rddf_geometry_only'] and current != 'global_route' and source.s[-1] < end:
+            # np.interp holds a short RDDF's endpoint beyond its domain. Its
+            # projection on a turning reference is not a continuation lane.
+            # Finish the return while the source RDDF still exists.
+            return_end = source.s[-1]-c['front_overhang_m']
+            return_start = return_end-max(c['connection_m'], nominal*max(c['change_times_sec']))
+            return_weight = smooth((qs-return_start)/(return_end-return_start))
+            keep_d = source_d*(1-return_weight)
+            reference_limits = np.interp(qs, reference.s, reference.limits)
+            keep_limits = np.where(qs >= return_end, reference_limits, source_limits)
+            make('keep', 'global_route', keep_d, keep_limits, 1, return_end, return_start)
+        else:
+            make('keep', current, source_d, source_limits)
         for window in windows:
             if window.source != current or window.target not in lanes:
                 continue
