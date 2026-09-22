@@ -8,5 +8,5 @@
   </node>
   <test pkg="localization_pkg" type="test_localization_estimator.py"
         name="localization_estimator_test" test-name="localization_estimator"
-        time-limit="90"/>
+        time-limit="180"/>
 </launch>

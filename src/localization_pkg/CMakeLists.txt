@@ -54,6 +54,7 @@ if(CATKIN_ENABLE_TESTING)
   add_rostest(test/localization_node_diagnostic.test)
   add_rostest(test/localization_estimator.test)
   catkin_add_nosetests(test/test_live_estimator_core.py)
+  catkin_add_nosetests(test/test_blackout_drift.py)
 endif()
 
 install(TARGETS localization_ekf localization_node

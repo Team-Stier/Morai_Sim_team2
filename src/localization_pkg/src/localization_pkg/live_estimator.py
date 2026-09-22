@@ -1,11 +1,12 @@
 """Measurement-time GPS/IMU position filter and continuous local odometry.
 
-The six Kalman states are map position and velocity. Attitude is an external
-IMU observation, not an unobservable attitude/bias estimate. GPS position
+The nine Kalman states are map position, velocity and body accelerometer bias.
+Attitude is an external IMU observation, not an estimated attitude. GPS position
 corrections affect map pose; local position accumulates prediction increments
 only. Its deliberately conservative uncertainty budget does not shrink when
 GPS corrects map position. This development estimator is not a driving gate.
 """
+from collections import deque
 from dataclasses import dataclass
 import math
 
@@ -75,6 +76,15 @@ class EstimatorConfig:
     initial_velocity_stddev_mps: float = 2.0
     gps_innovation_gate_chi2: float = 25.0
     ingress_timing_stddev_sec: float = 0.03
+    initial_accelerometer_bias_stddev_mps2: float = 0.3
+    accelerometer_bias_random_walk_mps2_sqrt_sec: float = 0.005
+    stationary_window_sec: float = 2.0
+    stationary_gps_radius_m: float = 0.08
+    stationary_speed_mps: float = 0.15
+    stationary_acceleration_mps2: float = 0.15
+    stationary_angular_rate_radps: float = 0.02
+    stationary_velocity_stddev_mps: float = 0.10
+    stationary_gps_stddev_m: float = 0.6
 
     def __post_init__(self):
         if any(not math.isfinite(float(v)) or v <= 0 for v in vars(self).values()):
@@ -130,8 +140,11 @@ class GpsImuEstimator:
         self.last_seen_gps_stamp = None
         self.last_imu = None
         self.pending_gps = None
-        self.state = np.zeros(6)
-        self.P = np.eye(6)
+        self.state = np.zeros(9)
+        self.P = np.eye(9)
+        self.stationary_gps = deque(maxlen=256)
+        self.quiet_since = None
+        self.last_stationary_update = None
         self.local_position = np.zeros(3)
         self.local_position_stddev = np.zeros(3)
         self.q = np.array([0., 0., 0., 1.])
@@ -174,9 +187,15 @@ class GpsImuEstimator:
         noise += arm_jacobian.dot(attitude_cov).dot(arm_jacobian.T)
         self.state[:3] = antenna - R.dot(self.gps_translation)
         self.state[3:] = 0.
-        self.P = np.zeros((6, 6))
+        self.P = np.zeros((9, 9))
         self.P[:3, :3] = noise
-        self.P[3:, 3:] = np.eye(3)*self.config.initial_velocity_stddev_mps**2
+        self.P[3:6, 3:6] = np.eye(3)*self.config.initial_velocity_stddev_mps**2
+        self.P[6:, 6:] = np.eye(3)*self.config.initial_accelerometer_bias_stddev_mps2**2
+        # A relocation is not evidence that the vehicle stopped. Discard all
+        # previous motion/calibration evidence, while preserving local odometry.
+        self.stationary_gps.clear()
+        self.quiet_since = None
+        self.last_stationary_update = None
         self.q, self.acceleration, self.omega = q, acceleration, omega
         self.attitude_cov, self.omega_cov = attitude_cov, omega_cov
         self.stamp, self.last_gps_stamp = gps.stamp, gps.stamp
@@ -190,31 +209,90 @@ class GpsImuEstimator:
         q, acceleration, omega, attitude_cov, omega_cov = values
         if dt > 0:
             R_mid = rotation(slerp(self.q, q, 0.5))
-            specific_force = 0.5*(self.acceleration+acceleration)
+            specific_force = 0.5*(self.acceleration+acceleration)-self.state[6:]
             world_acceleration = R_mid.dot(specific_force) - np.array(
                 [0., 0., self.config.gravity_mps2])
-            delta_position = self.state[3:]*dt + world_acceleration*dt*dt*0.5
+            delta_position = self.state[3:6]*dt + world_acceleration*dt*dt*0.5
             candidate = self.state.copy()
             candidate[:3] += delta_position
-            candidate[3:] += world_acceleration*dt
-            F = np.eye(6)
-            F[:3, 3:] = np.eye(3)*dt
-            G = np.vstack((np.eye(3)*0.5*dt*dt, np.eye(3)*dt))
+            candidate[3:6] += world_acceleration*dt
+            F = np.eye(9)
+            F[:3, 3:6] = np.eye(3)*dt
+            F[:3, 6:] = -R_mid*0.5*dt*dt
+            F[3:6, 6:] = -R_mid*dt
+            G = np.vstack((np.eye(3)*0.5*dt*dt, np.eye(3)*dt, np.zeros((3, 3))))
             attitude_acceleration_jacobian = -R_mid.dot(skew(specific_force))
             accel_noise = np.eye(3)*self.config.accelerometer_noise_stddev_mps2**2
             accel_noise += attitude_acceleration_jacobian.dot(
                 0.5*(self.attitude_cov+attitude_cov)).dot(attitude_acceleration_jacobian.T)
-            candidate_cov = covariance(F.dot(self.P).dot(F.T)+G.dot(accel_noise).dot(G.T), 6)
+            process_noise = G.dot(accel_noise).dot(G.T)
+            # Continuous body-bias random walk integrated through position and
+            # velocity. Retain cross-covariances; unknown bias must grow blackout P.
+            B = np.eye(9)
+            B[:3, :3] = B[3:6, 3:6] = -R_mid
+            moments = np.array([[dt**5/20, dt**4/8, dt**3/6],
+                                [dt**4/8, dt**3/3, dt**2/2],
+                                [dt**3/6, dt**2/2, dt]])
+            process_noise += (B.dot(np.kron(moments, np.eye(3))).dot(B.T) *
+                              self.config.accelerometer_bias_random_walk_mps2_sqrt_sec**2)
+            candidate_cov = covariance(F.dot(self.P).dot(F.T)+process_noise, 9)
             if not np.isfinite(candidate).all():
                 raise ValueError('nonfinite filter state')
             # Fully correlated integral bound, not an overconfident cloned map P.
             self.local_position_stddev += np.sqrt(np.maximum(
-                np.diag(self.P)[3:], 0))*dt + np.sqrt(np.diag(accel_noise))*dt*dt*0.5
+                np.diag(self.P)[3:6], 0))*dt + np.sqrt(np.diag(
+                    accel_noise+R_mid.dot(self.P[6:, 6:]).dot(R_mid.T)))*dt*dt*0.5
             self.local_position += delta_position
             self.state, self.P = candidate, candidate_cov
         self.q, self.acceleration, self.omega = q, acceleration, omega
         self.attitude_cov, self.omega_cov = attitude_cov, omega_cov
         self.stamp = stamp
+        c = self.config
+        residual_accel = rotation(q).dot(acceleration-self.state[6:]) - np.array(
+            [0., 0., c.gravity_mps2])
+        if (np.linalg.norm(residual_accel) > c.stationary_acceleration_mps2 or
+                np.linalg.norm(omega) > c.stationary_angular_rate_radps):
+            self.quiet_since = None
+            self.stationary_gps.clear()
+        elif self.quiet_since is None:
+            self.quiet_since = stamp
+
+    def _correct_stationary(self, position, noise):
+        """GPS-supported soft ZUPT, once per new fix, never from quiet IMU alone.
+
+        No position pinning and no repeated stale zero-speed observations during
+        blackout. Motion in a tunnel remains inertial until another independently
+        validated speed source is available.
+        """
+        c = self.config
+        if (self.quiet_since is None or
+                np.sqrt(np.linalg.eigvalsh(noise).max()) > c.stationary_gps_stddev_m):
+            self.stationary_gps.clear()
+            return
+        # Only contiguous fixes count; integration bound comes from central timing.
+        if self.stationary_gps and self.stamp-self.stationary_gps[-1][0] > c.max_integration_step_sec:
+            self.stationary_gps.clear()
+        self.stationary_gps.append((self.stamp, position.copy()))
+        while len(self.stationary_gps) > 1 and self.stamp-self.stationary_gps[1][0] >= c.stationary_window_sec:
+            self.stationary_gps.popleft()
+        if (len(self.stationary_gps) < 5 or
+                self.stamp-self.stationary_gps[0][0] < c.stationary_window_sec or
+                self.stamp-self.quiet_since < c.stationary_window_sec or
+                np.linalg.norm(self.state[3:6]) > c.stationary_speed_mps):
+            return
+        positions = np.array([p for _, p in self.stationary_gps])
+        if np.max(np.linalg.norm(positions-positions[0], axis=1)) > c.stationary_gps_radius_m:
+            return
+        H = np.zeros((3, 9))
+        H[:, 3:6] = np.eye(3)
+        noise = np.eye(3)*c.stationary_velocity_stddev_mps**2
+        innovation = H.dot(self.P).dot(H.T)+noise
+        gain = np.linalg.solve(innovation, H.dot(self.P)).T
+        candidate = self.state-gain.dot(self.state[3:6])
+        A = np.eye(9)-gain.dot(H)
+        candidate_cov = covariance(A.dot(self.P).dot(A.T)+gain.dot(noise).dot(gain.T), 9)
+        self.state, self.P = candidate, candidate_cov
+        self.last_stationary_update = self.stamp
 
     def process_imu(self, sample):
         try:
@@ -237,6 +315,8 @@ class GpsImuEstimator:
             self.last_rejection = ''
             return True
         except (ValueError, np.linalg.LinAlgError) as error:
+            self.quiet_since = None
+            self.stationary_gps.clear()
             self.last_rejection = str(error)
             return False
 
@@ -265,7 +345,7 @@ class GpsImuEstimator:
             R = rotation(self.q)
             arm_jacobian = -R.dot(skew(self.gps_translation))
             noise += arm_jacobian.dot(self.attitude_cov).dot(arm_jacobian.T)
-            noise += np.outer(self.state[3:], self.state[3:])*self.config.ingress_timing_stddev_sec**2
+            noise += np.outer(self.state[3:6], self.state[3:6])*self.config.ingress_timing_stddev_sec**2
             position = antenna-R.dot(self.gps_translation)
             residual = position-self.state[:3]
             innovation = self.P[:3, :3]+noise
@@ -283,12 +363,13 @@ class GpsImuEstimator:
                 return True
             gain = np.linalg.solve(innovation, self.P[:, :3].T).T
             candidate = self.state+gain.dot(residual)
-            H = np.hstack((np.eye(3), np.zeros((3, 3))))
-            A = np.eye(6)-gain.dot(H)
-            candidate_cov = covariance(A.dot(self.P).dot(A.T)+gain.dot(noise).dot(gain.T), 6)
+            H = np.hstack((np.eye(3), np.zeros((3, 6))))
+            A = np.eye(9)-gain.dot(H)
+            candidate_cov = covariance(A.dot(self.P).dot(A.T)+gain.dot(noise).dot(gain.T), 9)
             if not np.isfinite(candidate).all():
                 raise ValueError('nonfinite GPS correction')
             self.state, self.P = candidate, candidate_cov
+            self._correct_stationary(position, noise)
             self.last_gps_stamp = sample.stamp
             self.gps_diagnostic = ""
             self.last_rejection = ''
@@ -301,7 +382,7 @@ class GpsImuEstimator:
         if not self.initialized:
             return None
         R = rotation(self.q)
-        velocity_body = R.T.dot(self.state[3:])
+        velocity_body = R.T.dot(self.state[3:6])
         map_cov = np.zeros((6, 6))
         map_cov[:3, :3], map_cov[3:, 3:] = self.P[:3, :3], self.attitude_cov
         local_cov = np.zeros((6, 6))
@@ -309,7 +390,7 @@ class GpsImuEstimator:
         local_cov[3:, 3:] = self.attitude_cov
         twist_cov = np.zeros((6, 6))
         J = skew(velocity_body)
-        twist_cov[:3, :3] = R.T.dot(self.P[3:, 3:]).dot(R)+J.dot(self.attitude_cov).dot(J.T)
+        twist_cov[:3, :3] = R.T.dot(self.P[3:6, 3:6]).dot(R)+J.dot(self.attitude_cov).dot(J.T)
         twist_cov[3:, 3:] = self.omega_cov
         # Odom axes remain aligned with map ENU, so its rotation is identity.
         # This is exactly T_map_base * inverse(T_odom_base), with both poses
