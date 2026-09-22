@@ -68,7 +68,12 @@ class RouteProgress:
 
     def update(self, point, yaw):
         heading = (math.cos(yaw), math.sin(yaw))
-        if self.progress is None:
+        if self.config.get('rddf_geometry_only', False):
+            # Development driving starts from the measured position, including
+            # repositioning behind a previously reached station.
+            _, self.progress = project(point, self.reference, self.reference_arc)
+            self.missed_checkpoint = False
+        elif self.progress is None:
             _, self.progress = project(point, self.reference, self.reference_arc, heading=heading)
             if self.config['initialize_from_current_position']:
                 self.next_checkpoint = bisect.bisect_left(self.checkpoint_s, self.progress-self.radius)

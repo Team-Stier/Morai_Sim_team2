@@ -65,6 +65,8 @@ class RouteManagerNode:
         ego = self.ego
         if self.reset_id != ego.reset_id:
             self.progress.previous_point = None
+            if self.config['rddf_geometry_only']:
+                self.progress.progress = None
             self.reset_id = ego.reset_id
         pose = ego.pose.pose
         q = pose.orientation

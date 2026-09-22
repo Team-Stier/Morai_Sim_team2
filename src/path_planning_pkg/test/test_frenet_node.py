@@ -145,6 +145,19 @@ class FrenetOutputTest(unittest.TestCase):
         result=RouteProgress(lanes,[],0.,config).update((197.1,0.,0.),0.)
         self.assertTrue(result['route_complete'])
 
+    def test_geometry_route_restarts_at_nearest_station_after_reposition(self):
+        from global_route_manager_pkg.progress import RouteProgress
+        lanes=[dict(id='global_route',points=[(0.,0.,0.),(200.,0.,0.)],route_s=[0.,200.])]
+        config=dict(rddf_geometry_only=True,initialize_from_current_position=True,
+                    matching_backward_m=15.,matching_forward_m=120.,comparison_distance_m=100.,
+                    route_completion_tolerance_m=3.)
+        route=RouteProgress(lanes,[],0.,config)
+        self.assertTrue(route.update((199.,0.,0.),0.)['route_complete'])
+        result=route.update((20.,1.,0.),0.)
+        self.assertAlmostEqual(result['progress'],20.)
+        self.assertFalse(result['route_complete'])
+        self.assertFalse(route.missed_checkpoint)
+
     @patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.75))
     def test_plan_remains_active_until_a_new_result(self, _):
         node = self.node()
