@@ -1,5 +1,14 @@
 # Frenet RDDF Planner
 
+## 2026-09-23 경로 최소 유지 시간
+
+일반 경로 최소 유지 시간을 0.5초로 설정하고 중앙 runtime 프로필과 동기화했다.
+최신 대기 결과의 경계 시점 적용, 정지 시 대기 결과 폐기, 활성 경로 재검사,
+시간 역행과 기존 Localization reset 처리를 검사했다. catkin 빌드와
+Planner 75 / Controller 173 / Common Messages 40개 테스트, 중앙 공개 계약
+29개 테스트와 다이어그램 검사가 통과했다. 실제 MORAI 주행에서의 끊김 개선은
+아직 검증하지 않았으며 다음 실행부터 적용된다.
+
 ## 2026-09-22 bag 정지 회귀 수정
 
 같은 주행 기록으로 불필요한 정지를 재검증한 결과와 한계는
@@ -138,7 +147,9 @@ roslaunch system_bringup_pkg frenet_rddf.launch send_to_morai:=false
 ```
 
 `send_to_morai:=true`는 Controller → Safety → MORAI 경로를 활성화한다.
-입력 신선도는 `input_age_sec=0.5`, 새 계산 결과는 경로·감속·정지 모두 즉시 활성화한다. Controller에 발행하는 각 trajectory의
+입력 신선도는 `input_age_sec=0.5`다. 일반 경로는
+`minimum_active_path_hold_sec=0.5` 동안 유지하고 최신 대기 결과로 교체한다.
+정지·정지 접근 결과는 즉시 활성화한다. Controller에 발행하는 각 trajectory의
 `valid_for`는 기존 0.5초를 유지한다.
 `/path_planner_node/candidate_costs`는 비용·제외 사유를 담은 private 진단이다.
 RViz는 private `/path_planner_node/trajectory_markers`에서 실제 Controller로
@@ -178,8 +189,14 @@ Planner consumer까지의 연결과 작은 메시지 직렬화를 포함한다.
 분리한다. 출력은 기존 10 Hz를 유지하므로 전체 후보 계산 중에도 먼저 완료된
 경로를 계속 발행한다.
 
-새 계산 결과는 완료 즉시 활성 경로를 교체한다. 별도 보관·대기 시간은 없다.
-정지 결과와 입력 사용 불가 판정도 즉시 활성화하며 다음 10 Hz 발행에 반영한다.
+2026-09-23 사용자 요청으로 일반 경로는 최소 0.5초 유지한다. 그동안 계산된
+결과는 하나의 최신 대기 슬롯에 덮어쓰며, 경계 이후 첫 10 Hz 발행에서 활성화한다.
+시작·정지에서의 재출발은 대기하지 않는다. 미래 속도 0을 포함한 정지 접근과
+명시적 정지 결과는 유지 시간을 우선하지 않고 즉시 반영한다.
+유지 중인 실제 활성 경로를 최신 WorldModel로 다시 검사하며 충돌 위험이나
+입력 사용 불가는 즉시 반영하고 대기 결과를 폐기한다. Localization reset과
+ROS 시간 역행도 활성·대기 경로를 폐기한다. 경로 발행은 계속 10 Hz이므로
+Controller의 trajectory 유효기간을 0.5초 이상으로 늘리는 변경은 아니다.
 빠른 후보의 형상 평가 실패만으로는 전체 탐색이 끝나기 전에 선택 경로를 비우지
 않는다. 대안 평가가 끝난 뒤 선택 결과를 한 번에 적용하며, 최종 후보가 없으면
 정지한다. 충돌 예측·제동거리 부족·충돌 없는 정지 불가·금지 경계 침범은

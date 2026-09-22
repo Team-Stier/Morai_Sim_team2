@@ -116,9 +116,18 @@ class Node:
         self.status.publish(m)
 
     def offer_selection(self, candidate, completed, reset_id=None):
-        """Activate every completed result immediately, including stop results."""
+        """Hold normal paths; stop results override and discard pending motion."""
         with self.lock:
             if reset_id is not None and self.state[0].reset_id != reset_id:
+                return
+            stopping = candidate is None or bool(np.any(candidate.speed <= 0.))
+            active_stop = self.selected is None or bool(np.any(self.selected.speed <= 0.))
+            age = (completed-self.selected_stamp).to_sec() if self.selected_stamp is not None else math.inf
+            if (not stopping and not active_stop and
+                    0. <= age < self.c['minimum_active_path_hold_sec']):
+                self.pending_selection = candidate
+                self.pending_selection_stamp = completed
+                self.pending_selection_set = True
                 return
             self.selected, self.selected_stamp = candidate, completed
             self.pending_selection = None
@@ -192,6 +201,24 @@ class Node:
                 candidate.reason = 'does_not_reach_common_checkpoint'
             return candidate
 
+        # Holding geometry does not hold its old collision verdict. Recheck the
+        # actual active path against this scene while replacements are waiting.
+        with self.lock:
+            active, active_stamp = self.selected, self.selected_stamp
+        if (active is not None and active_stamp is not None and
+                0. <= (now-active_stamp).to_sec() < self.c['minimum_active_path_hold_sec']):
+            nearest = int(np.argmin(np.linalg.norm(active.xy[:,:2]-position[:2],axis=1)))
+            i = max(0, nearest-1)
+            if len(active.xy)-i >= 3:
+                checked = Candidate('committed', active.target, active.xy[i:].copy(),
+                    active.route_s[i:].copy(), active.limits[i:].copy(), active.changes,
+                    active.change_end, active.return_start)
+                evaluate(checked)
+                if not checked.feasible or np.any(checked.speed <= 0.):
+                    self.offer_selection(checked if checked.feasible else None,now,ego.reset_id)
+            else:
+                self.offer_selection(None,now,ego.reset_id)
+
         # Refresh the currently-followed trajectory first. The 10 Hz publisher
         # can use this result while lateral alternatives continue evaluating.
         fast = next((x for x in candidates if x.key == 'committed'),candidates[0])
@@ -242,6 +269,16 @@ class Node:
             return
         now = rospy.Time.now()
         with self.lock:
+            if self.selected_stamp is not None and now < self.selected_stamp:
+                self.selected = self.selected_stamp = None
+                self.pending_selection = self.pending_selection_stamp = None
+                self.pending_selection_set = False
+            if (self.pending_selection_set and self.selected_stamp is not None and
+                    (now-self.selected_stamp).to_sec() >= self.c['minimum_active_path_hold_sec']):
+                self.selected = self.pending_selection
+                self.selected_stamp = now
+                self.pending_selection = self.pending_selection_stamp = None
+                self.pending_selection_set = False
             ego, odom = self.state
             chosen, stamp = self.selected, self.selected_stamp
         output = Trajectory()

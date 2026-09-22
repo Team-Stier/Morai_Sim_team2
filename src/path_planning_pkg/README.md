@@ -10,6 +10,11 @@
 `frenet_planner.launch`가 단독 실행, `system_bringup_pkg/frenet_rddf.launch`가 통합 실행이다.
 출력은 기존 odom Trajectory이며 첫 시험 상한은 10 km/h다.
 
+현재 일반 경로는 최소 0.5초 유지한 뒤 최신 계산 결과로 교체한다.
+유지 중에도 활성 경로의 충돌을 재검사하며 정지·정지 접근, 입력 오류,
+Localization reset과 시간 역행은 즉시 반영하고 대기 경로를 폐기한다.
+`minimum_active_path_hold_sec`는 경로 교체 간격이며 궤적 발행은 10 Hz를 유지한다.
+
 발행할 때 선택 경로의 좌표·접선은 보존하고 차량에 가까운 앞부분만 잘라낸다.
 첫 점을 차량 위치로 강제 이동하여 추종 오차를 숨기거나 꺾임을 만들지 않는다.
 Localization reset 시 활성·대기 경로를 폐기하고 새 상태로 계산한 경로를 기다린다.

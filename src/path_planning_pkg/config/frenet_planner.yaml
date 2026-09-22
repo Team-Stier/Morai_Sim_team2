@@ -10,6 +10,7 @@ decision_rate_hz: 5.0
 lane_change_evaluation_rate_hz: 2.0
 trajectory_rate_hz: 10.0
 trajectory_valid_for_sec: 0.5
+minimum_active_path_hold_sec: 0.5
 prediction_horizon_sec: 8.0
 spatial_step_m: 0.5
 collision_step_m: 0.2

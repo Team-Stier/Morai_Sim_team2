@@ -273,6 +273,62 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertEqual(node.last_report,('input_unusable',False))
         self.assertTrue(node.trajectory.message.stop_required)
 
+    def test_normal_path_holds_half_second_and_activates_latest_result(self):
+        import copy
+        node = self.node()
+        node.c['minimum_active_path_hold_sec'] = 0.5
+        first = node.selected
+        first.speed = np.full(4, 2.)
+        first.times = np.arange(4.)*.5
+        second, latest = copy.deepcopy(first), copy.deepcopy(first)
+        node.offer_selection(second, rospy.Time.from_sec(100.1))
+        node.offer_selection(latest, rospy.Time.from_sec(100.4))
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.499)):
+            node.publish(None)
+        self.assertIs(node.selected, first)
+        self.assertIs(node.pending_selection, latest)
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.5)):
+            node.publish(None)
+        self.assertIs(node.selected, latest)
+        self.assertEqual(node.selected_stamp, rospy.Time.from_sec(100.5))
+        self.assertFalse(node.pending_selection_set)
+        self.assertFalse(node.trajectory.message.stop_required)
+
+    def test_stop_discards_pending_path_during_hold(self):
+        import copy
+        for stop_candidate in (False, True):
+            node = self.node()
+            node.c['minimum_active_path_hold_sec'] = 0.5
+            node.selected.speed = np.full(4, 2.)
+            pending = copy.deepcopy(node.selected)
+            node.offer_selection(pending, rospy.Time.from_sec(100.1))
+            stop = copy.deepcopy(pending) if stop_candidate else None
+            if stop is not None:
+                stop.speed[-1] = 0.
+            node.offer_selection(stop, rospy.Time.from_sec(100.2))
+            self.assertIs(node.selected, stop)
+            self.assertFalse(node.pending_selection_set)
+            with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.7)):
+                node.publish(None)
+            self.assertIs(node.selected, stop)
+
+    def test_clock_reversal_clears_held_and_pending_paths(self):
+        node = self.node()
+        node.pending_selection = node.selected
+        node.pending_selection_set = True
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time(99)):
+            node.publish(None)
+        self.assertIsNone(node.selected)
+        self.assertFalse(node.pending_selection_set)
+        self.assertTrue(node.trajectory.message.stop_required)
+
+    def test_hold_parameter_matches_central_runtime_profile(self):
+        root = Path(__file__).parents[2]
+        runtime = yaml.safe_load((root/'ros_architecture_pkg/config/messages/frenet_runtime.yaml').read_text())
+        config = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
+        self.assertEqual(config['minimum_active_path_hold_sec'], 0.5)
+        self.assertEqual(config['minimum_active_path_hold_sec'], runtime['minimum_active_path_hold_sec'])
+
     def test_valid_path_leaves_active_stop_immediately(self):
         node = self.node()
         candidate = node.selected
@@ -297,7 +353,11 @@ class FrenetOutputTest(unittest.TestCase):
             with self.subTest(reason=reason):
                 self.check_search_publication(reason, True, True)
 
-    def check_search_publication(self, reason, interim_stop, alternative_valid):
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.1))
+    def test_held_geometry_is_rechecked_before_pending_replacement(self, _):
+        self.check_search_publication('steering_limit', True, True, hold_active=True)
+
+    def check_search_publication(self, reason, interim_stop, alternative_valid, hold_active=False):
         import copy
         node = self.node()
         node.c['rddf_geometry_only'] = True
@@ -312,12 +372,21 @@ class FrenetOutputTest(unittest.TestCase):
         node.planner = Planner(node.c)
         node.audit = Output()
         node.report = lambda *args: None
+        if hold_active:
+            node.c['minimum_active_path_hold_sec'] = .5
+            node.selected.speed = np.full(4, 2.)
+            node.selected.times = np.arange(4.)*.5
         fast, alternative = copy.deepcopy(node.selected), copy.deepcopy(node.selected)
         alternative.key = 'alternative'
         fast.feasible, fast.reason = False, reason
         alternative.feasible = alternative_valid
+        active_checks = []
 
         def evaluate(candidate, *args):
+            if hold_active and candidate.key == 'committed':
+                active_checks.append(candidate)
+                candidate.feasible = False
+                candidate.reason = 'predicted_cluster_collision'
             if candidate is alternative:
                 # Simulate the trajectory timer firing while alternatives are evaluated.
                 node.publish(None)
@@ -332,6 +401,8 @@ class FrenetOutputTest(unittest.TestCase):
         node.publish(None)
         self.assertEqual(node.trajectory.message.stop_required, not alternative_valid)
         self.assertIs(node.selected, alternative if alternative_valid else None)
+        if hold_active:
+            self.assertEqual(len(active_checks), 1)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
     def test_blocked_commit_evaluates_recovery_and_generates_detours(self, _):
@@ -413,6 +484,7 @@ class FrenetOutputTest(unittest.TestCase):
         node = module.Node.__new__(module.Node)
         node.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
         node.c['rddf_geometry_only'] = False
+        node.c['minimum_active_path_hold_sec'] = 0.0  # Unrelated fixtures test immediate selection.
         ego, odom = EgoState(), Odometry()
         ego.reset_id = 12
         ego.pose.pose.position.x = 10.
