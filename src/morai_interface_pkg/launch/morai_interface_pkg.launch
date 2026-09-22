@@ -3,6 +3,8 @@
   <!-- 기존에 구현된 센서 입력을 한 번에 실행하는 개발용 bringup.
        Competition Vehicle Status, CollisionData, Ego Ctrl Cmd는 포함하지 않는다. -->
   <arg name="start_cameras" default="true"/>
+  <arg name="start_camera_left" default="false"/>
+  <arg name="start_camera_right" default="false"/>
   <arg name="start_gps" default="true"/>
   <arg name="start_imu" default="false"/>
   <arg name="start_lidar" default="false"/>
@@ -18,6 +20,8 @@
 
   <group if="$(arg start_cameras)">
     <include file="$(find morai_interface_pkg)/launch/cameras.launch">
+      <arg name="start_left" value="$(arg start_camera_left)"/>
+      <arg name="start_right" value="$(arg start_camera_right)"/>
       <arg name="front_config" value="$(arg camera_front_config)"/>
       <arg name="left_config" value="$(arg camera_left_config)"/>
       <arg name="right_config" value="$(arg camera_right_config)"/>

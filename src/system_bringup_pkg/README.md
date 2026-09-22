@@ -16,7 +16,7 @@ MORAI 앱은 별도로 실행하고 Cmd Control `127.0.0.1:9093`을 Connect 상�
 
 스크립트가 Noetic과 workspace 환경을 불러오며 `frenet_all.launch`를 실행한다.
 launch는 MORAI 앱 자체를 켜거나 UI의
-수동/자동 모드를 바꾸지 않는다. 기본값은 RViz·제어 송신 활성, 시험 상한 해제다.
+수동/자동 모드를 바꾸지 않는다. 기본값은 전방 카메라 수신·RViz·제어 송신 활성, 좌우 카메라 수신 비활성, 시험 상한 해제다.
 
 `frenet_rddf.launch`는 기존 MORAI 센서·Localization 실행에 정적 지도, Route,
 LiDAR 관측, World Model, Frenet Planner와 Controller→Safety 연결을 추가한다.
