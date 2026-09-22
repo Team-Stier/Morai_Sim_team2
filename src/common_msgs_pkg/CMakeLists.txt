@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(common_msgs_pkg)
 
 find_package(catkin REQUIRED COMPONENTS
-  ros_architecture_pkg message_generation std_msgs geometry_msgs)
+  ros_architecture_pkg message_generation std_msgs geometry_msgs nav_msgs)
 
 catkin_python_setup()
 
@@ -18,11 +18,15 @@ add_message_files(FILES
   ControllerStatus.msg
   TrackedObject.msg
   WorldModel.msg
+  HdMap.msg
+  RouteContext.msg
+  RouteLane.msg
+  LaneChangeWindow.msg
 )
-generate_messages(DEPENDENCIES std_msgs geometry_msgs)
+generate_messages(DEPENDENCIES std_msgs geometry_msgs nav_msgs)
 
 catkin_package(CATKIN_DEPENDS
-  ros_architecture_pkg message_runtime std_msgs geometry_msgs)
+  ros_architecture_pkg message_runtime std_msgs geometry_msgs nav_msgs)
 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_core_contract.py)

@@ -21,6 +21,7 @@ def stamp_ns(stamp):
 
 @dataclass(frozen=True)
 class DisplayConfig:
+    cluster_point_size_m: float = 0.08
     reference_frame: str = 'map'
     display_mode: str = 'footprint'
     vehicle_length_m: float = 4.635

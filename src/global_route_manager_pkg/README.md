@@ -1,5 +1,24 @@
 # global_route_manager_pkg
 
+현재 사용자 모드는 `rddf_geometry_only=true`다. 체크포인트 정보를 읽지 않고
+RDDF 위치 매칭과 비교 지점을 계산한다. 일반 구간은 100 m, 고주로는 300 m
+앞을 비교하며 중앙 `course_speed_policy.yaml`의 고주로 시작 포함·끝 제외 경계를
+사용한다. 비순환 경로에서는 종점까지만 비교한다. 이 모드에서
+`next_checkpoint=4294967295`는 체크포인트 미사용을 뜻하며 누락 FAULT를 만들지 않는다.
+진행값은 매 갱신마다 현재 위치에서 가장 가까운 전역 RDDF 지점으로 계산한다.
+차량을 뒤쪽으로 재배치해도 이전 진행값이나 완주 상태를 유지하지 않는다.
+교차하거나 겹친 RDDF에서는 최근 진행 이력보다 거리 기준이 우선한다.
+`loop_route=true`에서는 닫힌 RDDF를 계속 순환하며 완료 정지를 발행하지 않는다.
+진행값은 한 바퀴마다 0 부근으로 돌아가고 비교 목표는 다음 바퀴까지 이어진다.
+
+`RouteContext`는 5 Hz 진행 상태 메시지다. 정적 차로·경계·체크포인트 목록은
+`HdMap`만 소유하며, 소비자는 `map_id`로 캐시와 연결한다. Route는 현재 차로,
+진행도, 다음 체크포인트, 비교 목표와 완료 상태만 갱신한다.
+
+Frenet 개발 실행의 route_manager_node.py는 HdMap과 Localization에서
+차로 진행 상태·다음 체크포인트·공통 비교 종점을 RouteContext로 발행한다.
+체크포인트는 실제 추정 이동 선분이 반경을 통과해야 완료로 기록한다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
@@ -47,9 +66,9 @@
 | 출력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` |
 | 출력 | `/molit/route/status` | `common_msgs_pkg/ComponentStatus` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `HdMap`, `RouteContext`가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+런타임 노드는 정적 지도와 자차 위치로 경로 진행·체크포인트 순서를 발행한다.
 
 ## 통합 전 자체 확인
 

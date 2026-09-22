@@ -1,5 +1,10 @@
 # world_model_pkg
 
+Frenet 통합에서는 LiDAR의 실제 클러스터 점을 측정시각 map TF로 변환해
+TrackedObject.points에 보존한다. 추적 중심점과 속도는 별도로 계산하며
+점군을 박스·볼록껍질로 대체하거나 예측 위치로 덮어쓰지 않는다.
+속도 예측은 Planner가 source_stamp 이후 시간에 적용한다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
@@ -64,7 +69,7 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`,
 `LidarObservationArray`, `TrackedObject`, `WorldModel` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 융합 계층은 아직 미구현이다.
+`HdMap`과 `RouteContext` 스키마도 구현됐으며, 교차 센서 융합 계층은 미구현이다.
 
 좌표 변환에는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)에서 승인된 frame과 extrinsic만 사용한다. 시간 정렬에는 중앙 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)을 적용하고, 각 관측의 source stamp를 fusion publication time으로 교체하지 않는다.
 
@@ -86,8 +91,16 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 
 `world_model_node`는 `/molit/perception/lidar/observations`의 원본 scan stamp로
 `map <- lidar_link` TF를 조회한다. latest-time TF fallback은 사용하지 않는다.
-LiDAR frame의 축 정렬 box를 여덟 꼭짓점을 포함하는 map 축 정렬 box로 보수적으로
-변환한 뒤, map XY 최근접 association으로 process-local `track_id`를 부여한다.
+LiDAR 클러스터의 원본 점을 map으로 변환한 뒤, 점들의 중심으로 map XY
+최근접 association을 수행하여 process-local `track_id`를 부여한다.
+형상은 실제 점으로 유지하며 속도에 따른 연결 거리는 관측 간격을 반영한다.
+
+속도는 관측 중심점 차분 대신 연속 map 점군의 XY 평행이동 정합으로
+추정한다. 0 이동과 중심점 차분에서 각각 시작하여 부분 관측에 대한
+양방향 trimmed 최근접 잔차를 비교한다. 정합용 표본 수·반복 수·사용
+비율은 `tracking.motion_*` 설정이다. 출력 points와 source stamp는 원본을 유지한다.
+긴 무특징 표면에서 잔차가 같은 해는 최소 이동을 선택하는 개발용 가정이다.
+이는 정적 물체임을 입증하지 않으며 회전·가림·대칭 형상에 대한 검증은 남아 있다.
 
 - 같은 정적 물체는 차량이 이동해 상대좌표가 달라져도 map 위치와 track ID를 유지한다.
 - 새 track은 tentative이며 두 번 관측되면 confirmed가 된다.
@@ -100,8 +113,9 @@ LiDAR frame의 축 정렬 box를 여덟 꼭짓점을 포함하는 map 축 정렬
 현재 LiDAR producer가 `calibration_verified=false`, `freshness_verified=false`를
 명시하고 position uncertainty도 아직 bounded하지 못한다. 따라서 map geometry는
 개발 진단용으로 발행하지만 `objects_verified=false`, `planner_ready=false`,
-`/molit/world_model/status.stop_required=true`를 유지한다. Path Planner가 이 결과를
-주행 가능한 World Model로 사용하면 안 된다.
+`/molit/world_model/status.stop_required=true`를 유지한다. 일반 주행 readiness로
+사용하지 않는다. 관측 클러스터만 사용하는 개발 시험의 제한적 사용은
+[Frenet 중앙 프로필](../ros_architecture_pkg/config/messages/frenet_runtime.yaml)에 명시한다.
 
 ```bash
 source /opt/ros/noetic/setup.bash

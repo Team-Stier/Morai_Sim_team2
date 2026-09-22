@@ -1,5 +1,20 @@
 # path_planning_pkg
 
+## Frenet RDDF 개발 구현
+
+[Frenet Planner](docs/frenet_rddf.md)는 지정한 RDDF 14개와 전역경로를 사용해
+후보 생성 → 규정·클러스터 충돌 검사 → ETA 비용 비교 → 변경 상태 유지를 수행한다.
+`frenet_planner.launch`가 단독 실행, `system_bringup_pkg/frenet_rddf.launch`가 통합 실행이다.
+출력은 기존 odom Trajectory이며 첫 시험 상한은 10 km/h다.
+
+발행할 때 선택 경로의 좌표·접선은 보존하고 차량에 가까운 앞부분만 잘라낸다.
+첫 점을 차량 위치로 강제 이동하여 추종 오차를 숨기거나 꺾임을 만들지 않는다.
+Localization reset 시 활성·대기 경로를 폐기하고 새 상태로 계산한 경로를 기다린다.
+
+정적 LiDAR 클러스터로 RDDF 유지 경로가 막히면 근거리 우회·복귀 후보도 비교한다.
+`local_detour_offsets_m`의 양수는 RDDF 왼쪽, 음수는 오른쪽이며 양쪽 모두
+1.5/2.5/3.5 m 우회 후보를 생성해 같은 비용식으로 비교한다. 회피 구간은 최대 10 km/h이며 차량 footprint 충돌·조향 한계를 검사한다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
@@ -34,8 +49,8 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 
 ## 공개 ROS 입출력
 
-현재 상태는 **이름 승인, 구현 예약**이며 공개 경계 노드는
-`path_planner_node`다. behavior/motion planner는 아직 미구현이며, `Trajectory` schema는
+현재 상태는 **개발용 Frenet RDDF 후보 생성·ETA 선택 구현**이며 공개 경계 노드는
+`path_planner_node`다. 실행 범위는 [Frenet 설계](docs/frenet_rddf.md)를 따르며, `Trajectory` schema는
 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)에 구현됐다.
 
 ![Path Planning 공개 입출력](docs/interface_io.svg)
@@ -47,6 +62,7 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 
 | 구분 | Topic | Type |
 |---|---|---|
+| 입력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
 | 입력 | `/molit/localization/local/odometry` | `nav_msgs/Odometry` |
 | 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
 | 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
@@ -64,7 +80,7 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 Trajectory의 공개 frame은 제어 연속성을 위해 `odom`으로 고정한다.
 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `WorldModel` 스키마는 구현됐으며
 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-`RouteContext`와 Planner 노드는 미구현이다. `Trajectory`는 poses/speed_mps/time_from_start의
+`RouteContext`와 Frenet Planner 노드가 구현됐다. `Trajectory`는 poses/speed_mps/time_from_start의
 동일 길이 배열과 valid/stop_required/valid_for/reset_id를 제공한다. v1에서 이 패키지가 생성하는 주행
 출력은 `/molit/planning/trajectory`뿐이며 직접 accel/brake/steer 또는
 UDP 출력은 금지한다.
@@ -75,7 +91,7 @@ UDP 출력은 금지한다.
 ## 통합 전 자체 확인
 
 - 노드의 통합 실행 이름이 정확히 `path_planner_node`인지 확인한다.
-- Localization, Route와 World Model 입력의 freshness·frame·timestamp를
+- 정적 HdMap의 map_id와 Localization, Route 및 World Model 입력의 freshness·frame·timestamp를
   검사하고, 승인되지 않은 raw sensor 또는 Perception topic을 구독하지 않는다.
 - 재계획 이유와 trajectory 유효성을 status에 남기고 stale trajectory를
   계속 출력하지 않게 검증한다.

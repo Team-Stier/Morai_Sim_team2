@@ -238,15 +238,19 @@ class Node {
       ground_removed=ground.removed; ground_cells=ground.supported_cells;
       const auto result=lidar_perception::detect(ground.cloud, config_);
       clustered=lidar_perception::clusterPoints(*message,result.raw_cluster_ids);
-      for (const auto& level_box : result.boxes) {
-        const auto box=lidar_perception::boxInSensorFrame(level_box,rotation);
-        common_msgs_pkg::LidarObjectObservation object;
-        object.scan_local_id=output.objects.size();
-        object.center.x=box.center.x; object.center.y=box.center.y; object.center.z=box.center.z;
-        object.size.x=box.size.x; object.size.y=box.size.y; object.size.z=box.size.z;
-        object.point_count=box.point_count;
+      output.objects.resize(result.boxes.size());
+      for (size_t i=0;i<result.raw_cluster_ids.size();++i) {
+        const int id=result.raw_cluster_ids[i];
+        if (id<0) continue;
+        geometry_msgs::Point point;
+        point.x=cloud[i].x; point.y=cloud[i].y; point.z=cloud[i].z;
+        output.objects[id].points.push_back(point);
+      }
+      for (size_t i=0;i<output.objects.size();++i) {
+        auto& object=output.objects[i];
+        object.scan_local_id=i;
+        object.point_count=object.points.size();
         object.confidence=-1;
-        output.objects.push_back(object);
       }
       output.objects_valid=true;
       ++health_.processed_count;

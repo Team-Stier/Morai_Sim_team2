@@ -78,8 +78,9 @@ class HorizontalizationTest(unittest.TestCase):
         self.assertTrue(out.objects_valid); self.assertEqual(len(out.objects),1)
         self.assertEqual(out.header.frame_id,'lidar_link')
         expected=raw.mean(axis=0)
-        actual=out.objects[0].center
-        np.testing.assert_allclose([actual.x,actual.y,actual.z],expected,atol=.003)
+        measured=np.array([[p.x,p.y,p.z] for p in out.objects[0].points])
+        np.testing.assert_allclose(measured.mean(axis=0),expected,atol=.003)
+        self.assertEqual(out.objects[0].point_count,len(measured))
         # Debug coordinates return to lidar_link, including original tilted z.
         time.sleep(.05)
         debug=[m for m in filtered if m.header.stamp==stamp][-1]

@@ -69,6 +69,28 @@ TEST(Controller, PlannerStopCanHaveEmptyGeometry) {
   EXPECT_DOUBLE_EQ(o.command.brake, 0.35);
 }
 
+TEST(Controller, FrenetPreviewAcceleratesFromMeasuredInitialSpeed) {
+  vehicle_control::Config config;
+  config.reference_preview_sec=0.5;
+  vehicle_control::Controller controller(config);
+  auto t=trajectory();
+  for (size_t i=0;i<t.speed_mps.size();++i) t.speed_mps[i]=2.0*t.time_from_start[i].toSec();
+  auto out=controller.step(odometry(0.0),t,ros::Time(10.0),0.02);
+  EXPECT_TRUE(out.command.valid);
+  EXPECT_NEAR(out.status.target_speed_mps,1.0,1e-9);
+  EXPECT_GT(out.command.accel,0.0);
+}
+
+TEST(Controller, ShortTerminalStopStillSendsValidBrake) {
+  vehicle_control::Controller controller{vehicle_control::Config{}};
+  auto t=trajectory();
+  t.poses.resize(3);t.speed_mps={2.0,1.0,0.0};t.time_from_start.resize(3);
+  auto out=controller.step(odometry(2.0),t,ros::Time(10.0),0.02);
+  EXPECT_TRUE(out.command.valid);
+  EXPECT_GT(out.command.brake,0.0);
+  EXPECT_EQ(out.status.reason,"terminal_stop_approach");
+}
+
 TEST(Controller, LeftAndRightSteeringKeepOriginalSignAndStepLimit) {
   for (double y : {-0.5, 0.5}) {
     vehicle_control::Controller controller{vehicle_control::Config{}};

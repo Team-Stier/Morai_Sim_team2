@@ -17,6 +17,7 @@ struct Config {
   // Original PI units: km/h, not m/s.
   double kp{0.08}, ki{0.02}, brake_kp{0.08};
   double integral_limit{10.0}, stop_brake{0.35};
+  double reference_preview_sec{0.0};
 };
 
 struct Output {
@@ -36,6 +37,7 @@ class Controller {
   hybrid_path_tracking::Stanley stanley_;
   hybrid_path_tracking::HybridSupervisor supervisor_;
   longitudinal_control::BoundedPiController speed_;
+  double reference_preview_sec_;
   bool uses_stanley_{false};
   Output base(const ros::Time& now) const;
 };

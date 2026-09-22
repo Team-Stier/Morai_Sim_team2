@@ -1,5 +1,31 @@
 # system_bringup_pkg
 
+## 한 번에 실행
+
+저장소 루트에서 `./run.sh`로 센서, Localization, RViz,
+Frenet 회피 Planner, Controller, Safety와 MORAI 제어 송신을 함께 실행한다.
+Ctrl+C로 이번 실행 전체를 종료한다. 기존 구성과 노드가 겹치면 시작을 거부한다.
+MORAI 앱은 별도로 실행하고 Cmd Control `127.0.0.1:9093`을 Connect 상태로 둔다.
+
+```bash
+./run.sh
+# 송신·RViz 없이 실행하거나, 실행하지 않고 구성만 검사:
+./run.sh send_to_morai:=false rviz:=false
+./run.sh --check
+```
+
+스크립트가 Noetic과 workspace 환경을 불러오며 `frenet_all.launch`를 실행한다.
+launch는 MORAI 앱 자체를 켜거나 UI의
+수동/자동 모드를 바꾸지 않는다. 기본값은 전방 카메라 수신·RViz·제어 송신 활성, 좌우 카메라 수신 비활성, 시험 상한 해제다.
+
+`frenet_rddf.launch`는 기존 MORAI 센서·Localization 실행에 정적 지도, Route,
+LiDAR 관측, World Model, Frenet Planner와 Controller→Safety 연결을 추가한다.
+기존 global_path_demo와 중복 실행하지 않는다. 송신 기본값은 false이며,
+`send_to_morai:=true`로 개발 주행을 활성화한다. 시험 상한은 기본적으로 해제하며
+Q 전환은 기존 MORAI sender 동작을 유지한다.
+[중앙 개발 프로필](../ros_architecture_pkg/config/messages/frenet_runtime.yaml)과
+[검증 범위](../path_planning_pkg/docs/frenet_rddf.md)를 따른다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.

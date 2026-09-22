@@ -6,7 +6,7 @@ import unittest
 from types import SimpleNamespace
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / 'src'))
-from hd_map_pkg.lane_rddf import build_lane_rddf, read_route, SegmentIndex
+from hd_map_pkg.lane_rddf import build_lane_rddf, read_route, SegmentIndex, forbidden_lateral_boundary
 
 
 class LaneRddfTest(unittest.TestCase):
@@ -28,6 +28,12 @@ class LaneRddfTest(unittest.TestCase):
 
     def build(self):
         return build_lane_rddf(self.data, self.transform, self.route, self.config)
+
+    def test_dashed_junction_guide_is_not_a_solid_boundary(self):
+        guide = dict(lane_type=[525], lane_shape=['broken'], lane_color=['white'], pass_restr='')
+        self.assertFalse(forbidden_lateral_boundary(guide))
+        guide['lane_shape'] = ['solid']
+        self.assertTrue(forbidden_lateral_boundary(guide))
 
     def test_reachable_lane_excludes_route_preserves_z_and_clearance(self):
         result = self.build()

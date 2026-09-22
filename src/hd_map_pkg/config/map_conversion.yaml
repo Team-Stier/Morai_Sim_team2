@@ -67,6 +67,18 @@ references:
 
 # Static alternatives only. Unknown/solid/compound/yellow boundaries fail closed.
 lane_rddf:
+  # User-requested derived geometry; does not create legal crossing permissions.
+  course_connections:
+    start_reference_link: A2256W000411
+    end_reference_link: A2256W000423
+    entry_blend_m: 80.0
+    exit_blend_m: 45.0
+    chains:
+      - id: high_speed_inner
+        link_ids: [A2256W000410, A2256W000430, A2256W000434, A2256W000422]
+      - id: high_speed_outer
+        link_ids: [A2256W000418, A2256W000431, A2256W000435, A2256W000423]
+  allowed_link_ids: [A2256W000009, A2256W000307, A2256W000309, A2256W000310, A2256W000314, A2256W000319, A2256W000410, A2256W000418, A2256W000422, A2256W000423, A2256W000430, A2256W000431, A2256W000434, A2256W000435]
   # User-required intersection entry near checkpoint 8 (2026-09-21).
   # Exclude the outer bypass and its continuation, even if geometrically close to the course.
   excluded_link_ids: [A2256W000739, A2256W000849]

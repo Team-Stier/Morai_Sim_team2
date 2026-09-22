@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import Mock, patch
 import rospy
 from common_msgs_pkg.msg import LidarObservationArray, LidarObjectObservation
+from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 from visualization_pkg.lidar_display import LidarDisplay
 from visualization_pkg.vehicle_display import DisplayConfig
@@ -24,9 +25,8 @@ class LidarDisplayTest(unittest.TestCase):
         msg.calibration_id = 'test'
         msg.timestamp_provenance = 'ingress_fallback'
         msg.objects_valid = True
-        obj = LidarObjectObservation(point_count=20, confidence=-1)
-        obj.center.x, obj.center.y, obj.center.z = 5, 2, -0.2
-        obj.size.x, obj.size.y, obj.size.z = 1, 2, 0.5
+        obj = LidarObjectObservation(point_count=2, confidence=-1)
+        obj.points = [Point(5, 2, -.2), Point(5.1, 2, -.2)]
         msg.objects = [obj]
         return msg
 
@@ -36,7 +36,8 @@ class LidarDisplayTest(unittest.TestCase):
         self.tf.can_transform.assert_called_with('map', 'lidar_link', msg.header.stamp, rospy.Duration(0))
         marker = self.publisher.publish.call_args[0][0].markers[-1]
         self.assertEqual(marker.header, msg.header)
-        self.assertEqual(marker.pose.position, msg.objects[0].center)
+        self.assertEqual(marker.type, Marker.POINTS)
+        self.assertEqual(marker.points, msg.objects[0].points)
         self.assertFalse(marker.frame_locked)
         self.assertEqual(marker.pose.orientation.w, 1)
 
@@ -56,7 +57,7 @@ class LidarDisplayTest(unittest.TestCase):
             self.display = LidarDisplay(DisplayConfig(), self.tf, self.publisher)
             self.display.ingest(self.scan(), rospy.Time(10), 1)
             msg = self.scan(10.1)
-            if mutation == 'nan': msg.objects[0].center.x = float('nan')
+            if mutation == 'nan': msg.objects[0].points[0].x = float('nan')
             if mutation == 'frame': msg.header.frame_id = 'map'
             if mutation == 'invalid': msg.objects_valid = False
             if mutation == 'future': msg.header.stamp = rospy.Time(12)
@@ -72,7 +73,7 @@ class LidarDisplayTest(unittest.TestCase):
         self.display.ingest(self.scan(5), rospy.Time(5), 3)
         self.assertTrue(self.display.visible)
 
-    def test_empty_valid_scan_removes_previous_boxes(self):
+    def test_empty_valid_scan_removes_previous_points(self):
         self.display.ingest(self.scan(), rospy.Time(10), 1)
         msg = self.scan(10.1)
         msg.objects = []

@@ -15,9 +15,10 @@ uint32 source_local_id
 string timestamp_provenance
 string calibration_id
 bool calibration_verified
-# Map-aligned conservative AABB. Orientation is identity until oriented-box fusion exists.
+# Estimated centroid for association; not a bounding box.
 geometry_msgs/Pose pose
-geometry_msgs/Vector3 size
+# Actual map-frame points at source_stamp; never shifted by prediction.
+geometry_msgs/Point[] points
 # Linear velocity is expressed in map. Angular velocity is not estimated.
 geometry_msgs/Twist twist
 bool velocity_valid

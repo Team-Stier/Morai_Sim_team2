@@ -6,12 +6,12 @@ pure_pursuit:
   min_lookahead_m: 3.0
   max_lookahead_m: 30.0
   lookahead_time_sec: 0.6
-  min_forward_path_m: 5.0
+  min_forward_path_m: 2.0
 stanley:
   heading_gain: 1.0
   cross_track_gain: 1.2
   softening_mps: 0.8
-  min_path_length_m: 5.0
+  min_path_length_m: 2.0
 supervisor:
   curvature_enter_stanley: 0.06
   curvature_exit_stanley: 0.04

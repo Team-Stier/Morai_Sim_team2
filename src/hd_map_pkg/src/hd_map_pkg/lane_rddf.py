@@ -67,7 +67,7 @@ def build_lane_rddf(dataset, transform, route, settings):
     if unknown:
         raise ValueError('Unknown excluded link IDs: '+', '.join(sorted(unknown)))
     for key, value in cfg.items():
-        if key == 'excluded_link_ids':
+        if key in ('excluded_link_ids', 'allowed_link_ids', 'course_connections'):
             continue
         if not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
             raise ValueError('Invalid lane RDDF setting: '+key)
@@ -79,7 +79,7 @@ def build_lane_rddf(dataset, transform, route, settings):
     lines = {key: [transform.mgeo_to_sim(p) for p in link['points']]
              for key, link in dataset.links.items()
              if not link.get('opp_traffic') and key not in excluded}
-    samples, distances, headings = {}, {}, {}
+    samples, distances, headings, route_progress = {}, {}, {}, {}
     totals = {key: cumulative_lengths(line)[-1] for key, line in lines.items()}
     bounds = (min(p[0] for p in route)-radius, max(p[0] for p in route)+radius,
               min(p[1] for p in route)-radius, max(p[1] for p in route)+radius)
@@ -109,6 +109,7 @@ def build_lane_rddf(dataset, transform, route, settings):
             samples[key, i] = p
             distances[key, i] = math.sqrt(hit[0])
             headings[key, i] = direction
+            route_progress[key, i] = hit[1]
     edges, reverse = defaultdict(set), defaultdict(set)
     def connect(a, b):
         if a in samples and b in samples:
@@ -125,6 +126,8 @@ def build_lane_rddf(dataset, transform, route, settings):
         for other in dataset.successors.get(key, []):
             if (other, 0) in samples and distance_2d(samples[key, end], samples[other, 0]) <= cfg['successor_gap_m']:
                 connect((key, end), (other, 0))
+    # Keep longitudinal source topology separate from permitted lateral edges.
+    longitudinal = {node: set(targets) for node, targets in edges.items()}
     boundaries = {key: [transform.mgeo_to_sim(p) for p in b['points']]
                   for key, b in dataset.lane_boundaries.items()}
     boundary_lengths = {key: cumulative_lengths(line)[-1] for key, line in boundaries.items()}
@@ -186,7 +189,10 @@ def build_lane_rddf(dataset, transform, route, settings):
         def finish():
             if len(run) >= 2 and distance_2d(samples[key,run[0]], samples[key,run[-1]]) >= cfg['minimum_run_m']:
                 lanes.append({'id': '{}_{}'.format(key,run[0]), 'link_id': key,
-                              'points': [samples[key,i] for i in run]})
+                              'points': [samples[key,i] for i in run],
+                              'source_indices': list(run),
+                              'route_s': [route_progress[key,i] for i in run],
+                              'source_successors': list(dataset.successors.get(key, []))})
         for i in indices:
             if (key,i) in retained and distances[key,i] > cfg['route_exclusion_m']:
                 if run and i != run[-1]+1:
@@ -198,11 +204,98 @@ def build_lane_rddf(dataset, transform, route, settings):
                 run = []
         finish()
     changes = [c for c in changes if tuple(c['source']) in retained and tuple(c['target']) in retained]
-    return {'format': 'hd_map_pkg.lane_rddf.v1', 'frame': 'map', 'units': 'm',
+    if 'allowed_link_ids' in cfg:
+        lanes = [lane for lane in lanes if lane['link_id'] in cfg['allowed_link_ids']]
+    graph = _lane_graph(lanes, changes, longitudinal, retained, distances,
+                        route_progress, boundaries, cfg['route_exclusion_m'])
+    forbidden_ids = [key for key, boundary in sorted(dataset.lane_boundaries.items())
+                     if len(boundaries[key]) > 1 and forbidden_lateral_boundary(boundary)]
+    result = {'format': 'hd_map_pkg.lane_rddf.v2', 'frame': 'map', 'units': 'm',
             'purpose': 'static_lane_alternatives_and_crossing_windows_not_driving_trajectories',
             'settings': dict(cfg), 'lanes': lanes, 'crossings': changes,
+            'graph': graph,
+            'forbidden_boundary_ids': forbidden_ids,
+            'forbidden_boundaries': [boundaries[key] for key in forbidden_ids],
             'counts': {'lanes': len(lanes), 'crossing_samples': len(changes),
-                       'route_seed_samples': len(seeds), 'retained_samples': len(retained)}}
+                       'route_seed_samples': len(seeds), 'retained_samples': len(retained),
+                       'lane_change_windows': len(graph['lane_changes'])}}
+    from .rddf_connections import connect_course_lanes
+    return connect_course_lanes(result, dataset, lines, route, route_index, cfg)
+
+
+def forbidden_lateral_boundary(boundary):
+    """Stop lines/bike symbols are separate rules; unknown lateral lines are not crossed."""
+    if boundary.get('lane_type') in ([530], [535]):
+        return False
+    # Match the existing Lanelet conversion's ordinary dashed-line categories.
+    # In particular, junction guide line 525 is not a solid lateral boundary.
+    return not (boundary.get('lane_type') in ([503], [504], [506], [515], [525])
+                and boundary.get('lane_shape') == ['broken']
+                and boundary.get('lane_color') == ['white']
+                and not boundary.get('pass_restr'))
+
+
+def _lane_graph(lanes, crossings, longitudinal, retained, distances,
+                route_progress, boundaries, route_exclusion):
+    """Project retained source samples to exported lane IDs without proximity links."""
+    owners = {node: ('global_route', route_progress[node]) for node in retained
+              if distances[node] <= route_exclusion}
+    for lane in lanes:
+        lengths = cumulative_lengths(lane['points'])
+        owners.update({(lane['link_id'], index): (lane['id'], s)
+                       for index, s in zip(lane['source_indices'], lengths)})
+        lane['successors'] = []
+    by_id = {lane['id']: lane for lane in lanes}
+    connections = []
+    for source, targets in sorted(longitudinal.items()):
+        if source not in owners:
+            continue
+        for target in sorted(targets):
+            if target not in owners or owners[source][0] == owners[target][0]:
+                continue
+            source_id, source_s = owners[source]
+            target_id, target_s = owners[target]
+            connections.append(dict(source_lane=source_id, target_lane=target_id,
+                                    source_s=source_s, target_s=target_s,
+                                    source_sample=list(source), target_sample=list(target)))
+            if source_id in by_id and target_id not in by_id[source_id]['successors']:
+                by_id[source_id]['successors'].append(target_id)
+    grouped = defaultdict(list)
+    for crossing in crossings:
+        source, target = tuple(crossing['source']), tuple(crossing['target'])
+        if source not in owners or target not in owners:
+            continue
+        source_id, source_s = owners[source]
+        target_id, target_s = owners[target]
+        if source_id != target_id:
+            grouped[source_id, target_id, crossing['boundary'], crossing['side']].append(
+                (source, target, source_s, target_s))
+    windows = []
+    for key, values in sorted(grouped.items()):
+        run = []
+
+        def finish():
+            if len(run) < 2:
+                return
+            source_id, target_id, boundary, side = key
+            windows.append(dict(source_lane=source_id, target_lane=target_id,
+                                boundary_id=boundary, side=side,
+                                source_s_start=run[0][2], source_s_end=run[-1][2],
+                                target_s_start=run[0][3], target_s_end=run[-1][3],
+                                boundary=boundaries[boundary],
+                                source_samples=[list(row[0]) for row in run],
+                                target_samples=[list(row[1]) for row in run]))
+
+        for row in sorted(values):
+            if run and (row[0][0] != run[-1][0][0] or row[0][1] != run[-1][0][1]+1
+                        or row[1][0] != run[-1][1][0] or not 0 <= row[1][1]-run[-1][1][1] <= 2
+                        or row[2] <= run[-1][2] or row[3] < run[-1][3]):
+                finish()
+                run = []
+            run.append(row)
+        finish()
+    return dict(reference_lane_id='global_route',
+                longitudinal_connections=connections, lane_changes=windows)
 
 
 def write_lane_rddf(result, directory, reference_path, dataset):

@@ -447,6 +447,7 @@ def validate_contract(contract, repository_root):
         errors.append("planning_policy must be a mapping")
     else:
         expected_input_groups = {
+            "static_map": ["/molit/map/hd_map"],
             "localization": [
                 "/molit/localization/local/odometry",
                 "/molit/localization/ego_state",

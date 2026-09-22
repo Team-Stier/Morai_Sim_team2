@@ -41,6 +41,10 @@ roslaunch morai_interface_pkg morai_interface_pkg.launch \
 이는 대회 고정 포트가 아니라 Team2 수신 설정이므로 MORAI Network Settings의
 destination IP/port를 실행 PC와 이 YAML 값에 맞춰야 한다. IMU는 중앙 개발 계약 범위에서 명시적으로 활성화하고, LiDAR는
 격리된 연결 시험에서만 활성화한다.
+현재 사용자 설정은 전방 카메라만 수신한다. 좌우 수신은 기본 비활성이며
+필요할 때 `start_camera_left:=true start_camera_right:=true`로 켠다.
+MORAI의 좌우 카메라 송출도 별도로 꺼야 영상 생성·전송 부하가 줄어든다.
+
 필요한 센서만 실행할 때는 `start_cameras:=false` 같은 launch 인자를 사용한다. LiDAR에는
 ROS Noetic `velodyne_driver`, `velodyne_pointcloud`, `velodyne_msgs`, `nodelet`이
 필요하다.

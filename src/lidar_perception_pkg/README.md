@@ -1,5 +1,9 @@
 # lidar_perception_pkg
 
+Frenet 통합에서는 LidarObjectObservation.points에 승인된 DBSCAN 군집의
+원본 반환점을 담는다. 수평 보정·지면 제거·ROI 설정은 유지하며, 공개 객체
+형상은 박스 대신 실제 점이다. 원본 좌표와 측정시각을 보존한다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.

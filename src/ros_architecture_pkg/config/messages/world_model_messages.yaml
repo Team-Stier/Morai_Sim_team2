@@ -1,70 +1,130 @@
 schema_version: 1
-contract_version: 0.1.0
+contract_version: 0.2.0
 authority: ros_architecture_pkg
 implementation_owner: common_msgs_pkg
 status: development_map_object_tracking_not_driving_verified
 messages:
   TrackedObject:
-    wire_definition: |
-      # Authority: ros_architecture_pkg/config/messages/world_model_messages.yaml
+    wire_definition: '# Authority: ros_architecture_pkg/config/messages/world_model_messages.yaml
+
       uint8 CLASS_UNKNOWN=0
+
       uint8 CLASS_PEDESTRIAN=1
+
       uint8 CLASS_VEHICLE=2
+
       uint8 CLASS_OTHER=3
+
       uint8 TRACK_TENTATIVE=0
+
       uint8 TRACK_CONFIRMED=1
+
       uint8 TRACK_COASTING=2
-      # Persistent only within one world_model_node process; never a Ground Truth ID.
+
+      # Persistent only within one world_model_node process; never a Ground Truth
+      ID.
+
       uint32 track_id
+
       # Most recent contributing observation and its original provenance.
+
       time source_stamp
+
       string source_frame_id
+
       uint32 source_local_id
+
       string timestamp_provenance
+
       string calibration_id
+
       bool calibration_verified
-      # Map-aligned conservative AABB. Orientation is identity until oriented-box fusion exists.
+
+      # Estimated centroid for association; not a bounding box.
+
       geometry_msgs/Pose pose
-      geometry_msgs/Vector3 size
+
+      # Actual map-frame points at source_stamp; never shifted by prediction.
+
+      geometry_msgs/Point[] points
+
       # Linear velocity is expressed in map. Angular velocity is not estimated.
+
       geometry_msgs/Twist twist
+
       bool velocity_valid
+
       uint8 semantic_class
+
       float32 confidence
+
       uint8 track_state
+
       uint32 observation_count
+
       # At the enclosing WorldModel fusion_reference_time.
+
       float64 age_since_observation_sec
+
       # -1 means the current development pipeline cannot bound this uncertainty.
+
       float64 position_stddev_m
+
       float64 velocity_stddev_mps
+
+      '
   WorldModel:
-    wire_definition: |
-      # Authority: ros_architecture_pkg/config/messages/world_model_messages.yaml
+    wire_definition: '# Authority: ros_architecture_pkg/config/messages/world_model_messages.yaml
+
       # Fusion reference time; frame_id must be map.
+
       std_msgs/Header header
+
       # Localization epoch used for every scan-time transform in this scene.
+
       uint32 localization_reset_id
+
       # True means the listed object geometry was transformed and tracked successfully.
+
       bool objects_valid
+
       bool tracking_valid
-      # True only when every driving-required calibration/freshness/uncertainty gate passes.
+
+      # True only when every driving-required calibration/freshness/uncertainty gate
+      passes.
+
       bool objects_verified
+
       # Capabilities absent from the first LiDAR-only vertical slice remain false.
+
       bool map_context_valid
+
       bool route_context_valid
+
       bool occupancy_valid
+
       bool free_space_valid
+
       bool traffic_context_valid
+
       # Consumers must not plan from this message unless planner_ready is true.
+
       bool planner_ready
+
       common_msgs_pkg/TrackedObject[] objects
+
       string reason
+
+      '
 semantics:
-  - WorldModel.header.stamp is the newest accepted LiDAR measurement time, never callback completion time.
-  - Every TrackedObject retains the last contributing source stamp, provenance and calibration identity.
-  - A map-frame pose requires the exact scan-time map-to-lidar transform; latest-time TF fallback is forbidden.
-  - Scan-local IDs never become track IDs without association.
-  - Unverified development LiDAR may produce diagnostic map geometry but objects_verified and planner_ready remain false.
-  - Missing detections may coast only for a bounded duration and never prove free space.
-  - Localization reset clock reset or regressing observation clears every active track.
+- WorldModel.header.stamp is the newest accepted LiDAR measurement time, never callback
+  completion time.
+- Every TrackedObject retains the last contributing source stamp, provenance and calibration
+  identity.
+- A map-frame pose requires the exact scan-time map-to-lidar transform; latest-time
+  TF fallback is forbidden.
+- Scan-local IDs never become track IDs without association.
+- Unverified development LiDAR may produce diagnostic map geometry but objects_verified
+  and planner_ready remain false.
+- Missing detections may coast only for a bounded duration and never prove free space.
+- Localization reset clock reset or regressing observation clears every active track.

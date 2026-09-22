@@ -33,7 +33,7 @@ def tracked(track_id=1):
         calibration_id="development-lidar",
         calibration_verified=False,
         pose=NS(position=NS(x=12.0, y=2.0, z=0.5), orientation=NS(x=0.0, y=0.0, z=0.0, w=1.0)),
-        size=NS(x=1.0, y=2.0, z=0.5),
+        points=[NS(x=12., y=2., z=.5)],
         twist=NS(linear=NS(x=0.0, y=0.0, z=0.0), angular=NS(x=0.0, y=0.0, z=0.0)),
         velocity_valid=False,
         semantic_class=0,

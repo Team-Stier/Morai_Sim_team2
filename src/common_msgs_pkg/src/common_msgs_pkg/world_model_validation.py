@@ -59,10 +59,8 @@ def validate_world_model(message, for_planning=False):
             raise ValueError("object pose quaternion must be finite and normalized")
         if not _finite(item.pose.position.x, item.pose.position.y, item.pose.position.z):
             raise ValueError("object position must be finite")
-        if not _finite(item.size.x, item.size.y, item.size.z) or min(
-            item.size.x, item.size.y, item.size.z
-        ) <= 0.0:
-            raise ValueError("object size must be finite and positive")
+        if not item.points or any(not _finite(p.x, p.y, p.z) for p in item.points):
+            raise ValueError("cluster points must be nonempty and finite")
         if item.track_state not in (item.TRACK_TENTATIVE, item.TRACK_CONFIRMED, item.TRACK_COASTING):
             raise ValueError("unknown track state")
         if item.semantic_class not in (

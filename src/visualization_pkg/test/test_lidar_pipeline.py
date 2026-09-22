@@ -55,10 +55,11 @@ class PipelineTest(unittest.TestCase):
             shown = [m for a in markers for m in a.markers if m.action == Marker.ADD]
             time.sleep(.01)
         self.assertTrue(shown)
-        box = shown[-1]
-        self.assertEqual(box.header, observations[-1].header)
-        self.assertEqual(box.pose.position, observations[-1].objects[0].center)
-        self.assertFalse(box.frame_locked)
+        cluster = shown[-1]
+        self.assertEqual(cluster.header, observations[-1].header)
+        self.assertEqual(cluster.type, Marker.POINTS)
+        self.assertEqual(cluster.points, observations[-1].objects[0].points)
+        self.assertFalse(cluster.frame_locked)
         time.sleep(1.2)
         self.assertTrue(all(m.action == Marker.DELETEALL for m in markers[-1].markers))
         self.assertTrue(subs)

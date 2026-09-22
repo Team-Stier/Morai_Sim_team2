@@ -12,8 +12,10 @@ tracking:
   minimum_confirmation_hits: 2
   minimum_velocity_hits: 3
   position_alpha: 0.65
-  size_alpha: 0.5
   velocity_alpha: 0.4
-  maximum_speed_mps: 25.0
+  maximum_speed_mps: 60.0
   maximum_prediction_sec: 0.3
   velocity_stddev_mps: 2.0
+  motion_max_points: 96
+  motion_iterations: 6
+  motion_trim_fraction: 0.7

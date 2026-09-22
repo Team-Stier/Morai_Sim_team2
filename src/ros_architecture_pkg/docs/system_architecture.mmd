@@ -38,7 +38,7 @@ flowchart LR
         node_012["morai_control_sender<br/>exec: control_sender_node<br/>state: RESERVED (reserved_not_implemented_pending_competition_packet)"]
     end
     subgraph pkg_003["hd_map_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_013["hd_map_server_node<br/>exec: hd_map_server_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_013["hd_map_server_node<br/>exec: hd_map_server_node<br/>state: RESERVED (development_frenet_rddf_unverified)"]
     end
     subgraph pkg_004["camera_perception_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_014["camera_perception_node<br/>exec: camera_perception_node<br/>state: RESERVED (reserved_not_implemented)"]
@@ -50,13 +50,13 @@ flowchart LR
         node_016["localization_node<br/>exec: localization_estimator_node.py<br/>state: LIVE (development_estimator_active)"]
     end
     subgraph pkg_007["global_route_manager_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_018["global_route_manager_node<br/>exec: global_route_manager_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_018["global_route_manager_node<br/>exec: route_manager_node.py<br/>state: RESERVED (development_frenet_rddf_unverified)"]
     end
     subgraph pkg_008["world_model_pkg<br/>runtime: development_map_object_tracking_unverified"]
         node_019["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (development_map_object_tracking_unverified)"]
     end
     subgraph pkg_009["path_planning_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_020["path_planner_node<br/>exec: path_planner_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_020["path_planner_node<br/>exec: frenet_planner_node.py<br/>state: RESERVED (development_frenet_rddf_unverified)"]
     end
     subgraph pkg_010["vehicle_control_pkg<br/>runtime: development_controller_unverified"]
         node_021["vehicle_controller_node<br/>exec: vehicle_controller_node<br/>state: RESERVED (development_controller_unverified)"]
@@ -148,6 +148,7 @@ flowchart LR
     topic_011 --> node_016
     topic_011 --> node_018
     topic_011 --> node_019
+    topic_011 --> node_020
     node_013 --> topic_012
     topic_012 --> node_016
     topic_012 --> node_018

@@ -1,5 +1,6 @@
 """Read-only scan geometry, resolved by RViz at the original measurement stamp."""
 import copy
+import colorsys
 
 import rospy
 from visualization_msgs.msg import Marker, MarkerArray
@@ -53,14 +54,13 @@ class LidarDisplay:
             marker.header = copy.deepcopy(msg.header)
             marker.ns = 'lidar_object_geometry_unverified'
             marker.id = index
-            marker.type = Marker.CUBE
+            marker.type = Marker.POINTS
             marker.action = Marker.ADD
-            marker.pose.position = copy.deepcopy(obj.center)
+            marker.points = copy.deepcopy(obj.points)
             marker.pose.orientation.w = 1.0
-            marker.scale.x = max(obj.size.x, 0.03)
-            marker.scale.y = max(obj.size.y, 0.03)
-            marker.scale.z = max(obj.size.z, 0.03)
-            marker.color.r, marker.color.g, marker.color.b, marker.color.a = 1.0, 0.3, 0.7, 0.45
+            marker.scale.x = marker.scale.y = self.config.cluster_point_size_m
+            marker.color.r, marker.color.g, marker.color.b = colorsys.hsv_to_rgb((obj.scan_local_id * 0.61803398875) % 1, 0.75, 1)
+            marker.color.a = 1.0
             marker.lifetime = rospy.Duration(self.config.display_timeout_sec)
             marker.frame_locked = False
             markers.append(marker)

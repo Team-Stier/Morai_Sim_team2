@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""Publish the centrally approved static RDDF map and component state."""
+import math
+
+import rospy
+from geometry_msgs.msg import Point, Point32, Polygon, PoseStamped
+from nav_msgs.msg import Path
+from common_msgs_pkg.msg import ComponentStatus, HdMap, LaneChangeWindow, RouteLane
+
+from hd_map_pkg.runtime_map import load_static_map
+
+
+def path_message(points, header):
+    result = Path(header=header)
+    for index, point in enumerate(points):
+        a, b = (points[index], points[index+1]) if index+1 < len(points) else (points[index-1], points[index])
+        yaw = math.atan2(b[1]-a[1], b[0]-a[0])
+        pose = PoseStamped(header=header)
+        pose.pose.position = Point(*point)
+        pose.pose.orientation.z, pose.pose.orientation.w = math.sin(yaw/2), math.cos(yaw/2)
+        result.poses.append(pose)
+    return result
+
+
+def map_message(data, stamp):
+    result = HdMap(map_id=data['map_id'], reference_sha256=data['reference_sha256'])
+    result.header.frame_id, result.header.stamp = 'map', stamp
+    for data_lane in data['lanes']:
+        lane = RouteLane(id=data_lane['id'], link_id=data_lane['link_id'])
+        lane.centerline = path_message(data_lane['points'], result.header)
+        for field in ('successors', 'source_indices', 'route_s', 'speed_limits_mps'):
+            setattr(lane, field, data_lane[field])
+        result.lanes.append(lane)
+    for data_window in data['lane_changes']:
+        window = LaneChangeWindow()
+        for field in ('source_lane', 'target_lane', 'boundary_id', 'side',
+                      'source_s_start', 'source_s_end', 'target_s_start', 'target_s_end'):
+            setattr(window, field, data_window[field])
+        window.boundary = [Point(*point) for point in data_window['boundary']]
+        result.lane_changes.append(window)
+    result.checkpoints = [Point(*point) for point in data['checkpoints']]
+    result.checkpoint_radius_m = data['checkpoint_radius_m']
+    result.forbidden_boundaries = [Polygon(points=[Point32(*point) for point in line])
+                                   for line in data['forbidden_boundaries']]
+    return result
+
+
+def main():
+    rospy.init_node('hd_map_server_node')
+    publisher = rospy.Publisher('/molit/map/hd_map', HdMap, queue_size=1, latch=True)
+    status_publisher = rospy.Publisher('/molit/map/status', ComponentStatus, queue_size=1, latch=True)
+    data = load_static_map(*(rospy.get_param('~'+key) for key in
+                             ('config_file', 'source', 'path_file', 'checkpoints_file', 'speed_policy_file')))
+    stamp = rospy.Time.now()
+    message = map_message(data, stamp)
+    publisher.publish(message)
+
+    def publish_status(_event):
+        status = ComponentStatus(component='hd_map_pkg', state=ComponentStatus.READY,
+                                 ready=True, stop_required=False, data_stamp=stamp,
+                                 processed_count=1, processing_latency_sec=-1.0)
+        status.header.stamp = rospy.Time.now()
+        status.data_age_sec = (status.header.stamp-stamp).to_sec()
+        status.reason = '{}; static topology verified; {} lanes, {} change windows'.format(
+            message.map_id, len(message.lanes), len(message.lane_changes))
+        status_publisher.publish(status)
+
+    publish_status(None)
+    rospy.Timer(rospy.Duration(0.5), publish_status)
+    rospy.loginfo('Static RDDF map: %d lanes, %d permitted change windows',
+                  len(message.lanes), len(message.lane_changes))
+    rospy.spin()
+
+
+if __name__ == '__main__':
+    main()

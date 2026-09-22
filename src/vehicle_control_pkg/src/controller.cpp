@@ -23,7 +23,8 @@ double referenceSpeed(const common_msgs_pkg::Trajectory& trajectory, const ros::
 }  // namespace
 
 Controller::Controller(const Config& c) : pp_(c.pp), stanley_(c.stanley),
-    supervisor_(c.supervisor), speed_(c.kp, c.ki, c.brake_kp, c.integral_limit, c.stop_brake) {}
+    supervisor_(c.supervisor), speed_(c.kp, c.ki, c.brake_kp, c.integral_limit, c.stop_brake),
+    reference_preview_sec_(c.reference_preview_sec) {}
 
 Output Controller::base(const ros::Time& now) const {
   Output o;
@@ -74,12 +75,17 @@ Output Controller::step(const nav_msgs::Odometry& odom, const common_msgs_pkg::T
     o.command.brake = speed_.calculate(0.0, state.speed_kph, dt, true).second;
     o.status.stop_required = true;
     o.status.reason = "upstream_controller_stop";
+    if (traj.speed_mps.back() == 0.0) {
+      o.command.valid = true;
+      o.status.ready = o.status.command_valid = true;
+      o.status.reason = "terminal_stop_approach";
+    }
     return o;
   }
   if (mode == hybrid_path_tracking::HybridMode::STANLEY_GLOBAL || !pp.valid) uses_stanley_ = true;
   if (mode == hybrid_path_tracking::HybridMode::PP_GLOBAL || !stanley.valid) uses_stanley_ = false;
   const auto& chosen = uses_stanley_ ? stanley : pp;
-  const double target = referenceSpeed(traj, now);
+  const double target = referenceSpeed(traj, now+ros::Duration(reference_preview_sec_));
   const auto pedals = speed_.calculate(target*3.6, state.speed_kph, dt, target == 0.0);
   o.command.accel = pedals.first;
   o.command.brake = pedals.second;
