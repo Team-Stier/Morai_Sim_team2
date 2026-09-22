@@ -116,35 +116,18 @@ class Node:
         self.status.publish(m)
 
     def offer_selection(self, candidate, completed, reset_id=None):
-        """Hold an activated result for one second and retain only the latest offer."""
+        """Activate every completed result immediately, including stop results."""
         with self.lock:
             if reset_id is not None and self.state[0].reset_id != reset_id:
                 return
-            if candidate is None and self.selected is not None:
-                if not self.pending_selection_set or self.pending_selection is not None:
-                    self.pending_selection_stamp = completed
-                self.pending_selection = None
-                self.pending_selection_set = True
-                return
-            if ((self.selected is None and candidate is not None) or
-                    self.selected_stamp is None or
-                    (completed-self.selected_stamp).to_sec() >= self.c['minimum_path_hold_sec']):
-                self.selected, self.selected_stamp = candidate, completed
-                self.pending_selection = None
-                self.pending_selection_set = False
-                self.pending_selection_stamp = None
-            else:
-                self.pending_selection = candidate
-                self.pending_selection_set = True
-                self.pending_selection_stamp = completed
+            self.selected, self.selected_stamp = candidate, completed
+            self.pending_selection = None
+            self.pending_selection_set = False
+            self.pending_selection_stamp = None
 
     def defer_stop(self, reason):
-        now = rospy.Time.now()
-        with self.lock:
-            holding = (self.selected is not None and self.selected_stamp is not None and
-                       (now-self.selected_stamp).to_sec() < self.c['minimum_path_hold_sec'])
-        self.offer_selection(None,now)
-        self.report(reason+('; holding_active_path' if holding else ''),holding)
+        self.offer_selection(None, rospy.Time.now())
+        self.report(reason, False)
 
     def plan(self, _):
         started = time.monotonic()
@@ -250,16 +233,6 @@ class Node:
         now = rospy.Time.now()
         with self.lock:
             ego, odom = self.state
-            stop_mature = (self.pending_selection is None and self.pending_selection_stamp is not None and
-                           (now-self.pending_selection_stamp).to_sec() >= self.c['minimum_path_hold_sec'])
-            path_mature = (self.pending_selection is not None and self.selected_stamp is not None and
-                           (now-self.selected_stamp).to_sec() >= self.c['minimum_path_hold_sec'])
-            if self.pending_selection_set and (stop_mature or path_mature):
-                self.selected = self.pending_selection
-                self.selected_stamp = now
-                self.pending_selection = None
-                self.pending_selection_set = False
-                self.pending_selection_stamp = None
             chosen, stamp = self.selected, self.selected_stamp
         output = Trajectory()
         output.header.stamp, output.header.frame_id = now, 'odom'
