@@ -333,6 +333,82 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertEqual(node.trajectory.message.stop_required, not alternative_valid)
         self.assertIs(node.selected, alternative if alternative_valid else None)
 
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_blocked_commit_evaluates_recovery_and_generates_detours(self, _):
+        import copy
+        node = self.node()
+        node.c['rddf_geometry_only'] = True
+        node.static_map = None
+        node.on_map(self.static_map())
+        node.route = RouteContext(map_id='map-a', current_lane='global_route',
+                                  progress=10., comparison_goal_s=20.)
+        node.world = WorldModel(objects_valid=True, localization_reset_id=12)
+        node.state[0].header.stamp = node.route.header.stamp = node.world.header.stamp = rospy.Time(100)
+        node.route_status = None
+        node.epoch = 12
+        node.planner = Planner(node.c)
+        node.audit = Output()
+        node.report = lambda *args: None
+        held = copy.deepcopy(node.selected)
+        held.route_s = np.array([10.,11.,12.,13.])
+        held.change_end = 25.
+        node.planner.committed = held
+        keep, recovery = copy.deepcopy(held), copy.deepcopy(held)
+        recovery.key = 'recovery'
+        evaluated = []
+
+        def evaluate(candidate, *args):
+            evaluated.append(candidate.key)
+            candidate.feasible = candidate.key != 'keep'
+            candidate.cost = candidate.eta = 5. if candidate.key == 'recovery' else np.inf
+            candidate.reason = 'feasible' if candidate.key == 'recovery' else 'stop_wait_prediction_unresolved'
+            return candidate
+
+        with patch.object(node.planner, 'candidates', return_value=[keep, recovery]), \
+                patch.object(node.planner, 'obstacle_detours', return_value=[]) as detours, \
+                patch.object(node.planner, 'evaluate', side_effect=evaluate):
+            node.plan(None)
+        self.assertEqual(evaluated, ['committed', 'keep', 'recovery'])
+        detours.assert_called_once()
+        self.assertIs(node.selected, recovery)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_world_model_crossing_clearance_survives_trajectory_serialization(self, _):
+        node = self.node()
+        node.c['rddf_geometry_only'] = True
+        node.static_map = None
+        node.on_map(self.static_map())
+        node.route = RouteContext(map_id='map-a', current_lane='global_route',
+                                  progress=10., comparison_goal_s=20.)
+        node.route.header.stamp = node.state[0].header.stamp = rospy.Time(100)
+        node.state[1].twist.twist.linear.x = 2.
+        world = WorldModel(objects_valid=True, localization_reset_id=12)
+        world.header.stamp = rospy.Time(100)
+        obj = TrackedObject(velocity_valid=True, source_stamp=rospy.Time(100))
+        obj.points = [Point(25.,0.,0.)]
+        obj.twist.linear.y = 2.
+        world.objects = [obj]
+        wire = io.BytesIO()
+        world.serialize(wire)
+        node.world = WorldModel().deserialize(wire.getvalue())
+        node.route_status = None
+        node.epoch = 12
+        node.planner = Planner(node.c)
+        node.audit = Output()
+        node.report = lambda *args: None
+        node.plan(None)
+        node.publish(None)
+        message = node.trajectory.message
+        wire = io.BytesIO()
+        message.serialize(wire)
+        decoded = type(message)().deserialize(wire.getvalue())
+        self.assertTrue(decoded.valid)
+        self.assertFalse(decoded.stop_required)
+        self.assertGreater(min(decoded.speed_mps[:10]), 0.)
+        self.assertEqual(decoded.reset_id, 12)
+        self.assertEqual(decoded.header.frame_id, 'odom')
+        self.assertTrue(np.all(np.diff([t.to_sec() for t in decoded.time_from_start]) > 0.))
+
     def node(self):
         node = module.Node.__new__(module.Node)
         node.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())

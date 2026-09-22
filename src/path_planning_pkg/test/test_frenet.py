@@ -1,4 +1,5 @@
 import copy
+import json
 import math
 from pathlib import Path
 import unittest
@@ -350,6 +351,80 @@ class FrenetTest(unittest.TestCase):
         self.assertTrue(math.isfinite(keep.cost))
         self.assertGreater(keep.wait,0.)
         self.assertEqual(keep.reason,'waiting_for_crossing')
+
+    def test_crossing_object_already_leaving_clears_before_ego_arrival(self):
+        clear = self.candidates()[0]
+        obstacle = Obstacle(np.array([[15.,0.,0.]]), np.array([0.,2.]))
+        keep = self.candidates([obstacle])[0]
+        self.assertTrue(keep.feasible)
+        self.assertEqual(keep.reason, 'feasible')
+        self.assertAlmostEqual(keep.eta, clear.eta)
+        self.assertFalse(np.any(keep.speed == 0.))
+        self.assertIsNone(self.p.collision(keep.xy, geometry(keep.xy)[1], keep.times, [obstacle]))
+
+    def test_recorded_crossing_clearance_and_safe_slow_approach(self):
+        fixture = json.loads((Path(__file__).parent/'fixtures/crossing_stops_20260922.json').read_text())
+        planner = Planner(fixture['config'])
+        for index, row in enumerate(fixture['snapshots']):
+            with self.subTest(bag_offset_sec=row['bag_offset_sec']):
+                candidate = Candidate('keep', 'global_route', np.array(row['xy']),
+                                      np.array(row['route_s']), np.array(row['limits']))
+                objects = [Obstacle(np.array(o['points']), np.array(o['velocity']),
+                                    o['velocity_valid'], o['age']) for o in row['objects']]
+                planner.evaluate(candidate, row['ego_speed_mps'], objects, [], row['goal_s'])
+                self.assertTrue(candidate.feasible)
+                # Independent scalar sampling checks the final selected motion.
+                self.assertIsNone(scalar_collision(planner, candidate.xy,
+                    geometry(candidate.xy)[1], candidate.times, objects))
+                if index == 0:
+                    # 449.6 s: removing the slow approach must not create an
+                    # immediate full stop because another object crosses sooner.
+                    self.assertGreater(max(candidate.speed), 2.)
+                    self.assertTrue(np.any(candidate.speed == 0.))
+                    self.assertEqual(candidate.reason, 'stop_wait_prediction_unresolved')
+                else:
+                    # 454.3 s: the object is leaving; all recorded objects pass
+                    # the time-dependent collision check without a stop.
+                    self.assertTrue(np.all(candidate.speed > 0.))
+                    self.assertTrue(math.isfinite(candidate.eta))
+
+    def test_crossing_velocity_without_valid_estimate_still_requires_stop(self):
+        obstacle = Obstacle(np.array([[15.,0.,0.]]), np.array([0.,2.]), False)
+        keep = self.candidates([obstacle])[0]
+        self.assertTrue(keep.feasible)
+        self.assertTrue(np.any(keep.speed == 0.))
+        self.assertFalse(math.isfinite(keep.eta))
+
+    def test_oncoming_object_is_still_checked_in_time(self):
+        obstacle = Obstacle(np.array([[15.,0.,0.]]), np.array([-3.,0.]))
+        keep = self.candidates([obstacle])[0]
+        self.assertTrue(not keep.feasible or np.any(keep.speed == 0.))
+
+    def test_blocked_commit_can_release_to_checked_finite_alternative(self):
+        self.c['gain_confirmation_sec'] = 0.
+        obstacle = Obstacle(np.array([[25.,0.,0.]]), np.zeros(2))
+        candidates = self.candidates([obstacle])
+        held = copy.deepcopy(candidates[0])
+        held.key = 'committed'
+        held.change_end = 70.
+        self.assertTrue(held.feasible)
+        self.assertFalse(math.isfinite(held.cost))
+        self.p.committed = held
+        chosen = self.p.select(candidates+[held], 1., 0.)
+        self.assertIsNot(chosen, held)
+        self.assertTrue(chosen.feasible and math.isfinite(chosen.cost))
+
+    def test_blocked_commit_keeps_safe_stop_when_no_finite_recovery_exists(self):
+        obstacles = [Obstacle(np.array([[25.,y,0.]]), np.zeros(2)) for y in (0.,3.5)]
+        candidates = self.candidates(obstacles)
+        held = copy.deepcopy(candidates[0])
+        held.key = 'committed'
+        held.change_end = 70.
+        self.p.committed = held
+        self.assertTrue(held.feasible)
+        self.assertFalse(any(math.isfinite(c.cost) for c in candidates))
+        self.assertIs(self.p.select(candidates+[held], 1., 0.), held)
+        self.assertIs(self.p.committed, held)
 
     def test_high_speed_exit_is_braked_before_normal_zone(self):
         self.c['test_speed_cap_kph']=0.

@@ -205,9 +205,9 @@ class Node:
             self.offer_selection(fast if fast.feasible else None,completed,ego.reset_id)
 
         lateral_period = 1./self.c['lane_change_evaluation_rate_hz']
-        # A feasible committed manoeuvre is retained by select regardless of
-        # alternative costs. Recheck it every tick without scoring unused alternatives.
-        if fast.feasible and (fast.key == 'committed' or
+        # A traversable committed manoeuvre stays selected regardless of other
+        # costs. An unresolved stop must periodically search for recovery instead.
+        if fast.feasible and ((fast.key == 'committed' and math.isfinite(fast.cost)) or
                 time.monotonic()-self.last_lane_change_evaluation < lateral_period):
             self.audit.publish(String(data=json.dumps([{'key':fast.key,'target':fast.target,
                 'feasible':fast.feasible,'reason':fast.reason,'eta':fast.eta if math.isfinite(fast.eta) else None,
@@ -217,10 +217,15 @@ class Node:
             return
 
         self.last_lane_change_evaluation = time.monotonic()
-        if not math.isfinite(candidates[0].cost) and self.planner.committed is None:
+        # A blocked committed manoeuvre must allow checked recovery candidates.
+        # Evaluate keep first so detours are generated only if it is also blocked.
+        if candidates[0] is not fast:
+            evaluate(candidates[0])
+        if not math.isfinite(candidates[0].cost) and (self.planner.committed is None or
+                not fast.feasible or not math.isfinite(fast.cost)):
             candidates.extend(self.planner.obstacle_detours(candidates[0], objects))
         for candidate in candidates:
-            if candidate is not fast:
+            if candidate is not fast and candidate is not candidates[0]:
                 evaluate(candidate)
         chosen = self.planner.select(candidates, now.to_sec(), progress)
         self.offer_selection(chosen,rospy.Time.now(),ego.reset_id)

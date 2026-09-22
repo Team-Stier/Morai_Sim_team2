@@ -520,6 +520,7 @@ class Planner:
         # proxy is substituted for the measured obstacle shape.
         stop = max(0., boundary_stop-c['stop_margin_m'])
         known_static_stop=stop
+        crossing_stop = math.inf
         cap = np.full(len(s), math.inf)
         precise = s <= c['collision_precision_distance_m']
         for obj in raw_objects:
@@ -532,19 +533,30 @@ class Planner:
                 continue
             index = hits[0]
             forward_velocity = float(np.dot(obj.velocity[:2], [math.cos(theta[index]), math.sin(theta[index])])) if obj.velocity_valid else 0.
-            if forward_velocity <= c['stationary_speed_mps']:
+            if not obj.velocity_valid or np.linalg.norm(obj.velocity[:2]) <= c['stationary_speed_mps']:
                 stop = min(stop, max(0., s[index]-c['stop_margin_m']))
-                if not obj.velocity_valid or np.linalg.norm(obj.velocity[:2])<=c['stationary_speed_mps']:
-                    known_static_stop=min(known_static_stop,stop)
-            else:
+                known_static_stop = min(known_static_stop, stop)
+            elif forward_velocity > c['stationary_speed_mps']:
                 remaining = np.maximum(0., s[index]-s-c['follow_gap_m'])
                 cap = np.minimum(cap, forward_velocity+remaining/c['follow_time_sec'])
+            else:
+                crossing_stop = min(crossing_stop, max(0., s[index]-c['stop_margin_m']))
+            # A moving crossing/oncoming object is not a stationary roadblock at
+            # its current location. The swept time/footprint check below decides
+            # whether it actually meets this trajectory, including at t=0.
         result = self.profile(candidate, speed, stop, cap)
         if result is None:
             candidate.reason = 'insufficient_stopping_distance'
             return candidate
         s, theta, curvature, v, times = result
         collision = self.collision(candidate.xy, theta, times, obstacle_grid)
+        if collision is not None and crossing_stop < stop:
+            # Removing a spatial crossing stop can change arrival times at a
+            # different obstacle. Retain the original checked slow approach if
+            # the less constrained profile is not collision-free as a whole.
+            stop = crossing_stop
+            s, theta, curvature, v, times = self.profile(candidate, speed, stop, cap)
+            collision = self.collision(candidate.xy, theta, times, obstacle_grid)
         if collision is not None:
             if candidate.changes:
                 candidate.reason = 'predicted_cluster_collision'
@@ -609,10 +621,14 @@ class Planner:
         feasible = [x for x in candidates if x.feasible]
         if self.committed is not None:
             retained = next((x for x in candidates if x.key == 'committed' and x.feasible), None)
-            if retained is not None:
+            if retained is not None and (math.isfinite(retained.cost) or
+                    not any(math.isfinite(x.cost) for x in feasible)):
                 if progress >= self.committed.change_end and math.isinf(self.committed.return_start):
                     self.committed = None
                 return retained
+            # A safe stop with unresolved ETA is not a traversable manoeuvre.
+            # Release it only when a fully checked finite alternative exists;
+            # otherwise keep its collision-checked stopping trajectory above.
             self.committed = None
         if not feasible:
             return None
