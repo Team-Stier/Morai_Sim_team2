@@ -26,6 +26,42 @@ class Output:
 
 
 class FrenetOutputTest(unittest.TestCase):
+    def test_hd_map_connected_rddf_survives_wire_and_planner_ingestion(self):
+        from importlib.machinery import SourceFileLoader
+        from hd_map_pkg.lane_rddf import SegmentIndex
+        from hd_map_pkg.rddf_connections import smooth_connection
+        from hd_map_pkg.runtime_map import build_static_map
+        source = Path(__file__).parents[2]/'hd_map_pkg/scripts/hd_map_server_node'
+        producer = SourceFileLoader('connected_map_producer', str(source)).load_module()
+        reference = [[float(x), 0., 0.] for x in range(251)]
+        points, stations = smooth_connection(reference, [[0., 3.5, 0.], [200., 3.5, 0.]],
+            SegmentIndex({'route': reference}), .5, 80., 45., 15.)
+        lane = dict(id='connected', link_id='source', points=points, route_s=stations,
+                    source_indices=list(range(len(points))), successors=['global_route'])
+        rddf = dict(lanes=[lane], source_hashes={}, forbidden_boundaries=[],
+                    forbidden_boundary_ids=[], graph=dict(lane_changes=[],
+                    longitudinal_connections=[dict(source_lane='global_route', target_lane='connected')]))
+        policy = dict(normal_limit_kph=58., high_speed=dict(start_map_xy=[0., 0.], end_map_xy=[200., 0.]))
+        data = build_static_map(reference, rddf, dict(points=[], radius_m=3., source='fixture'),
+                                policy, 'fixture-sha')
+        message = producer.map_message(data, rospy.Time(1))
+        wire = io.BytesIO()
+        message.serialize(wire)
+        decoded = HdMap().deserialize(wire.getvalue())
+        node = self.node()
+        for geometry_only in (False, True):
+            node.c['rddf_geometry_only'] = geometry_only
+            node.static_map = None
+            node.on_map(decoded)
+            lanes = node.static_map[1]
+            connected = lanes['connected']
+            np.testing.assert_allclose(connected.xy[[0,-1]], [[0.,0.,0.],[200.,0.,0.]])
+            self.assertTrue(np.all(np.diff(connected.s) > 0))
+            if not geometry_only:
+                chained = Planner(node.c).chain('connected', lanes, 230.)
+                self.assertGreaterEqual(chained.s[-1],230.)
+                self.assertLessEqual(np.max(np.linalg.norm(np.diff(chained.xy[:,:2],axis=0),axis=1)),1.001)
+
     def static_map(self):
         message = HdMap(map_id='map-a', reference_sha256='reference-a')
         lane = RouteLane(id='global_route', route_s=[0.,10.,20.,30.], speed_limits_mps=[16.]*4)

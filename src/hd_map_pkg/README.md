@@ -1,8 +1,12 @@
 # hd_map_pkg
 
-Frenet 개발 실행의 hd_map_server_node는 명시한 RDDF 14개와 전역경로,
+Frenet 개발 실행의 hd_map_server_node는 원본 링크 14개에서 만든 추가 RDDF 8개와 전역경로,
 MGeo 연결·허용 점선 구간·금지 경계·체크포인트를 HdMap으로 발행한다.
 목록은 config/map_conversion.yaml의 allowed_link_ids로 고정한다.
+고주로의 링크 8개는 추가 차로 2개로 연결한다. 전역경로와 함께 3개 RDDF를
+이루며 고주로 시작점에서 분기하고 원본 추가 차로의 끝에서 다시 합류한다.
+진입 80 m·합류 45 m의 파생 접속 곡선과 원본 링크 목록은
+`lane_rddf.course_connections`로 관리한다.
 
 MORAI 공식 조직의 KATRI MGeo 3.0 스냅샷을 immutable 후보로 고정하고, 이를
 WGS84 기반 Lanelet2 OSM으로 변환·검증하며 브라우저에서 시각 검사하는 오프라인

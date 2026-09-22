@@ -67,7 +67,7 @@ def build_lane_rddf(dataset, transform, route, settings):
     if unknown:
         raise ValueError('Unknown excluded link IDs: '+', '.join(sorted(unknown)))
     for key, value in cfg.items():
-        if key in ('excluded_link_ids', 'allowed_link_ids'):
+        if key in ('excluded_link_ids', 'allowed_link_ids', 'course_connections'):
             continue
         if not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
             raise ValueError('Invalid lane RDDF setting: '+key)
@@ -210,7 +210,7 @@ def build_lane_rddf(dataset, transform, route, settings):
                         route_progress, boundaries, cfg['route_exclusion_m'])
     forbidden_ids = [key for key, boundary in sorted(dataset.lane_boundaries.items())
                      if len(boundaries[key]) > 1 and forbidden_lateral_boundary(boundary)]
-    return {'format': 'hd_map_pkg.lane_rddf.v2', 'frame': 'map', 'units': 'm',
+    result = {'format': 'hd_map_pkg.lane_rddf.v2', 'frame': 'map', 'units': 'm',
             'purpose': 'static_lane_alternatives_and_crossing_windows_not_driving_trajectories',
             'settings': dict(cfg), 'lanes': lanes, 'crossings': changes,
             'graph': graph,
@@ -219,6 +219,8 @@ def build_lane_rddf(dataset, transform, route, settings):
             'counts': {'lanes': len(lanes), 'crossing_samples': len(changes),
                        'route_seed_samples': len(seeds), 'retained_samples': len(retained),
                        'lane_change_windows': len(graph['lane_changes'])}}
+    from .rddf_connections import connect_course_lanes
+    return connect_course_lanes(result, dataset, lines, route, route_index, cfg)
 
 
 def forbidden_lateral_boundary(boundary):
