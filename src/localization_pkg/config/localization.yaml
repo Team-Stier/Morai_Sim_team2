@@ -1,4 +1,4 @@
-# Six-state development estimator model parameters. Timing is read directly
+# Nine-state development estimator model parameters. Timing is read directly
 # from ros_architecture_pkg/config/timestamp/timestamp_contract.yaml.
 # The C++ diagnostic mode only uses status rate and clock stall.
 status_publish_rate_hz: 10.0
@@ -12,3 +12,15 @@ initial_velocity_stddev_mps: 2.0
 # Above this value, immediately accept the GPS as a new map anchor and reset velocity.
 gps_innovation_gate_chi2: 25.0
 ingress_timing_stddev_sec: 0.03
+# Body-frame additive residual acceleration (bias, not an attitude calibration).
+initial_accelerometer_bias_stddev_mps2: 0.3
+accelerometer_bias_random_walk_mps2_sqrt_sec: 0.005
+# Soft zero-velocity updates require a contiguous GPS window AND quiet IMU.
+# Applied once per accepted GPS only, never held/replayed through blackout.
+stationary_window_sec: 2.0
+stationary_gps_radius_m: 0.08
+stationary_speed_mps: 0.15
+stationary_acceleration_mps2: 0.15
+stationary_angular_rate_radps: 0.02
+stationary_velocity_stddev_mps: 0.10
+stationary_gps_stddev_m: 0.6

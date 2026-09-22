@@ -1,0 +1,84 @@
+{
+  "baseline_commit": "3e5c738da3a50daac713f15d448edd4090964538",
+  "evidence": "synthetic, not MORAI runtime",
+  "imu_rate_hz": 50,
+  "gps_rate_hz": 5,
+  "gps_training_sec": 20,
+  "blackout_sec": 15,
+  "injected_body_bias_mps2": [
+    0.04,
+    -0.025,
+    0.015
+  ],
+  "scenarios": {
+    "stationary": {
+      "reference_elapsed_sec": 20,
+      "before": {
+        "final_position_error_m": 6.90371231831894,
+        "map_displacement_from_reference_time_m": 6.8306343834871335,
+        "final_velocity_mps": [
+          0.6649676834402886,
+          -0.41560480215018414,
+          0.26127415649131963
+        ],
+        "final_horizontal_stddev_m": 4.205593899926338
+      },
+      "after": {
+        "final_position_error_m": 0.01672160675282375,
+        "map_displacement_from_reference_time_m": 0.016687798880941004,
+        "final_velocity_mps": [
+          0.0017602202969155855,
+          -0.001100137685572313,
+          0.0005858339672685258
+        ],
+        "final_horizontal_stddev_m": 5.451429866057428
+      }
+    },
+    "drive_brake_stop": {
+      "reference_elapsed_sec": 22,
+      "before": {
+        "final_position_error_m": 6.959222648683653,
+        "map_displacement_from_reference_time_m": 6.607187581213122,
+        "final_velocity_mps": [
+          0.669148633601964,
+          -0.4156459254610018,
+          0.26129169056519025
+        ],
+        "final_horizontal_stddev_m": 4.225233724925311
+      },
+      "after": {
+        "final_position_error_m": 0.08947101368961742,
+        "map_displacement_from_reference_time_m": 0.08492676698399301,
+        "final_velocity_mps": [
+          0.010326892564102987,
+          -0.001299809839835081,
+          0.0007877490636785009
+        ],
+        "final_horizontal_stddev_m": 6.270605320828718
+      }
+    },
+    "cruise": {
+      "reference_elapsed_sec": 20,
+      "before": {
+        "final_position_error_m": 6.954720537391196,
+        "map_displacement_from_reference_time_m": 65.65847001468288,
+        "final_velocity_mps": [
+          4.668748633601906,
+          -0.4156459254610018,
+          0.26129169056519025
+        ],
+        "final_horizontal_stddev_m": 4.2235106543555645
+      },
+      "after": {
+        "final_position_error_m": 0.0839323920489326,
+        "map_displacement_from_reference_time_m": 60.082079699799124,
+        "final_velocity_mps": [
+          4.009926892564178,
+          -0.001299809839835081,
+          0.0007877490636785009
+        ],
+        "final_horizontal_stddev_m": 6.269404959244024
+      }
+    }
+  }
+}

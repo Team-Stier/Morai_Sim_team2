@@ -263,10 +263,14 @@ class LocalizationNode:
                          ('clock stalled' if stalled else
                           'IMU input stale' if not imu_fresh else
                           'estimate stale or dead reckoning budget expired' if self.latest and not valid else
-                          'GPS blackout; inertial prediction only' if valid and not status.gps_fix_valid else
+                          'GPS blackout; bias-compensated inertial prediction; no independent speed observation' if valid and not status.gps_fix_valid else
                           (self.core.last_rejection or self.reason)))
         if self.core.gps_diagnostic:
             status.reason += '; ' + self.core.gps_diagnostic
+        if self.core.initialized:
+            status.reason += '; acceleration bias norm=%.4f m/s^2' % np.linalg.norm(self.core.state[6:])
+            if self.core.last_stationary_update == self.core.stamp:
+                status.reason += '; GPS-supported zero-velocity update'
         self.status_pub.publish(status)
 
     def run(self):
