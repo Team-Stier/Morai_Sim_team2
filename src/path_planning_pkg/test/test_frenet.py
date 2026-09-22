@@ -12,6 +12,7 @@ class FrenetTest(unittest.TestCase):
         self.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
         self.c['test_speed_cap_kph'] = 10.0  # Low-speed scenario fixtures.
         self.c['rddf_geometry_only'] = False  # Original map-rule scenarios.
+        self.c['loop_route'] = False
         self.p = Planner(self.c)
         s = np.arange(0., 121., .5)
         def lane(key, y):
@@ -51,6 +52,20 @@ class FrenetTest(unittest.TestCase):
         candidates = self.candidates()
         self.assertEqual(self.p.select(candidates, 1., 0.).key, 'keep')
         self.assertTrue(math.isfinite(candidates[0].cost))
+
+    def test_loop_candidate_continues_across_identical_endpoints(self):
+        self.c['loop_route']=True
+        angles=np.linspace(0.,2*math.pi,1001)
+        xyz=np.column_stack((50*np.cos(angles),50*np.sin(angles),angles*0))
+        s=geometry(xyz)[0]
+        lane=Lane('global_route',xyz,s,np.full(len(s),58/3.6),[])
+        progress=s[-1]-2.
+        ego=np.array([np.interp(progress,s,xyz[:,i]) for i in range(3)])
+        result=Planner(self.c).candidates({'global_route':lane},[], 'global_route',progress,
+            progress+100.,ego,math.pi/2-2/50,2.)[0]
+        self.assertGreater(result.route_s[-1],s[-1]+90.)
+        self.assertGreater(result.limits[-1],0.)
+        self.assertLess(np.max(np.linalg.norm(np.diff(result.xy[:,:2],axis=0),axis=1)),1.)
 
     def test_static_obstacle_selects_legal_alternative_after_confirmation(self):
         obstacle = Obstacle(np.array([[25.,-.5,0.],[25.,0.,0.],[25.,.5,0.]]), np.zeros(2))

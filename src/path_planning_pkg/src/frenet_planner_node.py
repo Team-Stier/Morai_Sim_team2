@@ -166,10 +166,15 @@ class Node:
         p = ego.pose.pose.position
         position = np.array([p.x, p.y, p.z])
         speed = max(0., odom.twist.twist.linear.x)
-        if route.route_complete or lanes['global_route'].s[-1]-route.progress < 2*self.c['spatial_step_m']:
+        if (not self.c.get('loop_route',False) and
+                (route.route_complete or lanes['global_route'].s[-1]-route.progress < 2*self.c['spatial_step_m'])):
             self.defer_stop('route_endpoint_stop')
             return
         goal_s = max(route.comparison_goal_s, route.progress+1.)
+        if self.c.get('loop_route',False):
+            if route.progress < getattr(self,'previous_progress',route.progress)-lanes['global_route'].s[-1]/2:
+                self.planner.committed = self.planner.pending = None
+            self.previous_progress = route.progress
         candidates = self.planner.candidates(lanes, windows, route.current_lane, route.progress,
                                               goal_s, position, yaw(ego.pose.pose.orientation), speed)
         committed = self.planner.committed

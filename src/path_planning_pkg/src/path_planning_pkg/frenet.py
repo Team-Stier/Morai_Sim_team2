@@ -259,6 +259,15 @@ class Planner:
     def candidates(self, lanes, windows, current, progress, goal_s, ego, heading, speed):
         c = self.c
         reference = lanes['global_route']
+        if c.get('loop_route', False):
+            length = reference.s[-1]
+            extended = dict(lanes)
+            extended['global_route'] = Lane('global_route',
+                np.vstack((reference.xy, reference.xy[1:])),
+                np.r_[reference.s, reference.s[1:]+length],
+                np.r_[reference.limits, reference.limits[1:]], reference.successors)
+            lanes = extended
+            reference = lanes['global_route']
         end = min(reference.s[-1], max(goal_s+c['tail_m'], progress+c['minimum_path_m']))
         qs = np.arange(progress, end, c['spatial_step_m'])
         ref = sample(reference.xy, reference.s, qs)

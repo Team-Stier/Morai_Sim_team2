@@ -100,15 +100,19 @@ class RouteProgress:
         self.current_lane = min(candidates)[2]
 
         if not self.checkpoints:
-            goal_s = min(self.reference_arc[-1], self.progress+self.config['comparison_distance_m'])
-            i = min(bisect.bisect_right(self.reference_arc, goal_s)-1, len(self.reference)-2)
-            u = (goal_s-self.reference_arc[i])/(self.reference_arc[i+1]-self.reference_arc[i])
+            loop = self.config.get('loop_route',False)
+            goal_s = self.progress+self.config['comparison_distance_m']
+            if not loop:
+                goal_s = min(self.reference_arc[-1],goal_s)
+            geometric_goal_s = goal_s % self.reference_arc[-1] if loop else goal_s
+            i = min(bisect.bisect_right(self.reference_arc, geometric_goal_s)-1, len(self.reference)-2)
+            u = (geometric_goal_s-self.reference_arc[i])/(self.reference_arc[i+1]-self.reference_arc[i])
             goal = tuple(a+(b-a)*u for a,b in zip(self.reference[i],self.reference[i+1]))
             self.previous_point = point
             return dict(current_lane=self.current_lane, progress=self.progress,
                         next_checkpoint=0xFFFFFFFF, comparison_goal=goal,
                         comparison_goal_s=goal_s,
-                        route_complete=self.progress >= self.reference_arc[-1]-self.config.get('route_completion_tolerance_m',0.))
+                        route_complete=not loop and self.progress >= self.reference_arc[-1]-self.config.get('route_completion_tolerance_m',0.))
 
         if self.next_checkpoint < len(self.checkpoints):
             target = self.checkpoints[self.next_checkpoint]

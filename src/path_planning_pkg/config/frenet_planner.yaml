@@ -1,6 +1,7 @@
 # User course speeds apply; 0 removes the test-only speed cap.
 test_speed_cap_kph: 0.0
 rddf_geometry_only: true
+loop_route: true
 rddf_neighbor_min_m: 1.0
 rddf_neighbor_max_m: 5.0
 rddf_heading_dot_min: 0.8

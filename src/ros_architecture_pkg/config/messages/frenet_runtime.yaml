@@ -6,10 +6,12 @@ geometry_inputs: [HdMap, WorldModel]
 route_progress_input: RouteContext
 static_geometry_cache: RDDF_arrays_and_geometric_neighbor_windows_reused_until_map_id_changes
 rddf_geometry_only: true
+loop_route: true
+loop_semantics: route_station_wraps_at_closed_rddf_seam_goal_station_may_exceed_one_lap_length
 hd_map_driving_fields: [lanes.id, lanes.centerline, lanes.route_s]
 ignored_hd_map_road_metadata: [forbidden_boundaries, checkpoints, checkpoint_radius_m, lane_changes, lanes.successors, lanes.speed_limits_mps]
 lane_change_candidates: same_direction_adjacent_rddf_geometric_overlap_without_map_permission_check
-comparison_goal: same_route_station_100m_ahead_clipped_at_route_end
+comparison_goal: same_route_station_100m_ahead_continuing_into_next_lap
 speed_source: central_user_course_speed_policy_not_hd_map_attributes
 checkpoint_enforcement: false
 localization_inputs: [EgoState, Odometry, LocalizationStatus]
