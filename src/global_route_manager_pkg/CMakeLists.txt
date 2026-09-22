@@ -9,3 +9,7 @@ install(FILES README.md DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 install(DIRECTORY config docs launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION} PATTERN ".gitkeep" EXCLUDE)
 
 catkin_install_python(PROGRAMS src/global_path_demo.py src/route_manager_node.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+if(CATKIN_ENABLE_TESTING)
+  catkin_add_nosetests(test/test_comparison_distance.py)
+endif()

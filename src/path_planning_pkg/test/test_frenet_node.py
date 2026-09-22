@@ -161,6 +161,51 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertEqual(node.static_map[1]['global_route'].successors,[])
         self.assertAlmostEqual(node.static_map[1]['global_route'].limits[0],58/3.6)
 
+    def test_high_speed_route_distance_reaches_planner_candidates(self):
+        from path_planning_pkg.frenet import Lane, Window
+        source = Path(__file__).parents[2]/'global_route_manager_pkg/src/route_manager_node.py'
+        spec = importlib.util.spec_from_file_location('high_speed_route_producer', source)
+        producer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(producer)
+        route = producer.RouteManagerNode.__new__(producer.RouteManagerNode)
+        route.config = yaml.safe_load((Path(__file__).parents[2]/
+            'global_route_manager_pkg/config/route_manager.yaml').read_text())
+        route.path_publisher = Output()
+        message = self.static_map()
+        lane = message.lanes[0]
+        lane.centerline.poses = []
+        lane.route_s = list(np.arange(0., 1001., 1.))
+        for x in lane.route_s:
+            pose = PoseStamped()
+            pose.pose.position.x = x
+            lane.centerline.poses.append(pose)
+        policy = dict(high_speed=dict(start_map_xy=[200.,0.], end_map_xy=[700.,0.]))
+        with patch.object(producer, 'load_course_speed_policy', return_value=policy):
+            route.on_map(message)
+        for position, distance in [(199.,100.), (200.,300.), (699.,300.), (700.,100.)]:
+            state = route.progress.update((position,0.,0.),0.)
+            context = RouteContext(progress=state['progress'], comparison_goal_s=state['comparison_goal_s'])
+            wire = io.BytesIO()
+            context.serialize(wire)
+            context = RouteContext().deserialize(wire.getvalue())
+            self.assertAlmostEqual(context.comparison_goal_s-context.progress,distance)
+            self.assertAlmostEqual(state['comparison_goal'][0], position+distance)
+            stations = np.arange(0.,1001.,.5)
+            lanes = {key: Lane(key,np.column_stack((stations,stations*0+y,stations*0)),
+                              stations,stations*0-1,[]) for key,y in [('global_route',0.),('side',3.5)]}
+            config = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
+            candidates = Planner(config).candidates(lanes,[Window('global_route','side',0.,1000.)],
+                'global_route',context.progress,context.comparison_goal_s,np.array([position,0.,0.]),0.,150/3.6)
+            self.assertEqual(len(candidates)>1,distance==300.)
+        # A high-speed zone crossing the route seam retains its interval semantics.
+        route.progress.high_speed_interval = (700.,200.)
+        for position,distance in [(0.,300.),(199.,300.),(200.,100.),(700.,300.),(950.,300.)]:
+            state = route.progress.update((position,0.,0.),0.)
+            self.assertAlmostEqual(state['comparison_goal_s']-position,distance)
+        route.progress.config['loop_route'] = False
+        state = route.progress.update((950.,0.,0.),0.)
+        self.assertEqual(state['comparison_goal_s'],1000.)
+
     def test_progress_without_checkpoints_uses_forward_rddf_station(self):
         from global_route_manager_pkg.progress import RouteProgress
         lanes=[dict(id='global_route',points=[(0.,0.,0.),(200.,0.,0.)],route_s=[0.,200.])]

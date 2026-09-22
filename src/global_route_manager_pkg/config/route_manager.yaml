@@ -6,4 +6,5 @@ context_rate_hz: 5.0
 rddf_geometry_only: true
 loop_route: true
 comparison_distance_m: 100.0
+high_speed_comparison_distance_m: 300.0
 route_completion_tolerance_m: 3.0

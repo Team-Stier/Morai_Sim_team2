@@ -8,6 +8,7 @@ from nav_msgs.msg import Path
 from common_msgs_pkg.msg import ComponentStatus, EgoState, HdMap, LocalizationStatus, RouteContext
 
 from global_route_manager_pkg.progress import RouteProgress
+from hd_map_pkg.course_speed import CourseSpeedZones, load_course_speed_policy
 
 
 class RouteManagerNode:
@@ -19,7 +20,7 @@ class RouteManagerNode:
         self.reset_id = None
         self.config = {key: rospy.get_param('~'+key) for key in (
             'initialize_from_current_position', 'matching_backward_m', 'matching_forward_m',
-            'rddf_geometry_only', 'comparison_distance_m', 'route_completion_tolerance_m', 'loop_route')}
+            'rddf_geometry_only', 'comparison_distance_m', 'high_speed_comparison_distance_m', 'route_completion_tolerance_m', 'loop_route')}
         self.path_publisher = rospy.Publisher('/molit/route/global_path', Path, queue_size=1, latch=True)
         self.context_publisher = rospy.Publisher('/molit/route/context', RouteContext, queue_size=2)
         self.status_publisher = rospy.Publisher('/molit/route/status', ComponentStatus, queue_size=1, latch=True)
@@ -40,6 +41,10 @@ class RouteManagerNode:
             checkpoints = [(point.x, point.y, point.z) for point in message.checkpoints]
             radius = message.checkpoint_radius_m
         self.progress = RouteProgress(lanes, checkpoints, radius, self.config)
+        if self.config['rddf_geometry_only']:
+            zones = CourseSpeedZones(self.progress.reference, load_course_speed_policy())
+            arc = self.progress.reference_arc
+            self.progress.high_speed_interval = (arc[zones.start], arc[zones.end])
         self.map = message
         self.last_stamp = None
         path = next(lane.centerline for lane in message.lanes if lane.id == 'global_route')

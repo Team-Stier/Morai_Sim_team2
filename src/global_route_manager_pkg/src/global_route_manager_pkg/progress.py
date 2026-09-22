@@ -53,6 +53,7 @@ class RouteProgress:
         self.checkpoints = checkpoints
         self.radius = checkpoint_radius_m
         self.config = config
+        self.high_speed_interval = None
         self.checkpoint_s = []
         start = 0.0
         for point in checkpoints:
@@ -101,7 +102,13 @@ class RouteProgress:
 
         if not self.checkpoints:
             loop = self.config.get('loop_route',False)
-            goal_s = self.progress+self.config['comparison_distance_m']
+            distance = self.config['comparison_distance_m']
+            if self.high_speed_interval is not None:
+                start, end = self.high_speed_interval
+                length = self.reference_arc[-1]
+                if (self.progress-start) % length < (end-start) % length:
+                    distance = self.config['high_speed_comparison_distance_m']
+            goal_s = self.progress+distance
             if not loop:
                 goal_s = min(self.reference_arc[-1],goal_s)
             geometric_goal_s = goal_s % self.reference_arc[-1] if loop else goal_s
