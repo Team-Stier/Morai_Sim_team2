@@ -217,7 +217,10 @@ class Node:
         self.offer_selection(fast if fast.feasible else None,completed,ego.reset_id)
 
         lateral_period = 1./self.c['lane_change_evaluation_rate_hz']
-        if time.monotonic()-self.last_lane_change_evaluation < lateral_period and fast.feasible:
+        # A feasible committed manoeuvre is retained by select regardless of
+        # alternative costs. Recheck it every tick without scoring unused alternatives.
+        if fast.feasible and (fast.key == 'committed' or
+                time.monotonic()-self.last_lane_change_evaluation < lateral_period):
             self.audit.publish(String(data=json.dumps([{'key':fast.key,'target':fast.target,
                 'feasible':fast.feasible,'reason':fast.reason,'eta':fast.eta if math.isfinite(fast.eta) else None,
                 'cost':fast.cost if math.isfinite(fast.cost) else None,'comfort':fast.comfort,'changes':fast.changes}])))

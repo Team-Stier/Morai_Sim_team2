@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 import numpy as np
 import yaml
-from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, footprint_hit, quintic, geometry, candidate_geometry, geometry_windows
+from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, footprint_hit, footprint_hits, quintic, geometry, candidate_geometry, geometry_windows
 
 
 class FrenetTest(unittest.TestCase):
@@ -78,6 +78,24 @@ class FrenetTest(unittest.TestCase):
         self.assertAlmostEqual(d[-1], 3.5)
         self.assertAlmostEqual((d[1]-d[0])/1e-5, .2, places=4)
         self.assertAlmostEqual((d[-1]-d[-2])/1e-5, 0., places=4)
+
+    def test_batched_footprints_match_scalar_for_rotations_chunks_and_edges(self):
+        rng = np.random.RandomState(20260922)
+        points = rng.uniform(-30.,30.,(1100,3))
+        poses = rng.uniform(-25.,25.,(75,3))
+        headings = rng.uniform(-math.pi,math.pi,75)
+        for margin in (0., .2):
+            config = dict(self.c, object_margin_m=margin)
+            expected = [footprint_hit(points,p,h,config) for p,h in zip(poses,headings)]
+            np.testing.assert_array_equal(footprint_hits(points,poses,headings,config),expected)
+        for point in ([self.c['front_overhang_m'],0.,0.],
+                      [-self.c['rear_overhang_m'],0.,0.],
+                      [0.,self.c['vehicle_width_m']/2,0.],
+                      [self.c['front_overhang_m']+1e-7,0.,0.]):
+            points = np.array([point])
+            self.assertEqual(footprint_hits(points,np.zeros((1,3)),np.zeros(1),self.c)[0],
+                             footprint_hit(points,np.zeros(3),0.,self.c))
+        self.assertFalse(footprint_hits(np.empty((0,3)),poses,headings,self.c).any())
 
     def test_clear_road_keeps_lane(self):
         candidates = self.candidates()

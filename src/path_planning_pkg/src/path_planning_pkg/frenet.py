@@ -163,6 +163,29 @@ def footprint_hit(points, position, theta, c):
                   (np.abs(y) <= c['vehicle_width_m']/2+margin))
 
 
+
+def footprint_hits(points, positions, headings, c):
+    """Batch the same point/footprint test, bounding temporary array sizes."""
+    result = np.zeros(len(positions), dtype=bool)
+    margin = c['object_margin_m']
+    for first in range(0, len(positions), 32):
+        poses = positions[first:first+32, :2]
+        angles = headings[first:first+32]
+        co, si = np.cos(angles)[:, None], np.sin(angles)[:, None]
+        hit = np.zeros(len(poses), dtype=bool)
+        for point_first in range(0, len(points), 512):
+            delta = points[None, point_first:point_first+512, :2]-poses[:, None, :]
+            x = co*delta[:, :, 0]+si*delta[:, :, 1]
+            y = -si*delta[:, :, 0]+co*delta[:, :, 1]
+            hit |= np.any((x >= -c['rear_overhang_m']-margin) &
+                          (x <= c['front_overhang_m']+margin) &
+                          (np.abs(y) <= c['vehicle_width_m']/2+margin), axis=1)
+            if hit.all():
+                break
+        result[first:first+len(poses)] = hit
+    return result
+
+
 def boundary_hit(position, theta, lines, c):
     """Segment/rectangle clipping catches wheel contact and whole-body crossing."""
     segments = np.asarray(lines).reshape(-1, 2, 3)
@@ -365,8 +388,8 @@ class Planner:
             points = obj.points.copy()
             if obj.velocity_valid:
                 points[:, :2] += obj.age*obj.velocity[:2]
-            hits.extend(i for i in np.flatnonzero(s <= c['collision_precision_distance_m'])
-                        if footprint_hit(points, reference.xy[i], theta[i], c))
+            indices = np.flatnonzero(s <= c['collision_precision_distance_m'])
+            hits.extend(indices[footprint_hits(points, reference.xy[indices], theta[indices], c)])
         if not hits:
             return []
         normal = np.column_stack((-np.sin(theta), np.cos(theta)))
@@ -476,8 +499,9 @@ class Planner:
             predicted = obj.points.copy()
             if obj.velocity_valid:
                 predicted[:, :2] += obj.age*obj.velocity[:2]
-            hits = [i for i in np.flatnonzero(precise) if footprint_hit(predicted, candidate.xy[i], theta[i], c)]
-            if not hits:
+            indices = np.flatnonzero(precise)
+            hits = indices[footprint_hits(predicted, candidate.xy[indices], theta[indices], c)]
+            if not len(hits):
                 continue
             index = hits[0]
             forward_velocity = float(np.dot(obj.velocity[:2], [math.cos(theta[index]), math.sin(theta[index])])) if obj.velocity_valid else 0.

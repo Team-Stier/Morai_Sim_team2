@@ -411,6 +411,14 @@ class FrenetOutputTest(unittest.TestCase):
                 node.plan(None)
                 node.publish(None)
         self.assertTrue(node.planner.committed.key.startswith('detour:'))
+        stamp = rospy.Time(102)
+        node.state[0].header.stamp = node.route.header.stamp = node.world.header.stamp = obj.source_stamp = stamp
+        node.last_lane_change_evaluation = -np.inf
+        with patch.object(node.planner, 'evaluate', wraps=node.planner.evaluate) as evaluate:
+            with patch.object(rospy.Time, 'now', return_value=stamp):
+                node.plan(None)
+            self.assertEqual(evaluate.call_count, 1)
+            self.assertEqual(evaluate.call_args[0][0].key, 'committed')
         with patch.object(rospy.Time,'now',return_value=rospy.Time(102)):
             node.publish(None)
         output = node.trajectory.message
