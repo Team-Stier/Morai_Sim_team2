@@ -20,7 +20,7 @@ map_boundary_margin_m: 15.0
 collision_time_step_sec: 0.05
 tail_m: 40.0
 minimum_path_m: 20.0
-connection_m: 8.0
+connection_m: 20.0
 connection_sec: 1.0
 lane_change_speed_mps: 3.0
 prepare_times_sec: [0.0, 1.0, 2.0]
