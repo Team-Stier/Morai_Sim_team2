@@ -85,6 +85,9 @@ class WorldModelNode:
             maximum_speed_mps=float(tracking["maximum_speed_mps"]),
             maximum_prediction_sec=float(tracking["maximum_prediction_sec"]),
             velocity_stddev_mps=float(tracking["velocity_stddev_mps"]),
+            motion_max_points=int(tracking["motion_max_points"]),
+            motion_iterations=int(tracking["motion_iterations"]),
+            motion_trim_fraction=float(tracking["motion_trim_fraction"]),
         ))
 
         self._lock = threading.RLock()

@@ -74,7 +74,7 @@ class WorldModelPipelineTest(unittest.TestCase):
             if values:
                 return values[-1]
             rospy.sleep(0.01)
-        self.fail("timed out waiting for World Model scene")
+        self.fail("timed out waiting for World Model scene: " + str([m.reason for m in self.health]))
 
     def test_vehicle_motion_leaves_static_object_at_same_map_position(self):
         deadline = time.monotonic() + 5.0

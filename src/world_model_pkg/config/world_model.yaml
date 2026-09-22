@@ -16,3 +16,6 @@ tracking:
   maximum_speed_mps: 60.0
   maximum_prediction_sec: 0.3
   velocity_stddev_mps: 2.0
+  motion_max_points: 96
+  motion_iterations: 6
+  motion_trim_fraction: 0.7

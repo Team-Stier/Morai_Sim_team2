@@ -2,6 +2,7 @@
 
 import math
 from dataclasses import dataclass
+from .point_motion import translation
 
 
 @dataclass(frozen=True)
@@ -15,6 +16,9 @@ class TrackerConfig:
     maximum_speed_mps: float = 25.0
     maximum_prediction_sec: float = 0.3
     velocity_stddev_mps: float = 2.0
+    motion_max_points: int = 96
+    motion_iterations: int = 6
+    motion_trim_fraction: float = 0.7
 
     def __post_init__(self):
         for value, name in (
@@ -118,11 +122,11 @@ class MultiObjectTracker:
         return tuple(alpha * float(a) + (1.0 - alpha) * float(b) for a, b in zip(first, second))
 
     def _predict(self, track, stamp_ns):
-        dt = max(0.0, (stamp_ns - track.state_stamp_ns) * 1.0e-9)
+        dt = max(0.0, (stamp_ns - track.detection.source_stamp_ns) * 1.0e-9)
         dt = min(dt, self.config.maximum_prediction_sec)
         if not track.velocity_valid:
-            return track.center
-        return tuple(track.center[index] + track.velocity[index] * dt for index in range(3))
+            return track.last_detection_center
+        return tuple(track.last_detection_center[index] + track.velocity[index] * dt for index in range(3))
 
     def _new_track(self, detection, stamp_ns):
         identifier = self._next_id
@@ -178,10 +182,10 @@ class MultiObjectTracker:
             raw_velocity = (0.0, 0.0, 0.0)
             raw_valid = dt > 1.0e-6
             if raw_valid:
-                raw_velocity = tuple(
-                    (detection.center[axis] - track.last_detection_center[axis]) / dt
-                    for axis in range(3)
-                )
+                displacement = translation(track.points, detection.points,
+                    self.config.motion_max_points, self.config.motion_iterations,
+                    self.config.motion_trim_fraction)
+                raw_velocity = tuple(value/dt for value in displacement)
                 raw_valid = math.hypot(raw_velocity[0], raw_velocity[1]) <= self.config.maximum_speed_mps
             hits = track.hits + 1
             velocity_valid = raw_valid and hits >= self.config.minimum_velocity_hits

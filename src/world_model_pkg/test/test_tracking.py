@@ -1,11 +1,14 @@
 import sys
 import unittest
+import numpy as np
+from dataclasses import replace
 from pathlib import Path
 
 
 PACKAGE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE / "src"))
 from world_model_pkg.tracking import Detection, MultiObjectTracker, TrackerConfig
+from world_model_pkg.point_motion import translation
 
 
 def detection(stamp_ns, x=10.0, y=5.0, local_id=0):
@@ -22,6 +25,26 @@ def detection(stamp_ns, x=10.0, y=5.0, local_id=0):
 
 
 class TrackerTest(unittest.TestCase):
+    def test_partial_static_surface_does_not_follow_centroid(self):
+        points = np.column_stack((np.zeros(800), np.linspace(0,20,800), np.ones(800)))
+        shift = translation(points[:600], points[80:680], max_points=160, iterations=8)
+        self.assertLess(np.linalg.norm(shift), 0.1)
+        self.assertGreater(np.linalg.norm(points[80:680].mean(0)-points[:600].mean(0)), 1.9)
+
+    def test_compact_fast_object_translation_and_points_preserved(self):
+        rng = np.random.default_rng(2)
+        cloud = np.column_stack((rng.uniform([-2,-1],[2,1],(96,2)), np.ones(96)))
+        tracker = MultiObjectTracker(TrackerConfig(maximum_speed_mps=60))
+        for i in range(4):
+            points = tuple(map(tuple, cloud+[5*i,0,0]))
+            stamp = 10_000_000_000+i*100_000_000
+            d = replace(detection(stamp), center=tuple(np.mean(points,axis=0)), points=points)
+            result = tracker.update([d],stamp,1)[0]
+        self.assertAlmostEqual(result.velocity[0],50.0)
+        self.assertTrue(result.velocity_valid)
+        self.assertEqual(result.points,points)
+        self.assertEqual(result.source_stamp_ns,stamp)
+
     def setUp(self):
         self.tracker = MultiObjectTracker(TrackerConfig(
             association_distance_m=2.0,
