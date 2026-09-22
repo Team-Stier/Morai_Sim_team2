@@ -184,6 +184,17 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
         if len(transformed) >= 3:
             intersections.append({"id": junction_id, "p": transformed})
     global_route = load_global_route(reference_path)
+    speed_sections = []
+    lane_rddf = {'lanes': [], 'crossings': [], 'counts': {}}
+    if global_route['p'] and config.get('course_speed_policy'):
+        from .course_speed import CourseSpeedZones, load_course_speed_policy
+        zones = CourseSpeedZones(global_route['p'], load_course_speed_policy())
+        speed_sections = zones.split_line(global_route['p'], list(range(len(global_route['p']))))
+        global_route['speed_policy'] = zones.policy
+        if 'lane_rddf' in config:
+            from .lane_rddf import build_lane_rddf, read_route
+            lane_rddf = zones.annotate_lanes(build_lane_rddf(
+                dataset, transformer, read_route(reference_path), config['lane_rddf']))
     crop_applied = bool(global_route["p"])
     crop_anchor_boundary_ids = []
     if crop_applied:
@@ -253,6 +264,8 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
         "signals": signals,
         "intersections": intersections,
         "globalRoute": global_route,
+        "speedSections": speed_sections,
+        "laneRddf": lane_rddf,
     }
 
 
@@ -282,6 +295,7 @@ input { accent-color: #32d3a2; }
 .swatch.blue { border-color:#39a9ff; }.swatch.cyan { border-color:#3ce5e7; }
 .swatch.red { border-color:#ff5c72; }.swatch.purple { border-color:#b88cff; }
 .swatch.green { border-color:#39ff88; box-shadow:0 0 5px rgba(57,255,136,.65); }
+.swatch.magenta { border-color:#ff40db; }.swatch.sky { border-color:#19bfff; }
 .signal-icon { display:inline-grid; width:22px; place-items:center; font-size:14px; }
 .signal-icon.lcs { color:#ffb347; text-shadow:0 0 6px rgba(255,179,71,.75); }
 .stats { display:grid; grid-template-columns:1fr 1fr; gap:7px; font-size:12px; }
@@ -299,6 +313,9 @@ input { accent-color: #32d3a2; }
   <span class="badge">immutable candidate</span>
   <h2>Layers</h2>
   <label><input data-layer="globalRoute" type="checkbox" checked><span class="swatch green"></span>전역경로 TXT</label>
+  <label><span class="swatch magenta"></span><span id="highSpeedPolicy"></span></label>
+  <label><span class="swatch green"></span><span id="normalSpeedPolicy"></span></label>
+  <label><input data-layer="laneRddf" type="checkbox" checked><span class="swatch sky"></span>추가 RDDF (고주로는 분홍색)</label>
   <label><input data-layer="intersections" type="checkbox"><span class="swatch purple"></span>교차로 영역(파생)</label>
   <label><input data-layer="centerlines" type="checkbox" checked><span class="swatch cyan"></span>차선 중심선</label>
   <label><input data-layer="solid" type="checkbox" checked><span class="swatch"></span>실선 경계</label>
@@ -310,7 +327,7 @@ input { accent-color: #32d3a2; }
   <label><input data-layer="signals" type="checkbox" checked><span class="signal-icon">🚦</span>일반 신호등 + ID</label>
   <label><input data-layer="laneControlSignals" type="checkbox" checked><span class="signal-icon lcs">◆</span>터널 차로제어신호(LCS) + ID</label>
   <label><input data-layer="topology" type="checkbox">→ 선행/후행 연결</label>
-  <label><input data-layer="labels" type="checkbox">50 속도/방향 라벨</label>
+  <label><input data-layer="labels" type="checkbox">원본 MGeo 속도/방향 (주행 정책과 별도)</label>
   <h2>Counts</h2><div class="stats" id="stats"></div>
   <h2>Inspector</h2><div id="inspect">지형지물을 클릭하면 MGeo ID와 속성이 표시됩니다.</div>
   <h2>Navigation</h2><div class="help">휠: 확대/축소 · 드래그: 이동 · 더블클릭: 전체 보기<br>좌표는 실행 중인 K-City scene의 local ENU(m) 기준입니다.</div>
@@ -322,6 +339,9 @@ const enabled = {}; document.querySelectorAll('[data-layer]').forEach(el => {
   enabled[el.dataset.layer] = el.checked; el.addEventListener('change',()=>{enabled[el.dataset.layer]=el.checked;draw();});
 });
 document.getElementById('title').textContent=MAP.metadata.title;
+if(MAP.globalRoute.speed_policy){const policy=MAP.globalRoute.speed_policy;
+ document.getElementById('highSpeedPolicy').textContent=`고주로 · 속도 제한 없음 · 목표 ${policy.high_speed.cruise_kph} km/h`;
+ document.getElementById('normalSpeedPolicy').textContent=`일반 구간 · 최대 ${policy.normal_limit_kph} km/h`;}
 document.getElementById('subtitle').textContent=`${MAP.metadata.scene} · ${MAP.metadata.coordinate_frame}\ncommit ${MAP.metadata.source_commit}`;
 document.getElementById('stats').innerHTML=Object.entries(MAP.metadata.counts).map(([k,v])=>`<div class="stat"><b>${v.toLocaleString()}</b>${k}</div>`).join('');
 let dpr=window.devicePixelRatio||1, scale=1, ox=0, oy=0, dragging=false, last=null;
@@ -341,7 +361,8 @@ function draw(){const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0
  if(enabled.crosswalks){ctx.fillStyle='rgba(57,169,255,.42)';ctx.strokeStyle='#52b8ff';ctx.lineWidth=1;MAP.crosswalks.forEach(x=>{path(x.p,true);ctx.fill();ctx.stroke();});}
  if(enabled.surfaceMarkings){ctx.fillStyle='rgba(60,229,231,.30)';ctx.strokeStyle='#3ce5e7';ctx.lineWidth=.8;MAP.surfaceMarkings.forEach(x=>{path(x.p,true);ctx.fill();ctx.stroke();});}
  if(enabled.topology){ctx.strokeStyle='rgba(255,143,77,.42)';ctx.lineWidth=.8;MAP.centerlines.forEach(x=>x.successors.forEach(id=>{const y=centers[id];if(y)arrow(x.p[x.p.length-1],y.p[0]);}));}
- if(enabled.globalRoute&&MAP.globalRoute.p.length){stroke(MAP.globalRoute,'rgba(2,9,12,.92)',5.4);stroke(MAP.globalRoute,'#39ff88',2.8);}
+ if(enabled.globalRoute&&MAP.globalRoute.p.length){stroke(MAP.globalRoute,'rgba(2,9,12,.92)',5.4);if(MAP.speedSections.length){MAP.speedSections.forEach(x=>stroke(x,x.speed_limit_kph===null?'#ff40db':'#39ff88',2.8));}else{stroke(MAP.globalRoute,'#39ff88',2.8);}}
+ if(enabled.laneRddf)MAP.laneRddf.lanes.forEach(lane=>lane.speed_sections.forEach(x=>stroke(x,x.speed_limit_kph===null?'#ff40db':'#19bfff',2.1)));
  if(enabled.signals){ctx.font='10px ui-monospace';MAP.signals.filter(x=>x.category!=='tunnel_lane_control').forEach(x=>{const p=s(x.p);ctx.fillStyle=x.category==='pedestrian'?'#55b7ff':'#ff5f65';ctx.beginPath();ctx.arc(p[0],p[1],3.3,0,Math.PI*2);ctx.fill();if(scale>.55){ctx.fillStyle='#f6d9dc';ctx.fillText(x.id,p[0]+5,p[1]-5);}});}
  if(enabled.laneControlSignals)MAP.signals.filter(x=>x.category==='tunnel_lane_control').forEach(laneControlSignal);
  if(enabled.labels&&scale>.12){ctx.font='9px ui-monospace';ctx.fillStyle='#b8f3d0';MAP.centerlines.forEach(x=>{const p=s(x.p[Math.floor(x.p.length/2)]);ctx.fillText(`${x.speed||'?'} ${x.direction||''}`,p[0]+3,p[1]-3);});}

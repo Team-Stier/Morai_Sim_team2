@@ -30,8 +30,12 @@ RViz는 같은 패키지의 내부 MarkerArray만 읽고, 유효한 추정값이
 대기 상태를 표시한다. 나머지는
 `reserved_not_implemented` 또는 disabled/prohibited 상태다.
 `ComponentStatus`, `EgoState`, `LocalizationStatus`와 LiDAR의
-`LidarObjectObservation`, `LidarObservationArray` 스키마는 구현됐으며 나머지는 예약 상태다.
+`LidarObjectObservation`, `LidarObservationArray`, World Model의
+`TrackedObject`, `WorldModel`, 제어용 `Trajectory`, `ControllerStatus`,
+`ActuatorCommand` 스키마는 구현됐으며 나머지는 예약 상태다.
 LiDAR 검출은 개발 구현이며 [LiDAR 계약](docs/lidar_detection_contract.md)을 따른다.
+[World Model의 LiDAR map tracking](docs/world_model_tracking.md)은 개발 구현됐지만
+미검증 입력을 주행 장면으로 승격하지 않아 `planner_ready=false`를 유지한다.
 [기반 메시지 계약](docs/core_messages.md)을 따른다. 내부 LiDAR packet과
 Visualization MarkerArray topic은 공개 topic 수에서 제외한다.
 
@@ -42,14 +46,6 @@ Visualization MarkerArray topic은 공개 topic 수에서 제외한다.
 3. `config/interface_contract.yaml`을 먼저 갱신한다.
 4. 필요한 공유 타입을 `common_msgs_pkg`에 구현한다.
 5. producer·consumer·launch·config·문서·계약 테스트를 같은 변경 단위로 갱신한다.
-
-## LiDAR 검출 전 자세 보정 경계
-
-`lidar_perception_pkg`의 DBSCAN은 Localization이 발행한 측정시각 EgoState의
-roll/pitch와 중앙 static 장착 회전을 사용해 ROI 이전에 수평화한다. 전역 융합은
-World Model 소유이며, 이 예외는 센서 원점 기준 로컬 검출 전처리에 한정한다.
-공개 출력은 `lidar_link` 및 원 scan stamp를 유지한다. 자세가 없으면 invalid로
-보고하며 보정 없이 계속하지 않는다. [중앙 LiDAR 계약](docs/lidar_detection_contract.md)을 따른다.
 
 ## v1 모듈형 Planning 경계
 
@@ -63,8 +59,8 @@ World Model 소유이며, 이 예외는 센서 원점 기준 로컬 검출 전�
   safety_supervisor_node → morai_control_sender`를 반드시 거친다.
 
 이 항목은 승인된 설계 방향이지 구현 증거가 아니다.
-`path_planner_node`와 `common_msgs_pkg/Trajectory` schema는 현재 모두
-예약·미구현 상태다.
+`path_planner_node`는 예약·미구현 상태다. `common_msgs_pkg/Trajectory` schema와
+Controller는 [Closedteam2 제어 통합 계약](docs/controller_integration.md)에 구현됐다.
 
 ## 주요 문서
 
@@ -133,8 +129,14 @@ SVG가 보존한다. 회색/점선은 이름만 예약된 경계이며 현재 �
 - `launch/`: 이 패키지만 독립 확인할 때 사용하는 launch. 전체 시스템 bringup은 `system_bringup_pkg`가 소유
 - `src/`: 향후 계약 검사 도구만 허용. 기능 알고리즘은 두지 않음
 
-## MORAI 일시 지연 허용 (2026-09-21)
+제어 코어 이식은 `vehicle_controller_node`의 네 입력과 nominal command/status 출력을
+구현한다. `Trajectory`·`ControllerStatus` 필드는 `config/messages/controller_messages.yaml`을
+따르며, 추가 방어 계층은 넣지 않고 원본 제어기의 검사·제한과 기존 상류 상태를 따른다.
 
-정상 데이터가 잠깐 늦어 검출·표시가 끊기는 현상을 줄이도록 개발 기본 시간 제한을
-완화했다. 변경값, 유지하는 검사와 적용 방법은 [시뮬레이터 지연 허용](docs/simulator_delay_tolerance.md)을 따른다.
-실차 한계값이나 주행 준비 승인을 의미하지 않으며 원본 측정시각과 좌표 검사는 유지한다.
+[고정 코스 속도 정책](docs/course_speed_policy.md)은 사용자 지정 일반 상한 58 km/h와 고주로 목표 150 km/h, 공유 지도 색상과 검증 근거를 정의한다.
+# LiDAR 보정 통합 안내
+
+`config/interface_contract.yaml`의 `lidar_preprocessing_policy`와
+`config/messages/lidar_runtime.yaml`이 복원한 LiDAR 자세 보정의 입력·출력·시각
+정합 설정을 정의한다. 기존 제어 계약과 공유 메시지 스키마는 유지한다.
+[계약 상세](docs/lidar_detection_contract.md)를 참고한다.

@@ -6,6 +6,23 @@
 
 ## 담당 범위
 
+### 2026-09-21 주행 당시 LiDAR 처리 복원
+
+`c6265ad`의 DBSCAN 처리 코드를 복원했다. 자차 반사점 제거 후 측정시각의
+EgoState 자세와 중앙 장착 회전으로 roll·pitch를 수평 보정하고, 구역별
+지면 제거 → ROI → VoxelGrid → DBSCAN을 수행한다. 출력은 원래
+`lidar_link` 좌표와 scan stamp를 유지한다. 전역경로와 제어 알고리즘은 그대로다.
+
+당시 미커밋 설정 `z_min=-1.6`, `max_cluster_size=5000`도 복원했다.
+ROI는 전방 50 m·후방 20 m·좌우 15 m, 지면 처리 범위는 55 m다.
+기존 코드의 시각 정합 처리를 함께 가져왔으며 새 방어 로직은 추가하지 않았다.
+자세 보정과 지면 제거 상세는 [수평 보정](docs/horizontalization.md),
+[지면 제거](docs/ground_filter.md)를 따른다.
+
+`/molit/perception/lidar/cluster_points`는 원본 레코드에 `cluster_id`와
+`source_index`를 붙인 표시용 점군이다. 현재 통합에서 자동 구독하는
+consumer는 없으며, 기존 RViz 객체 표시는 observations를 사용한다.
+
 - point cloud 유효성 검사, ROI와 지면 분리
 - 3D 장애물·객체 군집화, 크기·상대 위치·속도 관측
 - free-space와 occupancy 관측
@@ -48,24 +65,8 @@
 공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`와
 `LidarObservationArray`, `LidarObjectObservation` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-이 패키지의 구역별 지면 제거·ROI·VoxelGrid·DBSCAN 노드는 구현됐다.
-지면 제거는 내부 전처리이며 공개 지면·빈 공간·속도 관측은 제공하지 않는다. downstream 런타임은 아직 미구현이다.
-
-기본 DBSCAN 경로는 스캔 시각의 EgoState 자세로 roll/pitch를 수평화한 뒤
-구역별 지면 제거·ROI·VoxelGrid·군집화를 수행한다. 현재 ROI는 X `[-20,50]`, Y `[-15,15]`,
-Z `[-1.5,1]` m이며 센서 원점의 임시 수평 좌표 기준이다. `z_min` 경계는 포함되며
-수평화 자체는 지면 제거가 아니며, 뒤에서 별도 [지면 필터](docs/ground_filter.md)를 적용한다. EgoState는 자세 전처리에만 사용하며 전역
-객체 융합·추적을 수행하지 않는다. 출력 박스와 private `filtered_points`는
-원래 `lidar_link`로 역변환한다. 자세 입력이 없으면 보정 없이 진행하지 않고
-invalid 관측을 발행한다. 실행·좌표·시간 정책은 [수평화](docs/horizontalization.md)를 따른다.
-보정 전후 기울기·높이 편차·형상 보존·처리율은
-[수평화 정량 평가](docs/horizontalization_metrics.md)의 읽기 전용 도구로 측정한다.
-
-DBSCAN이 채택한 voxel에 속한 원본 점들은 `cluster_points`에 별도로 발행한다.
-XYZ·intensity 등 원본 record의 바이트와 scan stamp/frame을 보존하고,
-`cluster_id`, `source_index`(원본 row-major 인덱스)를 UINT32로 덧붙인다.
-Voxel 평균점이나 박스 모서리를 원본 점처럼 내보내지 않는다. 상세 경로와
-교차검증은 [원본 군집 점 표시](docs/cluster_points.md)를 따른다.
+수평 보정·지면 제거·ROI·VoxelGrid·DBSCAN은 구현됐다. 지면 제거는 검출
+전처리이며 공개 ground/free-space/occupancy/velocity 유효 플래그는 false다.
 
 오래된 장애물을 현재 관측처럼 유지하지 않고, sparse VLP16 환경에서의 miss와 uncertainty를 명시한다.
 
@@ -94,60 +95,3 @@ LiDAR frame과 후보 장착 위치는 중앙 [`TF 계약`](../ros_architecture_
 현재 MORAI 수신 가능 조건과 수정 내역은
 [시뮬레이터 입력 점검](docs/sim_input_review.md)에 기록한다.
 단독 검출 launch 외에 LiDAR UDP bridge와 watchdog을 별도로 실행해야 한다.
-
-## 사전학습 보행자·차량 검출
-
-`roslaunch lidar_perception_pkg learned_lidar.launch`로 공식 nuScenes
-PointPillars-MultiHead 가중치를 사용하는 대체 backend를 선택한다. 기존
-DBSCAN launch와 동시에 실행하지 않는다. 설치·클래스·ROI·오류 처리·검증
-범위는 [사전학습 모델 연결](docs/pretrained.md)을 따른다.
-
-보행자와 차량 계열을 분류하며 성별·성인 여부는 판별하지 않는다. raw XYZI만
-사용하고 scenario JSON의 정답을 읽지 않는다. 단일 VLP16 scan의 분포 차이로
-정확도는 미검증이며 주행 readiness는 계속 false다.
-
-## 자차 반사점 제외 (2026-09-21)
-
-기본 DBSCAN 경로는 **센서 좌표 자차 마스크 → roll/pitch 수평화 → 구역별 지면 제거 → ROI → voxel
-→ DBSCAN** 순서다. `config/detector.yaml`의 `self_filter`로 설정하며 기본 활성화한다.
-자차는 센서와 함께 기울어지므로 마스크는 수평화 이전 `lidar_link`에 적용한다.
-
-제외 범위는 X `[-2.790,1.845]`, Y `[-0.946,0.946]`, Z `[-1.500,0.934]` m이다.
-차량 길이 4.635 m·폭 1.892 m·후방 오버행 0.790 m와 중앙 장착 위치
-`(2,0,1.5)` 및 영 회전을 기준으로 잡았다. XY 추가 여유는 없다.
-수직 범위는 base z `[0,2.434]` 후보에서 계산한 개발용 envelope이며 실제
-mesh/축 높이 검증값은 아니다. 장착 위치·각도가 바뀌면 이 설정도 재검토한다.
-
-세 축 모두 범위 안인 점만 제외하고 경계는 포함한다. 점 인덱스를 지우거나
-재정렬하지 않아 살아남은 `cluster_points`의 원본 XYZ/intensity/source_index는
-그대로다. 자차 점만 있는 유효 scan은 정상 빈 검출이며 free-space 증명이 아니다.
-원본 센서 토픽과 별도 사전학습 backend는 이 DBSCAN 마스크의 적용 대상이 아니다.
-
-검증: 전체 catkin 빌드, LiDAR 패키지 테스트(catkin 집계 42 tests, 실패 0),
-중앙 다이어그램 검사와 YAML/launch 파싱을 통과했다. 경계·차체 외부·기울기·
-자차만 있는 입력 및 ROS 원본 점 인덱스 보존을 검사했다.
-2026-09-21 live 약 6초 수집에서 raw 51프레임의 자차 영역 점 31,200개,
-출력 52프레임의 자차 영역 점 0개·영역 밖 점 1,349개를 확인했다.
-관측은 valid 52개, invalid 0개였다. 서로 다른 구독의 수집 경계 때문에 raw와
-출력 프레임 수는 같지 않으며 프레임별 retention 비율을 의미하지 않는다.
-증거는 `/home/paik/morai-artifacts/live-paik-20260921/self-filter-live.json`이다.
-전체 주행 및 근접 장애물 실측 검증은 포함하지 않는다.
-
-## 구역별 지면 제거 (2026-09-21)
-
-`ground_filter` 설정으로 수평화 후·높이 ROI 전에 지면을 제거한다. 4 m 구역과
-인접 구역의 낮은 점을 이용해 경사 평면을 추정하고, 충분한 지지점·공간 범위·
-근거리 높이 기준·이웃 연속성을 확인한 표면만 제거한다. 추정 실패나 미지원
-구역의 점은 그대로 남긴다. scan 간 지면 모델은 재사용하지 않는다.
-
-기존 ROI와 사용자 cluster 크기 설정은 유지한다. 원본 점 좌표/인덱스,
-공개 frame·stamp·타입과 개발 readiness 정책도 동일하다. 비교 시
-`ground_filter/enabled=false`로 지면 필터만 끌 수 있으며, 명시적
-`leveling_enabled=false` 비교에서는 지면 필터도 경고 후 비활성화한다.
-알고리즘·한계·시험 결과는 [지면 제거](docs/ground_filter.md)를 따른다.
-
-## MORAI 일시 지연 허용 (2026-09-21)
-
-정상 데이터가 잠깐 늦어 검출·표시가 끊기는 현상을 줄이도록 개발 기본 시간 제한을
-완화했다. 변경값, 유지하는 검사와 적용 방법은 [시뮬레이터 지연 허용](../ros_architecture_pkg/docs/simulator_delay_tolerance.md)을 따른다.
-실차 한계값이나 주행 준비 승인을 의미하지 않으며 원본 측정시각과 좌표 검사는 유지한다.

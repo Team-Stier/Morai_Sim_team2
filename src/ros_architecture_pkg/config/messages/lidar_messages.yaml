@@ -1,5 +1,5 @@
 schema_version: 1
-contract_version: 0.2.0
+contract_version: 0.1.0
 authority: ros_architecture_pkg
 implementation_owner: common_msgs_pkg
 status: development_not_runtime_verified
@@ -12,21 +12,10 @@ messages:
       # Axis-aligned bounding box in the array header frame, metres.
       geometry_msgs/Point center
       geometry_msgs/Vector3 size
-      # DBSCAN: voxel cluster points. Learned box: finite raw returns inside OBB.
+      # Points after ROI and VoxelGrid, not raw returns.
       uint32 point_count
       # -1 = uncalibrated; otherwise a calibrated probability in [0,1].
       float32 confidence
-      uint8 UNKNOWN=0
-      uint8 PEDESTRIAN=1
-      uint8 VEHICLE=2
-      uint8 OTHER=3
-      # Pedestrian does not infer age or gender. Vehicles exclude two-wheelers.
-      uint8 semantic_class
-      # False: clustered returns. True: enclosing AABB of a learned oriented box.
-      bool learned_box
-      # Empty/zero for DBSCAN; native nuScenes class and uncalibrated model score.
-      string model_class
-      float32 model_score
   LidarObservationArray:
     wire_definition: |
       # Authority: ros_architecture_pkg/config/messages/lidar_messages.yaml

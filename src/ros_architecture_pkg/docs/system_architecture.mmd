@@ -52,14 +52,14 @@ flowchart LR
     subgraph pkg_007["global_route_manager_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_018["global_route_manager_node<br/>exec: global_route_manager_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
-    subgraph pkg_008["world_model_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_019["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (reserved_not_implemented)"]
+    subgraph pkg_008["world_model_pkg<br/>runtime: development_map_object_tracking_unverified"]
+        node_019["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (development_map_object_tracking_unverified)"]
     end
     subgraph pkg_009["path_planning_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_020["path_planner_node<br/>exec: path_planner_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
-    subgraph pkg_010["vehicle_control_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_021["vehicle_controller_node<br/>exec: vehicle_controller_node<br/>state: RESERVED (reserved_not_implemented)"]
+    subgraph pkg_010["vehicle_control_pkg<br/>runtime: development_controller_unverified"]
+        node_021["vehicle_controller_node<br/>exec: vehicle_controller_node<br/>state: RESERVED (development_controller_unverified)"]
     end
     subgraph pkg_011["system_bringup_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_017["sensor_tf_publisher<br/>exec: sensor_tf_publisher.py<br/>state: LIVE (development_static_tf_active)"]
@@ -114,6 +114,7 @@ flowchart LR
     topic_035["/molit/evaluation/metrics<br/>type: common_msgs_pkg/RunMetrics<br/>state: RESERVED"]
     topic_036["/molit/internal/visualization/vehicle_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
     topic_037["/molit/internal/visualization/lidar_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_038["/molit/internal/visualization/world_model_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
 
     node_000 --> topic_000
     topic_000 --> node_014
@@ -168,7 +169,6 @@ flowchart LR
     topic_017 --> node_019
     topic_017 --> node_025
     node_015 --> topic_018
-    topic_018 --> node_025
     node_015 --> topic_019
     topic_019 --> node_019
     topic_019 --> node_022
@@ -215,6 +215,7 @@ flowchart LR
     topic_026 --> node_020
     topic_026 --> node_023
     topic_026 --> node_024
+    topic_026 --> node_025
     node_019 --> topic_027
     topic_027 --> node_020
     topic_027 --> node_022
@@ -249,6 +250,8 @@ flowchart LR
     topic_036 --> node_026
     node_025 --> topic_037
     topic_037 --> node_026
+    node_025 --> topic_038
+    topic_038 --> node_026
     external_ingress --> node_000
     external_ingress --> node_001
     external_ingress --> node_002
@@ -324,3 +327,4 @@ flowchart LR
     class topic_035 reservedTopic;
     class topic_036 reservedTopic;
     class topic_037 reservedTopic;
+    class topic_038 reservedTopic;

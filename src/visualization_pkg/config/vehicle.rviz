@@ -34,10 +34,17 @@ Visualization Manager:
       Queue Size: 10
       Namespaces: {}
     - Class: rviz/MarkerArray
-      Name: LiDAR raw cluster points
+      Name: LiDAR detections (development)
       Enabled: true
       Value: true
       Marker Topic: /molit/internal/visualization/lidar_markers
+      Queue Size: 2
+      Namespaces: {}
+    - Class: rviz/MarkerArray
+      Name: World Model tracks (map-frame diagnostic)
+      Enabled: true
+      Value: true
+      Marker Topic: /molit/internal/visualization/world_model_markers
       Queue Size: 2
       Namespaces: {}
     - Class: rviz/MarkerArray

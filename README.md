@@ -1,5 +1,9 @@
 # Morai_Sim_team2
 
+LiDAR 보정 복원: `c6265ad`의 측정시각 roll·pitch 보정, 자차 반사점 제거와
+구역별 지면 제거를 현재 제어 브랜치에 통합했다.
+[복원 범위와 설정](src/lidar_perception_pkg/README.md)을 참고한다.
+
 2026 국토부 KATRI 대학생 AI/SW 모빌리티 경진대회 **AI융합자율주행 부문**을 위한 Team Stier의 MORAI 기반 자율주행 프로젝트다.
 
 이 문서는 이후 사람이나 AI가 설계·구현을 진행할 때 가장 먼저 확인해야 하는 **대회 규정 베이스라인**이다. 현재 단계에서는 대회의 목적, 시뮬레이터 제약, 채점 기준, 제공 파일에서 확인한 사실과 아키텍처 책임 경계를 정의한다. 승인된 세부 ROS 인터페이스와 노드 설계는 `ros_architecture_pkg`의 중앙 계약에서만 확정한다.
@@ -86,6 +90,12 @@ PC 제출 후에는 주석이나 파라미터를 포함한 코드 수정이 금�
 즉, 빠르지만 실패 가능성이 높은 정책보다 **완주율과 규정 준수를 확보한 뒤 시간을 단축하는 정책**이 우선이다.
 
 ## 5. 미션 및 패널티
+
+**[사용자 고정 주행 설정 · 2026-09-21]** 현재 실행은 고주로 외 전 구간을
+최대 **58 km/h**, 고주로를 제한 없음·목표 순항 **150 km/h**로 사용한다.
+아래 표의 공식 규정 베이스라인과 구분하며, 실제 코스 정책의 원본은 중앙
+[course_speed_policy.yaml](src/ros_architecture_pkg/config/map/course_speed_policy.yaml)이다.
+고주로 시작·끝은 아래 링크 경계를 그대로 따른다.
 
 | 항목 | 요구사항 | 실패 또는 패널티 |
 |---|---|---|
@@ -252,10 +262,7 @@ Planner가 accel/brake/steer 또는 UDP packet을 직접 만들어
 Camera와 LiDAR 인식 결과를 각 인식 패키지가 직접 전역좌표로
 변환하여 조립하지 않는다. `world_model_pkg`가 관측 시각의 pose
 history와 승인된 calibration을 사용해 좌표 변환, 시간 동기화,
-cross-sensor fusion과 tracking을 전담한다. LiDAR 검출 전 roll/pitch 수평화는
-승인된 로컬 전처리 예외다. LiDAR 패키지는 측정시각 EgoState 자세로 ROI와
-군집화를 수행한 뒤 원래 `lidar_link` 좌표와 scan stamp로 출력한다.
-Planner는 raw sensor나 개별
+cross-sensor fusion과 tracking을 전담한다. Planner는 raw sensor나 개별
 Perception 관측을 직접 구독하지 않고 World Model의 통합 scene을 사용한다.
 
 ### 11.1 Nominal data/control 흐름
@@ -462,3 +469,13 @@ Localization은 개발용 GPS/IMU 추정과 상태 전용 진단 모드를 제�
 개발 추정 출력은 주행 준비를 뜻하지 않으며 물리 정합과 전체 경로 검증은 별도다.
 나머지 골격, 예약 custom type과 `runtime_activation_allowed: false` 채널은
 실제 주행 기능이 구현·검증됐다는 뜻이 아니다.
+
+### Closedteam2 제어 코어 연결
+
+`vehicle_control_pkg`에 Pure Pursuit/Stanley 전환 제어와 bounded PI를 이식했다.
+기존 `system_bringup_pkg.launch start_vehicle_control:=true` 또는 단독
+`roslaunch vehicle_control_pkg vehicle_control_pkg.launch`로 실행한다.
+연결 범위는 Localization·Planner 공개 입력에서 nominal command/status까지다.
+Planner/Safety 구현과 MORAI 주행 검증은 아직 남아 있다.
+[제어 패키지 사용법](src/vehicle_control_pkg/README.md)과
+[중앙 계약](src/ros_architecture_pkg/docs/controller_integration.md)을 따른다.

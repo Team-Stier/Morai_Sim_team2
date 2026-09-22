@@ -1,0 +1,12 @@
+# User-authorized local simulator global-path demonstration, not the production profile.
+destination_ip: 127.0.0.1
+port: 9093
+dry_run: false
+allow_motion_commands: true
+max_command_age_sec: 0.25
+future_tolerance_sec: 0.05
+steering_conversion_verified: true
+steering_normalized_per_rad: 1.432394487827058
+# Local MORAI window: let Q complete its handover before sending Auto commands.
+local_q_guard_enabled: true
+local_q_handover_sec: 0.5

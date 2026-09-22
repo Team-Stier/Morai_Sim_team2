@@ -47,8 +47,7 @@ class LidarContract(unittest.TestCase):
 
     def test_geometry_and_layers(self):
         msg=fixture()
-        obj=NS(scan_local_id=0,point_count=1,center=NS(x=1.,y=0.,z=0.),size=NS(x=1.,y=1.,z=1.),confidence=-1.,
-               semantic_class=0,learned_box=False,model_class='',model_score=0.)
+        obj=NS(scan_local_id=0,point_count=1,center=NS(x=1.,y=0.,z=0.),size=NS(x=1.,y=1.,z=1.),confidence=-1.)
         msg.objects=[obj]; validate_lidar(msg)
         obj.size.x=-1
         with self.assertRaises(ValueError): validate_lidar(msg)
@@ -77,7 +76,7 @@ class LidarContract(unittest.TestCase):
         for name in ('LidarObjectObservation','LidarObservationArray'):
             store.register(get_types_from_msg((ROOT/'src/common_msgs_pkg/msg'/f'{name}.msg').read_text(encoding='utf-8'),'common_msgs_pkg/msg/'+name))
         t=store.types
-        obj=t['common_msgs_pkg/msg/LidarObjectObservation'](0,t['geometry_msgs/msg/Point'](2.,0.,0.),t['geometry_msgs/msg/Vector3'](1.,1.,1.),32,-1.,0,False,'',0.)
+        obj=t['common_msgs_pkg/msg/LidarObjectObservation'](0,t['geometry_msgs/msg/Point'](2.,0.,0.),t['geometry_msgs/msg/Vector3'](1.,1.,1.),32,-1.)
         header=t['std_msgs/msg/Header'](0,t['builtin_interfaces/msg/Time'](10,20),'lidar_link')
         name='common_msgs_pkg/msg/LidarObservationArray'
         msg=t[name](header,'saved-profile',False,'ingress_fallback',False,True,[obj]*121,False,False,False,False)

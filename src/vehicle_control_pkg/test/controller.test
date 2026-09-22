@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find vehicle_control_pkg)/launch/vehicle_control_pkg.launch"/>
+  <test test-name="controller_pipeline" pkg="vehicle_control_pkg"
+        type="test_controller_node.py" time-limit="30"/>
+</launch>

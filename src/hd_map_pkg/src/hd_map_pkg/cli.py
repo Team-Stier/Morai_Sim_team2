@@ -196,6 +196,20 @@ def command_view(arguments):
     return 0
 
 
+def command_lane_rddf(arguments):
+    from .lane_rddf import build_lane_rddf, read_route, write_lane_rddf
+    package_root, config, dataset, transformer, output_dir = _context(arguments)
+    reference = _reference_path(package_root, config)
+    result = build_lane_rddf(dataset, transformer, read_route(reference), config['lane_rddf'])
+    if config.get('course_speed_policy'):
+        from .course_speed import CourseSpeedZones, load_course_speed_policy
+        result = CourseSpeedZones(read_route(reference), load_course_speed_policy()).annotate_lanes(result)
+    path = write_lane_rddf(result, output_dir / 'lane_rddf', reference, dataset)
+    print(json.dumps(result['counts'], sort_keys=True))
+    print(path)
+    return 0
+
+
 def command_inspect(arguments):
     _, config, dataset, transformer, _ = _context(arguments)
     origin = transformer.mgeo_to_sim([0.0, 0.0, 0.0])
@@ -234,6 +248,8 @@ def parser():
     view = subparsers.add_parser("view", help="write standalone HTML preview")
     view.add_argument("--open", action="store_true", help="open preview in the desktop browser")
     view.set_defaults(function=command_view)
+    lanes = subparsers.add_parser('lane-rddf', help='export course-connected same-direction XYZ lane alternatives')
+    lanes.set_defaults(function=command_lane_rddf)
     inspect = subparsers.add_parser("inspect-source", help="inspect MGeo schema and coordinates")
     inspect.set_defaults(function=command_inspect)
     return value

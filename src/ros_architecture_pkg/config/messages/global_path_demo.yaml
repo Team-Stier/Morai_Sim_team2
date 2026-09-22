@@ -1,0 +1,41 @@
+schema_version: 1
+contract_version: 0.1.0
+authority: ros_architecture_pkg
+profile: global_path_only
+activation_scope: development_only
+course_speed_policy: ../map/course_speed_policy.yaml
+user_authorization: 2026-09-21_run_global_path_following_now_without_added_defensive_code
+# Explicit local simulator test exceptions; nominal production contract stays unchanged.
+exceptions:
+  global_route_manager_node: publishes_route_global_path_from_supplied_file_without_route_context
+  path_planner_node: consumes_route_global_path_and_synchronized_ego_state_odometry_without_world_model
+  vehicle_controller_node: accepts_development_localization_stop_required_but_preserves_local_odometry_valid
+  safety_supervisor_node: transparent_nominal_to_final_relay_for_this_simulator_test_only
+  morai_control_sender: local_simulator_command_probe_and_motion_enabled_by_user
+nodes:
+  route: global_route_manager_node
+  planner: path_planner_node
+  controller: vehicle_controller_node
+  relay: safety_supervisor_node
+  sender: morai_control_sender
+interfaces:
+  global_route_manager_node:
+    inputs: []
+    outputs: [/molit/route/global_path]
+  path_planner_node:
+    inputs: [/molit/route/global_path, /molit/localization/ego_state, /molit/localization/local/odometry]
+    outputs: [/molit/planning/trajectory, /molit/planning/status]
+  safety_supervisor_node:
+    inputs: [/molit/control/nominal_command]
+    outputs: [/molit/safety/final_command]
+transport:
+  destination_ip: 127.0.0.1
+  port: 9093
+  port_evidence: live_MORAI_Network_Settings_Cmd_Control_Host_PORT_2026_09_21
+  serializer: morai_interface_pkg.protocol.ego_ctrl_cmd_packet
+  ctrl_mode: 2
+  cmd_type: 1
+  steering_normalized_per_rad: 1.432394487827058
+  steering_scale_basis: original_Closedteam2_adapter_radians_divided_by_40_degrees
+  runtime_validation: stationary_0_25_normalized_produced_10_degrees_and_positive_left_yaw_observed
+  driving_observation: live_GPS_IMU_following_with_58_kph_limit_and_150_kph_cruise_profile_2026_09_21

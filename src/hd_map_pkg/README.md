@@ -16,6 +16,11 @@ HTML을 페이지 안에서 실행하지 않으므로 파일을 내려받아 브
 
 ## 현재 산출물
 
+고주로는 **분홍색(제한 없음·목표 150 km/h)**, 일반 전역경로는
+**초록색(최대 58 km/h)**, 일반 추가 RDDF는 **하늘색**으로 표시한다.
+RDDF manifest도 각 점의 속도 제한을 `null`/`58`으로 구분한다.
+원본 지도 속성과 별도로 적용한 [고정 코스 정책](../ros_architecture_pkg/docs/course_speed_policy.md)이다.
+
 `hd_map_tool build-all`은 다음 파일을 `data/derived/`에 재현 가능하게 생성한다.
 
 | 파일 | 내용 |
@@ -247,3 +252,10 @@ catkin_test_results
 
 RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 30 m + 북쪽 지정 경계 확장을 사용한다.
 `hd_map_pkg/config/map_conversion.yaml`의 crop 설정을 공유하고 전역경로는 초록색으로 표시한다.
+
+## 추가 차로 RDDF와 차선변경 구간
+
+`rosrun hd_map_pkg hd_map_tool lane-rddf`로 코스에 연결된 동일 진행 방향의 추가
+차로를 XYZ TXT로 추출한다. 기존 경로는 초록색, 추가 차로는 하늘색, 확인된 흰색
+점선 횡단 위치는 주황색으로 RViz에 표시한다. 조건·파일 형식·검증 범위는
+[추가 차로 RDDF](docs/lane_rddf.md)를 따른다.

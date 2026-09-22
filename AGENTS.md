@@ -36,11 +36,7 @@
 - MORAI 외부 UDP 송수신은 `morai_interface_pkg`만 수행한다.
 - 공유 데이터 타입 구현은 `common_msgs_pkg`만 소유하고 그 의미는 `ros_architecture_pkg`가 승인한다.
 - Camera/LiDAR 패키지는 관측값과 신뢰도·측정시각을 제공하며 각자 전역 world model을 만들지 않는다.
-- 전역 좌표 변환·교차 센서 시간 동기화·융합·동적 객체 추적은 `world_model_pkg`가 소유한다.
-- 승인된 예외로 `lidar_perception_pkg`는 검출 전 ROI·군집화에만 측정시각
-  EgoState의 roll/pitch와 중앙 장착 회전을 적용할 수 있다. 센서 원점 기준
-  임시 수평 좌표를 사용하며 공개 출력은 원래 `lidar_link`와 scan stamp를
-  보존한다. 새 TF를 발행하거나 전역 융합·추적을 수행하지 않는다.
+- 좌표 변환·시간 동기화·교차 센서 융합·동적 객체 추적은 `world_model_pkg`가 소유한다.
 - `hd_map_pkg`의 정적 지도와 `global_route_manager_pkg`의 주행 진행 상태를 섞지 않는다.
 - `path_planning_pkg` / `path_planner_node`는 모듈형 behavior planning과
   local motion planning의 단일 소유자다.

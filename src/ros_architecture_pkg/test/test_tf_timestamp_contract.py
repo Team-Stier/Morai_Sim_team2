@@ -157,24 +157,6 @@ class TfTimestampContractTest(unittest.TestCase):
         self.assertEqual(profile["future_tolerance_sec"], 0.0)
         self.assertEqual(profile["provenance"], "ingress_fallback")
 
-    def test_relaxed_simulator_limits_agree_across_producers_and_consumers(self):
-        profile = self.timestamps['development_localization_profile']
-        self.assertEqual(profile['tuning_scope'], 'morai_simulator_only')
-        topics = {entry['name']: entry for entry in self.interface['topics']}
-        for topic, key in [('/molit/sensors/imu/data', 'imu_timeout_sec'),
-                           ('/molit/localization/ego_state', 'estimate_timeout_sec'),
-                           ('/molit/localization/local/odometry', 'estimate_timeout_sec'),
-                           ('/molit/localization/status', 'status_timeout_sec')]:
-            self.assertEqual(topics[topic]['timeout_sec'], profile[key])
-        runtime = load_yaml(CONFIG_ROOT / 'messages/lidar_runtime.yaml')
-        watchdog = load_yaml(REPOSITORY_ROOT / 'src/morai_interface_pkg/config/lidar_watchdog.yaml')
-        self.assertEqual(runtime['development_watchdog_sec'], watchdog['timeout_sec'])
-        self.assertEqual(topics['/molit/sensors/lidar/status']['timeout_sec'], watchdog['timeout_sec'])
-        leveling = runtime['horizontalization']
-        self.assertGreater(leveling['history_sec'], leveling['max_wait_sec'])
-        self.assertGreaterEqual(leveling['max_pending_scans'], 15 * leveling['max_wait_sec'])
-        self.assertLessEqual(leveling['max_gap_sec'], profile['max_integration_step_sec'])
-
     def test_candidate_extrinsics_are_finite_and_use_declared_units(self):
         source_convention = self.extrinsics["source_pose_convention"]
         ros_convention = self.extrinsics["candidate_ros_pose_convention"]

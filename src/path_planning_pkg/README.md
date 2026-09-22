@@ -35,8 +35,8 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 ## 공개 ROS 입출력
 
 현재 상태는 **이름 승인, 구현 예약**이며 공개 경계 노드는
-`path_planner_node`다. behavior/motion planner와 `Trajectory` schema는 아직
-구현·runtime 검증되지 않았다.
+`path_planner_node`다. behavior/motion planner는 아직 미구현이며, `Trajectory` schema는
+[중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)에 구현됐다.
 
 ![Path Planning 공개 입출력](docs/interface_io.svg)
 
@@ -62,9 +62,10 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 관측처럼 재사용하지 않고 planning status에 명시한다.
 
 Trajectory의 공개 frame은 제어 연속성을 위해 `odom`으로 고정한다.
-`ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마는 구현됐으며
+`ComponentStatus`, `EgoState`, `LocalizationStatus`, `WorldModel` 스키마는 구현됐으며
 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 노드는 미구현이다. v1에서 이 패키지가 생성하는 주행
+`RouteContext`와 Planner 노드는 미구현이다. `Trajectory`는 poses/speed_mps/time_from_start의
+동일 길이 배열과 valid/stop_required/valid_for/reset_id를 제공한다. v1에서 이 패키지가 생성하는 주행
 출력은 `/molit/planning/trajectory`뿐이며 직접 accel/brake/steer 또는
 UDP 출력은 금지한다.
 
@@ -88,3 +89,14 @@ UDP 출력은 금지한다.
 - `docs/`: behavior/motion planner 설계와 성능·안전 평가
 - `launch/`: Path Planning 단독 실행
 - `src/`: behavior and motion planning 구현
+
+## 전역경로 추종 시험 (2026-09-21)
+
+사용자가 요청한 현재 시뮬레이터 전용 실행은
+[global_path_demo 중앙 프로필](../ros_architecture_pkg/config/messages/global_path_demo.yaml)을 따른다.
+`roslaunch system_bringup_pkg global_path_demo.launch`로 기존 Localization에 연결해
+전역경로만 10 km/h로 추종한다. 일반 실행과 구분된 개발용 직접 전달 경로이며
+장애물·신호 판단을 수행하지 않는다. 별도 방어 계층은 추가하지 않았다.
+실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
+
+전역경로 실행의 고정 속도 규칙은 중앙 `config/map/course_speed_policy.yaml`이다. 일반 상한 58 km/h(순항 56), 고주로 제한 없음(순항 150)을 곡률·출구 전 감속 프로파일에 적용한다.

@@ -61,9 +61,10 @@
 | 출력 | `/molit/safety/final_command` | `common_msgs_pkg/ActuatorCommand` |
 | 출력 | `/molit/safety/state` | `common_msgs_pkg/SafetyState` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `WorldModel`,
+`Trajectory`, `ActuatorCommand`, `ControllerStatus` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+나머지 custom type과 Safety 런타임 노드는 아직 미구현이다.
 
 `/molit/system/readiness`는 Safety 이전 상류 상태이며, 최종 주행 허용 여부는
 이 노드가 `/molit/safety/state`로 발행한다. Safety가 준비되지 않았거나 필수
@@ -83,3 +84,15 @@
 - `docs/`: hazard analysis, 상태 머신과 fault-injection 결과
 - `launch/`: Safety Supervisor 단독 실행
 - `src/`: health aggregation, command gate와 state machine 구현
+
+제어 연결용 `Trajectory`, `ActuatorCommand`, `ControllerStatus` 스키마도 구현됐다.
+이 패키지의 예약 consumer는 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)을 따른다.
+
+## 전역경로 추종 시험 (2026-09-21)
+
+사용자가 요청한 현재 시뮬레이터 전용 실행은
+[global_path_demo 중앙 프로필](../ros_architecture_pkg/config/messages/global_path_demo.yaml)을 따른다.
+`roslaunch system_bringup_pkg global_path_demo.launch`로 기존 Localization에 연결해
+전역경로만 10 km/h로 추종한다. 일반 실행과 구분된 개발용 직접 전달 경로이며
+장애물·신호 판단을 수행하지 않는다. 별도 방어 계층은 추가하지 않았다.
+실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.

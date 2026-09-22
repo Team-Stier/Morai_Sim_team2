@@ -27,7 +27,7 @@ flowchart LR
         local_node_000["world_model_node<br/>역할: 지도와 센서 관측을 시각과 좌표 기준으로 통합<br/>실행: world_model_node<br/>상태: 설계 예약·미구현"]
     end
     subgraph OUTPUTS["출력 (발행)"]
-        output_000["/molit/world_model/scene<br/>설명: 시각 정렬된 지도·차량·객체·주행 공간<br/>메시지: common_msgs_pkg/WorldModel<br/>상태: 설계 예약·미구현"]
+        output_000["/molit/world_model/scene<br/>설명: 측정시각 map 좌표 추적 객체와 기능별 유효성<br/>메시지: common_msgs_pkg/WorldModel<br/>상태: 설계 예약·미구현"]
         output_001["/molit/world_model/status<br/>설명: 융합 신선도·TF 사용 가능 여부·장면 유효성<br/>메시지: common_msgs_pkg/ComponentStatus<br/>상태: 설계 예약·미구현"]
     end
 

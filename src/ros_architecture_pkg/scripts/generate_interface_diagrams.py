@@ -69,6 +69,7 @@ EXPECTED_FINAL_COMMAND_TIMEOUT_POLICY = (
 EXPECTED_TOPIC_FRAME_CONTRACT = {
     "/molit/internal/visualization/vehicle_markers": {"frame": "not_applicable"},
     "/molit/internal/visualization/lidar_markers": {"frame": "not_applicable"},
+    "/molit/internal/visualization/world_model_markers": {"frame": "map"},
     "/molit/sensors/camera/front/image/compressed": {"frame": "camera_front_optical_frame"},
     "/molit/sensors/camera/left/image/compressed": {"frame": "camera_left_optical_frame"},
     "/molit/sensors/camera/right/image/compressed": {"frame": "camera_right_optical_frame"},
@@ -382,6 +383,7 @@ def validate_contract(contract, repository_root):
     config_root = repository_root / "src" / "ros_architecture_pkg" / "config"
     required_module_paths = {
         "core_messages": ("path",),
+        "world_model_messages": ("path",),
         "package_registry": ("path",),
         "tf": ("frame_contract", "sensor_extrinsics", "map_projection"),
         "timestamp": ("timestamp_contract",),
@@ -1711,6 +1713,8 @@ def _package_status_label_ko(status):
         return "GPS·IMU 개발 추정 실행·주행 검증 전"
     if normalized == "development_static_tf_active":
         return "GPS·IMU 정적 TF 개발 실행"
+    if normalized == "development_controller_unverified":
+        return "제어 코어 개발 실행·주행 검증 전"
     if normalized == "development_visualization_only":
         return "시각화 개발 실행·추정 입력 대기"
     if _runtime_kind(status) == "live":

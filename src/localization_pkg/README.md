@@ -90,10 +90,6 @@ IMU quaternion을 자세 관측으로 사용하고, 회전한 GPS 안테나 오�
 base_link 위치를 추정한다. 6-state position/velocity Kalman filter이며 자세·bias를
 동시에 추정하는 15-state EKF가 아니다. 경로·체크포인트는 관측에 쓰지 않는다.
 
-LiDAR DBSCAN의 수평화 전처리도 EgoState의 자세·측정시각·pose_valid·reset_id를
-소비한다. LiDAR는 이 입력으로 전역 위치나 객체 추적 상태를 만들지 않으며,
-생산자의 메시지 형식과 발행 정책은 변경하지 않는다.
-
 - map은 EPSG:32652에서 중앙 원점 `[302595,4124145,0]`을 뺀 좌표다.
 - odom 축은 map ENU와 평행하며 위치는 초기화 후 예측 이동량만 적분한다.
   GPS 보정과 센서 기반 재배치는 odom 위치를 점프시키지 않는다. 재배치 시
@@ -139,9 +135,3 @@ GPS innovation χ²가 `gps_innovation_gate_chi2: 25.0`을 넘으면 리스폰�
 추정값마다 원본 측정시각을 유지한 pose와 대응 status를 발행한다. 입력이 없을 때는 status heartbeat가 10 Hz로 동작한다.
 차량 마커는 exact pose/status 쌍 수신 즉시 갱신하며 별도의 10 Hz 표시 제한을 두지 않는다.
 표시 watchdog은 입력 중단·clock 이상을 계속 검사한다. RViz 렌더링 상한은 60 FPS다.
-
-## MORAI 일시 지연 허용 (2026-09-21)
-
-정상 데이터가 잠깐 늦어 검출·표시가 끊기는 현상을 줄이도록 개발 기본 시간 제한을
-완화했다. 변경값, 유지하는 검사와 적용 방법은 [시뮬레이터 지연 허용](../ros_architecture_pkg/docs/simulator_delay_tolerance.md)을 따른다.
-실차 한계값이나 주행 준비 승인을 의미하지 않으며 원본 측정시각과 좌표 검사는 유지한다.

@@ -79,18 +79,6 @@ class LidarDisplayTest(unittest.TestCase):
         self.display.ingest(msg, rospy.Time.from_sec(10.1), 1.1)
         self.assertEqual(len(self.publisher.publish.call_args[0][0].markers), 1)
 
-    def test_learned_class_color_and_label_keep_source_stamp(self):
-        msg = self.scan()
-        obj = msg.objects[0]
-        obj.learned_box, obj.semantic_class, obj.model_class, obj.model_score = True, 1, 'pedestrian', .8
-        self.display.ingest(msg, rospy.Time(10), 1)
-        markers = self.publisher.publish.call_args[0][0].markers
-        box, label = markers[1:]
-        self.assertEqual(box.color.g, 1)
-        self.assertIn('PEDESTRIAN pedestrian 0.80',label.text)
-        self.assertEqual(label.header,msg.header)
-        self.assertEqual(label.type,Marker.TEXT_VIEW_FACING)
-
 
 if __name__ == '__main__':
     unittest.main()

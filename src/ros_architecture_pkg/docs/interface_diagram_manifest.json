@@ -58,11 +58,11 @@
     },
     {
       "png": "src/path_planning_pkg/docs/interface_io.png",
-      "png_sha256": "fea7cd7658e9d760e1c00c6883b25dc0b7f74abf744f741fb093a20c37dfbc23",
+      "png_sha256": "5c37f1c1364872d1fb4586347bdf73939e61d03701af195ced37dd7e3ed618f4",
       "source": "src/path_planning_pkg/docs/interface_io.mmd",
-      "source_sha256": "1e6cc84d26ed6da81b0688343f49bf0053693b16d37db5c58be2f4b13c3cae56",
+      "source_sha256": "24e3171b9879935d92c81578a8a6b75d76ab01a216e36d1435a80fe68c4a1e68",
       "svg": "src/path_planning_pkg/docs/interface_io.svg",
-      "svg_sha256": "3211bc5c19477c639fcd906f613cafd4188ab3c4d355e60c8df90b983ed5e9e6"
+      "svg_sha256": "9813ac35fe6040e357db2cfca02d7556c2060b4de2de4d6156dcb0c70a069440"
     },
     {
       "png": "src/ros_architecture_pkg/docs/interface_io.png",
@@ -74,11 +74,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "0cc74ddead33d7ff491ca3029917e4dcf309afc09edde2e9154eab99ca4c8dc6",
+      "png_sha256": "40be748509b47c2066af6fd6e36d06e8f2d7ff51d76a1e89cf5504b40ad6e931",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "3e2886a94355383089dbf42b1a3bbcd80871f223fb62c0df716b9477af3d6a25",
+      "source_sha256": "a6d85a1922fc369b8df38b8a982ceeb5de2267487b91980ffe11e627f0056087",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "d2b13f4cf43e77f2cbc5dd656529a3d0ff7fb603e0dc94feeaeb7be3ace9490e"
+      "svg_sha256": "1338462a6e7a09c8e488481bfdcea9afa75b33315cfea58998f1440c6d92a2b1"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
@@ -98,51 +98,51 @@
     },
     {
       "png": "src/runtime_evaluation_pkg/docs/interface_io.png",
-      "png_sha256": "0631e257515033c947a91110d7e1c259f475acaf0dfb5200246e8260def613a3",
+      "png_sha256": "42a347edee01586aeccc0137554cfe98f0e63544268cefadb5e4a43e84c800c3",
       "source": "src/runtime_evaluation_pkg/docs/interface_io.mmd",
-      "source_sha256": "9096a5ead625d72b115376cb7edfbd84cf5c9eab33bc2afa16b67d5ee1567a28",
+      "source_sha256": "3a2f7d1f3c173562f497fd95b86a3d48dc899e3fa4c8f3ceeb21fc5831bd62bf",
       "svg": "src/runtime_evaluation_pkg/docs/interface_io.svg",
-      "svg_sha256": "48c1a9388d7a54f6e332550434e78962878b49b57eab11fa67fef2e8bc974a71"
+      "svg_sha256": "a6d8778e641e57c97530a54e795bfeb8feab2de4611f577cdd1a3442a9861e46"
     },
     {
       "png": "src/safety_supervisor_pkg/docs/interface_io.png",
-      "png_sha256": "e3d46db2db967ffa83cbe1d6a92e6f374618f0b0ed92e5c35f677097f6d862f3",
+      "png_sha256": "b24a27adb63cc9a01bb3a1a2380a1fcf5339e26686a57cdb398c157dd03f1350",
       "source": "src/safety_supervisor_pkg/docs/interface_io.mmd",
-      "source_sha256": "125381d21448ecfde9d4b1127927329cfb9e455dcd536469f2f79a10d6bce390",
+      "source_sha256": "15988602cc475a9093b1652eb8115a2688a16c70401997c10a1d4ad54c61362a",
       "svg": "src/safety_supervisor_pkg/docs/interface_io.svg",
-      "svg_sha256": "9ff40311ac97ddb6637947f3a0a512665c9f9fa333bc51b0239305a28749ecfc"
+      "svg_sha256": "04bcf39ba2de68de1089449a0987f3db019cbe4c5b3e6e867a12764643d30115"
     },
     {
       "png": "src/system_bringup_pkg/docs/interface_io.png",
-      "png_sha256": "90635fce5bdc27fb7cf548eb198586b1febe5e66bd662612e7fe071331c61630",
+      "png_sha256": "94092e686f2bb419551c17272dd4e62d518524b00671da02f9695570433fe6f6",
       "source": "src/system_bringup_pkg/docs/interface_io.mmd",
-      "source_sha256": "476a0f67a1c1ca17d1576d7e47231c62e4282ba698f1c9507ef32e4d33968a21",
+      "source_sha256": "f4686299be414be40e5dedd4d1894ed81645c6b61b53811314d41cf910a28a78",
       "svg": "src/system_bringup_pkg/docs/interface_io.svg",
-      "svg_sha256": "645f0863a033da405afdd07a035f8c3a71dea6a1589ae109e69cd003a4d5e0f0"
+      "svg_sha256": "9a51aafebf45f220fad8517bafedbc5d4cd07a4f4b6e7aa1c426939c612ca780"
     },
     {
       "png": "src/vehicle_control_pkg/docs/interface_io.png",
-      "png_sha256": "9c4c13075532d79463bcbc6e14b8b7ae9ca524f156dbb5a5a02978971cba6ab7",
+      "png_sha256": "fc48b12001453cbaecd41b4bfeba20b24962e26933d620a8ae6c8bcd46602485",
       "source": "src/vehicle_control_pkg/docs/interface_io.mmd",
-      "source_sha256": "26b025bf0340da02ab1cd33474fb877073b4a9530e609cafdf3c82f121ae6b80",
+      "source_sha256": "e8e6f4bb280276811ac8db06823f5d322af564349cc0975642deb710cb5c0df2",
       "svg": "src/vehicle_control_pkg/docs/interface_io.svg",
-      "svg_sha256": "77f77b6fd4b7a01cd2464b96ab1ecd06e58af18ce94aff733a8725dccbc6aa70"
+      "svg_sha256": "8ae259327b7bdc0b3a2732b72f6664696183314463416875964f67b83db5398e"
     },
     {
       "png": "src/visualization_pkg/docs/interface_io.png",
-      "png_sha256": "6963862401bf35222a7b0eaea05d03b7fb1ae98c2a932a79344cfac6a4f5e88e",
+      "png_sha256": "762af5d2a3b8b397c03eb2c4183d6101e821701a7100efb24572d43553990f08",
       "source": "src/visualization_pkg/docs/interface_io.mmd",
-      "source_sha256": "5a476947251a77f572a5ded9440bfb42fb93a097d47316bd75a5e894f3c42a77",
+      "source_sha256": "9e7d4aad4c636fd94e6d5c7334fc0f52b3a710bc413f04a43a87c02a32732f15",
       "svg": "src/visualization_pkg/docs/interface_io.svg",
-      "svg_sha256": "49e9ab3fb237e5b9971d5b1fe4627a83b04bf851fe369ab7de48d5e1fea283f8"
+      "svg_sha256": "630fb5df907777a87a9f2eac6bb9b79e792041bf2b00dd1c19bf851d10dfba8c"
     },
     {
       "png": "src/world_model_pkg/docs/interface_io.png",
-      "png_sha256": "a0b357f81c9d9f3a3f05a6f54f5aa4ae1350775b61990356a0bf8479772a2fbd",
+      "png_sha256": "21a60f1b2a35fb111b6e41f913f33ee7a08ea605c958058046ed7d0ef83a1bca",
       "source": "src/world_model_pkg/docs/interface_io.mmd",
-      "source_sha256": "2014e214803fd9420695921c356cfcc5f57f04ec1da23e1684dcf73ec522370a",
+      "source_sha256": "54dca0dda01ba7b91c7e033386d7113d34f583e0061cfabf8c23293e2fa39bab",
       "svg": "src/world_model_pkg/docs/interface_io.svg",
-      "svg_sha256": "e1fb2add33941aa6f26802f15b074554bcdc73bdc1790a803f571733643e0929"
+      "svg_sha256": "0c0171beafad4e5e34fb2997f720434332d3a43cc3253ab0e4b540da26f955df"
     }
   ],
   "renderer": "@mermaid-js/mermaid-cli@11.16.0",
@@ -150,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "4ca6679acd33b71718bdb238abb046624567ecef50bf3dc98e732f2873e9cfc7"
+  "source_of_truth_sha256": "8c52d561c294b8d643044343b97ea1b9fb534ae31961064446f96246d72db2ca"
 }

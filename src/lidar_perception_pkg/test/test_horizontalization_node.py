@@ -77,7 +77,6 @@ class HorizontalizationTest(unittest.TestCase):
         out=result(stamp)
         self.assertTrue(out.objects_valid); self.assertEqual(len(out.objects),1)
         self.assertEqual(out.header.frame_id,'lidar_link')
-        self.assertFalse(out.objects[0].learned_box)
         expected=raw.mean(axis=0)
         actual=out.objects[0].center
         np.testing.assert_allclose([actual.x,actual.y,actual.z],expected,atol=.003)

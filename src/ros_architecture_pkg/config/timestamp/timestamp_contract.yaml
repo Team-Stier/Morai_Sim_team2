@@ -20,10 +20,14 @@ timestamp_source_registry:
     clock_domain: canonical_message_clock
     message_stamp_carried: true
     allowed_owner_packages: [visualization_pkg]
-    allowed_topics: [/molit/internal/visualization/vehicle_markers, /molit/internal/visualization/lidar_markers]
+    allowed_topics:
+      - /molit/internal/visualization/vehicle_markers
+      - /molit/internal/visualization/lidar_markers
+      - /molit/internal/visualization/world_model_markers
     marker_stamp_rules:
       vehicle_geometry_and_attached_labels: preserve_source_pose_estimate_valid_time
       lidar_geometry: preserve_source_scan_measurement_stamp
+      world_model_geometry: preserve_fusion_reference_time
       waiting_annotations_and_deletes: canonical_ros_display_evaluation_time_zero_allowed_before_clock_start
     rule: Never restamp old vehicle geometry or use display markers as localization estimates.
   morai_camera_packet_frame_time:
@@ -206,12 +210,6 @@ derived_message_contract:
   perception:
     stamp: source_sensor_measurement_time
     rule: Inference completion must not replace the source image or scan stamp.
-    lidar_preprocessing: >-
-      Align EgoState attitude to the LiDAR scan stamp using an exact sample or
-      bounded SLERP bracket in the same clock domain. Never extrapolate or replace
-      missing attitude with the latest sample. Clear history and pending scans on
-      localization reset or clock regression; enforce monotonic wall wait limits.
-      See messages/lidar_runtime.yaml horizontalization for development bounds.
   world_model:
     stamp: fusion_reference_time
     rule: Every fused element must retain source stamp, age and provenance internally.
@@ -275,19 +273,17 @@ runtime_evidence_required:
 # Explicit development defaults, not measured competition limits.
 development_localization_profile:
   activation_scope: development_only
-  tuning_scope: morai_simulator_only
-  timing_policy: relaxed_transient_delay_not_measured_driving_limits
   measurement_verified: false
   autonomous_driving_ready: false
   authorization: user_requested_estimation_and_activation_2026_09_10
-  imu_timeout_sec: 1.0
-  gps_timeout_sec: 2.0
-  estimate_timeout_sec: 1.0
-  status_timeout_sec: 2.0
+  imu_timeout_sec: 0.30
+  gps_timeout_sec: 0.65
+  estimate_timeout_sec: 0.30
+  status_timeout_sec: 0.50
   reorder_delay_sec: 0.06
   max_dead_reckoning_sec: 15.0
   max_integration_step_sec: 0.30
-  clock_stall_sec: 2.0
+  clock_stall_sec: 0.50
   future_tolerance_sec: 0.0
   status_publish_rate_hz: 10.0
   status_rate_semantic: heartbeat_when_idle_plus_one_status_per_estimate

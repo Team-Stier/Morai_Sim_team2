@@ -1,3 +1,5 @@
+course_speed_policy: true  # Central config/map/course_speed_policy.yaml, also used by planning.
+
 source:
   status: immutable_candidate
   repository: https://github.com/MORAI-Autonomous/verdict-sdk.git
@@ -62,3 +64,19 @@ validation:
 references:
   simulator_scene_file: ../../참고파일들/2026_molit_comp_sample_scene.json
   simulator_global_path: ../../참고파일들/2026_molit_comp_global_path (3).txt
+
+# Static alternatives only. Unknown/solid/compound/yellow boundaries fail closed.
+lane_rddf:
+  # User-required intersection entry near checkpoint 8 (2026-09-21).
+  # Exclude the outer bypass and its continuation, even if geometrically close to the course.
+  excluded_link_ids: [A2256W000739, A2256W000849]
+  sample_spacing_m: 0.5
+  course_corridor_m: 15.0
+  minimum_heading_dot: 0.8
+  maximum_lane_width_m: 5.0
+  maximum_height_difference_m: 1.5
+  boundary_end_clearance_m: 3.0
+  successor_gap_m: 0.5
+  route_match_m: 0.8
+  route_exclusion_m: 0.8
+  minimum_run_m: 2.0

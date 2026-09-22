@@ -1,3 +1,0 @@
-# MORAI simulator display grace period, not driving freshness.
-display_timeout_sec: 2.0
-clock_stall_sec: 2.0

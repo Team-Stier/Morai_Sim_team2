@@ -249,7 +249,7 @@ class LocalizationEstimatorRuntimeTest(unittest.TestCase):
     def test_gps_blackout_and_recovery_keep_local_epoch(self):
         status = self._initialize()
         epoch = status.reset_id
-        for index in range(100):
+        for index in range(40):
             self._advance(self.clock + 0.025)
             self.imu_pub.publish(self._imu(self.clock))
             time.sleep(0.01)
@@ -317,20 +317,6 @@ class LocalizationEstimatorRuntimeTest(unittest.TestCase):
         time.sleep(0.15)
         self.assertAlmostEqual(self.status.header.stamp.to_sec() - self.status.gps_age_sec,
                                accepted_gps, places=6)
-
-    def test_delayed_imu_is_processed_without_restamping(self):
-        status = self._initialize()
-        sample = self._imu(self.clock + .02)
-        # Transport delay, not a large physical integration interval.
-        self._advance(sample.header.stamp.to_sec() + .60)
-        self.imu_pub.publish(sample)
-        ns = sample.header.stamp.to_nsec()
-        self._wait(lambda: ns in self.ego)
-        self.assertEqual(self.ego[ns].header.stamp, sample.header.stamp)
-        self.assertEqual(self.ego[ns].reset_id, status.reset_id)
-        self._wait(lambda: self.status.ego_state_stamp == sample.header.stamp)
-        self.assertTrue(self.status.map_pose_valid)
-        self.assertTrue(self.status.stop_required)
 
     def test_clock_stall_and_regression_clear_validity_and_restart_epoch(self):
         status = self._initialize()

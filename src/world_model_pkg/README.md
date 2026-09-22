@@ -1,9 +1,5 @@
 # world_model_pkg
 
-LiDAR 객체 메시지 v0.2.0은 학습 분류와 보정되지 않은 모델 점수를 포함한다.
-새 공통 메시지로 빌드하되 `validate_lidar(..., for_fusion=True)` gate를 유지한다.
-분류값이 있어도 calibration/freshness 미검증 관측을 주행 scene으로 승격하지 않는다.
-
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
@@ -11,11 +7,6 @@ LiDAR 객체 메시지 v0.2.0은 학습 분류와 보정되지 않은 모델 점
 ## 이 패키지가 필요한 이유
 
 Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서로 다른 timestamp, calibration과 pose를 사용해 Planner에서 충돌한다. 이 패키지가 지도·ego·동적 객체 융합의 단일 소유자가 된다.
-
-LiDAR의 검출 전 roll/pitch 수평화는 센서 로컬 전처리이며, 공개 관측은 이미
-원래 `lidar_link`로 반환되어 있다. 소비 시 수평화 회전을 추가로 적용하지 않고
-측정시각의 전체 지도 변환을 적용한다. `paik`에서는 World Model 런타임이
-예약 상태이며, 별도 `cluster_points` 출력은 Visualization 표시용이다.
 
 ## 담당 범위
 
@@ -41,8 +32,9 @@ LiDAR의 검출 전 roll/pitch 수평화는 센서 로컬 전처리이며, 공�
 
 ## 공개 ROS 입출력
 
-현재 상태는 **이름 승인, 구현 예약**이며 공개 경계 노드는
-`world_model_node`다.
+현재 상태는 **LiDAR 객체의 scan-time map 변환과 개발용 tracking 구현**이며
+공개 경계 노드는 `world_model_node`다. HD Map·Route·Camera·free-space 융합과
+주행 readiness 승인은 아직 구현하지 않았다.
 
 ![World Model 공개 입출력](docs/interface_io.svg)
 
@@ -69,9 +61,10 @@ LiDAR의 검출 전 roll/pitch 수평화는 센서 로컬 전처리이며, 공�
 | 출력 | `/molit/world_model/scene` | `common_msgs_pkg/WorldModel` |
 | 출력 | `/molit/world_model/status` | `common_msgs_pkg/ComponentStatus` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`,
+`LidarObservationArray`, `TrackedObject`, `WorldModel` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+나머지 custom type과 융합 계층은 아직 미구현이다.
 
 좌표 변환에는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)에서 승인된 frame과 extrinsic만 사용한다. 시간 정렬에는 중앙 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)을 적용하고, 각 관측의 source stamp를 fusion publication time으로 교체하지 않는다.
 
@@ -88,3 +81,34 @@ LiDAR의 검출 전 roll/pitch 수평화는 센서 로컬 전처리이며, 공�
 - `docs/`: calibration, frame, fusion schema와 평가 근거
 - `launch/`: World Model 단독 실행
 - `src/`: temporal buffer, transform, fusion과 tracking 구현
+
+## 현재 LiDAR-only 개발 구현
+
+`world_model_node`는 `/molit/perception/lidar/observations`의 원본 scan stamp로
+`map <- lidar_link` TF를 조회한다. latest-time TF fallback은 사용하지 않는다.
+LiDAR frame의 축 정렬 box를 여덟 꼭짓점을 포함하는 map 축 정렬 box로 보수적으로
+변환한 뒤, map XY 최근접 association으로 process-local `track_id`를 부여한다.
+
+- 같은 정적 물체는 차량이 이동해 상대좌표가 달라져도 map 위치와 track ID를 유지한다.
+- 새 track은 tentative이며 두 번 관측되면 confirmed가 된다.
+- 검출 누락은 설정된 `maximum_coast_sec` 동안만 예측하며 이후 삭제한다.
+- 세 번 이상 연속 관측된 track만 map 선속도를 개발 추정값으로 표시한다.
+- Localization `reset_id`, ROS clock reset 또는 관측 stamp 역행 시 전체 track을 비운다.
+- Localization status가 ROS·wall 시간 모두 freshness 제한을 벗어나면 scene 처리를 보류한다.
+- 빈 검출은 free-space 증명이 아니며 `free_space_valid=false`를 유지한다.
+
+현재 LiDAR producer가 `calibration_verified=false`, `freshness_verified=false`를
+명시하고 position uncertainty도 아직 bounded하지 못한다. 따라서 map geometry는
+개발 진단용으로 발행하지만 `objects_verified=false`, `planner_ready=false`,
+`/molit/world_model/status.stop_required=true`를 유지한다. Path Planner가 이 결과를
+주행 가능한 World Model로 사용하면 안 된다.
+
+```bash
+source /opt/ros/noetic/setup.bash
+source devel/setup.bash
+roslaunch world_model_pkg world_model_pkg.launch
+rostopic echo /molit/world_model/scene
+```
+
+실행 전 Localization, 중앙 `base_link -> lidar_link` 정적 TF와 LiDAR Perception이
+동작해야 한다. HD Map의 RViz 마커는 표시 전용이며 이 첫 구현에는 융합되지 않는다.

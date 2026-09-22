@@ -54,9 +54,10 @@ uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별�
 | 입력 | `/molit/control/status` | `common_msgs_pkg/ControllerStatus` |
 | 출력 | `/molit/system/readiness` | `common_msgs_pkg/SystemReadiness` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`, LiDAR 관측과
+World Model 객체·scene과 제어 연결용 `Trajectory`·`ActuatorCommand`·`ControllerStatus` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+나머지 custom type과 readiness 런타임 노드는 아직 미구현이다.
 `/molit/system/readiness`는 Safety를 제외한 상류 필수 구성요소의 준비 상태다.
 최종 주행 허용 여부는 순환 구독 없이 `safety_supervisor_node`가
 `/molit/safety/state`로 결정한다.
@@ -86,3 +87,17 @@ uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별�
 
 RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 30 m + 북쪽 지정 경계 확장을 사용한다.
 `hd_map_pkg/config/map_conversion.yaml`의 crop 설정을 공유하고 전역경로는 초록색으로 표시한다.
+
+제어 연결용 `Trajectory`, `ActuatorCommand`, `ControllerStatus` 스키마도 구현됐다.
+이 패키지의 예약 consumer는 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)을 따른다.
+
+## 전역경로 추종 시험 (2026-09-21)
+
+사용자가 요청한 현재 시뮬레이터 전용 실행은
+[global_path_demo 중앙 프로필](../ros_architecture_pkg/config/messages/global_path_demo.yaml)을 따른다.
+`roslaunch system_bringup_pkg global_path_demo.launch`로 기존 Localization에 연결해
+전역경로만 10 km/h로 추종한다. 일반 실행과 구분된 개발용 직접 전달 경로이며
+장애물·신호 판단을 수행하지 않는다. 별도 방어 계층은 추가하지 않았다.
+실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
+
+`global_path_demo.launch`는 중앙 고정 코스 속도 규칙(일반 최대 58, 고주로 목표 150 km/h)과 곡률/감속 프로파일을 적용한다. 일반 순항 목표는 56 km/h다.

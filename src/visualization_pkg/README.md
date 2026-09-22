@@ -1,23 +1,5 @@
 # visualization_pkg
 
-기본 HD Map/Localization 화면은 LiDAR 장애물을 **원본 클러스터 점**으로 표시한다.
-`/molit/perception/lidar/cluster_points`의 원본 XYZ를 `POINTS` marker로 보내고
-측정시각 TF로 `map`에 배치한다. 점은 군집별 색상이며 장애물 박스를 만들지 않는다.
-설정 `lidar_display_mode: boxes`는 기존 박스 비교용이다.
-
-LiDAR 사전학습 관측은 보행자 초록, 차량 파랑, 기타 학습 클래스 주황으로
-표시하며 원 모델 클래스와 보정되지 않은 점수를 붙인다. 기존 DBSCAN은 분홍
-UNKNOWN 박스다. 새 `LidarObjectObservation` 스키마로 함께 빌드해야 한다.
-측정시각·scan-time TF·표시 만료 검증은 동일하게 적용한다.
-
-차량 위치 추정 없이 센서 좌표에서 raw/ROI 점군과 분류 박스를 확인하려면
-`roslaunch visualization_pkg lidar_debug.launch`를 사용한다. Fixed Frame은
-승인된 `lidar_link`이며 TF를 추가 발행하지 않는다. 이 개발용 내부 표시 노드는
-기존 vehicle_visualizer_node의 LiDAR 마커와 동시에 실행하지 않는다.
-표시 노드 자체는 Localization이 필요 없지만, 기본 LiDAR DBSCAN의 수평화
-전처리는 EgoState와 중앙 sensor mount TF가 필요하다. 보정 후 관측과 점군도
-원래 `lidar_link`로 반환되므로 이 RViz 설정의 좌표계는 바꾸지 않는다.
-
 승인된 로컬리제이션 추정값을 받아 차량 크기의 사각형과 전방 화살표를 한 RViz
 화면에 표시한다. 기본은 위에서 본 footprint이며 유효한 추정값이 없으면
 `WAITING FOR LOCALIZATION`을 표시하고 차량 도형은 지운다.
@@ -56,14 +38,15 @@ roslaunch visualization_pkg visualization_pkg.launch
 | 구분 | Topic | Type |
 |---|---|---|
 | 입력 | `/molit/perception/lidar/observations` | `common_msgs_pkg/LidarObservationArray` |
-| 입력 | `/molit/perception/lidar/cluster_points` | `sensor_msgs/PointCloud2` |
+| 입력 | `/molit/world_model/scene` | `common_msgs_pkg/WorldModel` |
 | 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
 | 입력 | `/molit/localization/local/odometry` | `nav_msgs/Odometry` |
 | 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
 
 공개 출력은 없다. 패키지 내부 `vehicle_rviz`만
-`/molit/internal/visualization/vehicle_markers` (`visualization_msgs/MarkerArray`)를
-구독한다. 마커는 위치 추정이나 주행 판단의 입력이 아니다. raw GPS/IMU, 다른
+`/molit/internal/visualization/vehicle_markers`, `lidar_markers`,
+`world_model_markers` (`visualization_msgs/MarkerArray`)를 구독한다. 마커는 위치 추정이나
+주행 판단의 입력이 아니다. raw GPS/IMU, 다른
 패키지 내부 topic, Ground Truth를 사용하지 않으며 제어·초기 위치·목표 전송 도구도 없다.
 
 ## 차량 크기와 기준점
@@ -144,23 +127,29 @@ RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 
 
 ## LiDAR 검출 결과
 
-RViz의 **LiDAR raw cluster points**에 클러스터에 속한 원본 점을 군집별 색상으로 표시한다.
-색상은 해당 스캔의 군집 구분용이며 차량/보행자 분류나 추적 ID가 아니다.
-기본 `lidar_display_mode: points`에서는 박스를 만들지 않는다.
-비교용 `boxes` 모드만 기존 observations의 박스를 사용한다.
+RViz의 **LiDAR detections (development)**에 검출 박스를 분홍색으로 표시한다.
 `lidar_link`의 원본 scan stamp로 TF를 적용하며 장착 offset을 중복 적용하지 않는다.
 측정시각 TF가 없으면 기다리고, invalid/stale/clock 정지 때 기존 결과를 삭제한다.
-TF는 bringup과 Localization이 발행한다. 관측이 없으면 표시도 없다.
+TF는 bringup과 Localization이 발행한다. 관측이 없으면 박스도 없다.
 표시 내부 토픽은 `/molit/internal/visualization/lidar_markers`이며 RViz만 사용한다.
 검출기는 `roslaunch lidar_perception_pkg lidar_perception_pkg.launch`로 실행한다.
 LiDAR UDP bridge와 watchdog은 [격리 센서 연결 절차](../lidar_perception_pkg/docs/sim_input_review.md)를 따른다.
 이들은 중앙 UDP 계약상 system bringup 자동 실행에 추가할 수 없는 수동 개발 시험 채널이다.
 
-원본 점 및 지도 좌표 교차검증은 [군집 점 표시 검증](../lidar_perception_pkg/docs/cluster_points.md)에 기록했다.
-이전 박스 모드 검증은 [LiDAR 검증 기록](docs/lidar_display_validation.md)을 참고한다.
+검사 결과와 실제 MORAI 수신 한계는 [LiDAR 검증 기록](docs/lidar_display_validation.md)에 기록했다.
 
-## MORAI 일시 지연 허용 (2026-09-21)
+## World Model 추적 결과
 
-정상 데이터가 잠깐 늦어 검출·표시가 끊기는 현상을 줄이도록 개발 기본 시간 제한을
-완화했다. 변경값, 유지하는 검사와 적용 방법은 [시뮬레이터 지연 허용](../ros_architecture_pkg/docs/simulator_delay_tolerance.md)을 따른다.
-실차 한계값이나 주행 준비 승인을 의미하지 않으며 원본 측정시각과 좌표 검사는 유지한다.
+RViz의 **World Model tracks (map-frame diagnostic)**는
+`/molit/world_model/scene`의 map 좌표 box를 하늘색으로 표시한다. 이 박스는 차량이
+움직여도 정적 객체의 map 위치와 track ID를 유지하며, TF를 다시 적용하지 않는다.
+원본 분홍 LiDAR box와 겹쳐 비교할 수 있다. 현재 결과는 calibration·freshness·위치
+불확실성이 검증되지 않았으므로 시각화 전용이며 주행 판단에는 사용할 수 없다.
+
+## 추가 차로 RDDF
+
+HD Map 표시에는 하늘색 `lane_rddf`와 주황색 `lane_change_windows` namespace가
+추가된다. 기존 초록 전역경로는 보존한다. 주황선은 지도상 허용 횡단 위치이며
+주행용 차선변경 궤적이 아니다. [추출 조건과 검증](../hd_map_pkg/docs/lane_rddf.md)을 따른다.
+
+HD Map의 고주로 전역경로/추가 RDDF는 분홍색(제한 없음·목표 150 km/h), 일반 전역경로는 초록색(최대 58 km/h), 일반 추가 RDDF는 하늘색이다. 정적 구간은 Planner와 같은 중앙 코스 정책을 읽는다.
