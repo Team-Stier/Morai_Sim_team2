@@ -33,9 +33,9 @@ minimum_gain_sec: 1.0
 # Adopt a fully checked better candidate on this decision tick.
 gain_confirmation_sec: 0.0
 checkpoint_radius_m: 3.0
-acceleration_mps2: 2.5
+acceleration_mps2: 2.0
 deceleration_mps2: 2.0
-lateral_acceleration_mps2: 4.0
+lateral_acceleration_mps2: 3.0
 speed_tolerance_mps: 0.5
 stop_margin_m: 5.0
 stationary_speed_mps: 0.5
