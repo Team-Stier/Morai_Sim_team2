@@ -1,5 +1,31 @@
 # system_bringup_pkg
 
+## 한 번에 실행
+
+저장소 루트에서 `./run.sh`로 센서, Localization, RViz,
+Frenet 회피 Planner, Controller, Safety와 MORAI 제어 송신을 함께 실행한다.
+Ctrl+C로 이번 실행 전체를 종료한다. 기존 구성과 노드가 겹치면 시작을 거부한다.
+MORAI 앱은 별도로 실행하고 Cmd Control `127.0.0.1:9093`을 Connect 상태로 둔다.
+
+```bash
+./run.sh
+# 송신·RViz 없이 실행하거나, 실행하지 않고 구성만 검사:
+./run.sh send_to_morai:=false rviz:=false
+./run.sh --check
+```
+
+스크립트가 Noetic과 workspace 환경을 불러오며 `frenet_all.launch`를 실행한다.
+launch는 MORAI 앱 자체를 켜거나 UI의
+수동/자동 모드를 바꾸지 않는다. 기본값은 전방 카메라 수신·RViz·제어 송신 활성, 좌우 카메라 수신 비활성, 시험 상한 해제다.
+
+`frenet_rddf.launch`는 기존 MORAI 센서·Localization 실행에 정적 지도, Route,
+LiDAR 관측, World Model, Frenet Planner와 Controller→Safety 연결을 추가한다.
+기존 global_path_demo와 중복 실행하지 않는다. 송신 기본값은 false이며,
+`send_to_morai:=true`로 개발 주행을 활성화한다. 시험 상한은 기본적으로 해제하며
+Q 전환은 기존 MORAI sender 동작을 유지한다.
+[중앙 개발 프로필](../ros_architecture_pkg/config/messages/frenet_runtime.yaml)과
+[검증 범위](../path_planning_pkg/docs/frenet_rddf.md)를 따른다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
@@ -55,7 +81,7 @@ uncertainty/timeout 수치는 측정 근거가 있는 runtime profile에서 별�
 | 출력 | `/molit/system/readiness` | `common_msgs_pkg/SystemReadiness` |
 
 공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`, LiDAR 관측과
-World Model 객체·scene 스키마가 구현됐다.
+World Model 객체·scene과 제어 연결용 `Trajectory`·`ActuatorCommand`·`ControllerStatus` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 나머지 custom type과 readiness 런타임 노드는 아직 미구현이다.
 `/molit/system/readiness`는 Safety를 제외한 상류 필수 구성요소의 준비 상태다.
@@ -87,3 +113,17 @@ World Model 객체·scene 스키마가 구현됐다.
 
 RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 30 m + 북쪽 지정 경계 확장을 사용한다.
 `hd_map_pkg/config/map_conversion.yaml`의 crop 설정을 공유하고 전역경로는 초록색으로 표시한다.
+
+제어 연결용 `Trajectory`, `ActuatorCommand`, `ControllerStatus` 스키마도 구현됐다.
+이 패키지의 예약 consumer는 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)을 따른다.
+
+## 전역경로 추종 시험 (2026-09-21)
+
+사용자가 요청한 현재 시뮬레이터 전용 실행은
+[global_path_demo 중앙 프로필](../ros_architecture_pkg/config/messages/global_path_demo.yaml)을 따른다.
+`roslaunch system_bringup_pkg global_path_demo.launch`로 기존 Localization에 연결해
+전역경로만 10 km/h로 추종한다. 일반 실행과 구분된 개발용 직접 전달 경로이며
+장애물·신호 판단을 수행하지 않는다. 별도 방어 계층은 추가하지 않았다.
+실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
+
+`global_path_demo.launch`는 중앙 고정 코스 속도 규칙(일반 최대 58, 고주로 목표 150 km/h)과 곡률/감속 프로파일을 적용한다. 일반 순항 목표는 56 km/h다.

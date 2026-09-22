@@ -30,3 +30,27 @@ class MapDisplayTest(unittest.TestCase):
         self.dataset.lane_boundaries['a']['points'][0][0] = float('nan')
         with self.assertRaises(ValueError):
             display_layers(self.dataset, self.projection)
+
+
+class LaneRddfDisplayTest(unittest.TestCase):
+    def test_unlimited_route_and_lane_rddf_have_same_distinct_color(self):
+        lines = [[[0, 0, 28], [1, 0, 28]]]
+        markers = map_markers(dict(global_route=lines, global_route_unlimited=lines,
+                                  lane_rddf_unlimited=lines), -0.1, 0.1).markers
+        self.assertEqual(markers[1].color, markers[2].color)
+        self.assertNotEqual(markers[0].color, markers[1].color)
+        self.assertGreater(markers[1].color.r, markers[1].color.g)
+        self.assertEqual(markers[-2].text, 'NO LIMIT | cruise 150 km/h')
+        self.assertEqual(markers[-1].text, 'MAX 58 km/h')
+
+    def test_layers_are_separate_lines_and_use_map_without_changing_height(self):
+        layers = {'global_route': [[[0,0,28],[1,0,28]]],
+                  'lane_rddf': [[[0,3,28],[1,3,28]], [[5,3,28],[6,3,28]]],
+                  'lane_change_windows': [[[0,0,28],[0,3,28]]]}
+        markers = map_markers(layers, -0.1, 0.1).markers
+        self.assertEqual([m.ns for m in markers], list(layers))
+        self.assertEqual(len(markers[1].points), 4)  # No artificial connector between runs.
+        self.assertGreater(markers[1].color.b, markers[1].color.r)
+        self.assertGreater(markers[2].color.r, markers[2].color.b)
+        self.assertTrue(all(m.header.frame_id == 'map' for m in markers))
+        self.assertEqual(layers['lane_rddf'][0][0][2], 28)

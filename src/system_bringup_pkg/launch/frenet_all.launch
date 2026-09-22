@@ -1,0 +1,18 @@
+<launch>
+  <!-- User's complete development driving stack; reuse package-owned launch files. -->
+  <arg name="rviz" default="true"/>
+  <arg name="send_to_morai" default="true"/>
+  <arg name="test_speed_cap_kph" default="0.0"/>
+  <include file="$(find morai_interface_pkg)/launch/morai_interface_pkg.launch">
+    <arg name="start_imu" value="true"/>
+    <arg name="start_lidar" value="true"/>
+    <arg name="start_lidar_watchdog" value="true"/>
+  </include>
+  <include file="$(find system_bringup_pkg)/launch/localization_visualization.launch">
+    <arg name="rviz" value="$(arg rviz)"/>
+  </include>
+  <include file="$(find system_bringup_pkg)/launch/frenet_rddf.launch">
+    <arg name="send_to_morai" value="$(arg send_to_morai)"/>
+    <arg name="test_speed_cap_kph" value="$(arg test_speed_cap_kph)"/>
+  </include>
+</launch>

@@ -40,7 +40,7 @@
 - `hd_map_pkg`의 정적 지도와 `global_route_manager_pkg`의 주행 진행 상태를 섞지 않는다.
 - `path_planning_pkg` / `path_planner_node`는 모듈형 behavior planning과
   local motion planning의 단일 소유자다.
-- Planner는 중앙 계약에 승인된 Localization, Route와 World Model 공개
+- Planner는 중앙 계약에 승인된 HD Map, Localization, Route와 World Model 공개
   데이터만 입력으로 사용한다. raw Camera/LiDAR와 개별 Perception 관측을
   직접 구독하여 다른 패키지의 소유 경계를 우회하지 않는다.
 - `path_planner_node`의 v1 주행 출력은

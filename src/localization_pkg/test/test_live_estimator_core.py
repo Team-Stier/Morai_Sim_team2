@@ -78,7 +78,7 @@ class GpsInnovationResetTest(unittest.TestCase):
         old_uncertainty = self.core.local_position_stddev.copy()
         self.assertTrue(self.gps(3.))  # One fix, less than the old 15 m jump requirement.
         self.assertTrue(self.core.gps_reinitialized)
-        np.testing.assert_allclose(self.core.state, [3., 0., 0., 0., 0., 0.], atol=1e-8)
+        np.testing.assert_allclose(self.core.state, [3., 0., 0., 0., 0., 0., 0., 0., 0.], atol=1e-8)
         np.testing.assert_allclose(self.core.local_position, old_local)
         np.testing.assert_allclose(self.core.local_position_stddev, old_uncertainty)
         self.assertEqual(self.core.last_gps_stamp, self.t)

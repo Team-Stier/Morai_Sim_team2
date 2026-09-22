@@ -1,5 +1,13 @@
 # hd_map_pkg
 
+Frenet 개발 실행의 hd_map_server_node는 원본 링크 14개에서 만든 추가 RDDF 8개와 전역경로,
+MGeo 연결·허용 점선 구간·금지 경계·체크포인트를 HdMap으로 발행한다.
+목록은 config/map_conversion.yaml의 allowed_link_ids로 고정한다.
+고주로의 링크 8개는 추가 차로 2개로 연결한다. 전역경로와 함께 3개 RDDF를
+이루며 고주로 시작점에서 분기하고 원본 추가 차로의 끝에서 다시 합류한다.
+진입 80 m·합류 45 m의 파생 접속 곡선과 원본 링크 목록은
+`lane_rddf.course_connections`로 관리한다.
+
 MORAI 공식 조직의 KATRI MGeo 3.0 스냅샷을 immutable 후보로 고정하고, 이를
 WGS84 기반 Lanelet2 OSM으로 변환·검증하며 브라우저에서 시각 검사하는 오프라인
 도구다.
@@ -15,6 +23,11 @@ WGS84 기반 Lanelet2 OSM으로 변환·검증하며 브라우저에서 시각 �
 HTML을 페이지 안에서 실행하지 않으므로 파일을 내려받아 브라우저로 연다.
 
 ## 현재 산출물
+
+고주로는 **분홍색(제한 없음·목표 150 km/h)**, 일반 전역경로는
+**초록색(최대 58 km/h)**, 일반 추가 RDDF는 **하늘색**으로 표시한다.
+RDDF manifest도 각 점의 속도 제한을 `null`/`58`으로 구분한다.
+원본 지도 속성과 별도로 적용한 [고정 코스 정책](../ros_architecture_pkg/docs/course_speed_policy.md)이다.
 
 `hd_map_tool build-all`은 다음 파일을 `data/derived/`에 재현 가능하게 생성한다.
 
@@ -216,9 +229,9 @@ catkin_test_results
 | 출력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
 | 출력 | `/molit/map/status` | `common_msgs_pkg/ComponentStatus` |
 
-공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus` 스키마만 구현됐다.
+공유 타입 `ComponentStatus`, `HdMap`, `RouteLane`, `LaneChangeWindow`가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-나머지 custom type과 런타임 노드는 아직 미구현이다.
+런타임 노드는 전역경로·허용 RDDF·점선 연결·금지 경계와 체크포인트를 발행한다.
 
 ## 통합 전 자체 확인
 
@@ -247,3 +260,10 @@ catkin_test_results
 
 RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 30 m + 북쪽 지정 경계 확장을 사용한다.
 `hd_map_pkg/config/map_conversion.yaml`의 crop 설정을 공유하고 전역경로는 초록색으로 표시한다.
+
+## 추가 차로 RDDF와 차선변경 구간
+
+`rosrun hd_map_pkg hd_map_tool lane-rddf`로 코스에 연결된 동일 진행 방향의 추가
+차로를 XYZ TXT로 추출한다. 기존 경로는 초록색, 추가 차로는 하늘색, 확인된 흰색
+점선 횡단 위치는 주황색으로 RViz에 표시한다. 조건·파일 형식·검증 범위는
+[추가 차로 RDDF](docs/lane_rddf.md)를 따른다.

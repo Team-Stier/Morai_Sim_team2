@@ -8,5 +8,6 @@
   <buildtool_depend>catkin</buildtool_depend>
   <depend>common_msgs_pkg</depend>
   <depend>ros_architecture_pkg</depend>
+  <exec_depend>rospy</exec_depend>
   <export />
 </package>

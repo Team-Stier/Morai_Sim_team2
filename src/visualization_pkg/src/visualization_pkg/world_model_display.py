@@ -1,6 +1,7 @@
 """Read-only RViz markers for map-frame World Model tracks."""
 
 import copy
+import colorsys
 
 import rospy
 from visualization_msgs.msg import Marker, MarkerArray
@@ -28,30 +29,22 @@ class WorldModelDisplay:
             self.publisher.publish(MarkerArray(markers=[Marker(action=Marker.DELETEALL)]))
         self.visible = False
 
-    @staticmethod
-    def _color(marker, state, verified):
-        if not verified:
-            marker.color.r, marker.color.g, marker.color.b = 0.15, 0.75, 1.0
-        elif state == 0:
-            marker.color.r, marker.color.g, marker.color.b = 1.0, 0.85, 0.15
-        elif state == 2:
-            marker.color.r, marker.color.g, marker.color.b = 1.0, 0.45, 0.1
-        else:
-            marker.color.r, marker.color.g, marker.color.b = 0.15, 0.9, 0.35
-        marker.color.a = 0.30 if state == 2 else 0.62
-
     def _publish(self, message):
         markers = [Marker(action=Marker.DELETEALL)]
         for obj in message.objects:
+            if obj.source_stamp != message.header.stamp:
+                continue  # Do not display coasted points as a new scan.
             marker = Marker()
             marker.header = copy.deepcopy(message.header)
             marker.ns = "world_model_track_unverified" if not message.objects_verified else "world_model_track"
             marker.id = int(obj.track_id & 0x7FFFFFFF)
-            marker.type = Marker.CUBE
+            marker.type = Marker.POINTS
             marker.action = Marker.ADD
-            marker.pose = copy.deepcopy(obj.pose)
-            marker.scale = copy.deepcopy(obj.size)
-            self._color(marker, obj.track_state, message.objects_verified)
+            marker.pose.orientation.w = 1.0
+            marker.points = copy.deepcopy(obj.points)
+            marker.scale.x = marker.scale.y = self.config.cluster_point_size_m
+            marker.color.r, marker.color.g, marker.color.b = colorsys.hsv_to_rgb((obj.track_id * 0.61803398875) % 1, 0.75, 1)
+            marker.color.a = 1.0
             marker.lifetime = rospy.Duration(self.config.display_timeout_sec)
             marker.frame_locked = False
             markers.append(marker)

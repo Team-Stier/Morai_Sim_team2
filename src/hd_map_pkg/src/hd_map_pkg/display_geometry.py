@@ -47,4 +47,21 @@ def load_route_display_layers(source, projection, config, reference_path):
         'centerlines': [item['p'] for item in preview['centerlines']],
         'global_route': [preview['globalRoute']['p']],
     }
+    if 'lane_rddf' in config:
+        from .lane_rddf import build_lane_rddf, read_route
+        alternatives = (preview['laneRddf'] if config.get('course_speed_policy') else
+                        build_lane_rddf(dataset, transform, read_route(reference_path), config['lane_rddf']))
+        layers['lane_rddf'] = [lane['points'] for lane in alternatives['lanes']]
+        # Crossbars indicate allowed boundary crossing locations, not a steering trajectory.
+        layers['lane_change_windows'] = [c['points'] for c in alternatives['crossings']
+                                        if c['source'][1] % 20 == 0]
+        preview['metadata']['lane_rddf'] = alternatives['counts']
+    if config.get('course_speed_policy'):
+        sections = preview['speedSections']
+        layers['global_route'] = [s['p'] for s in sections if s['speed_limit_kph'] is not None]
+        layers['global_route_unlimited'] = [s['p'] for s in sections if s['speed_limit_kph'] is None]
+        if 'lane_rddf' in config:
+            lane_sections = [s for lane in alternatives['lanes'] for s in lane['speed_sections']]
+            layers['lane_rddf'] = [s['p'] for s in lane_sections if s['speed_limit_kph'] is not None]
+            layers['lane_rddf_unlimited'] = [s['p'] for s in lane_sections if s['speed_limit_kph'] is None]
     return layers, preview['metadata']

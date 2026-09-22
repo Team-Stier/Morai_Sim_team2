@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(common_msgs_pkg)
 
 find_package(catkin REQUIRED COMPONENTS
-  ros_architecture_pkg message_generation std_msgs geometry_msgs)
+  ros_architecture_pkg message_generation std_msgs geometry_msgs nav_msgs)
 
 catkin_python_setup()
 
@@ -14,11 +14,19 @@ add_message_files(FILES
   LidarObservationArray.msg
   ActuatorCommand.msg
   CollisionEvent.msg
+  Trajectory.msg
+  ControllerStatus.msg
+  TrackedObject.msg
+  WorldModel.msg
+  HdMap.msg
+  RouteContext.msg
+  RouteLane.msg
+  LaneChangeWindow.msg
 )
-generate_messages(DEPENDENCIES std_msgs geometry_msgs)
+generate_messages(DEPENDENCIES std_msgs geometry_msgs nav_msgs)
 
 catkin_package(CATKIN_DEPENDS
-  ros_architecture_pkg message_runtime std_msgs geometry_msgs)
+  ros_architecture_pkg message_runtime std_msgs geometry_msgs nav_msgs)
 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_core_contract.py)
@@ -26,6 +34,8 @@ if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_serialization.py)
   catkin_add_nosetests(test/test_lidar_contract.py)
   catkin_add_nosetests(test/test_competition_io_contract.py)
+  catkin_add_nosetests(test/test_controller_contract.py)
+  catkin_add_nosetests(test/test_world_model_contract.py)
 endif()
 
 install(FILES README.md DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

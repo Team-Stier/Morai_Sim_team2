@@ -1,0 +1,98 @@
+schema_version: 1
+contract_version: 0.3.0
+authority: ros_architecture_pkg
+implementation_owner: common_msgs_pkg
+status: development_frenet_rddf
+messages:
+  HdMap:
+    wire_definition: '# Authority: ros_architecture_pkg/config/messages/rddf_planning_messages.yaml
+
+      std_msgs/Header header
+
+      string map_id
+
+      string reference_sha256
+
+      common_msgs_pkg/RouteLane[] lanes
+
+      common_msgs_pkg/LaneChangeWindow[] lane_changes
+
+      geometry_msgs/Point[] checkpoints
+
+      float64 checkpoint_radius_m
+
+      # Original solid/center/restricted/unknown boundary polylines; no joins across
+      IDs.
+
+      geometry_msgs/Polygon[] forbidden_boundaries
+
+      '
+  RouteLane:
+    wire_definition: '# Authority: ros_architecture_pkg/config/messages/rddf_planning_messages.yaml
+
+      string id
+
+      string link_id
+
+      nav_msgs/Path centerline
+
+      string[] successors
+
+      uint32[] source_indices
+
+      float64[] route_s
+
+      # -1 means the course speed limit is lifted; not a cruise target.
+
+      float32[] speed_limits_mps
+
+      '
+  LaneChangeWindow:
+    wire_definition: '# Authority: ros_architecture_pkg/config/messages/rddf_planning_messages.yaml
+
+      string source_lane
+
+      string target_lane
+
+      string boundary_id
+
+      string side
+
+      float64 source_s_start
+
+      float64 source_s_end
+
+      float64 target_s_start
+
+      float64 target_s_end
+
+      geometry_msgs/Point[] boundary
+
+      '
+  RouteContext:
+    wire_definition: '# Authority: ros_architecture_pkg/config/messages/rddf_planning_messages.yaml
+
+      std_msgs/Header header
+
+      string map_id
+
+      string reference_sha256
+
+      # Static geometry is cached from HdMap with this map_id.
+
+      uint32 next_checkpoint
+
+      # next_checkpoint=UINT32_MAX in RDDF-only mode; comparison goal is a forward
+      route station.
+
+      string current_lane
+
+      float64 progress
+
+      geometry_msgs/Point comparison_goal
+
+      float64 comparison_goal_s
+
+      bool route_complete
+
+      '

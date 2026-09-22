@@ -27,6 +27,18 @@ public_interface_policy:
     - Only morai_control_sender may send the approved final command to MORAI.
     - Runtime evaluation is read-only and cannot appear in a command-producing path.
 
+lidar_preprocessing_policy:
+  owner_package: lidar_perception_pkg
+  scope: scan_time_roll_pitch_before_roi_voxel_dbscan
+  attitude_source: /molit/localization/ego_state
+  mount_source: tf/frame_contract.yaml
+  temporary_basis: gravity_aligned_lidar_origin_body_heading_preserved
+  output_frame: lidar_link
+  output_stamp: source_sensor_measurement_time
+  publishes_level_tf: false
+  global_fusion_owner: world_model_pkg
+  details: docs/lidar_detection_contract.md
+
 runtime_evidence_policy:
   expected_rate_hz: design_or_configured_target_until_runtime_measured
   numeric_rate_is_not_live_rate_evidence: true
@@ -39,6 +51,8 @@ planning_policy:
   public_boundary_node: path_planner_node
   implementation_status: reserved_not_implemented
   input_groups:
+    static_map:
+      - /molit/map/hd_map
     localization:
       - /molit/localization/local/odometry
       - /molit/localization/ego_state
@@ -58,7 +72,7 @@ planning_policy:
       frame: not_applicable
   direct_actuator_output_allowed: false
   rules:
-    - Path Planning consumes only approved Localization, Route and World Model public topics.
+    - Path Planning consumes only approved HD Map, Localization, Route and World Model public topics.
     - Raw Camera and LiDAR inputs remain owned by their sensor and perception packages.
     - Planning reports input validity, replanning state and trajectory validity on planning status.
     - Path Planning never bypasses vehicle_controller_node or safety_supervisor_node.
@@ -77,12 +91,30 @@ runtime_readiness_policy:
     last_gps_fix_must_not_be_reused_as_current_position_truth: true
 
 contract_modules:
+  frenet_runtime:
+    path: messages/frenet_runtime.yaml
+    required_contract_version: 0.2.0
+  rddf_planning_messages:
+    path: messages/rddf_planning_messages.yaml
+    required_contract_version: 0.3.0
+  course_speed_policy:
+    path: map/course_speed_policy.yaml
+    required_contract_version: 0.1.0
+  global_path_demo:
+    path: messages/global_path_demo.yaml
+    required_contract_version: 0.1.0
+  controller_messages:
+    path: messages/controller_messages.yaml
+    required_contract_version: 0.1.0
+  competition_io_messages:
+    path: messages/competition_io_messages.yaml
+    required_contract_version: 0.1.0
   lidar_messages:
     path: messages/lidar_messages.yaml
-    required_contract_version: 0.1.0
+    required_contract_version: 0.2.0
   world_model_messages:
     path: messages/world_model_messages.yaml
-    required_contract_version: 0.1.0
+    required_contract_version: 0.2.0
   core_messages:
     path: messages/core_messages.yaml
     required_contract_version: 0.1.0
@@ -203,7 +235,7 @@ nodes:
     owner_package: hd_map_pkg
     executable: hd_map_server_node
     visibility: public_boundary
-    status: reserved_not_implemented
+    status: development_frenet_rddf_unverified
     diagram_description_ko: 정적 HD Map을 검증해 버전 상태와 함께 발행
   - name: camera_perception_node
     owner_package: camera_perception_pkg
@@ -235,9 +267,9 @@ nodes:
     diagram_description_ko: 중앙 계약에서 개발용으로 승인한 GPS와 IMU 정적 TF 발행
   - name: global_route_manager_node
     owner_package: global_route_manager_pkg
-    executable: global_route_manager_node
+    executable: route_manager_node.py
     visibility: public_boundary
-    status: reserved_not_implemented
+    status: development_frenet_rddf_unverified
     diagram_description_ko: 전역경로 진행도와 다음 주행 구간 정보를 계산
   - name: world_model_node
     owner_package: world_model_pkg
@@ -252,16 +284,16 @@ nodes:
     diagram_description_ko: 지도와 센서 관측을 시각과 좌표 기준으로 통합
   - name: path_planner_node
     owner_package: path_planning_pkg
-    executable: path_planner_node
+    executable: frenet_planner_node.py
     visibility: public_boundary
-    status: reserved_not_implemented
+    status: development_frenet_rddf_unverified
     diagram_description_ko: 위치와 경로 및 통합 장면으로 지역 궤적을 생성
     policy_role: modular_behavior_and_motion_planning
   - name: vehicle_controller_node
     owner_package: vehicle_control_pkg
     executable: vehicle_controller_node
     visibility: public_boundary
-    status: reserved_not_implemented
+    status: development_controller_unverified
     diagram_description_ko: 궤적 추종용 조향과 가속 및 제동을 계산
   - name: system_readiness_node
     owner_package: system_bringup_pkg
@@ -476,8 +508,8 @@ topics:
   - name: /molit/map/hd_map
     owner_package: hd_map_pkg
     producers: [hd_map_server_node]
-    consumers: [localization_node, global_route_manager_node, world_model_node]
-    status: reserved_type_schema_not_implemented
+    consumers: [localization_node, global_route_manager_node, world_model_node, path_planner_node]
+    status: development_frenet_rddf_unverified
     visibility: public
     data_meaning: Versioned immutable HD map layers and topology
     diagram_description_ko: 버전이 고정된 정적 지도와 연결 구조
@@ -585,6 +617,23 @@ topics:
     queue_policy: publisher_queue_2_drop_old
     timeout_sec: pending_processing_latency_and_jitter_measurement
     invalid_data_policy: publish_explicit_invalid_status_never_retimestamp_old_result
+  - name: /molit/perception/lidar/cluster_points
+    owner_package: lidar_perception_pkg
+    producers: [lidar_perception_node]
+    consumers: []
+    status: development_visualization_only
+    visibility: public
+    data_meaning: Original raw records belonging to accepted DBSCAN voxel clusters, with scan-local cluster_id and row-major source_index; visualization only
+    diagram_description_ko: 장애물 군집에 속한 원본 LiDAR 점과 원본 인덱스
+    data_type: sensor_msgs/PointCloud2
+    unit: m_and_original_sensor_field_units
+    frame: lidar_link
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: display_only_configurable_not_driving_freshness
+    invalid_data_policy: Empty on invalid/no_clusters; consumer deletes on stale/reset/clock_stall and waits for scan-time TF
+    field_policy: Preserve all original field bytes; append UINT32 cluster_id and source_index. No re-rotation, voxel centroids or height flattening in this output.
   - name: /molit/perception/lidar/status
     owner_package: lidar_perception_pkg
     producers: [lidar_perception_node]
@@ -623,7 +672,7 @@ topics:
   - name: /molit/localization/ego_state
     owner_package: localization_pkg
     producers: [localization_node]
-    consumers: [global_route_manager_node, world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node]
+    consumers: [global_route_manager_node, world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node, lidar_perception_node]
     status: development_estimator_active
     visibility: public
     data_meaning: Best map-referenced ego pose motion uncertainty and validity
@@ -679,15 +728,15 @@ topics:
     owner_package: global_route_manager_pkg
     producers: [global_route_manager_node]
     consumers: [world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: development_frenet_rddf_unverified
     visibility: public
-    data_meaning: Route progress upcoming geometry checkpoints speed rules and mission context
-    diagram_description_ko: 진행도·앞 경로·체크포인트·속도·미션 정보
+    data_meaning: Dynamic route progress current lane and comparison goal keyed by cached HdMap map_id; next_checkpoint is UINT32_MAX in user RDDF-only mode
+    diagram_description_ko: 지도 ID·진행도·현재 차로·다음 체크포인트
     data_type: common_msgs_pkg/RouteContext
     unit: m_ratio_index_m_per_sec_and_enum
     frame: map
     timestamp_source: ego_pose_time_used_for_route_matching
-    expected_rate_hz: 20.0
+    expected_rate_hz: 5.0
     queue_policy: publisher_queue_2_drop_old
     timeout_sec: pending_localization_jitter_measurement
     invalid_data_policy: invalid_when_progress_is_discontinuous_or_pose_is_unusable
@@ -748,12 +797,12 @@ topics:
     owner_package: path_planning_pkg
     producers: [path_planner_node]
     consumers: [vehicle_controller_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: Time-parameterized locally continuous feasible trajectory generated from route localization and world model
     diagram_description_ko: 차량이 따라갈 시간 포함 실행 가능 지역 궤적
     data_type: common_msgs_pkg/Trajectory
-    unit: m_rad_m_per_sec_m_per_sec2_sec
+    unit: m_rad_m_per_sec_sec
     frame: odom
     timestamp_source: planning_reference_time
     expected_rate_hz: 10.0
@@ -780,7 +829,7 @@ topics:
     owner_package: vehicle_control_pkg
     producers: [vehicle_controller_node]
     consumers: [safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: development_controller_unverified
     visibility: public
     data_meaning: Nominal steering accelerator and brake request before safety gating
     diagram_description_ko: Safety 검사 전 조향·가속·제동 요청
@@ -796,7 +845,7 @@ topics:
     owner_package: vehicle_control_pkg
     producers: [vehicle_controller_node]
     consumers: [system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
-    status: reserved_type_schema_not_implemented
+    status: development_controller_unverified
     visibility: public
     data_meaning: Tracking error saturation command validity and controller health
     diagram_description_ko: 추종 오차·포화·명령 유효성·제어기 상태
@@ -983,11 +1032,14 @@ messages:
     status: development_map_object_tracking_unverified
     schema: messages/world_model_messages.yaml#TrackedObject
   - type: common_msgs_pkg/Trajectory
-    status: type_name_reserved_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
+    schema: messages/controller_messages.yaml#Trajectory
   - type: common_msgs_pkg/ActuatorCommand
-    status: type_name_reserved_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
+    schema: messages/competition_io_messages.yaml#ActuatorCommand
   - type: common_msgs_pkg/ControllerStatus
-    status: type_name_reserved_schema_not_implemented
+    status: schema_implemented_runtime_not_implemented
+    schema: messages/controller_messages.yaml#ControllerStatus
   - type: common_msgs_pkg/SystemReadiness
     status: type_name_reserved_schema_not_implemented
   - type: common_msgs_pkg/SafetyState
@@ -1117,8 +1169,10 @@ package_boundaries:
     inputs:
       - /molit/sensors/lidar/points
       - /molit/sensors/lidar/status
+      - /molit/localization/ego_state
     outputs:
       - /molit/perception/lidar/observations
+      - /molit/perception/lidar/cluster_points
       - /molit/perception/lidar/status
   localization_pkg:
     diagram_summary_ko: 센서와 지도를 융합해 차량 위치·움직임과 추정 품질 계산
@@ -1175,6 +1229,7 @@ package_boundaries:
     runtime_status: public_contract_reserved_not_implemented
     public_nodes: [path_planner_node]
     inputs:
+      - /molit/map/hd_map
       - /molit/localization/local/odometry
       - /molit/localization/ego_state
       - /molit/localization/status
@@ -1187,7 +1242,7 @@ package_boundaries:
       - /molit/planning/status
   vehicle_control_pkg:
     diagram_summary_ko: 지역 궤적을 추종할 조향·가속·제동 명령 계산
-    runtime_status: public_contract_reserved_not_implemented
+    runtime_status: development_controller_unverified
     public_nodes: [vehicle_controller_node]
     inputs:
       - /molit/localization/local/odometry

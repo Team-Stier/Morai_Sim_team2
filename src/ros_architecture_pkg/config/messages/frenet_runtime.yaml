@@ -1,0 +1,46 @@
+contract_version: 0.2.0
+activation_scope: user_authorized_morai_development_only
+node: path_planner_node
+executable: frenet_planner_node.py
+geometry_inputs: [HdMap, WorldModel]
+route_progress_input: RouteContext
+static_geometry_cache: RDDF_arrays_and_geometric_neighbor_windows_reused_until_map_id_changes
+rddf_geometry_only: true
+loop_route: true
+loop_semantics: route_station_wraps_at_closed_rddf_seam_goal_station_may_exceed_one_lap_length
+hd_map_driving_fields: [lanes.id, lanes.centerline, lanes.route_s]
+ignored_hd_map_road_metadata: [forbidden_boundaries, checkpoints, checkpoint_radius_m, lane_changes, lanes.successors, lanes.speed_limits_mps]
+lane_change_candidates: same_direction_adjacent_rddf_geometric_overlap_without_map_permission_check
+comparison_goal: same_route_station_100m_ahead_continuing_into_next_lap
+speed_source: central_user_course_speed_policy_not_hd_map_attributes
+checkpoint_enforcement: false
+localization_inputs: [EgoState, Odometry, LocalizationStatus]
+status_inputs: [route_status, world_model_status]
+output: /molit/planning/trajectory
+output_frame: odom
+decision_rate_hz: 5.0
+lane_change_evaluation_rate_hz: 2.0
+trajectory_rate_hz: 10.0
+prediction_horizon_sec: 8.0
+precise_collision_distance_m: 40.0
+obstacle_point_index: 5m_xy_grid_over_actual_cluster_points_and_predicted_object_sweep
+evaluation_order: refresh_keep_or_committed_first_then_evaluate_lateral_candidates
+active_path_retention: minimum_hold_with_immediate_safety_stop_override
+minimum_active_path_hold_sec: 0.5
+pending_result_policy: latest_completed_result_at_hold_boundary
+stop_result_policy: activate_immediately
+held_path_collision_policy: recheck_active_geometry_each_decision_with_latest_scene
+hold_exemptions: [stop_approach, explicit_stop, restart_from_stop, input_failure, localization_reset, clock_regression]
+shared_computation_cache: [rddf_geometry_until_map_id_change, candidate_arc_heading_curvature_within_evaluation]
+object_geometry: original_cluster_points_at_source_stamp
+object_margin_m: 0.0
+raw_sensor_subscription_allowed: false
+world_model_readiness_override: development_objects_valid_with_matching_epoch_and_fresh_source_only
+world_model_max_input_age_sec: 0.7
+world_model_age_override_scope: rddf_geometry_only_development_profile
+world_model_age_override_semantics: preserve_source_stamps_and_extrapolate_objects_by_actual_age
+production_planner_ready_override_allowed: false
+controller_compatibility: development_global_path_only_accepts_development_localization
+controller_safety_transport: retain_existing_global_path_demo_flow
+test_speed_cap_kph: 0.0
+details: ../../../path_planning_pkg/docs/frenet_rddf.md

@@ -266,6 +266,45 @@ class LocalizationEstimatorRuntimeTest(unittest.TestCase):
         self._wait(lambda: self.status.mode == LocalizationStatus.TRACKING)
         self.assertEqual(self.status.reset_id, epoch)
 
+    def test_biased_stationary_blackout_preserves_consumer_contract(self):
+        status = self._initialize()
+        epoch = status.reset_id
+        for index in range(160):
+            self._advance(self.clock + 0.02)
+            observation = self._imu(self.clock)
+            observation.linear_acceleration.x = .04
+            observation.linear_acceleration.y = -.025
+            self.imu_pub.publish(observation)
+            if index % 10 == 0:
+                self.gps_pub.publish(self._gps(self.clock))
+            time.sleep(.01)
+        before_stamp = self.status.ego_state_stamp.to_nsec()
+        self._wait(lambda: before_stamp in self.ego and before_stamp in self.odom)
+        before = self.ego[before_stamp].pose.pose.position
+        for index in range(60):
+            self._advance(self.clock + .025)
+            observation = self._imu(self.clock)
+            observation.linear_acceleration.x = .04
+            observation.linear_acceleration.y = -.025
+            self.imu_pub.publish(observation)
+            time.sleep(.01)
+        self._wait(lambda: self.status.mode == LocalizationStatus.DEAD_RECKONING)
+        status = self.status
+        stamp = status.ego_state_stamp.to_nsec()
+        self._wait(lambda: stamp in self.ego and stamp in self.odom)
+        ego, odom = self.ego[stamp], self.odom[stamp]
+        validate_pair(ego, status)
+        self.assertEqual(status.reset_id, epoch)
+        self.assertTrue(status.stop_required)
+        self.assertEqual(ego.header.stamp, odom.header.stamp)
+        self.assertIn('bias-compensated', status.reason)
+        after = ego.pose.pose.position
+        self.assertLess(math.hypot(after.x-before.x, after.y-before.y), .15)
+        display = VehicleDisplay(DisplayConfig(reference_frame='map', display_timeout_sec=1.0))
+        self.assertTrue(display.ingest_ego(ego, status.header.stamp.to_nsec(), 1.0))
+        self.assertTrue(display.ingest_status(status, status.header.stamp.to_nsec(), 1.0))
+        self.assertTrue(display.evaluate(status.header.stamp.to_nsec(), 1.0).valid)
+
     def test_single_gps_innovation_updates_epoch_and_consumer_without_odom_jump(self):
         status = self._initialize()
         epoch = status.reset_id

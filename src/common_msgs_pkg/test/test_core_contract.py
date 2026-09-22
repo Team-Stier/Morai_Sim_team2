@@ -15,6 +15,12 @@ def read(path):
 
 
 class CoreContractTest(unittest.TestCase):
+    def test_rddf_wire_definitions_match_map_route_planner_contract(self):
+        schema = read(CONFIG / 'messages/rddf_planning_messages.yaml')
+        self.assertEqual(set(schema['messages']), {'HdMap', 'RouteLane', 'LaneChangeWindow', 'RouteContext'})
+        for name, entry in schema['messages'].items():
+            self.assertEqual((PACKAGE / 'msg' / (name + '.msg')).read_text(), entry['wire_definition'])
+
     def test_wire_definitions_exactly_match_central_contract(self):
         schema = read(CONFIG / 'messages/core_messages.yaml')
         self.assertEqual(set(schema['messages']), {'ComponentStatus', 'EgoState', 'LocalizationStatus'})
@@ -62,6 +68,8 @@ class CoreContractTest(unittest.TestCase):
             'ComponentStatus.msg', 'EgoState.msg', 'LocalizationStatus.msg',
             'LidarObjectObservation.msg', 'LidarObservationArray.msg',
             'ActuatorCommand.msg', 'CollisionEvent.msg',
+            'Trajectory.msg', 'ControllerStatus.msg', 'TrackedObject.msg', 'WorldModel.msg',
+            'HdMap.msg', 'RouteLane.msg', 'LaneChangeWindow.msg', 'RouteContext.msg',
         })
         manifest = ET.parse(PACKAGE / 'package.xml').getroot()
         self.assertIn('message_generation', [e.text for e in manifest.findall('build_depend')])

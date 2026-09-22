@@ -41,6 +41,10 @@ roslaunch morai_interface_pkg morai_interface_pkg.launch \
 이는 대회 고정 포트가 아니라 Team2 수신 설정이므로 MORAI Network Settings의
 destination IP/port를 실행 PC와 이 YAML 값에 맞춰야 한다. IMU는 중앙 개발 계약 범위에서 명시적으로 활성화하고, LiDAR는
 격리된 연결 시험에서만 활성화한다.
+현재 사용자 설정은 전방 카메라만 수신한다. 좌우 수신은 기본 비활성이며
+필요할 때 `start_camera_left:=true start_camera_right:=true`로 켠다.
+MORAI의 좌우 카메라 송출도 별도로 꺼야 영상 생성·전송 부하가 줄어든다.
+
 필요한 센서만 실행할 때는 `start_cameras:=false` 같은 launch 인자를 사용한다. LiDAR에는
 ROS Noetic `velodyne_driver`, `velodyne_pointcloud`, `velodyne_msgs`, `nodelet`이
 필요하다.
@@ -67,6 +71,23 @@ launch에 추가하지 않는다.
 - 참고 카메라 JSON의 loopback IP와 port는 현재 파일 값일 뿐 본선 네트워크 계약이 아니다.
 
 ## 공개 ROS 입출력
+
+### 로컬 MORAI Q 전환
+
+MORAI의 Driving Info → Status Initialization은 **OFF**로 설정한다.
+2026-09-22 실주행에서 ON 상태는 가속 명령 100%에도 속도가 오르지 않았고,
+OFF 전환 후 가속·감속과 전역경로 추종이 회복됐다. 이 옵션은 시뮬레이터
+설정이므로 Git checkout만으로 변경되지 않는다.
+
+`config/global_path_demo.yaml`은 `local_q_guard_enabled: true`로 로컬
+X11 MORAI 창의 Q 입력을 감지한다. Q를 누른 동안과 놓은 뒤
+`local_q_handover_sec`(0.5초) 동안 제어 UDP를 중단해 모드 전환을 허용한다.
+실행 시 자율주행으로 시작하며, Q를 한 번 누르면 송신 중단을 유지하고
+다시 누르면 새 Safety 명령의 송신을 재개한다. 키를 길게 눌러도 한 번만
+전환하며 다른 창의 Q는 무시한다. MORAI 자체 Q 전환과 함께 사용하므로
+모드 변경은 MORAI 창에서 Q로 수행한다. 별도 모드 UDP 수신은 사용하지 않는다.
+이 기능은 로컬 X11 화면 접근과
+`libX11.so.6`이 필요하며 기본 송신 설정에서는 꺼져 있다.
 
 ![MORAI Interface 공개 입출력](docs/interface_io.svg)
 
@@ -123,3 +144,12 @@ Competition packet 호환이나 센서 축·단위의 실측 증거가 아니다
 - `src/morai_udp_bridge/`: 이식된 수신 transport, parser와 ROS publisher
 - `scripts/`: ROS node 진입점
 - `test/`: parser, UDP loopback과 중앙 계약 정합성 검사
+
+## 전역경로 추종 시험 (2026-09-21)
+
+사용자가 요청한 현재 시뮬레이터 전용 실행은
+[global_path_demo 중앙 프로필](../ros_architecture_pkg/config/messages/global_path_demo.yaml)을 따른다.
+`roslaunch system_bringup_pkg global_path_demo.launch`로 기존 Localization에 연결해
+전역경로만 10 km/h로 추종한다. 일반 실행과 구분된 개발용 직접 전달 경로이며
+장애물·신호 판단을 수행하지 않는다. 별도 방어 계층은 추가하지 않았다.
+실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.

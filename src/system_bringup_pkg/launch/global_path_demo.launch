@@ -1,0 +1,20 @@
+<launch>
+  <arg name="path_file" default="$(find ros_architecture_pkg)/../../참고파일들/2026_molit_comp_global_path (3).txt"/>
+  <arg name="send_to_morai" default="true"/>
+  <!-- Requires existing live Localization. This profile is explicitly route-only. -->
+  <node pkg="global_route_manager_pkg" type="global_path_demo.py" name="global_route_manager_node" ns="/" output="screen">
+    <param name="path_file" value="$(arg path_file)"/>
+  </node>
+  <node pkg="path_planning_pkg" type="global_path_demo.py" name="path_planner_node" ns="/" output="screen">
+    <rosparam command="load" file="$(find path_planning_pkg)/config/global_path_demo.yaml"/>
+  </node>
+  <include file="$(find vehicle_control_pkg)/launch/vehicle_control_pkg.launch">
+    <arg name="development_global_path_only" value="true"/>
+    <arg name="controller_config" value="$(find vehicle_control_pkg)/config/global_path_demo.yaml"/>
+  </include>
+  <node pkg="safety_supervisor_pkg" type="global_path_demo_relay.py" name="safety_supervisor_node" ns="/" output="screen"/>
+  <include file="$(find morai_interface_pkg)/launch/control_sender.launch">
+    <arg name="enable" value="$(arg send_to_morai)"/>
+    <arg name="config" value="$(find morai_interface_pkg)/config/global_path_demo.yaml"/>
+  </include>
+</launch>

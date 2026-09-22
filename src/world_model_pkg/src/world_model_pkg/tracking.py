@@ -2,6 +2,7 @@
 
 import math
 from dataclasses import dataclass
+from .point_motion import translation
 
 
 @dataclass(frozen=True)
@@ -11,11 +12,13 @@ class TrackerConfig:
     minimum_confirmation_hits: int = 2
     minimum_velocity_hits: int = 3
     position_alpha: float = 0.65
-    size_alpha: float = 0.5
     velocity_alpha: float = 0.4
     maximum_speed_mps: float = 25.0
     maximum_prediction_sec: float = 0.3
     velocity_stddev_mps: float = 2.0
+    motion_max_points: int = 96
+    motion_iterations: int = 6
+    motion_trim_fraction: float = 0.7
 
     def __post_init__(self):
         for value, name in (
@@ -29,7 +32,6 @@ class TrackerConfig:
                 raise ValueError(name + " must be finite and positive")
         for value, name in (
             (self.position_alpha, "position alpha"),
-            (self.size_alpha, "size alpha"),
             (self.velocity_alpha, "velocity alpha"),
         ):
             if not math.isfinite(float(value)) or not 0.0 < value <= 1.0:
@@ -41,7 +43,7 @@ class TrackerConfig:
 @dataclass(frozen=True)
 class Detection:
     center: tuple
-    size: tuple
+    points: tuple
     source_stamp_ns: int
     source_frame_id: str
     source_local_id: int
@@ -52,12 +54,12 @@ class Detection:
     confidence: float = -1.0
 
     def __post_init__(self):
-        if len(self.center) != 3 or len(self.size) != 3:
-            raise ValueError("detection center and size must have three values")
-        if not all(math.isfinite(float(value)) for value in self.center + self.size):
+        if len(self.center) != 3 or not self.points:
+            raise ValueError("detection requires a centroid and measured points")
+        if not all(math.isfinite(float(value)) for value in self.center + tuple(v for p in self.points for v in p)):
             raise ValueError("detection geometry is non-finite")
-        if min(self.size) <= 0.0 or self.source_stamp_ns <= 0:
-            raise ValueError("detection size and stamp must be positive")
+        if any(len(p) != 3 for p in self.points) or self.source_stamp_ns <= 0:
+            raise ValueError("detection points or stamp are invalid")
         if not self.source_frame_id or not self.timestamp_provenance or not self.calibration_id:
             raise ValueError("detection provenance is incomplete")
 
@@ -66,7 +68,7 @@ class Detection:
 class TrackView:
     track_id: int
     center: tuple
-    size: tuple
+    points: tuple
     velocity: tuple
     velocity_valid: bool
     source_stamp_ns: int
@@ -87,7 +89,7 @@ class TrackView:
 class _Track:
     track_id: int
     center: tuple
-    size: tuple
+    points: tuple
     velocity: tuple
     velocity_valid: bool
     state_stamp_ns: int
@@ -120,11 +122,11 @@ class MultiObjectTracker:
         return tuple(alpha * float(a) + (1.0 - alpha) * float(b) for a, b in zip(first, second))
 
     def _predict(self, track, stamp_ns):
-        dt = max(0.0, (stamp_ns - track.state_stamp_ns) * 1.0e-9)
+        dt = max(0.0, (stamp_ns - track.detection.source_stamp_ns) * 1.0e-9)
         dt = min(dt, self.config.maximum_prediction_sec)
         if not track.velocity_valid:
-            return track.center
-        return tuple(track.center[index] + track.velocity[index] * dt for index in range(3))
+            return track.last_detection_center
+        return tuple(track.last_detection_center[index] + track.velocity[index] * dt for index in range(3))
 
     def _new_track(self, detection, stamp_ns):
         identifier = self._next_id
@@ -132,7 +134,7 @@ class MultiObjectTracker:
         self._tracks[identifier] = _Track(
             track_id=identifier,
             center=detection.center,
-            size=detection.size,
+            points=detection.points,
             velocity=(0.0, 0.0, 0.0),
             velocity_valid=False,
             state_stamp_ns=stamp_ns,
@@ -163,7 +165,9 @@ class MultiObjectTracker:
         for identifier, point in predicted.items():
             for index, detection in enumerate(values):
                 distance = math.hypot(point[0] - detection.center[0], point[1] - detection.center[1])
-                if distance <= self.config.association_distance_m:
+                dt = (stamp_ns-self._tracks[identifier].state_stamp_ns)*1e-9
+                gate = self.config.association_distance_m + (self.config.velocity_stddev_mps if self._tracks[identifier].velocity_valid else self.config.maximum_speed_mps)*dt
+                if distance <= gate:
                     candidates.append((distance, identifier, index))
         matched_tracks = set()
         matched_detections = set()
@@ -178,10 +182,10 @@ class MultiObjectTracker:
             raw_velocity = (0.0, 0.0, 0.0)
             raw_valid = dt > 1.0e-6
             if raw_valid:
-                raw_velocity = tuple(
-                    (detection.center[axis] - track.last_detection_center[axis]) / dt
-                    for axis in range(3)
-                )
+                displacement = translation(track.points, detection.points,
+                    self.config.motion_max_points, self.config.motion_iterations,
+                    self.config.motion_trim_fraction)
+                raw_velocity = tuple(value/dt for value in displacement)
                 raw_valid = math.hypot(raw_velocity[0], raw_velocity[1]) <= self.config.maximum_speed_mps
             hits = track.hits + 1
             velocity_valid = raw_valid and hits >= self.config.minimum_velocity_hits
@@ -194,7 +198,7 @@ class MultiObjectTracker:
             else:
                 velocity = track.velocity if track.velocity_valid else (0.0, 0.0, 0.0)
             track.center = self._blend(detection.center, predicted[identifier], self.config.position_alpha)
-            track.size = self._blend(detection.size, track.size, self.config.size_alpha)
+            track.points = detection.points
             track.velocity = velocity
             track.velocity_valid = velocity_valid or track.velocity_valid
             track.state_stamp_ns = stamp_ns
@@ -235,7 +239,7 @@ class MultiObjectTracker:
             output.append(TrackView(
                 track_id=track.track_id,
                 center=track.center,
-                size=track.size,
+                points=track.points,
                 velocity=track.velocity,
                 velocity_valid=track.velocity_valid,
                 source_stamp_ns=source.source_stamp_ns,

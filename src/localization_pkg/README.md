@@ -87,8 +87,10 @@ Local Odometry는 연속 motion 추정이지 절대 Ground Truth가 아니다. W
 기본 `mode:=estimator`는 GPS/IMU만 입력으로 사용하며 EgoState(map),
 Odometry(odom), LocalizationStatus와 `map → odom → base_link`를 발행한다.
 IMU quaternion을 자세 관측으로 사용하고, 회전한 GPS 안테나 오프셋을 빼서
-base_link 위치를 추정한다. 6-state position/velocity Kalman filter이며 자세·bias를
-동시에 추정하는 15-state EKF가 아니다. 경로·체크포인트는 관측에 쓰지 않는다.
+base_link 위치를 추정한다. 위치·속도·body 가속도 편향의 9-state Kalman filter이며
+자세·gyro bias를 동시에 추정하는 15-state EKF가 아니다. GPS 위치 잔차로
+가속도 편향도 학습하고, 여러 GPS와 IMU가 정지를 뒷받침할 때만 약한 속도 0
+보정을 적용한다. 경로·체크포인트는 관측에 쓰지 않는다.
 
 - map은 EPSG:32652에서 중앙 원점 `[302595,4124145,0]`을 뺀 좌표다.
 - odom 축은 map ENU와 평행하며 위치는 초기화 후 예측 이동량만 적분한다.
@@ -118,6 +120,20 @@ roslaunch system_bringup_pkg localization_visualization.launch
 및 15-state EKF는 이식 참고용으로 보존한다. legacy adapter는 빌드/설치하지 않는다.
 
 검증 및 실제 실행 기록: [TF 개발 검증](docs/tf_localization_validation.md).
+
+## GPS 음영 구간 정지 드리프트 개선
+
+GPS 수신 중 학습한 가속도 편향을 음영 구간에서도 빼고 적분한다. 편향의
+불확실성과 시간 변화도 covariance에 반영한다. 정지 보정은 새 GPS가 들어온
+경우에만 적용하며, GPS가 사라지면 기존 정지 판단으로 위치를 고정하지 않는다.
+등속 주행을 정지로 오판하거나 출발 가속도를 편향으로 학습하는 일을 피하기 위해서다.
+
+처음부터 GPS가 없으면 위치를 초기화하지 않는다. GPS가 한 번만 들어왔거나
+편향 학습이 부족한 상태에서는 드리프트를 제거할 수 없다. 터널 안에서 새로운
+정지를 확정하려면 검증된 차속 또는 퇴화 검사를 통과한 LiDAR 등 독립 근거가 필요하다.
+개발용 `stop_required=true`와 중앙 dead-reckoning 유효시간 제한은 유지한다.
+
+[설계·대안 비교·재현 방법과 검증 결과](docs/blackout_drift.md)를 참고한다.
 
 ## 센서 기반 위치 재설정
 

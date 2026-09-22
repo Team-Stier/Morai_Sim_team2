@@ -33,3 +33,18 @@ scan과 transport 콜백은 상태를 갱신하며 오류도 다음 heartbeat에
 
 2026-09-11 시각화 확장: `vehicle_visualizer_node`가 같은 관측을 읽고
 scan-time TF로 RViz 박스를 표시한다. World Model 융합 허용 여부는 그대로 유지한다.
+# LiDAR 보정 복원 (2026-09-22)
+
+현재 LiDAR DBSCAN 전처리는 `c6265ad`의 구현을 사용한다. 측정시각의
+`/molit/localization/ego_state` 자세와 중앙 장착 TF 회전으로 roll·pitch를
+수평 보정한다. 자차 제거, 구역별 지면 제거와 클러스터 추출 뒤 공개 결과는
+원래 `lidar_link`와 scan stamp를 유지하며 새 TF는 발행하지 않는다.
+
+`/molit/perception/lidar/cluster_points`는 원본 센서 레코드에 UINT32
+`cluster_id`, `source_index`를 추가한 표시 전용 PointCloud2다.
+원본 필드, 좌표, 인덱스와 시각을 보존한다. 현재 등록된 consumer는 없다.
+기존 LidarObservationArray 메시지 스키마와 World Model 입력은 유지한다.
+`ground_valid`, `free_space_valid`, `occupancy_valid`, `velocity_valid`는 false다.
+
+원본 구현: [자세 보정](../../lidar_perception_pkg/docs/horizontalization.md),
+[지면 제거](../../lidar_perception_pkg/docs/ground_filter.md).

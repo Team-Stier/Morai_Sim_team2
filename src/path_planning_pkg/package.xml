@@ -8,5 +8,15 @@
   <buildtool_depend>catkin</buildtool_depend>
   <depend>common_msgs_pkg</depend>
   <depend>ros_architecture_pkg</depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>message_filters</exec_depend>
+  <exec_depend>hd_map_pkg</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+  <test_depend>python3-nose</test_depend>
+  <test_depend>global_route_manager_pkg</test_depend>
   <export />
 </package>

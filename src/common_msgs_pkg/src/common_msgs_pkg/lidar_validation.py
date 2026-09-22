@@ -20,10 +20,10 @@ def validate_lidar(message, for_fusion=False):
         require(obj.scan_local_id not in ids, 'duplicate scan-local ID')
         ids.add(obj.scan_local_id)
         require(obj.point_count > 0, 'empty cluster')
-        for value in (obj.center.x, obj.center.y, obj.center.z):
-            require(math.isfinite(value), 'nonfinite center')
-        for value in (obj.size.x, obj.size.y, obj.size.z):
-            require(math.isfinite(value) and value >= 0, 'invalid box size')
+        require(obj.point_count == len(obj.points), 'cluster point count mismatch')
+        for point in obj.points:
+            for value in (point.x, point.y, point.z):
+                require(math.isfinite(value), 'nonfinite cluster point')
         require(obj.confidence == -1 or (math.isfinite(obj.confidence) and
                                         0 <= obj.confidence <= 1), 'invalid confidence')
     if for_fusion:

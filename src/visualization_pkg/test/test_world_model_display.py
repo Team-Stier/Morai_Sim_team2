@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import rospy
 from common_msgs_pkg.msg import TrackedObject, WorldModel
+from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 
 from visualization_pkg.vehicle_display import DisplayConfig
@@ -37,7 +38,7 @@ class WorldModelDisplayTest(unittest.TestCase):
         obj.calibration_id = "development-test"
         obj.pose.position.x = 17.0
         obj.pose.orientation.w = 1.0
-        obj.size.x, obj.size.y, obj.size.z = 2.0, 1.0, 1.0
+        obj.points = [Point(17., 0., 0.), Point(17.1, 0., 0.)]
         obj.confidence = -1.0
         obj.track_state = TrackedObject.TRACK_CONFIRMED
         obj.observation_count = 2
@@ -52,7 +53,8 @@ class WorldModelDisplayTest(unittest.TestCase):
         marker = self.publisher.publish.call_args[0][0].markers[-1]
         self.assertEqual(marker.header.frame_id, "map")
         self.assertEqual(marker.header.stamp, message.header.stamp)
-        self.assertEqual(marker.pose.position.x, 17.0)
+        self.assertEqual(marker.type, Marker.POINTS)
+        self.assertEqual(marker.points, message.objects[0].points)
         self.assertEqual(marker.id, 42)
         self.assertFalse(marker.frame_locked)
 

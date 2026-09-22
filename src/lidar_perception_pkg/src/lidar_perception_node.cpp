@@ -1,4 +1,9 @@
 #include "detector.h"
+#include "horizontalization.h"
+#include "self_filter.h"
+#include "ground_filter.h"
+#include "cluster_points.h"
+#include <common_msgs_pkg/EgoState.h>
 #include <common_msgs_pkg/LidarObservationArray.h>
 #include <common_msgs_pkg/LidarObjectObservation.h>
 #include <common_msgs_pkg/ComponentStatus.h>
@@ -6,11 +11,15 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/String.h>
+#include <tf2_ros/transform_listener.h>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 namespace {
 using Steady = std::chrono::steady_clock;
@@ -19,16 +28,110 @@ double elapsed(Steady::time_point t) {
 }
 class Node {
   ros::NodeHandle nh_, private_{"~"};
-  ros::Subscriber points_, transport_;
-  ros::Publisher observations_, status_, debug_;
-  ros::WallTimer timer_;
+  ros::Subscriber points_, transport_, attitude_;
+  ros::Publisher observations_, status_, debug_, audit_, clusters_;
+  ros::WallTimer timer_, alignment_timer_;
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_{tf_buffer_};
+  lidar_perception::AttitudeHistory attitudes_;
+  struct Pending {sensor_msgs::PointCloud2::ConstPtr message; Steady::time_point received;};
+  std::deque<Pending> pending_;
+  bool leveling_enabled_=true, have_epoch_=false;
+  uint32_t epoch_=0;
+  double attitude_gap_=0, attitude_wait_=0, attitude_history_=0, attitude_timeout_=0;
+  int max_pending_=0;
+  Steady::time_point attitude_received_=Steady::now();
   lidar_perception::Config config_;
+  lidar_perception::SelfFilterConfig self_filter_;
+  lidar_perception::GroundConfig ground_filter_;
   ros::Time last_stamp_, last_clock_;
   Steady::time_point last_received_=Steady::now(), transport_received_=Steady::now();
   bool transport_ok_=false;
   std::string calibration_id_;
   double watchdog_sec_=0, max_scan_age_sec_=0, status_period_sec_=0;
   common_msgs_pkg::ComponentStatus health_;
+
+  void clearDebug(const std_msgs::Header& header) {
+    sensor_msgs::PointCloud2 empty;
+    pcl::toROSMsg(lidar_perception::Cloud(),empty);
+    empty.header=header;
+    debug_.publish(empty);
+    clusters_.publish(lidar_perception::clusterPoints(empty,{}));
+  }
+  void rejectPending(const Pending& pending, const std::string& reason) {
+    const auto& h=pending.message->header;
+    if (!h.stamp.isZero() && h.stamp<=ros::Time::now()) {
+      common_msgs_pkg::LidarObservationArray output;
+      output.header=h; output.calibration_id=calibration_id_;
+      output.timestamp_provenance="ingress_fallback";
+      observations_.publish(output);
+    }
+    clearDebug(h);
+    ++health_.dropped_count;
+    setStatus(reason,true);
+  }
+  void resetAlignment(const std::string& reason) {
+    attitudes_.clear();
+    for (const auto& p : pending_) rejectPending(p,reason);
+    pending_.clear();
+  }
+  void attitude(const common_msgs_pkg::EgoState::ConstPtr& m) {
+    const auto now=ros::Time::now();
+    if (!last_clock_.isZero() && now<last_clock_) {
+      resetAlignment("clock reset during attitude alignment");
+      last_stamp_=ros::Time(); transport_ok_=false;
+    }
+    last_clock_=now;
+    if (m->header.frame_id!="map" || m->child_frame_id!="base_link" ||
+        m->header.stamp.isZero() || m->header.stamp>now ||
+        !m->pose_valid[3] || !m->pose_valid[4] || !m->pose_valid[5]) {
+      resetAlignment("invalid localization attitude/frame/stamp");
+      setStatus("invalid localization attitude/frame/stamp",true);
+      return;
+    }
+    if (have_epoch_ && epoch_!=m->reset_id) resetAlignment("localization epoch reset");
+    epoch_=m->reset_id; have_epoch_=true;
+    const auto& q=m->pose.pose.orientation;
+    if (!attitudes_.insert(m->header.stamp.toNSec(),Eigen::Quaterniond(q.w,q.x,q.y,q.z),attitude_history_)) {
+      resetAlignment("invalid or nonmonotonic localization quaternion/stamp");
+      setStatus("invalid or nonmonotonic localization quaternion/stamp",true);
+      return;
+    }
+    attitude_received_=Steady::now();
+    drain();
+  }
+  void drain() {
+    const auto now=ros::Time::now();
+    if (!last_clock_.isZero() && now<last_clock_) {
+      resetAlignment("clock reset during scan alignment");
+      last_stamp_=ros::Time(); transport_ok_=false;
+    }
+    last_clock_=now;
+    while (!pending_.empty()) {
+      const Pending p=pending_.front();
+      if (elapsed(p.received)>attitude_wait_) {
+        rejectPending(p,"no scan-time attitude/mount TF within leveling wait limit");
+        pending_.pop_front(); continue;
+      }
+      Eigen::Quaterniond orientation;
+      if (elapsed(attitude_received_)>attitude_timeout_ ||
+          !attitudes_.interpolate(p.message->header.stamp.toNSec(),attitude_gap_,orientation)) break;
+      try {
+        // Use the scan stamp for the central mount as well; never request latest TF.
+        const auto mount=tf_buffer_.lookupTransform("base_link","lidar_link",p.message->header.stamp);
+        pending_.pop_front();
+        const auto& q=mount.transform.rotation;
+        const auto rotation=lidar_perception::levelRotation(orientation,Eigen::Quaterniond(q.w,q.x,q.y,q.z));
+        process(p.message,rotation);
+      } catch (const tf2::TransformException&) {
+        // A late TF is retryable within the same bounded scan wait budget.
+        // Leave the original scan in the queue; do not substitute latest TF.
+        break;
+      } catch (const std::exception& e) {
+        rejectPending(p,std::string("leveling mount/attitude unavailable: ")+e.what());
+      }
+    }
+  }
 
   void setStatus(const std::string& reason, bool fault=false) {
     const auto now=ros::Time::now();
@@ -46,6 +149,7 @@ class Node {
   void tick(const ros::WallTimerEvent&) {
     const auto now=ros::Time::now();
     if (!last_clock_.isZero() && now<last_clock_) {
+      resetAlignment("clock reset");
       last_stamp_=ros::Time(); transport_ok_=false;
       setStatus("clock reset; waiting for new transport status and scan", true);
     } else if (elapsed(last_received_)>watchdog_sec_ ||
@@ -76,7 +180,9 @@ class Node {
   void scan(const sensor_msgs::PointCloud2::ConstPtr& message) {
     const auto start=Steady::now();
     const auto now=ros::Time::now();
-    if (!last_clock_.isZero() && now<last_clock_) {last_stamp_=ros::Time(); transport_ok_=false;}
+    if (!last_clock_.isZero() && now<last_clock_) {
+      resetAlignment("clock reset"); last_stamp_=ros::Time(); transport_ok_=false;
+    }
     last_clock_=now;
     if (message->header.frame_id!="lidar_link") {
       ++health_.invalid_count;
@@ -91,7 +197,19 @@ class Node {
     }
     last_stamp_=message->header.stamp;
     last_received_=start;
+    if (!leveling_enabled_) {process(message,Eigen::Matrix3d::Identity());return;}
+    if (pending_.size()>=static_cast<size_t>(max_pending_)) {
+      rejectPending(pending_.front(),"leveling scan queue full"); pending_.pop_front();
+    }
+    pending_.push_back({message,start});
+    drain();
+  }
+  void process(const sensor_msgs::PointCloud2::ConstPtr& message, const Eigen::Matrix3d& rotation) {
+    const auto start=Steady::now();
+    const auto now=ros::Time::now();
     common_msgs_pkg::LidarObservationArray output;
+    sensor_msgs::PointCloud2 clustered;
+    size_t ground_removed=0, ground_cells=0;
     output.header=message->header;
     output.calibration_id=calibration_id_;
     output.timestamp_provenance="ingress_fallback";
@@ -113,27 +231,43 @@ class Node {
       for (const auto& p : cloud)
         if (std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z)) {any_finite=true; break;}
       if (!any_finite) throw std::runtime_error("no finite XYZ points");
-      const auto result=lidar_perception::detect(cloud, config_);
-      for (const auto& box : result.boxes) {
-        common_msgs_pkg::LidarObjectObservation object;
-        object.scan_local_id=output.objects.size();
-        object.center.x=box.center.x; object.center.y=box.center.y; object.center.z=box.center.z;
-        object.size.x=box.size.x; object.size.y=box.size.y; object.size.z=box.size.z;
-        object.point_count=box.point_count;
+      cloud=lidar_perception::maskSelfReturns(cloud,self_filter_);
+      // Apply attitude BEFORE ROI: otherwise braking pitch can admit road points
+      // or discard obstacle points that a downstream map transform cannot recover.
+      const auto ground=lidar_perception::removeGround(lidar_perception::rotateCloud(cloud,rotation),ground_filter_);
+      ground_removed=ground.removed; ground_cells=ground.supported_cells;
+      const auto result=lidar_perception::detect(ground.cloud, config_);
+      clustered=lidar_perception::clusterPoints(*message,result.raw_cluster_ids);
+      output.objects.resize(result.boxes.size());
+      for (size_t i=0;i<result.raw_cluster_ids.size();++i) {
+        const int id=result.raw_cluster_ids[i];
+        if (id<0) continue;
+        geometry_msgs::Point point;
+        point.x=cloud[i].x; point.y=cloud[i].y; point.z=cloud[i].z;
+        output.objects[id].points.push_back(point);
+      }
+      for (size_t i=0;i<output.objects.size();++i) {
+        auto& object=output.objects[i];
+        object.scan_local_id=i;
+        object.point_count=object.points.size();
         object.confidence=-1;
-        output.objects.push_back(object);
       }
       output.objects_valid=true;
       ++health_.processed_count;
       sensor_msgs::PointCloud2 filtered;
-      pcl::toROSMsg(*result.filtered, filtered);
+      pcl::toROSMsg(lidar_perception::rotateCloud(*result.filtered,rotation.transpose()), filtered);
       filtered.header=message->header;
       debug_.publish(filtered);
-      health_.reason="development object geometry only; calibration/freshness unverified; no ground/free-space/velocity";
+      health_.reason=leveling_enabled_
+          ? (ground_filter_.enabled
+             ? "leveled DBSCAN with local ground rejection; unsupported surfaces retained; development calibration/freshness unverified"
+             : "roll/pitch leveled DBSCAN; scan-time SLERP; lidar_link output; development calibration/freshness unverified")
+          : "development object geometry only; calibration/freshness unverified; no ground/free-space/velocity";
     } catch (const std::exception& error) {
       output.objects.clear(); output.objects_valid=false;
       ++health_.invalid_count;
       health_.reason=error.what();
+      clearDebug(message->header);
     }
     health_.processing_latency_sec=elapsed(start);
     if (output.objects_valid &&
@@ -142,12 +276,29 @@ class Node {
       output.objects.clear(); output.objects_valid=false;
       ++health_.dropped_count;
       health_.reason="scan expired or clock reset during processing";
+      clearDebug(message->header);
     }
+    if (output.objects_valid) clusters_.publish(clustered);
     observations_.publish(output);
+    if (output.objects_valid && audit_.getNumSubscribers()>0) {
+      // Package-private diagnostic: the actual matrix used above, not an
+      // independently reconstructed attitude or a newly labelled point frame.
+      std::ostringstream json;
+      json << std::setprecision(17) << "{\"stamp_ns\":\"" << message->header.stamp.toNSec()
+           << "\",\"leveling_enabled\":" << (leveling_enabled_ ? "true" : "false")
+           << ",\"rotation\":[";
+      for (int r=0;r<3;++r) for (int c=0;c<3;++c) {
+        if (r || c) json << ',';
+        json << rotation(r,c);
+      }
+      json << "],\"ground_removed\":" << ground_removed << ",\"ground_supported_cells\":" << ground_cells << ",\"processing_ms\":" << health_.processing_latency_sec*1000 << '}';
+      std_msgs::String audit; audit.data=json.str(); audit_.publish(audit);
+    }
     setStatus(health_.reason, !output.objects_valid);
   }
 public:
   Node() {
+    private_.param("leveling_enabled",leveling_enabled_,true);
     private_.param("x_min",config_.x_min,config_.x_min); private_.param("x_max",config_.x_max,config_.x_max);
     private_.param("y_min",config_.y_min,config_.y_min); private_.param("y_max",config_.y_max,config_.y_max);
     private_.param("z_min",config_.z_min,config_.z_min); private_.param("z_max",config_.z_max,config_.z_max);
@@ -157,6 +308,34 @@ public:
     private_.param("min_cluster_size",config_.min_cluster_size,config_.min_cluster_size);
     private_.param("max_cluster_size",config_.max_cluster_size,config_.max_cluster_size);
     config_.validate();
+    private_.param("self_filter/enabled",self_filter_.enabled,self_filter_.enabled);
+    private_.param("self_filter/x_min",self_filter_.x_min,self_filter_.x_min);
+    private_.param("self_filter/x_max",self_filter_.x_max,self_filter_.x_max);
+    private_.param("self_filter/y_min",self_filter_.y_min,self_filter_.y_min);
+    private_.param("self_filter/y_max",self_filter_.y_max,self_filter_.y_max);
+    private_.param("self_filter/z_min",self_filter_.z_min,self_filter_.z_min);
+    private_.param("self_filter/z_max",self_filter_.z_max,self_filter_.z_max);
+    self_filter_.validate();
+    private_.param("ground_filter/cell_size",ground_filter_.cell_size,ground_filter_.cell_size);
+    private_.param("ground_filter/sample_size",ground_filter_.sample_size,ground_filter_.sample_size);
+    private_.param("ground_filter/max_range",ground_filter_.max_range,ground_filter_.max_range);
+    private_.param("ground_filter/expected_z",ground_filter_.expected_z,ground_filter_.expected_z);
+    private_.param("ground_filter/seed_radius",ground_filter_.seed_radius,ground_filter_.seed_radius);
+    private_.param("ground_filter/seed_tolerance",ground_filter_.seed_tolerance,ground_filter_.seed_tolerance);
+    private_.param("ground_filter/max_slope_deg",ground_filter_.max_slope_deg,ground_filter_.max_slope_deg);
+    private_.param("ground_filter/fit_distance",ground_filter_.fit_distance,ground_filter_.fit_distance);
+    private_.param("ground_filter/remove_distance",ground_filter_.remove_distance,ground_filter_.remove_distance);
+    private_.param("ground_filter/min_span",ground_filter_.min_span,ground_filter_.min_span);
+    private_.param("ground_filter/min_inlier_ratio",ground_filter_.min_inlier_ratio,ground_filter_.min_inlier_ratio);
+    private_.param("ground_filter/continuity_distance",ground_filter_.continuity_distance,ground_filter_.continuity_distance);
+    private_.param("ground_filter/min_support",ground_filter_.min_support,ground_filter_.min_support);
+    private_.param("ground_filter/iterations",ground_filter_.iterations,ground_filter_.iterations);
+    private_.param("ground_filter/enabled",ground_filter_.enabled,ground_filter_.enabled);
+    ground_filter_.validate();
+    if (!leveling_enabled_ && ground_filter_.enabled) {
+      ROS_WARN("Ground filtering disabled for explicit unlevelled comparison");
+      ground_filter_.enabled=false;
+    }
     if (!private_.getParam("contract/development_watchdog_sec",watchdog_sec_) ||
         !std::isfinite(watchdog_sec_) || watchdog_sec_<=0 ||
         !private_.getParam("contract/calibration_id",calibration_id_) || calibration_id_.empty())
@@ -168,8 +347,23 @@ public:
       throw std::runtime_error("invalid central data-age/status period policy");
     health_.processing_latency_sec=-1;
     observations_=nh_.advertise<common_msgs_pkg::LidarObservationArray>("/molit/perception/lidar/observations",2);
+    clusters_=nh_.advertise<sensor_msgs::PointCloud2>("/molit/perception/lidar/cluster_points",2);
     status_=nh_.advertise<common_msgs_pkg::ComponentStatus>("/molit/perception/lidar/status",1,true);
     debug_=private_.advertise<sensor_msgs::PointCloud2>("filtered_points",1);
+    audit_=private_.advertise<std_msgs::String>("horizontalization_audit",10);
+    if (leveling_enabled_) {
+      for (const auto& setting : {std::make_pair("max_gap_sec",&attitude_gap_),
+          std::make_pair("max_wait_sec",&attitude_wait_), std::make_pair("history_sec",&attitude_history_),
+          std::make_pair("attitude_wall_timeout_sec",&attitude_timeout_)}) {
+        if (!private_.getParam(std::string("contract/horizontalization/")+setting.first,*setting.second) ||
+            !std::isfinite(*setting.second) || *setting.second<=0)
+          throw std::runtime_error("invalid central horizontalization timing policy");
+      }
+      if (!private_.getParam("contract/horizontalization/max_pending_scans",max_pending_) || max_pending_<1)
+        throw std::runtime_error("invalid central horizontalization queue bound");
+      attitude_=nh_.subscribe("/molit/localization/ego_state",100,&Node::attitude,this);
+      alignment_timer_=nh_.createWallTimer(ros::WallDuration(.01),[this](const ros::WallTimerEvent&){drain();});
+    }
     points_=nh_.subscribe("/molit/sensors/lidar/points",1,&Node::scan,this);
     transport_=nh_.subscribe("/molit/sensors/lidar/status",1,&Node::transport,this);
     timer_=nh_.createWallTimer(ros::WallDuration(status_period_sec_),&Node::tick,this);

@@ -14,6 +14,7 @@ import rospy
 from common_msgs_pkg.msg import ActuatorCommand
 from morai_udp_bridge.protocol import ego_ctrl_cmd_packet
 from morai_udp_bridge.udp_sender import UdpSender
+from morai_udp_bridge.q_key_guard import QKeyGuard
 
 
 class MoraiControlSender(object):
@@ -47,7 +48,9 @@ class MoraiControlSender(object):
         )
         self._sent_count = 0
         self._rejected_count = 0
-
+        self._q_guard = None
+        if not self.dry_run and rospy.get_param('~local_q_guard_enabled', False):
+            self._q_guard = QKeyGuard(float(rospy.get_param('~local_q_handover_sec', 0.5)))
         self._subscriber = rospy.Subscriber(
             "/molit/safety/final_command",
             ActuatorCommand,
@@ -64,6 +67,12 @@ class MoraiControlSender(object):
         )
 
     def _on_command(self, message):
+        if self._q_guard is not None and self._q_guard.blocked():
+            rospy.loginfo_throttle(5.0, "[morai_control_sender] Q manual/handover: UDP paused")
+            return
+        self._send_command(message)
+
+    def _send_command(self, message):
         try:
             normalized_steer = self._validate_and_convert(message)
             packet = ego_ctrl_cmd_packet.serialize_ego_ctrl_cmd(
@@ -91,6 +100,9 @@ class MoraiControlSender(object):
 
         self._sender.send(packet)
         self._sent_count += 1
+        rospy.loginfo_throttle(
+            5.0, "[morai_control_sender] Auto UDP sent=%d", self._sent_count
+        )
 
     def _validate_and_convert(self, message):
         if not message.valid:
@@ -137,6 +149,8 @@ class MoraiControlSender(object):
         return normalized
 
     def _on_shutdown(self):
+        if self._q_guard is not None:
+            self._q_guard.close()
         if self._sender is not None:
             self._sender.close()
         rospy.loginfo(

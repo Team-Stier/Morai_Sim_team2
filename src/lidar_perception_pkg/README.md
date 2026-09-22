@@ -1,10 +1,31 @@
 # lidar_perception_pkg
 
+Frenet 통합에서는 LidarObjectObservation.points에 승인된 DBSCAN 군집의
+원본 반환점을 담는다. 수평 보정·지면 제거·ROI 설정은 유지하며, 공개 객체
+형상은 박스 대신 실제 점이다. 원본 좌표와 측정시각을 보존한다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
 
 ## 담당 범위
+
+### 2026-09-21 주행 당시 LiDAR 처리 복원
+
+`c6265ad`의 DBSCAN 처리 코드를 복원했다. 자차 반사점 제거 후 측정시각의
+EgoState 자세와 중앙 장착 회전으로 roll·pitch를 수평 보정하고, 구역별
+지면 제거 → ROI → VoxelGrid → DBSCAN을 수행한다. 출력은 원래
+`lidar_link` 좌표와 scan stamp를 유지한다. 전역경로와 제어 알고리즘은 그대로다.
+
+당시 미커밋 설정 `z_min=-1.6`, `max_cluster_size=5000`도 복원했다.
+ROI는 전방 50 m·후방 20 m·좌우 15 m, 지면 처리 범위는 55 m다.
+기존 코드의 시각 정합 처리를 함께 가져왔으며 새 방어 로직은 추가하지 않았다.
+자세 보정과 지면 제거 상세는 [수평 보정](docs/horizontalization.md),
+[지면 제거](docs/ground_filter.md)를 따른다.
+
+`/molit/perception/lidar/cluster_points`는 원본 레코드에 `cluster_id`와
+`source_index`를 붙인 표시용 점군이다. 현재 통합에서 자동 구독하는
+consumer는 없으며, 기존 RViz 객체 표시는 observations를 사용한다.
 
 - point cloud 유효성 검사, ROI와 지면 분리
 - 3D 장애물·객체 군집화, 크기·상대 위치·속도 관측
@@ -40,14 +61,16 @@
 |---|---|---|
 | 입력 | `/molit/sensors/lidar/points` | `sensor_msgs/PointCloud2` |
 | 입력 | `/molit/sensors/lidar/status` | `std_msgs/Bool` |
+| 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
 | 출력 | `/molit/perception/lidar/observations` | `common_msgs_pkg/LidarObservationArray` |
+| 출력 | `/molit/perception/lidar/cluster_points` | `sensor_msgs/PointCloud2` |
 | 출력 | `/molit/perception/lidar/status` | `common_msgs_pkg/ComponentStatus` |
 
 공유 타입 중 `ComponentStatus`, `EgoState`, `LocalizationStatus`와
 `LidarObservationArray`, `LidarObjectObservation` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-이 패키지의 ROI·VoxelGrid·DBSCAN 노드는 구현됐으며 지면·빈 공간·속도 추정은
-이번 객체 검출 범위에 포함하지 않는다. downstream 런타임은 아직 미구현이다.
+수평 보정·지면 제거·ROI·VoxelGrid·DBSCAN은 구현됐다. 지면 제거는 검출
+전처리이며 공개 ground/free-space/occupancy/velocity 유효 플래그는 false다.
 
 오래된 장애물을 현재 관측처럼 유지하지 않고, sparse VLP16 환경에서의 miss와 uncertainty를 명시한다.
 

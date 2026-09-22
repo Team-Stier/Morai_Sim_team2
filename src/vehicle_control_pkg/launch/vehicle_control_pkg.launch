@@ -1,4 +1,11 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Runtime entities will be added after central contract approval. -->
+  <arg name="development_global_path_only" default="false"/>
+  <arg name="controller_config" default="$(find vehicle_control_pkg)/config/controller.yaml"/>
+  <node pkg="vehicle_control_pkg" type="vehicle_controller_node"
+        name="vehicle_controller_node" ns="/" output="screen">
+    <rosparam command="load" file="$(find ros_architecture_pkg)/config/messages/controller_messages.yaml" ns="contract"/>
+    <rosparam command="load" file="$(arg controller_config)"/>
+    <param name="development_global_path_only" value="$(arg development_global_path_only)"/>
+  </node>
 </launch>

@@ -5,7 +5,7 @@ find_package(catkin REQUIRED COMPONENTS common_msgs_pkg ros_architecture_pkg)
 catkin_python_setup()
 catkin_package(CATKIN_DEPENDS common_msgs_pkg ros_architecture_pkg)
 
-catkin_install_python(PROGRAMS scripts/hd_map_tool
+catkin_install_python(PROGRAMS scripts/hd_map_tool scripts/hd_map_server_node
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 install(FILES README.md DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

@@ -20,6 +20,8 @@ struct Box {
 struct Result {
   Cloud::Ptr filtered{new Cloud};
   std::vector<Box> boxes;
+  // Index matches the unmodified input scan; -1 means ROI/noise/rejected cluster.
+  std::vector<int> raw_cluster_ids;
 };
 Result detect(const Cloud& input, const Config& config);
 }  // namespace lidar_perception
