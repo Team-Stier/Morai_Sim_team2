@@ -7,6 +7,10 @@
 `frenet_planner.launch`가 단독 실행, `system_bringup_pkg/frenet_rddf.launch`가 통합 실행이다.
 출력은 기존 odom Trajectory이며 첫 시험 상한은 10 km/h다.
 
+발행할 때 선택 경로의 좌표·접선은 보존하고 차량에 가까운 앞부분만 잘라낸다.
+첫 점을 차량 위치로 강제 이동하여 추종 오차를 숨기거나 꺾임을 만들지 않는다.
+Localization reset 시 활성·대기 경로를 폐기하고 새 상태로 계산한 경로를 기다린다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.

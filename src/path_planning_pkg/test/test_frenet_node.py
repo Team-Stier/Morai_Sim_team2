@@ -277,6 +277,9 @@ class FrenetOutputTest(unittest.TestCase):
         node = self.node()
         node.publish(None)
         message = node.trajectory.message
+        wire = io.BytesIO()
+        message.serialize(wire)
+        message = type(message)().deserialize(wire.getvalue())
         self.assertEqual(message.header.frame_id, 'odom')
         self.assertEqual(message.reset_id, 12)
         self.assertTrue(message.valid)
@@ -298,6 +301,57 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertTrue(message.valid and message.stop_required)
         self.assertEqual(message.speed_mps, [0., 0.])
         self.assertEqual(message.poses[0], node.state[1].pose.pose)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_tracking_error_does_not_deform_published_path(self, _):
+        node = self.node()
+        node.state[0].pose.pose.position.y = 2.
+        node.publish(None)
+        message = node.trajectory.message
+        # map y=0 remains odom x=102 for EVERY point, including the first.
+        # Moving only point zero to the ego pose creates a fictitious sharp turn.
+        np.testing.assert_allclose([p.position.x for p in message.poses], 102.)
+        self.assertTrue(np.all(np.diff([p.position.y for p in message.poses]) > 0))
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_localization_reset_discards_active_and_pending_paths(self, _):
+        node = self.node()
+        node.pending_selection = node.selected
+        node.pending_selection_set = True
+        node.pending_selection_stamp = rospy.Time(100)
+        ego, odom = node.state
+        import copy
+        ego = copy.deepcopy(ego)
+        ego.reset_id += 1
+        ego.pose.pose.position.x = 500.
+        node.on_state(ego, odom)
+        node.publish(None)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertIsNone(node.selected)
+        self.assertIsNone(node.pending_selection)
+
+    def test_result_computed_before_reset_cannot_be_activated(self):
+        node = self.node()
+        candidate = node.selected
+        node.offer_selection(candidate, rospy.Time(102), reset_id=11)
+        self.assertEqual(node.selected_stamp, rospy.Time(100))
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_remaining_terminal_geometry_has_no_single_point_crash(self, _):
+        node = self.node()
+        node.state[0].pose.pose.position.x = 13.
+        node.publish(None)
+        message = node.trajectory.message
+        self.assertGreaterEqual(len(message.poses), 2)
+        self.assertEqual(message.speed_mps[-1], 0.)
+        self.assertTrue(np.all(np.diff([t.to_sec() for t in message.time_from_start]) > 0))
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_no_finite_forward_interval_publishes_stop(self, _):
+        node = self.node()
+        node.selected.times = np.array([0., np.inf, np.inf, np.inf])
+        node.publish(None)
+        self.assertTrue(node.trajectory.message.stop_required)
 
 
 if __name__ == '__main__':

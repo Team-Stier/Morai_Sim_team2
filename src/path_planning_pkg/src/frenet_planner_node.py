@@ -54,7 +54,12 @@ class Node:
         rospy.Timer(rospy.Duration(1/self.c['trajectory_rate_hz']), self.publish)
 
     def on_state(self, ego, odom):
-        self.state = ego, odom
+        with self.lock:
+            if self.state is not None and self.state[0].reset_id != ego.reset_id:
+                self.selected = self.selected_stamp = None
+                self.pending_selection = self.pending_selection_stamp = None
+                self.pending_selection_set = False
+            self.state = ego, odom
 
     def on_map(self, message):
         if self.static_map is not None and self.static_map[0] == message.map_id:
@@ -110,9 +115,11 @@ class Node:
             m.data_age_sec = (m.header.stamp-m.data_stamp).to_sec()
         self.status.publish(m)
 
-    def offer_selection(self, candidate, completed):
+    def offer_selection(self, candidate, completed, reset_id=None):
         """Hold an activated result for one second and retain only the latest offer."""
         with self.lock:
+            if reset_id is not None and self.state[0].reset_id != reset_id:
+                return
             if candidate is None and self.selected is not None:
                 if not self.pending_selection_set or self.pending_selection is not None:
                     self.pending_selection_stamp = completed
@@ -159,9 +166,6 @@ class Node:
             return
         if self.epoch != ego.reset_id:
             self.planner.committed = self.planner.pending = None
-            self.pending_selection = None
-            self.pending_selection_set = False
-            self.pending_selection_stamp = None
             self.epoch = ego.reset_id
         p = ego.pose.pose.position
         position = np.array([p.x, p.y, p.z])
@@ -211,7 +215,7 @@ class Node:
         fast = next((x for x in candidates if x.key == 'committed'),candidates[0])
         evaluate(fast)
         completed = rospy.Time.now()
-        self.offer_selection(fast if fast.feasible else None,completed)
+        self.offer_selection(fast if fast.feasible else None,completed,ego.reset_id)
 
         lateral_period = 1./self.c['lane_change_evaluation_rate_hz']
         if time.monotonic()-self.last_lane_change_evaluation < lateral_period and fast.feasible:
@@ -227,7 +231,7 @@ class Node:
             if candidate is not fast:
                 evaluate(candidate)
         chosen = self.planner.select(candidates, now.to_sec(), progress)
-        self.offer_selection(chosen,rospy.Time.now())
+        self.offer_selection(chosen,rospy.Time.now(),ego.reset_id)
         audit = [{'key':x.key, 'target':x.target, 'feasible':x.feasible, 'reason':x.reason,
                   'eta':x.eta if math.isfinite(x.eta) else None,
                   'cost':x.cost if math.isfinite(x.cost) else None,
@@ -239,9 +243,9 @@ class Node:
     def publish(self, _):
         if self.state is None:
             return
-        ego, odom = self.state
         now = rospy.Time.now()
         with self.lock:
+            ego, odom = self.state
             stop_mature = (self.pending_selection is None and self.pending_selection_stamp is not None and
                            (now-self.pending_selection_stamp).to_sec() >= self.c['minimum_path_hold_sec'])
             path_mature = (self.pending_selection is not None and self.selected_stamp is not None and
@@ -257,7 +261,20 @@ class Node:
         output.header.stamp, output.header.frame_id = now, 'odom'
         output.reset_id = ego.reset_id
         output.valid_for = rospy.Duration(self.c['trajectory_valid_for_sec'])
-        if chosen is None or stamp is None:
+        p = ego.pose.pose.position
+        position = np.array([p.x, p.y, p.z])
+        xyz = speeds = None
+        if chosen is not None and stamp is not None:
+            finite = np.flatnonzero(np.isfinite(chosen.times))
+            if len(finite) >= 2:
+                end = int(finite[-1])+1
+                # Keep the approved geometry: an ego-position replacement of just
+                # point zero hides tracking error and introduces artificial curvature.
+                # Retain one point before the nearest point for a stable tangent.
+                nearest = int(np.argmin(np.linalg.norm(chosen.xy[:end, :2]-position[:2], axis=1)))
+                i = max(0, nearest-1)
+                xyz, speeds = chosen.xy[i:end].copy(), chosen.speed[i:end].copy()
+        if xyz is None or len(xyz) < 2:
             output.valid = True
             output.stop_required = True
             output.poses = [copy.deepcopy(odom.pose.pose), copy.deepcopy(odom.pose.pose)]
@@ -265,18 +282,10 @@ class Node:
             output.time_from_start = [rospy.Duration(0), rospy.Duration(1)]
             self.emit(output)
             return
-        p = ego.pose.pose.position
-        position = np.array([p.x, p.y, p.z])
-        i = int(np.argmin(np.linalg.norm(chosen.xy[:, :2]-position[:2], axis=1)))
-        finite = np.flatnonzero(np.isfinite(chosen.times))
-        end = max(i+2, min(len(chosen.xy), int(finite[-1])+1))
-        xyz, speeds = chosen.xy[i:end].copy(), chosen.speed[i:end].copy()
-        xyz[0] = position
         # Relative map->odom transform from a synchronized estimate pair.
         rotation = yaw(odom.pose.pose.orientation)-yaw(ego.pose.pose.orientation)
         co, si = math.cos(rotation), math.sin(rotation)
         ds, headings, _ = geometry(xyz)
-        headings[0] = yaw(ego.pose.pose.orientation)
         times = np.zeros(len(xyz))
         for j in range(1, len(xyz)):
             times[j] = times[j-1]+2*(ds[j]-ds[j-1])/max(speeds[j]+speeds[j-1], .01)
