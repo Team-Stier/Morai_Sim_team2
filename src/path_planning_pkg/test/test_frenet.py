@@ -60,6 +60,17 @@ class FrenetTest(unittest.TestCase):
         self.assertLess(candidate.change_end,80.)
         self.assertLess(np.max(np.abs(np.arctan(3*geometry(candidate.xy)[2]))),self.c['max_steering_rad'])
 
+    def test_route_progress_delay_does_not_create_reverse_first_segment(self):
+        candidate = self.p.candidates(self.lanes,self.windows,'global_route',10.,80.,
+                                     np.array([12.,0.,0.]),0.,10.)[0]
+        self.assertAlmostEqual(candidate.route_s[0],12.)
+        self.assertTrue(np.all(np.diff(candidate.xy[:,0])>0.))
+        # A roadside object must not be hit by a spurious 180-degree turn.
+        obj = Obstacle(np.array([[12.,2.5,0.]]),np.zeros(2),False)
+        evaluated = self.p.evaluate(candidate,10.,[obj],[],80.)
+        self.assertTrue(evaluated.feasible)
+        self.assertTrue(math.isfinite(evaluated.eta))
+
     def test_quintic_boundary_conditions(self):
         q = np.array([0., 1e-5, 19.99999, 20.])
         d = quintic(1., .2, 3.5, 20., q)

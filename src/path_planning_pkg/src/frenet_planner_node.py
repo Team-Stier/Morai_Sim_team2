@@ -14,7 +14,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
 from common_msgs_pkg.msg import ComponentStatus, EgoState, HdMap, LocalizationStatus, RouteContext, Trajectory, WorldModel
-from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, geometry, geometry_windows
+from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, geometry, geometry_windows, project
 from hd_map_pkg.course_speed import CourseSpeedZones, load_course_speed_policy
 
 
@@ -165,23 +165,25 @@ class Node:
             self.epoch = ego.reset_id
         p = ego.pose.pose.position
         position = np.array([p.x, p.y, p.z])
+        progress = project(lanes['global_route'].xy, lanes['global_route'].s, position[:2])[0]
         speed = max(0., odom.twist.twist.linear.x)
         if (not self.c.get('loop_route',False) and
-                (route.route_complete or lanes['global_route'].s[-1]-route.progress < 2*self.c['spatial_step_m'])):
+                (route.route_complete or lanes['global_route'].s[-1]-progress < 2*self.c['spatial_step_m'])):
             self.defer_stop('route_endpoint_stop')
             return
-        goal_s = max(route.comparison_goal_s, route.progress+1.)
+        goal_s = (progress+max(route.comparison_goal_s-route.progress,1.)
+                  if self.c['rddf_geometry_only'] else max(route.comparison_goal_s,progress+1.))
         if self.c.get('loop_route',False):
-            if route.progress < getattr(self,'previous_progress',route.progress)-lanes['global_route'].s[-1]/2:
+            if progress < getattr(self,'previous_progress',progress)-lanes['global_route'].s[-1]/2:
                 self.planner.committed = self.planner.pending = None
-            self.previous_progress = route.progress
-        candidates = self.planner.candidates(lanes, windows, route.current_lane, route.progress,
+            self.previous_progress = progress
+        candidates = self.planner.candidates(lanes, windows, route.current_lane, progress,
                                               goal_s, position, yaw(ego.pose.pose.orientation), speed)
         committed = self.planner.committed
         if committed is not None:
             end_s = committed.change_end
-            if route.progress < end_s:
-                i = min(np.searchsorted(committed.route_s, route.progress), len(committed.route_s)-3)
+            if progress < end_s:
+                i = min(np.searchsorted(committed.route_s, progress), len(committed.route_s)-3)
                 held = Candidate('committed', committed.target, committed.xy[i:].copy(), committed.route_s[i:].copy(),
                                  committed.limits[i:].copy(), committed.changes, committed.change_end, committed.return_start)
                 held.xy[0] = position
@@ -224,7 +226,7 @@ class Node:
         for candidate in candidates:
             if candidate is not fast:
                 evaluate(candidate)
-        chosen = self.planner.select(candidates, now.to_sec(), route.progress)
+        chosen = self.planner.select(candidates, now.to_sec(), progress)
         self.offer_selection(chosen,rospy.Time.now())
         audit = [{'key':x.key, 'target':x.target, 'feasible':x.feasible, 'reason':x.reason,
                   'eta':x.eta if math.isfinite(x.eta) else None,

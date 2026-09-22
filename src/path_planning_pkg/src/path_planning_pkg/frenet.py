@@ -259,6 +259,9 @@ class Planner:
     def candidates(self, lanes, windows, current, progress, goal_s, ego, heading, speed):
         c = self.c
         reference = lanes['global_route']
+        # Route and EgoState arrive independently. Anchor geometry to this
+        # measured ego pose, otherwise the second sample can lie behind it.
+        progress = project(reference.xy, reference.s, ego[:2])[0]
         if c.get('loop_route', False):
             length = reference.s[-1]
             extended = dict(lanes)
