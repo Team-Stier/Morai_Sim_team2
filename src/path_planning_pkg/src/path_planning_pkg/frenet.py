@@ -164,7 +164,7 @@ def footprint_hit(points, position, theta, c):
 
 
 
-def footprint_hits(points, positions, headings, c):
+def footprint_hits(points, positions, headings, c, point_shifts=None):
     """Batch the same point/footprint test, bounding temporary array sizes."""
     result = np.zeros(len(positions), dtype=bool)
     margin = c['object_margin_m']
@@ -174,7 +174,10 @@ def footprint_hits(points, positions, headings, c):
         co, si = np.cos(angles)[:, None], np.sin(angles)[:, None]
         hit = np.zeros(len(poses), dtype=bool)
         for point_first in range(0, len(points), 512):
-            delta = points[None, point_first:point_first+512, :2]-poses[:, None, :]
+            sample_points = points[None, point_first:point_first+512, :2]
+            if point_shifts is not None:
+                sample_points = sample_points+point_shifts[first:first+len(poses), None, :]
+            delta = sample_points-poses[:, None, :]
             x = co*delta[:, :, 0]+si*delta[:, :, 1]
             y = -si*delta[:, :, 0]+co*delta[:, :, 1]
             hit |= np.any((x >= -c['rear_overhang_m']-margin) &
@@ -450,6 +453,7 @@ class Planner:
         # between coarse trajectory samples, including a fast rear vehicle.
         obstacle_grid = objects if isinstance(objects,ObstacleGrid) else ObstacleGrid(objects,c)
         travelled = 0.
+        positions, angles, stamps, segments = [], [], [], []
         for i in range(len(xy)-1):
             travelled += np.linalg.norm(xy[i+1,:2]-xy[i,:2])
             if travelled > c['collision_precision_distance_m']:
@@ -461,17 +465,40 @@ class Planner:
             end_fraction = inspected_duration/duration if duration > 0 else 1.
             count = max(1, int(math.ceil(end_fraction*np.linalg.norm(xy[i+1, :2]-xy[i, :2])/c['collision_step_m'])),
                         int(math.ceil(inspected_duration/c['collision_time_step_sec'])))
-            for u in np.linspace(0, end_fraction, count+1):
-                t = times[i]+u*(times[i+1]-times[i])+start_delay
-                pos = xy[i]*(1-u)+xy[i+1]*u
-                angle = theta[i]*(1-u)+theta[i+1]*u
-                for obj in obstacle_grid.near(pos):
-                    points = obj.points.copy()
-                    if obj.velocity_valid:
-                        points[:, :2] += (t+obj.age)*obj.velocity[:2]
-                    if footprint_hit(points, pos, angle, c):
-                        return i
-        return None
+            u = np.linspace(0, end_fraction, count+1)
+            positions.append(xy[i]*(1-u[:,None])+xy[i+1]*u[:,None])
+            angles.append(theta[i]*(1-u)+theta[i+1]*u)
+            stamps.append(times[i]+u*(times[i+1]-times[i])+start_delay)
+            segments.extend([i]*len(u))
+        if not positions:
+            return None
+        positions = np.concatenate(positions)
+        angles, stamps = np.concatenate(angles), np.concatenate(stamps)
+        segments = np.asarray(segments)
+        # Reuse the same grid membership and interpolation samples as the scalar
+        # search, but test each nearby object's samples in bounded batches.
+        cells = np.floor(positions[:,:2]/obstacle_grid.cell).astype(int)
+        groups = {}
+        for index, cell in enumerate(cells):
+            groups.setdefault(tuple(cell), []).append(index)
+        earliest = None
+        for cell, indices in groups.items():
+            indices = np.asarray(indices)
+            if earliest is not None:
+                indices = indices[segments[indices] < earliest]
+            if not len(indices):
+                continue
+            for object_id in obstacle_grid.cells.get(cell, ()):
+                obj = obstacle_grid.objects[object_id]
+                shifts = ((stamps[indices]+obj.age)[:,None]*obj.velocity[:2]
+                          if obj.velocity_valid else None)
+                hits = footprint_hits(obj.points, positions[indices], angles[indices], c, shifts)
+                if hits.any():
+                    hit = int(segments[indices[np.flatnonzero(hits)[0]]])
+                    earliest = hit if earliest is None else min(earliest,hit)
+                    if earliest == 0:
+                        return 0
+        return earliest
 
     def evaluate(self, candidate, speed, objects, boundaries, goal_s):
         c = self.c

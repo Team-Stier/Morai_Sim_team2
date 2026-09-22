@@ -2,9 +2,41 @@ import copy
 import math
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 import numpy as np
 import yaml
 from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, footprint_hit, footprint_hits, quintic, geometry, candidate_geometry, geometry_windows
+
+
+# Frozen scalar oracle for collision batching regression checks.
+def scalar_collision(self, xy, theta, times, objects, start_delay=0.):
+    c = self.c
+    # Both spatial and temporal interpolation: short clusters cannot fall
+    # between coarse trajectory samples, including a fast rear vehicle.
+    obstacle_grid = objects if isinstance(objects,ObstacleGrid) else ObstacleGrid(objects,c)
+    travelled = 0.
+    for i in range(len(xy)-1):
+        travelled += np.linalg.norm(xy[i+1,:2]-xy[i,:2])
+        if travelled > c['collision_precision_distance_m']:
+            break
+        if not np.isfinite(times[i+1]) or times[i]+start_delay > c['prediction_horizon_sec']:
+            break
+        duration = times[i+1]-times[i]
+        inspected_duration = min(duration, c['prediction_horizon_sec']-times[i]-start_delay)
+        end_fraction = inspected_duration/duration if duration > 0 else 1.
+        count = max(1, int(math.ceil(end_fraction*np.linalg.norm(xy[i+1, :2]-xy[i, :2])/c['collision_step_m'])),
+                    int(math.ceil(inspected_duration/c['collision_time_step_sec'])))
+        for u in np.linspace(0, end_fraction, count+1):
+            t = times[i]+u*(times[i+1]-times[i])+start_delay
+            pos = xy[i]*(1-u)+xy[i+1]*u
+            angle = theta[i]*(1-u)+theta[i+1]*u
+            for obj in obstacle_grid.near(pos):
+                points = obj.points.copy()
+                if obj.velocity_valid:
+                    points[:, :2] += (t+obj.age)*obj.velocity[:2]
+                if footprint_hit(points, pos, angle, c):
+                    return i
+    return None
 
 
 class FrenetTest(unittest.TestCase):
@@ -96,6 +128,30 @@ class FrenetTest(unittest.TestCase):
             self.assertEqual(footprint_hits(points,np.zeros((1,3)),np.zeros(1),self.c)[0],
                              footprint_hit(points,np.zeros(3),0.,self.c))
         self.assertFalse(footprint_hits(np.empty((0,3)),poses,headings,self.c).any())
+
+    def test_batched_collision_matches_scalar_static_and_moving_objects(self):
+        rng = np.random.RandomState(20260923)
+        for scenario in range(40):
+            with self.subTest(scenario=scenario):
+                x = np.arange(0.,20.,.5)
+                xy = np.column_stack((x, np.sin(x/8.)*(scenario%3), x*0))
+                s,theta,_ = geometry(xy)
+                times = s/(1.+scenario%9)
+                if scenario%7 == 0:
+                    times[20:] = math.inf
+                objects = [Obstacle(rng.uniform([-5.,-5.,0.],[25.,5.,1.],(2,3)),
+                    rng.uniform(-4.,4.,2), scenario%4 != 0, .15) for _ in range(3)]
+                # Include a crossing cluster and a fast rear vehicle.
+                objects += [Obstacle(np.array([[7.,4.,0.]]), np.array([0.,-2.]),True),
+                            Obstacle(np.array([[-4.,0.,0.]]), np.array([12.,0.]),True)]
+                if scenario%5 == 0:
+                    objects = [Obstacle(np.array([[100.,100.,0.]]), np.zeros(2))]
+                delay = (scenario%4)*1.5
+                grid = ObstacleGrid(objects,self.c)
+                expected = scalar_collision(self.p,xy,theta,times,grid,delay)
+                self.assertEqual(self.p.collision(xy,theta,times,grid,delay),expected)
+        self.assertIsNone(self.p.collision(xy,theta,np.full(len(xy),math.inf),[]))
+        self.assertIsNone(self.p.collision(xy,theta,times,[],start_delay=9.))
 
     def test_clear_road_keeps_lane(self):
         candidates = self.candidates()
@@ -226,16 +282,13 @@ class FrenetTest(unittest.TestCase):
         self.assertIs(first,candidate_geometry(candidate))
 
     def test_near_standstill_collision_sampling_ends_at_prediction_horizon(self):
-        class RecordingGrid(ObstacleGrid):
-            def near(self, position):
-                self.positions.append(position.copy())
-                return []
-        grid=RecordingGrid([],self.c)
-        grid.positions=[]
-        self.p.collision(np.array([[0.,0.,0.],[1.,0.,0.]]),np.zeros(2),
-                         np.array([0.,1e8]),grid)
-        self.assertLessEqual(len(grid.positions),162)
-        self.assertLessEqual(grid.positions[-1][0],8e-8)
+        obstacle = Obstacle(np.array([[4.5,0.,0.]]),np.zeros(2))
+        with patch('path_planning_pkg.frenet.footprint_hits', wraps=footprint_hits) as check:
+            self.assertIsNone(self.p.collision(np.array([[0.,0.,0.],[1.,0.,0.]]),np.zeros(2),
+                             np.array([0.,1e8]),[obstacle]))
+        positions = np.concatenate([call[0][1] for call in check.call_args_list])
+        self.assertLessEqual(len(positions),162)
+        self.assertLessEqual(positions[-1][0],8e-8)
 
     def test_both_lanes_blocked_keep_stop(self):
         obs = [Obstacle(np.array([[25.,y,0.]]),np.zeros(2)) for y in (0.,3.5)]
