@@ -1,5 +1,10 @@
 # Morai_Sim_team2
 
+전체 개발 주행 실행: 저장소 루트에서 `./run.sh`.
+센서·Localization·RViz·Frenet 회피·제어 송신을 함께 실행하며 Ctrl+C로 종료한다.
+MORAI 실행 및 Cmd Control 연결은 별도다.
+[실행 옵션](src/system_bringup_pkg/README.md#한-번에-실행)을 참고한다.
+
 LiDAR 보정 복원: `c6265ad`의 측정시각 roll·pitch 보정, 자차 반사점 제거와
 구역별 지면 제거를 현재 제어 브랜치에 통합했다.
 [복원 범위와 설정](src/lidar_perception_pkg/README.md)을 참고한다.

@@ -1,5 +1,23 @@
 # system_bringup_pkg
 
+## 한 번에 실행
+
+저장소 루트에서 `./run.sh`로 센서, Localization, RViz,
+Frenet 회피 Planner, Controller, Safety와 MORAI 제어 송신을 함께 실행한다.
+Ctrl+C로 이번 실행 전체를 종료한다. 기존 구성과 노드가 겹치면 시작을 거부한다.
+MORAI 앱은 별도로 실행하고 Cmd Control `127.0.0.1:9093`을 Connect 상태로 둔다.
+
+```bash
+./run.sh
+# 송신·RViz 없이 실행하거나, 실행하지 않고 구성만 검사:
+./run.sh send_to_morai:=false rviz:=false
+./run.sh --check
+```
+
+스크립트가 Noetic과 workspace 환경을 불러오며 `frenet_all.launch`를 실행한다.
+launch는 MORAI 앱 자체를 켜거나 UI의
+수동/자동 모드를 바꾸지 않는다. 기본값은 RViz·제어 송신 활성, 시험 상한 해제다.
+
 `frenet_rddf.launch`는 기존 MORAI 센서·Localization 실행에 정적 지도, Route,
 LiDAR 관측, World Model, Frenet Planner와 Controller→Safety 연결을 추가한다.
 기존 global_path_demo와 중복 실행하지 않는다. 송신 기본값은 false이며,
