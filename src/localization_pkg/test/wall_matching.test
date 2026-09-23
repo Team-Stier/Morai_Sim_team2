@@ -1,0 +1,4 @@
+<launch>
+  <include file="$(find localization_pkg)/launch/localization_pkg.launch"/>
+  <test test-name="wall_matching_runtime" pkg="localization_pkg" type="test_wall_matching_runtime.py" time-limit="35"/>
+</launch>
