@@ -284,12 +284,13 @@ development_localization_profile:
   estimate_timeout_sec: 0.30
   status_timeout_sec: 0.50
   reorder_delay_sec: 0.06
-  max_dead_reckoning_sec: 15.0
   lidar_timeout_sec: 0.30
   wall_aiding_timeout_sec: 0.50
-  max_wall_aided_blackout_sec: 60.0
-  wall_aided_max_position_stddev_m: 3.0
-  wall_aided_validity_rule: fresh_imu_estimate_and_wall_match_with_bounded_gps_age_and_position_uncertainty
+  gps_blackout_policy: continue_initialized_estimation_while_imu_and_estimate_fresh
+  gps_blackout_duration_limit: none
+  position_uncertainty_validity_gate: disabled_report_only
+  blackout_policy_authorization: user_requested_unlimited_gps_blackout_estimation_2026_09_23
+  wall_aiding_timeout_semantic: diagnostic_freshness_only_not_a_pose_validity_gate
   max_integration_step_sec: 0.30
   clock_stall_sec: 0.50
   future_tolerance_sec: 0.0

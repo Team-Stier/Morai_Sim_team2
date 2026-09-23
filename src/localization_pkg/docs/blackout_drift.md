@@ -49,7 +49,8 @@ GPS가 없는 상태에서 새 편향으로 학습하지 않는다.
 GPS innovation 기반 재배치 시에는 편향과 정지 근거를 함께 초기화한다.
 기존 odom 위치·불확실성 누적은 보존한다. clock/IMU 단절 reset에서는 기존 정책대로
 전체 필터를 초기화한다. 공개 topic/type/frame/stamp/reset 의미와 dependency 방향,
-기존 GPS 재배치 gate, 중앙 15초 dead-reckoning budget 및 `stop_required=true`는 유지한다.
+당시 구현은 GPS 재배치 gate, 중앙 15초 dead-reckoning budget 및 `stop_required=true`를 유지했다.
+후속 2026-09-23 사용자 요청으로 시간 제한은 제거했으며 `stop_required=true`는 유지한다.
 
 ## 다른 개선 수단과 우선순위
 
@@ -129,7 +130,7 @@ PYTHONPATH=src/localization_pkg/src python3 src/localization_pkg/test/evaluate_b
 기록한다. 원본 IMU/GPS, localization의 세 출력과 TF를 같은 bag에 보존한다.
 정지 이동량뿐 아니라 재출발 지연, 등속 이동량, covariance, reset_id와 소비자
 유효성도 비교해야 한다. GPS가 처음부터 전혀 없으면 INITIALIZING이 정상이며,
-15초를 넘기는 blackout은 중앙 정책상 LOST가 될 수 있다.
+기존 15초 제한은 2026-09-23 사용자 요청으로 제거됐다. 현재는 GPS 미수신 시간만으로 LOST가 되지 않는다.
 
 ## 참고 근거
 

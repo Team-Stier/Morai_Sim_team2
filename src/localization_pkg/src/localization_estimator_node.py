@@ -315,13 +315,14 @@ class LocalizationNode:
         status.gps_fix_valid = bool(not stalled and gps_fresh and
             0 <= status.gps_age_sec <= self.timing['gps_timeout_sec'])
         wall_age = now.to_sec()-self.core.last_wall_stamp if self.core.last_wall_stamp is not None else -1.
-        wall_aided = bool(self.wall_matcher is not None and self.latest is not None and
-            0 <= wall_age <= self.timing['wall_aiding_timeout_sec'] and
-            0 <= status.gps_age_sec <= self.timing['max_wall_aided_blackout_sec'] and
-            self.latest['map_position_stddev'] <= self.timing['wall_aided_max_position_stddev_m'])
-        valid = bool(self.latest is not None and not stalled and imu_fresh and
-            (now-self.output_stamp).to_sec() <= self.timing['estimate_timeout_sec'] and
-            (0 <= status.gps_age_sec <= self.timing['max_dead_reckoning_sec'] or wall_aided))
+        wall_aided = bool(self.wall_matcher is not None and
+            0 <= wall_age <= self.timing['wall_aiding_timeout_sec'])
+        estimate_age = (now-self.output_stamp).to_sec()
+        # User policy: GPS blackout duration and covariance are diagnostic only.
+        # A previously initialized estimate still needs fresh IMU and a live clock.
+        valid = bool(self.latest is not None and gps_stamp is not None and
+            not stalled and imu_fresh and self.output_stamp.to_nsec() > 0 and
+            0 <= estimate_age <= self.timing['estimate_timeout_sec'])
         status.map_pose_valid = status.local_odometry_valid = valid
         status.ego_state_stamp = status.local_odometry_stamp = self.output_stamp
         status.map_position_stddev_m = self.latest['map_position_stddev'] if self.latest else -1.
@@ -332,13 +333,13 @@ class LocalizationNode:
         status.reason = ('development only; ingress fallback; physical alignment unverified; ' +
                          ('clock stalled' if stalled else
                           'IMU input stale' if not imu_fresh else
-                          'estimate stale or dead reckoning budget expired' if self.latest and not valid else
+                          'estimate stale or invalid timestamp' if self.latest and not valid else
                           'GPS blackout; bias-compensated inertial prediction; no independent speed observation' if valid and not status.gps_fix_valid else
                           (self.core.last_rejection or self.reason)))
         if self.wall_config.enabled:
             status.reason += '; '+self.core.wall_diagnostic
             if wall_aided and not status.gps_fix_valid:
-                status.reason += '; bounded wall aid active (age=%.3fs)' % wall_age
+                status.reason += '; wall aid active (age=%.3fs)' % wall_age
         if self.core.gps_diagnostic:
             status.reason += '; ' + self.core.gps_diagnostic
         if self.core.initialized:

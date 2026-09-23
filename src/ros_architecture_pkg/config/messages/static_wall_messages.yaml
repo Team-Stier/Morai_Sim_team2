@@ -44,4 +44,4 @@ rules:
   and heading agreement; reject single-wall, stale or delayed scans.
 - Parallel walls do not observe along-tunnel position; its covariance must not be
   reduced by this correction.
-- No stale restamping or unbounded extension of localization validity is permitted.
+- No stale restamping is permitted. After GPS initialization there is no GPS blackout duration or position uncertainty validity gate; fresh IMU, fresh estimate and a live clock remain required.

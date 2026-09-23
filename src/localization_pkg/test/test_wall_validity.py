@@ -1,4 +1,4 @@
-"""Check central validity bounds without publishing to a ROS master."""
+"""Check unlimited GPS blackout policy independently of the live ROS master."""
 import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
@@ -24,18 +24,40 @@ class WallValidityTest(unittest.TestCase):
         n.status_pub=SimpleNamespace(publish=lambda m:setattr(n,'published',m))
         return n
 
-    def test_wall_aid_is_bounded_and_does_not_refresh_measurement_stamp(self):
-        n=self.node();n.publish_status(rospy.Time(100),50.,False)
-        self.assertTrue(n.published.map_pose_valid)
-        self.assertEqual(n.published.mode,n.published.DEAD_RECKONING)
-        self.assertEqual(n.published.ego_state_stamp,n.output_stamp)
-        self.assertTrue(n.published.stop_required)
-        for change in ('stale_scan','gps_age','uncertainty','stale_imu','never_gps'):
+    def test_no_gps_age_or_uncertainty_limit_with_or_without_wall_support(self):
+        for age in (15.01,60.01,3600.,86400.):
+            for wall_support in (False,True):
+                n=self.node();now=100000.;n.core.last_gps_stamp=now-age
+                n.core.last_wall_stamp=now-.1 if wall_support else None
+                n.wall_matcher=object() if wall_support else None
+                n.latest['map_position_stddev']=1000.
+                n.output_stamp=rospy.Time.from_sec(now-.05)
+                n.publish_status(rospy.Time.from_sec(now),50.,False)
+                with self.subTest(age=age,wall_support=wall_support):
+                    self.assertTrue(n.published.map_pose_valid)
+                    self.assertTrue(n.published.local_odometry_valid)
+                    self.assertFalse(n.published.gps_fix_valid)
+                    self.assertEqual(n.published.mode,n.published.DEAD_RECKONING)
+                    self.assertEqual(n.published.ego_state_stamp,n.output_stamp)
+                    self.assertEqual(n.published.map_position_stddev_m,1000.)
+                    self.assertTrue(n.published.stop_required)
+
+    def test_sensor_clock_and_initialization_guards_remain(self):
+        for fault in ('stale_imu','stale_estimate','future_estimate','zero_estimate','never_gps','no_estimate','clock_stall'):
             n=self.node()
-            if change=='stale_scan':n.core.last_wall_stamp=99.
-            if change=='gps_age':n.core.last_gps_stamp=39.
-            if change=='uncertainty':n.latest['map_position_stddev']=3.1
-            if change=='stale_imu':n.arrival['imu']=49.
-            if change=='never_gps':n.core.last_gps_stamp=None
-            n.publish_status(rospy.Time(100),50.,False)
-            with self.subTest(change=change):self.assertFalse(n.published.map_pose_valid)
+            if fault=='stale_imu':n.arrival['imu']=49.
+            if fault=='stale_estimate':n.output_stamp=rospy.Time(99)
+            if fault=='future_estimate':n.output_stamp=rospy.Time(101)
+            if fault=='zero_estimate':n.output_stamp=rospy.Time(0)
+            if fault=='never_gps':n.core.last_gps_stamp=None
+            if fault=='no_estimate':n.latest=None
+            n.publish_status(rospy.Time(100),50.,fault=='clock_stall')
+            with self.subTest(fault=fault):
+                self.assertFalse(n.published.map_pose_valid)
+                self.assertFalse(n.published.local_odometry_valid)
+
+    def test_central_policy_has_no_inactive_legacy_duration_knobs(self):
+        n=self.node()
+        self.assertEqual(n.timing['gps_blackout_duration_limit'],'none')
+        for key in ('max_dead_reckoning_sec','max_wall_aided_blackout_sec','wall_aided_max_position_stddev_m'):
+            self.assertNotIn(key,n.timing)

@@ -266,6 +266,24 @@ class LocalizationEstimatorRuntimeTest(unittest.TestCase):
         self._wait(lambda: self.status.mode == LocalizationStatus.TRACKING)
         self.assertEqual(self.status.reset_id, epoch)
 
+    def test_gps_blackout_beyond_sixty_seconds_remains_valid_without_wall_aid(self):
+        status = self._initialize()
+        epoch = status.reset_id
+        # Advance measurement time continuously, not by a clock jump that would
+        # correctly trigger the independent IMU-gap reset. No wall map is sent.
+        for _ in range(360):
+            self._advance(self.clock + 0.20)
+            self.imu_pub.publish(self._imu(self.clock))
+            time.sleep(0.01)
+        self._wait(lambda: self.status.gps_age_sec > 70 and
+                   self.status.mode == LocalizationStatus.DEAD_RECKONING)
+        self.assertTrue(self.status.map_pose_valid)
+        self.assertTrue(self.status.local_odometry_valid)
+        self.assertGreater(self.status.map_position_stddev_m, 3.0)
+        self.assertEqual(self.status.reset_id, epoch)
+        self.assertTrue(self.status.stop_required)
+        self.assertLess((self.status.header.stamp-self.status.ego_state_stamp).to_sec(), .30)
+
     def test_biased_stationary_blackout_preserves_consumer_contract(self):
         status = self._initialize()
         epoch = status.reset_id
