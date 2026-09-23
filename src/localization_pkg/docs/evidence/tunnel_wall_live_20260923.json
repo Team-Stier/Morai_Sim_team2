@@ -1,0 +1,18 @@
+{
+  "status_count": 6854,
+  "modes": {
+    "1": 372,
+    "2": 427,
+    "3": 1287,
+    "5": 4768
+  },
+  "valid_statuses": 1714,
+  "statuses_reporting_wall_match": 4893,
+  "wall_matched_and_valid": 1461,
+  "gps_samples": 899,
+  "nonzero_gps_samples": 44,
+  "first_match_reason": "development only; ingress fallback; physical alignment unverified; GPS correction accepted; wall matched lateral=+0.070m rms=0.161m points=[102, 58]; along-tunnel unobserved; acceleration bias norm=0.0000 m/s^2",
+  "first_match_stamp": 1790132038.3477206,
+  "last_match_reason": "development only; ingress fallback; physical alignment unverified; estimate stale or dead reckoning budget expired; wall matched lateral=+0.006m rms=0.163m points=[173, 57]; along-tunnel unobserved; acceleration bias norm=0.0276 m/s^2",
+  "final_status_reason": "development only; ingress fallback; physical alignment unverified; estimate stale or dead reckoning budget expired; wall rejected: both wall sides need enough returns; acceleration bias norm=0.0276 m/s^2"
+}

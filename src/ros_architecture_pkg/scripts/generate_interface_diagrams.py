@@ -82,6 +82,7 @@ EXPECTED_TOPIC_FRAME_CONTRACT = {
     "/molit/events/collision": {"frame": "pending_competition_packet_spec"},
     "/molit/interface/status": {"frame": "not_applicable"},
     "/molit/map/hd_map": {"frame": "map"},
+    "/molit/map/static_walls": {"frame": "map"},
     "/molit/map/status": {"frame": "not_applicable"},
     "/molit/perception/camera/front/observations": {
         "frame": "camera_front_optical_frame"

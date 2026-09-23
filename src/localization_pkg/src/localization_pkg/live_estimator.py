@@ -131,6 +131,8 @@ class GpsImuEstimator:
         self.reset()
 
     def reset(self):
+        self.last_wall_stamp = None
+        self.wall_diagnostic = 'wall matching waiting'
         self.gps_reinitialized = False
         self.gps_diagnostic = ""
         self.initialized = False
@@ -200,6 +202,7 @@ class GpsImuEstimator:
         self.attitude_cov, self.omega_cov = attitude_cov, omega_cov
         self.stamp, self.last_gps_stamp = gps.stamp, gps.stamp
         self.initialized = True
+        self.last_wall_stamp = None
         self.pending_gps = None
 
     def _advance(self, stamp, values):
@@ -376,6 +379,41 @@ class GpsImuEstimator:
             return True
         except (ValueError, np.linalg.LinAlgError) as error:
             self.last_rejection = self.gps_diagnostic = str(error)
+            return False
+
+    def process_wall(self, stamp, points, interpolated_imu, matcher, translation):
+        try:
+            if not self.initialized:
+                raise ValueError('wall matching needs a GPS-initialized pose')
+            if stamp < self.stamp or (self.last_wall_stamp is not None and stamp <= self.last_wall_stamp):
+                raise ValueError('wall scan older than processed state or previous match')
+            self._advance(stamp, self._imu_values(interpolated_imu))
+            match = matcher.match(points, self.q, self.state[:3], translation)
+            normal = np.r_[match['normal'], 0.]
+            H = np.zeros((1, 9)); H[0, :3] = normal
+            noise = match['variance']
+            innovation = float((H @ self.P @ H.T)[0, 0])+noise
+            residual = match['residual']
+            if residual**2/innovation > matcher.config.innovation_gate_chi2:
+                raise ValueError('wall innovation rejected')
+            gain = (self.P @ H.T)[:, 0]/innovation
+            # Schmidt-style restricted gain preserves the unobserved tangent and z.
+            for start in (0, 3):
+                gain[start:start+3] = normal * float(normal @ gain[start:start+3])
+            body_normal = rotation(self.q).T @ normal
+            gain[6:] = body_normal * float(body_normal @ gain[6:])
+            candidate = self.state+gain*residual
+            A = np.eye(9)-np.outer(gain, H[0])
+            P = covariance(A @ self.P @ A.T+np.outer(gain, gain)*noise, 9)
+            if not np.isfinite(candidate).all():
+                raise ValueError('nonfinite wall correction')
+            self.state, self.P = candidate, P
+            self.last_wall_stamp = stamp
+            self.wall_diagnostic = 'wall matched lateral=%+.3fm rms=%.3fm points=%s; along-tunnel unobserved' % (
+                residual, match['rms'], match['support'])
+            return True
+        except (ValueError, np.linalg.LinAlgError) as error:
+            self.wall_diagnostic = 'wall rejected: '+str(error)
             return False
 
     def snapshot(self):

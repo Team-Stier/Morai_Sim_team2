@@ -9,12 +9,13 @@ flowchart LR
     classDef externalEndpoint fill:#f3e8ff,color:#581c87,stroke:#9333ea,stroke-width:3px;
 
     subgraph INPUTS["입력 (구독)"]
-        input_000["/molit/sensors/gps/fix<br/>설명: GPS 위도·경도·고도와 fix 상태<br/>메시지: sensor_msgs/NavSatFix<br/>상태: 개발 환경 동작 확인"]
-        input_001["/molit/sensors/imu/data<br/>설명: 차량 자세·각속도·선형가속도<br/>메시지: sensor_msgs/Imu<br/>상태: 설계 예약·미구현"]
-        input_002["/molit/sensors/lidar/points<br/>설명: LiDAR 3차원 점군<br/>메시지: sensor_msgs/PointCloud2<br/>상태: 검증 전 비활성"]
-        input_003["/molit/vehicle/twist<br/>설명: 차량의 선속도·각속도<br/>메시지: geometry_msgs/TwistWithCovarianceStamped<br/>상태: 공식 규격 확인 전 사용 금지"]
-        input_004["/molit/map/hd_map<br/>설명: 버전이 고정된 정적 지도와 연결 구조<br/>메시지: common_msgs_pkg/HdMap<br/>상태: 설계 예약·미구현"]
-        input_005["/molit/map/status<br/>설명: 지도 버전·해시·좌표계·검증 상태<br/>메시지: common_msgs_pkg/ComponentStatus<br/>상태: 설계 예약·미구현"]
+        input_000["/molit/map/static_walls<br/>설명: LiDAR 위치 정합용 원본 벽선과 불확실성<br/>메시지: common_msgs_pkg/StaticWallMap<br/>상태: 설계 예약·미구현"]
+        input_001["/molit/sensors/gps/fix<br/>설명: GPS 위도·경도·고도와 fix 상태<br/>메시지: sensor_msgs/NavSatFix<br/>상태: 개발 환경 동작 확인"]
+        input_002["/molit/sensors/imu/data<br/>설명: 차량 자세·각속도·선형가속도<br/>메시지: sensor_msgs/Imu<br/>상태: 설계 예약·미구현"]
+        input_003["/molit/sensors/lidar/points<br/>설명: LiDAR 3차원 점군<br/>메시지: sensor_msgs/PointCloud2<br/>상태: 검증 전 비활성"]
+        input_004["/molit/vehicle/twist<br/>설명: 차량의 선속도·각속도<br/>메시지: geometry_msgs/TwistWithCovarianceStamped<br/>상태: 공식 규격 확인 전 사용 금지"]
+        input_005["/molit/map/hd_map<br/>설명: 버전이 고정된 정적 지도와 연결 구조<br/>메시지: common_msgs_pkg/HdMap<br/>상태: 설계 예약·미구현"]
+        input_006["/molit/map/status<br/>설명: 지도 버전·해시·좌표계·검증 상태<br/>메시지: common_msgs_pkg/ComponentStatus<br/>상태: 설계 예약·미구현"]
     end
     subgraph PACKAGE["패키지 처리<br/>localization_pkg<br/>센서와 지도를 융합해 차량 위치·움직임과 추정 품질 계산"]
         local_node_000["localization_node<br/>역할: 센서와 지도를 융합해 차량 위치와 움직임을 추정<br/>실행: localization_estimator_node.py<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
@@ -31,17 +32,19 @@ flowchart LR
     input_003 --> local_node_000
     input_004 --> local_node_000
     input_005 --> local_node_000
+    input_006 --> local_node_000
     local_node_000 --> output_000
     local_node_000 --> output_001
     local_node_000 --> output_002
 
     class local_node_000 liveNode;
-    class input_000 liveTopic;
-    class input_001 reservedTopic;
+    class input_000 reservedTopic;
+    class input_001 liveTopic;
     class input_002 reservedTopic;
     class input_003 reservedTopic;
     class input_004 reservedTopic;
     class input_005 reservedTopic;
+    class input_006 reservedTopic;
     class output_000 liveTopic;
     class output_001 liveTopic;
     class output_002 liveTopic;

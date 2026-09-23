@@ -97,3 +97,4 @@ lane_rddf:
 # No route fitting or vehicle-pose anchoring is performed.
 static_walls:
   source_object_ids: [C3256W000003, C3256W000005]
+  horizontal_stddev_m: 0.40  # Development model floor; physical alignment unverified.

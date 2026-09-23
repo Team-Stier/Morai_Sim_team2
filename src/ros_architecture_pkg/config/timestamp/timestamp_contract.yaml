@@ -121,6 +121,7 @@ timestamp_source_registry:
     message_stamp_carried: true
     allowed_topics:
       - /molit/map/hd_map
+      - /molit/map/static_walls
   route_activation_time:
     kind: canonical_static_data
     clock_domain: canonical_message_clock
@@ -207,6 +208,8 @@ derived_message_contract:
       both dynamic transforms. GPS correction uses its accepted measurement time
       in ordered sensor processing; publication time never refreshes the estimate.
       Keep bounded pose history and clear it on reset or clock regression.
+      LiDAR wall corrections likewise use ordered original scan stamps and bracketing IMU;
+      never apply delayed scans to a newer state or restamp a stale wall match.
   perception:
     stamp: source_sensor_measurement_time
     rule: Inference completion must not replace the source image or scan stamp.
@@ -282,6 +285,11 @@ development_localization_profile:
   status_timeout_sec: 0.50
   reorder_delay_sec: 0.06
   max_dead_reckoning_sec: 15.0
+  lidar_timeout_sec: 0.30
+  wall_aiding_timeout_sec: 0.50
+  max_wall_aided_blackout_sec: 60.0
+  wall_aided_max_position_stddev_m: 3.0
+  wall_aided_validity_rule: fresh_imu_estimate_and_wall_match_with_bounded_gps_age_and_position_uncertainty
   max_integration_step_sec: 0.30
   clock_stall_sec: 0.50
   future_tolerance_sec: 0.0

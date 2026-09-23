@@ -39,6 +39,7 @@
 
 | 구분 | Topic | Type |
 |---|---|---|
+| 입력 | `/molit/map/static_walls` | `common_msgs_pkg/StaticWallMap` |
 | 입력 | `/molit/sensors/gps/fix` | `sensor_msgs/NavSatFix` |
 | 입력 | `/molit/sensors/imu/data` | `sensor_msgs/Imu` |
 | 입력 | `/molit/sensors/lidar/points` | `sensor_msgs/PointCloud2` |
@@ -49,8 +50,8 @@
 | 출력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
 | 출력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
 
-`/molit/sensors/lidar/points`는 HD Map 정합을 구현할 때만 사용하며 현재 LiDAR
-transport 검증 전에는 필수 입력으로 활성화하지 않는다. `/molit/vehicle/twist`는
+`/molit/sensors/lidar/points`는 원본 정적 벽 지도와 함께 선택적 횡방향 정합에 사용한다.
+벽 지도나 유효한 벽 관측이 없으면 기존 GPS/IMU 추정 경로를 유지한다. `/molit/vehicle/twist`는
 Competition packet 검증 전 사용 금지다. `ComponentStatus`, `EgoState`,
 `LocalizationStatus` 스키마와 GPS/IMU 추정 출력이 구현됐다. 나머지
 custom type은 미구현이다. 표는 승인된 전체 경계이고 현재 활성 I/O는 아래와 같다.
@@ -84,7 +85,7 @@ Local Odometry는 연속 motion 추정이지 절대 Ground Truth가 아니다. W
 
 ## 현재 런타임 상태
 
-기본 `mode:=estimator`는 GPS/IMU만 입력으로 사용하며 EgoState(map),
+기본 `mode:=estimator`는 GPS/IMU와 선택적 LiDAR 벽 정합을 사용하며 EgoState(map),
 Odometry(odom), LocalizationStatus와 `map → odom → base_link`를 발행한다.
 IMU quaternion을 자세 관측으로 사용하고, 회전한 GPS 안테나 오프셋을 빼서
 base_link 위치를 추정한다. 위치·속도·body 가속도 편향의 9-state Kalman filter이며
@@ -151,3 +152,21 @@ GPS innovation χ²가 `gps_innovation_gate_chi2: 25.0`을 넘으면 리스폰�
 추정값마다 원본 측정시각을 유지한 pose와 대응 status를 발행한다. 입력이 없을 때는 status heartbeat가 10 Hz로 동작한다.
 차량 마커는 exact pose/status 쌍 수신 즉시 갱신하며 별도의 10 Hz 표시 제한을 두지 않는다.
 표시 watchdog은 입력 중단·clock 이상을 계속 검사한다. RViz 렌더링 상한은 60 FPS다.
+
+## 터널 벽 LiDAR 정합
+
+중앙 [벽 계약](../ros_architecture_pkg/config/messages/static_wall_messages.yaml)의
+원본 벽선을 map 좌표로 주고받는다. `hd_map_server_node`가 발행하고
+`localization_node`가 raw LiDAR 및 측정시각의 IMU와 정합한다.
+
+벽 보정은 GPS로 초기화된 추정값에만 적용하며 GPS/IMU 리셋 후 벽만으로
+위치를 재초기화하지 않는다. 양쪽 벽의 점 개수·관측 길이·폭·방향·잔차를
+검사한 후 공통 벽 법선 방향만 보정한다. IMU 자세는 유지하고 진행방향 위치와
+공분산을 줄이지 않는다. 원본 LiDAR stamp에서 IMU를 보간하고, 이미 처리한
+상태보다 늦게 도착한 과거 scan은 거부한다. 출력은 다음 원본 IMU stamp를 유지한다.
+
+GPS 단독 추측항법은 기존 15초 제한을 유지한다. 벽 정합이 0.5초 이내이며
+수평 위치 표준편차가 3m 이내인 경우에만 GPS 미수신 최대 60초까지 개발 추정을
+유효하게 표시한다. 평행 벽의 진행방향 퇴화로 이 조건을 못 맞추면 LOST가 된다.
+IMU 입력/추정 freshness는 계속 필요하며 `stop_required=true`는 유지한다.
+수치는 중앙 timestamp 계약에 있으며 실측 정확도 보장이 아니다.

@@ -18,6 +18,7 @@ add_message_files(FILES
   ControllerStatus.msg
   TrackedObject.msg
   WorldModel.msg
+  StaticWallMap.msg
   HdMap.msg
   RouteContext.msg
   RouteLane.msg
@@ -30,6 +31,7 @@ catkin_package(CATKIN_DEPENDS
 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_core_contract.py)
+  catkin_add_nosetests(test/test_static_wall_contract.py)
   catkin_add_nosetests(test/test_validation.py)
   catkin_add_nosetests(test/test_serialization.py)
   catkin_add_nosetests(test/test_lidar_contract.py)

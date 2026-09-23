@@ -8,9 +8,9 @@
 - 원본 높이는 빈 배열이다. JSON 산출물은 높이를 null로 기록한다.
   RViz의 5 m 면 높이는 시각화 파라미터이며 LiDAR 정합 데이터가 아니다.
 - HTML은 원본 벽선을 표시하며, RViz는 원본 z에서 76개 삼각형으로 면을 만든다.
-- 공개 HdMap 메시지와 Localization 입력은 변경하지 않았다.
-  위치 보정 연결에는 중앙 벽 인터페이스 변경안, producer/consumer 갱신,
-  실제 센서 정합 및 터널 진행방향 퇴화 검증이 별도로 필요하다.
+- 기존 HdMap wire는 유지하고 `/molit/map/static_walls`의 StaticWallMap을 추가했다.
+  Localization이 이 메시지와 raw LiDAR를 받아 측정시각에 벽 법선 방향만 보정한다.
+  진행방향 퇴화는 보정할 수 없으며, 물리 정합은 미검증이다.
 
 검증: HD Map 단위 테스트 56개, 지도 마커 테스트 5개, Visualization 계약 테스트
 2개 통과. 두 패키지 catkin 빌드, 중앙 인터페이스 다이어그램 검사, launch XML 및

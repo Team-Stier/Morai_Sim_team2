@@ -91,6 +91,9 @@ runtime_readiness_policy:
     last_gps_fix_must_not_be_reused_as_current_position_truth: true
 
 contract_modules:
+  static_wall_messages:
+    path: messages/static_wall_messages.yaml
+    required_contract_version: 0.1.0
   frenet_runtime:
     path: messages/frenet_runtime.yaml
     required_contract_version: 0.2.0
@@ -505,6 +508,23 @@ topics:
     queue_policy: publisher_queue_1_latched
     timeout_sec: pending_live_jitter_measurement
     invalid_data_policy: fail_closed_when_required_channel_is_unknown_or_stale
+  - name: /molit/map/static_walls
+    owner_package: hd_map_pkg
+    producers: [hd_map_server_node]
+    consumers: [localization_node]
+    status: development_lidar_wall_matching
+    visibility: public
+    data_meaning: Immutable original wall baselines with model uncertainty and source identity
+    diagram_description_ko: LiDAR 위치 정합용 원본 벽선과 불확실성
+    data_type: common_msgs_pkg/StaticWallMap
+    unit: m
+    frame: map
+    timestamp_source: map_version_load_time
+    expected_rate_hz: latched_on_validated_version_change
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: not_applicable_static_version
+    invalid_data_policy: reject_invalid_frame_identity_geometry_or_nonpositive_uncertainty
+    details: messages/static_wall_messages.yaml
   - name: /molit/map/hd_map
     owner_package: hd_map_pkg
     producers: [hd_map_server_node]
@@ -1015,6 +1035,9 @@ messages:
   - type: common_msgs_pkg/LidarObservationArray
     status: development_not_runtime_verified
     schema: messages/lidar_messages.yaml#LidarObservationArray
+  - type: common_msgs_pkg/StaticWallMap
+    status: development_lidar_wall_matching
+    schema: messages/static_wall_messages.yaml#StaticWallMap
   - type: common_msgs_pkg/HdMap
     status: type_name_reserved_schema_not_implemented
   - type: common_msgs_pkg/EgoState
@@ -1147,6 +1170,7 @@ package_boundaries:
     public_nodes: [hd_map_server_node]
     inputs: []
     outputs:
+      - /molit/map/static_walls
       - /molit/map/hd_map
       - /molit/map/status
   camera_perception_pkg:
@@ -1180,6 +1204,7 @@ package_boundaries:
     implementation_note: gps_imu_development_estimates_stop_required_physical_validation_incomplete
     public_nodes: [localization_node]
     inputs:
+      - /molit/map/static_walls
       - /molit/sensors/gps/fix
       - /molit/sensors/imu/data
       - /molit/sensors/lidar/points
@@ -1366,6 +1391,7 @@ architecture_views:
       - /molit/vehicle/twist
       - /molit/sensors/lidar/points
       - /molit/map/hd_map
+      - /molit/map/static_walls
       - /molit/perception/camera/front/observations
       - /molit/perception/camera/left/observations
       - /molit/perception/camera/right/observations

@@ -62,3 +62,6 @@ World Model은 중앙 `messages/world_model_messages.yaml`을 따르며
 기존 `ActuatorCommand`는 `messages/competition_io_messages.yaml`을 따른다.
 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)에 producer/consumer 영향을 기록했다.
 TrackedObject/WorldModel의 기존 `.msg`도 catkin 메시지 생성 목록에 등록했다.
+
+`StaticWallMap`과 `static_wall_validation`은 중앙 `static_wall_messages.yaml`의
+원본 벽 ID·열린 XYZ 벽선·출처 해시·수평 불확실성을 구현한다.

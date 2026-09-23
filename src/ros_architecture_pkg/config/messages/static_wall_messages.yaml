@@ -1,0 +1,47 @@
+schema_version: 1
+contract_version: 0.1.0
+authority: ros_architecture_pkg
+implementation_owner: common_msgs_pkg
+status: development_lidar_wall_matching
+messages:
+  StaticWallMap:
+    wire_definition: '# Authority: ros_architecture_pkg/config/messages/static_wall_messages.yaml
+
+      # Immutable map version load time, frame_id=map (not a sensor timestamp).
+
+      std_msgs/Header header
+
+      string map_id
+
+      string source_sha256
+
+      # Parallel arrays; each baseline is an OPEN original wall polyline in map metres.
+
+      string[] wall_ids
+
+      geometry_msgs/Polygon[] baselines
+
+      # Conservative horizontal model uncertainty, not measured physical accuracy.
+
+      float64 horizontal_stddev_m
+
+      bool physical_alignment_verified
+
+      '
+rules:
+- One immutable map_id identifies ordered original wall IDs and baselines; source_sha256
+  identifies object_set.json.
+- Wall baselines preserve source XYZ and are open polylines, never route or checkpoint
+  observations.
+- No measured wall height is available; display extrusion must never enter scan matching.
+- Physical alignment remains unverified; use is explicitly authorized for development
+  with stop_required true.
+- Localization requires a GPS-initialized pose and measurement-time bracketing IMU;
+  walls cannot initialize unobservable along-tunnel position.
+- Only the dominant wall-normal position, velocity and accelerometer-bias components
+  may be corrected. IMU attitude remains the attitude observation.
+- Require both wall sides, longitudinal support, bounded residual, width consistency
+  and heading agreement; reject single-wall, stale or delayed scans.
+- Parallel walls do not observe along-tunnel position; its covariance must not be
+  reduced by this correction.
+- No stale restamping or unbounded extension of localization validity is permitted.

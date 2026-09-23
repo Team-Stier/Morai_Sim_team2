@@ -299,7 +299,7 @@ Camera/GPS transport이고, 회색·주황 점선은 이름만 예약됐거나 �
 계약의 `diagram_summary_ko`, `diagram_description_ko`에서 자동 생성한다.
 생성된 Mermaid나 이미지는 직접 편집하지 않는다.
 
-- [전체 26개 node·36개 topic 상세 SVG 확대해서 열기](src/ros_architecture_pkg/docs/system_architecture.svg)
+- [전체 26개 node·37개 topic 상세 SVG 확대해서 열기](src/ros_architecture_pkg/docs/system_architecture.svg)
 - [전체 상세 Mermaid 원본](src/ros_architecture_pkg/docs/system_architecture.mmd)
 - [Nominal Mermaid 원본](src/ros_architecture_pkg/docs/system_nominal_flow.mmd)
 - [Health/Safety Mermaid 원본](src/ros_architecture_pkg/docs/system_health_safety_flow.mmd)

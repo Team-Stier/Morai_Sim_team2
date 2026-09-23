@@ -69,7 +69,7 @@ class CoreContractTest(unittest.TestCase):
             'LidarObjectObservation.msg', 'LidarObservationArray.msg',
             'ActuatorCommand.msg', 'CollisionEvent.msg',
             'Trajectory.msg', 'ControllerStatus.msg', 'TrackedObject.msg', 'WorldModel.msg',
-            'HdMap.msg', 'RouteLane.msg', 'LaneChangeWindow.msg', 'RouteContext.msg',
+            'StaticWallMap.msg', 'HdMap.msg', 'RouteLane.msg', 'LaneChangeWindow.msg', 'RouteContext.msg',
         })
         manifest = ET.parse(PACKAGE / 'package.xml').getroot()
         self.assertIn('message_generation', [e.text for e in manifest.findall('build_depend')])

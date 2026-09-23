@@ -226,6 +226,7 @@ catkin_test_results
 
 | 구분 | Topic | Type |
 |---|---|---|
+| 출력 | `/molit/map/static_walls` | `common_msgs_pkg/StaticWallMap` |
 | 출력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
 | 출력 | `/molit/map/status` | `common_msgs_pkg/ComponentStatus` |
 
@@ -280,6 +281,11 @@ HTML 미리보기와 RViz HD-map 표시 레이어에 포함된다.
 원본 ID, source commit, 원본 파일 SHA-256, map XYZ를 보존한다. 원본 높이가 비어
 있어 `height_m: null`이며 RViz의 5 m 돌출 높이는 표시용이다. 이 파일은 정적
 지도 후보 산출물이다. 기존 공개 `HdMap` 메시지는 아직 벽 필드가 없으므로
-벽을 발행하지 않으며, Localization은 이 레이어를 아직 사용하지 않는다.
-실제 LiDAR와의 정합 검증 및 중앙 계약의 벽 형상/불확실성 정의를 완료한 뒤
-HD Map producer와 Localization consumer를 함께 연결해야 한다.
+벽은 별도 공개 `StaticWallMap`으로 발행한다. Localization이 이를 소비하여
+양쪽 벽의 횡방향 정합을 수행한다. 벽 높이는 정합에 사용하지 않는다.
+
+## 터널 벽 LiDAR 정합
+
+중앙 [벽 계약](../ros_architecture_pkg/config/messages/static_wall_messages.yaml)의
+원본 벽선을 map 좌표로 주고받는다. `hd_map_server_node`가 발행하고
+`localization_node`가 raw LiDAR 및 측정시각의 IMU와 정합한다.

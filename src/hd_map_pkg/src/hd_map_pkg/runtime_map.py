@@ -68,4 +68,8 @@ def load_static_map(config_file, source, reference_path, checkpoints_file, polic
     rddf = build_lane_rddf(dataset, transform, route, config['lane_rddf'])
     rddf['source_hashes'] = dataset.source_hashes()
     checkpoints = yaml.safe_load(Path(checkpoints_file).read_text())
-    return build_static_map(route, rddf, checkpoints, policy, digest)
+    from .static_walls import build_static_walls
+    result = build_static_map(route, rddf, checkpoints, policy, digest)
+    result['static_walls'] = build_static_walls(dataset, transform, config)
+    result['wall_horizontal_stddev_m'] = float(config['static_walls']['horizontal_stddev_m'])
+    return result

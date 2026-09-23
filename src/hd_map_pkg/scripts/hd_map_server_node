@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Publish the centrally approved static RDDF map and component state."""
 import math
+import hashlib
+import json
 
 import rospy
 from geometry_msgs.msg import Point, Point32, Polygon, PoseStamped
 from nav_msgs.msg import Path
-from common_msgs_pkg.msg import ComponentStatus, HdMap, LaneChangeWindow, RouteLane
+from common_msgs_pkg.msg import ComponentStatus, HdMap, LaneChangeWindow, RouteLane, StaticWallMap
 
 from hd_map_pkg.runtime_map import load_static_map
 
@@ -45,15 +47,34 @@ def map_message(data, stamp):
     return result
 
 
+def wall_message(data, stamp):
+    from common_msgs_pkg.static_wall_validation import validate_static_walls
+    result = StaticWallMap()
+    result.header.frame_id, result.header.stamp = 'map', stamp
+    result.source_sha256 = data['source_hashes']['object_set.json']['sha256_raw']
+    result.horizontal_stddev_m = data['wall_horizontal_stddev_m']
+    result.physical_alignment_verified = False
+    for wall in data['static_walls']:
+        result.wall_ids.append(wall['id'])
+        result.baselines.append(Polygon(points=[Point32(*point) for point in wall['p']]))
+    identity = dict(walls=data['static_walls'], source=result.source_sha256,
+                    horizontal_stddev_m=result.horizontal_stddev_m)
+    result.map_id = 'katri-walls-' + hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+    validate_static_walls(result)
+    return result
+
+
 def main():
     rospy.init_node('hd_map_server_node')
     publisher = rospy.Publisher('/molit/map/hd_map', HdMap, queue_size=1, latch=True)
+    walls_publisher = rospy.Publisher('/molit/map/static_walls', StaticWallMap, queue_size=1, latch=True)
     status_publisher = rospy.Publisher('/molit/map/status', ComponentStatus, queue_size=1, latch=True)
     data = load_static_map(*(rospy.get_param('~'+key) for key in
                              ('config_file', 'source', 'path_file', 'checkpoints_file', 'speed_policy_file')))
     stamp = rospy.Time.now()
     message = map_message(data, stamp)
     publisher.publish(message)
+    walls_publisher.publish(wall_message(data, stamp))
 
     def publish_status(_event):
         status = ComponentStatus(component='hd_map_pkg', state=ComponentStatus.READY,
