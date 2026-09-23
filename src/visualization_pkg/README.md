@@ -187,3 +187,11 @@ HD Map 위에 체크포인트 1~14번과 START/END를 노란 점과 `CP 1`~`CP 1
 번호는 원본 ID 정렬 기준이며 미션 순서나 현재 적색 신호를 뜻하지 않는다.
 HD Map과 같은 원본 좌표·신호/접근 차로 연결을 사용하며 표시만 평면에 투영한다.
 [중앙 정지선 계약](../ros_architecture_pkg/docs/signal_stop_lines.md)을 따른다.
+
+## 터널 벽 표시
+
+HD Map의 원본 터널 벽 두 개를 기존 내부 `hd_map_markers`의 `static_walls`
+레이어에 반투명 주황색 면으로 표시한다. 벽은 원본 map XYZ를 유지하며 도로
+미리보기의 평면 높이로 내리지 않는다. `config/hd_map_display.yaml`의
+`hd_map_wall_display_height_m: 5.0`은 표시용 돌출 높이이며 실측 높이가 아니다.
+이 마커는 Localization 입력이 아니며 표시만으로 드리프트가 보정되지 않는다.

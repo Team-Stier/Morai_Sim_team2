@@ -46,6 +46,7 @@ def load_route_display_layers(source, projection, config, reference_path):
         'lane_boundaries': [item['p'] for item in preview['boundaries']],
         'centerlines': [item['p'] for item in preview['centerlines']],
         'global_route': [preview['globalRoute']['p']],
+        'static_walls': [item['p'] for item in preview['staticWalls']],
     }
     if 'lane_rddf' in config:
         from .lane_rddf import build_lane_rddf, read_route

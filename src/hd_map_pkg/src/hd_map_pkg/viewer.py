@@ -96,6 +96,8 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
                       reference_path=None):
     tolerance = float(config.get("conversion", {}).get("viewer_simplification_m", 0.2))
     mapping = config.get("lane_boundary", {})
+    from .static_walls import build_static_walls
+    static_walls = build_static_walls(dataset, transformer, config)
     signal_links = dataset.traffic_light_link_ids()
     boundaries = []
     for boundary_id, boundary in sorted(dataset.lane_boundaries.items()):
@@ -245,6 +247,7 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
             "route_crop_applied": crop_applied,
             "crop_anchor_boundary_ids": crop_anchor_boundary_ids,
             "counts": {
+                "static_walls": len(static_walls),
                 "centerlines": len(centerlines),
                 "boundaries": len(boundaries),
                 "stop_lines": sum(item["category"] == "stop_line" for item in boundaries),
@@ -257,6 +260,7 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
                 "global_route_points": global_route["point_count"],
             },
         },
+        "staticWalls": static_walls,
         "centerlines": centerlines,
         "boundaries": boundaries,
         "crosswalks": crosswalks,
@@ -328,6 +332,7 @@ input { accent-color: #32d3a2; }
   <label><input data-layer="laneControlSignals" type="checkbox" checked><span class="signal-icon lcs">◆</span>터널 차로제어신호(LCS) + ID</label>
   <label><input data-layer="topology" type="checkbox">→ 선행/후행 연결</label>
   <label><input data-layer="labels" type="checkbox">원본 MGeo 속도/방향 (주행 정책과 별도)</label>
+  <label><input data-layer="staticWalls" type="checkbox" checked><span class="swatch yellow"></span>터널 벽 · 원본 XY (높이 미측정)</label>
   <h2>Counts</h2><div class="stats" id="stats"></div>
   <h2>Inspector</h2><div id="inspect">지형지물을 클릭하면 MGeo ID와 속성이 표시됩니다.</div>
   <h2>Navigation</h2><div class="help">휠: 확대/축소 · 드래그: 이동 · 더블클릭: 전체 보기<br>좌표는 실행 중인 K-City scene의 local ENU(m) 기준입니다.</div>
@@ -356,6 +361,7 @@ function laneControlSignal(item){const p=s(item.p),r=5;ctx.save();ctx.translate(
 const centers=Object.fromEntries(MAP.centerlines.map(v=>[v.id,v]));
 function draw(){const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0,0,w,h);ctx.fillStyle='#071018';ctx.fillRect(0,0,w,h);ctx.lineJoin='round';ctx.lineCap='round';
  if(enabled.intersections){ctx.fillStyle='rgba(184,140,255,.12)';ctx.strokeStyle='rgba(184,140,255,.5)';ctx.lineWidth=1;MAP.intersections.forEach(x=>{path(x.p,true);ctx.fill();ctx.stroke();});}
+ if(enabled.staticWalls)MAP.staticWalls.forEach(x=>stroke(x,'#ffb347',4));
  if(enabled.centerlines)MAP.centerlines.forEach(x=>stroke(x,'rgba(60,229,231,.55)',1));
  MAP.boundaries.forEach(x=>{if(x.category==='stop_line'){if(enabled.stopLines)stroke(x,'#ff5c72',2.3);return;}if(x.category==='road_border'||x.category==='centerline'){if(enabled.roadBorders)stroke(x,boundaryColor(x),2);return;}if(x.style.includes('dashed')){if(enabled.dashed)stroke(x,boundaryColor(x),1.2,[6,5]);}else if(enabled.solid)stroke(x,boundaryColor(x),1.2);});
  if(enabled.crosswalks){ctx.fillStyle='rgba(57,169,255,.42)';ctx.strokeStyle='#52b8ff';ctx.lineWidth=1;MAP.crosswalks.forEach(x=>{path(x.p,true);ctx.fill();ctx.stroke();});}
@@ -375,7 +381,7 @@ canvas.addEventListener('dblclick',fit);
 function segDist(p,a,b){const vx=b[0]-a[0],vy=b[1]-a[1],wx=p[0]-a[0],wy=p[1]-a[1],d=vx*vx+vy*vy,t=d?Math.max(0,Math.min(1,(wx*vx+wy*vy)/d)):0;return Math.hypot(p[0]-a[0]-t*vx,p[1]-a[1]-t*vy);}
 canvas.addEventListener('click',e=>{if(last&&Math.hypot(e.clientX-last[0],e.clientY-last[1])>3)return;const r=canvas.getBoundingClientRect(),p=[e.clientX-r.left,e.clientY-r.top];let best=null,dist=12;
  const consider=(kind,item,points)=>{for(let i=1;i<points.length;i++){const d=segDist(p,s(points[i-1]),s(points[i]));if(d<dist){dist=d;best={kind,...item};}}};
- if(enabled.globalRoute&&MAP.globalRoute.p.length)consider('global_route',MAP.globalRoute,MAP.globalRoute.p);MAP.boundaries.forEach(x=>consider('boundary',x,x.p));MAP.centerlines.forEach(x=>consider('lane/link',x,x.p));MAP.crosswalks.forEach(x=>consider('crosswalk',x,x.p));MAP.surfaceMarkings.forEach(x=>consider('surface_marking',x,x.p));MAP.signals.forEach(x=>{if((x.category==='tunnel_lane_control'&&!enabled.laneControlSignals)||(x.category!=='tunnel_lane_control'&&!enabled.signals))return;const d=Math.hypot(p[0]-s(x.p)[0],p[1]-s(x.p)[1]);if(d<dist){dist=d;best={kind:x.category==='tunnel_lane_control'?'tunnel_lane_control_signal':'traffic_light',...x};}});
+ if(enabled.globalRoute&&MAP.globalRoute.p.length)consider('global_route',MAP.globalRoute,MAP.globalRoute.p);if(enabled.staticWalls)MAP.staticWalls.forEach(x=>consider('static_wall',x,x.p));MAP.boundaries.forEach(x=>consider('boundary',x,x.p));MAP.centerlines.forEach(x=>consider('lane/link',x,x.p));MAP.crosswalks.forEach(x=>consider('crosswalk',x,x.p));MAP.surfaceMarkings.forEach(x=>consider('surface_marking',x,x.p));MAP.signals.forEach(x=>{if((x.category==='tunnel_lane_control'&&!enabled.laneControlSignals)||(x.category!=='tunnel_lane_control'&&!enabled.signals))return;const d=Math.hypot(p[0]-s(x.p)[0],p[1]-s(x.p)[1]);if(d<dist){dist=d;best={kind:x.category==='tunnel_lane_control'?'tunnel_lane_control_signal':'traffic_light',...x};}});
  document.getElementById('inspect').textContent=best?JSON.stringify(best,(k,v)=>k==='p'?undefined:v,2):'선택된 객체가 없습니다.';});
 window.addEventListener('resize',resize);resize();
 </script>

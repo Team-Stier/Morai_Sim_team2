@@ -123,3 +123,15 @@ class CheckpointDisplayTest(unittest.TestCase):
                                           ([[0., 0., 0.]], 1.5, float('inf'))):
             with self.assertRaises(ValueError):
                 checkpoint_markers(points, -.1, diameter, height)
+
+class StaticWallDisplayTest(unittest.TestCase):
+    def test_wall_panels_keep_source_xyz_and_separate_polylines(self):
+        lines = [[[0,0,28],[10,0,28.5]], [[0,10,28],[10,10,28]]]
+        marker = map_markers({'static_walls': lines}, -0.1, 0.1, 5).markers[0]
+        self.assertEqual(marker.type, marker.TRIANGLE_LIST)
+        self.assertEqual(marker.header.frame_id, 'map')
+        self.assertEqual(len(marker.points), 12)
+        self.assertEqual([p.z for p in marker.points[:6]], [28,28.5,33.5,28,33.5,33])
+        self.assertEqual(lines[0][0], [0,0,28])
+        self.assertTrue(all(p.y == 0 for p in marker.points[:6]))
+        self.assertTrue(all(p.y == 10 for p in marker.points[6:]))
