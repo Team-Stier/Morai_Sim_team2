@@ -92,3 +92,8 @@ lane_rddf:
   route_match_m: 0.8
   route_exclusion_m: 0.8
   minimum_run_m: 2.0
+
+# Source wall polylines near the tunnel LCS01/LCS02. Heights are absent in MGeo.
+# No route fitting or vehicle-pose anchoring is performed.
+static_walls:
+  source_object_ids: [C3256W000003, C3256W000005]

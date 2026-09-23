@@ -267,3 +267,19 @@ RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 
 차로를 XYZ TXT로 추출한다. 기존 경로는 초록색, 추가 차로는 하늘색, 확인된 흰색
 점선 횡단 위치는 주황색으로 RViz에 표시한다. 조건·파일 형식·검증 범위는
 [추가 차로 RDDF](docs/lane_rddf.md)를 따른다.
+
+## 터널 정적 벽 레이어
+
+원본 `object_set.json`의 `wall` 객체 `C3256W000003`과 `C3256W000005`를
+`config/map_conversion.yaml`의 `static_walls.source_object_ids`로 선택한다.
+터널 LCS01/LCS02 부근의 두 벽선이며, 원본 모든 XYZ 꼭짓점을 중앙 map 원점으로
+변환한다. 차량 위치·중앙선·전역경로에 맞춰 벽 좌표를 이동하지 않는다.
+HTML 미리보기와 RViz HD-map 표시 레이어에 포함된다.
+
+`hd_map_tool static-walls`로 `data/derived/KATRI_static_walls.json`을 생성한다.
+원본 ID, source commit, 원본 파일 SHA-256, map XYZ를 보존한다. 원본 높이가 비어
+있어 `height_m: null`이며 RViz의 5 m 돌출 높이는 표시용이다. 이 파일은 정적
+지도 후보 산출물이다. 기존 공개 `HdMap` 메시지는 아직 벽 필드가 없으므로
+벽을 발행하지 않으며, Localization은 이 레이어를 아직 사용하지 않는다.
+실제 LiDAR와의 정합 검증 및 중앙 계약의 벽 형상/불확실성 정의를 완료한 뒤
+HD Map producer와 Localization consumer를 함께 연결해야 한다.

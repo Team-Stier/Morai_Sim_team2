@@ -10,7 +10,9 @@ from hd_map_pkg.display_geometry import load_route_display_layers
 from hd_map_pkg.course_speed import load_course_speed_policy
 
 
-def map_markers(layers, plane_z, line_width):
+def map_markers(layers, plane_z, line_width, wall_display_height=5.0):
+    if not math.isfinite(wall_display_height) or wall_display_height <= 0:
+        raise ValueError("Wall display height must be positive and finite")
     if not math.isfinite(plane_z) or not math.isfinite(line_width) or line_width <= 0:
         raise ValueError('Invalid HD map display height or line width')
     result = MarkerArray()
@@ -41,6 +43,18 @@ def map_markers(layers, plane_z, line_width):
         for line in lines:
             for a, b in zip(line, line[1:]):
                 marker.points.extend([Point(a[0], a[1], plane_z), Point(b[0], b[1], plane_z)])
+        if layer == 'static_walls':
+            # Preserve source XYZ. The extrusion is cosmetic, not surveyed height.
+            marker.type = Marker.TRIANGLE_LIST
+            marker.scale.x = marker.scale.y = marker.scale.z = 1.0
+            marker.color.r, marker.color.g, marker.color.b, marker.color.a = (1.0, 0.65, 0.15, 0.45)
+            marker.points = []
+            for line in lines:
+                for a, b in zip(line, line[1:]):
+                    low_a, low_b = Point(*a), Point(*b)
+                    high_a = Point(a[0], a[1], a[2]+wall_display_height)
+                    high_b = Point(b[0], b[1], b[2]+wall_display_height)
+                    marker.points.extend([low_a, low_b, high_b, low_a, high_b, high_a])
         result.markers.append(marker)
     if 'global_route_unlimited' in layers:
         high = layers['global_route_unlimited'][0]
@@ -75,4 +89,5 @@ def load_map_markers():
     layers, metadata = load_route_display_layers(source, projection, config, reference)
     rospy.loginfo('Route-cropped HD map: %s; bounds=%s', metadata['counts'], metadata['bounds'])
     return map_markers(layers, rospy.get_param('~hd_map_plane_z_m', -0.10),
-                       rospy.get_param('~hd_map_line_width_m', 0.10))
+                       rospy.get_param('~hd_map_line_width_m', 0.10),
+                       rospy.get_param('~hd_map_wall_display_height_m', 5.0))

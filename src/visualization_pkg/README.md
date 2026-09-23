@@ -158,3 +158,11 @@ HD Map 표시에는 하늘색 `lane_rddf`와 주황색 `lane_change_windows` nam
 주행용 차선변경 궤적이 아니다. [추출 조건과 검증](../hd_map_pkg/docs/lane_rddf.md)을 따른다.
 
 HD Map의 고주로 전역경로/추가 RDDF는 분홍색(제한 없음·목표 150 km/h), 일반 전역경로는 초록색(최대 58 km/h), 일반 추가 RDDF는 하늘색이다. 정적 구간은 Planner와 같은 중앙 코스 정책을 읽는다.
+
+## 터널 벽 표시
+
+HD Map의 원본 터널 벽 두 개를 기존 내부 `hd_map_markers`의 `static_walls`
+레이어에 반투명 주황색 면으로 표시한다. 벽은 원본 map XYZ를 유지하며 도로
+미리보기의 평면 높이로 내리지 않는다. `config/hd_map_display.yaml`의
+`hd_map_wall_display_height_m: 5.0`은 표시용 돌출 높이이며 실측 높이가 아니다.
+이 마커는 Localization 입력이 아니며 표시만으로 드리프트가 보정되지 않는다.

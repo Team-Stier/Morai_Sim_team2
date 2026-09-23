@@ -210,6 +210,22 @@ def command_lane_rddf(arguments):
     return 0
 
 
+def command_static_walls(arguments):
+    from .static_walls import build_static_walls
+    _, config, dataset, transformer, output_dir = _context(arguments)
+    walls = build_static_walls(dataset, transformer, config)
+    result = dict(schema_version=1, coordinate_frame='map', unit='m',
+                  source_commit=config['source']['commit'],
+                  source_sha256=dataset.source_hashes()['object_set.json']['sha256_raw'],
+                  physical_alignment_verified=False, localization_runtime_enabled=False,
+                  walls=walls)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / 'KATRI_static_walls.json'
+    path.write_text(json.dumps(result, ensure_ascii=False, indent=2)+'\n')
+    print(path)
+    return 0
+
+
 def command_inspect(arguments):
     _, config, dataset, transformer, _ = _context(arguments)
     origin = transformer.mgeo_to_sim([0.0, 0.0, 0.0])
@@ -250,6 +266,8 @@ def parser():
     view.set_defaults(function=command_view)
     lanes = subparsers.add_parser('lane-rddf', help='export course-connected same-direction XYZ lane alternatives')
     lanes.set_defaults(function=command_lane_rddf)
+    walls = subparsers.add_parser('static-walls', help='export original tunnel wall XYZ; height unknown')
+    walls.set_defaults(function=command_static_walls)
     inspect = subparsers.add_parser("inspect-source", help="inspect MGeo schema and coordinates")
     inspect.set_defaults(function=command_inspect)
     return value
