@@ -1,3 +1,6 @@
 # Crop and simplification follow hd_map_pkg/config/map_conversion.yaml.
 hd_map_plane_z_m: -0.10
 hd_map_line_width_m: 0.10
+
+# Cosmetic wall extrusion only; original MGeo wall height is unknown.
+hd_map_wall_display_height_m: 5.0
