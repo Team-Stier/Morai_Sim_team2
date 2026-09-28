@@ -1,0 +1,26 @@
+# Algorithm-only Hybrid A* parameters. Public ROS names remain in the central contract.
+hybrid_astar:
+  xy_resolution_m: 1.0
+  yaw_resolution_deg: 15.0
+  primitive_length_m: 3.0
+  collision_check_step_m: 0.30
+  steering_fractions: [-1.0, -0.66, -0.33, 0.0, 0.33, 0.66, 1.0]
+  maximum_steering_expansions: 5
+  goal_position_tolerance_m: 1.25
+  goal_yaw_tolerance_deg: 20.0
+  steering_cost_weight: 0.20
+  steering_change_cost_weight: 0.35
+  reference_lateral_cost_weight: 1.50
+  yaw_heuristic_weight_m_per_rad: 2.0
+  max_search_nodes: 12000
+  maximum_planning_time_sec: 0.30
+  wheelbase_m: 3.0
+  front_overhang_m: 3.845
+  rear_overhang_m: 0.790
+  vehicle_width_m: 1.892
+  minimum_turning_radius_m: 5.87
+  corridor_half_width_m: 6.0
+  obstacle_margin_m: 0.0
+  maximum_progress_regression_m: 0.50
+  reference_step_m: 0.50
+  local_goal_distance_m: 24.0

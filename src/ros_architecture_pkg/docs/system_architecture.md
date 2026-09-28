@@ -59,7 +59,29 @@ command를 만들고 Safety Supervisor가 최종 gate를 수행한 후에만 MOR
 Camera/LiDAR 원본과 개별 Perception 관측은 Planner가 직접 구독하지 않는다.
 Camera/LiDAR Perception은 센서 관측을, World Model은 시간·좌표 정렬과
 cross-sensor fusion 및 tracking을 각각 소유한다. 위 경계와 이름은 설계 승인
-상태이며, Planner와 trajectory schema는 아직 구현·runtime 검증되지 않았다.
+상태다. Planner와 trajectory schema는 오프라인 구현됐으며 MORAI runtime 검증은 남아 있다.
+
+## Planner Mode Manager 내부 아키텍처
+
+![Planner Mode Manager 통합 아키텍처](planner_mode_architecture.png)
+
+공개 node와 topic을 추가하지 않고 `path_planner_node` 내부에 Planner Mode
+Manager, Hybrid A*와 Frenet을 같은 계층으로 둔다. Mode Manager는
+`RouteContext.progress`와 고정된 Z1~Z5 설정만 사용한다.
+
+| 구간 | route_s | Planner |
+|---|---:|---|
+| Z1 | 0.000–237.423 m | Hybrid A* |
+| Z2 | 237.423–635.113 m | Hybrid A* |
+| Z3 | 635.113–1,118.741751 m | Hybrid A* |
+| Z4 | 1,118.741751–1,741.720989 m | Frenet |
+| Z5 | 1,741.720989–2,184.611723 m | Hybrid A* |
+
+따라서 실제 Planner 종류 전환은 CP10과 CP13에서만 발생한다. 선택된 Planner만
+`/molit/planning/trajectory`를 발행하며 객체 출현은 Planner 선택 조건이 아니다.
+현재 `frenet_rddf.launch`의 downstream transparent relay 구성은 변경하지 않는다.
+상세 구현과 MORAI 연결 후 검증 항목은
+[`planner_mode_integration.md`](../../path_planning_pkg/docs/planner_mode_integration.md)에 기록한다.
 
 ## 설계 결정
 

@@ -24,7 +24,7 @@ LiDAR 관측, World Model, Frenet Planner와 Controller→Safety 연결을 추�
 `send_to_morai:=true`로 개발 주행을 활성화한다. 시험 상한은 기본적으로 해제하며
 Q 전환은 기존 MORAI sender 동작을 유지한다.
 [중앙 개발 프로필](../ros_architecture_pkg/config/messages/frenet_runtime.yaml)과
-[검증 범위](../path_planning_pkg/docs/frenet_rddf.md)를 따른다.
+[통합 Planner 검증 범위](../path_planning_pkg/docs/planner_mode_integration.md)를 따른다.
 
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의

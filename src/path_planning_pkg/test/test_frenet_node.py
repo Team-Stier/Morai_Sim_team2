@@ -13,6 +13,7 @@ from common_msgs_pkg.msg import EgoState, HdMap, RouteLane, RouteContext, WorldM
 from geometry_msgs.msg import PoseStamped, Point, Point32, Polygon
 from nav_msgs.msg import Odometry
 from path_planning_pkg.frenet import Candidate, Planner
+from path_planning_pkg.planner_mode_manager import FRENET, PlannerModeManager, PlannerZone
 
 
 spec = importlib.util.spec_from_file_location('frenet_node', Path(__file__).parents[1]/'src/frenet_planner_node.py')
@@ -524,6 +525,11 @@ class FrenetOutputTest(unittest.TestCase):
         node.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
         node.c['rddf_geometry_only'] = False
         node.c['minimum_active_path_hold_sec'] = 0.0  # Unrelated fixtures test immediate selection.
+        node.mode_manager = PlannerModeManager(2184.6117233360674, (
+            PlannerZone('legacy-frenet-test', 0.0, 2184.6117233360674, FRENET),
+        ))
+        node.active_planner_mode = None
+        node.active_zone = None
         ego, odom = EgoState(), Odometry()
         ego.reset_id = 12
         ego.pose.pose.position.x = 10.

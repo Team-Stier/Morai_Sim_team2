@@ -15,6 +15,9 @@ from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
 from common_msgs_pkg.msg import ComponentStatus, EgoState, HdMap, LocalizationStatus, RouteContext, Trajectory, WorldModel
 from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, geometry, geometry_windows, project
+from path_planning_pkg.hybrid_astar import HybridAStarConfig, HybridAStarPlanner, Pose2D
+from path_planning_pkg.hybrid_runtime import build_hybrid_candidate, flatten_obstacle_points
+from path_planning_pkg.planner_mode_manager import HYBRID_ASTAR, PlannerModeManager
 from hd_map_pkg.course_speed import CourseSpeedZones, load_course_speed_policy
 
 
@@ -26,6 +29,11 @@ class Node:
     def __init__(self):
         self.c = rospy.get_param('~')
         self.planner = Planner(self.c)
+        self.mode_manager = PlannerModeManager.from_mapping(self.c['planner_mode'])
+        self.hybrid_planner = HybridAStarPlanner(HybridAStarConfig.from_mapping(self.c['hybrid_astar']))
+        self.hybrid_runtime_config = self.c['hybrid_astar']
+        self.active_planner_mode = None
+        self.active_zone = None
         self.route = self.world = self.state = self.selected = None
         self.selected_stamp = None
         self.pending_selection = None
@@ -59,6 +67,9 @@ class Node:
                 self.selected = self.selected_stamp = None
                 self.pending_selection = self.pending_selection_stamp = None
                 self.pending_selection_set = False
+                self.mode_manager.reset()
+                self.active_planner_mode = None
+                self.active_zone = None
             self.state = ego, odom
 
     def on_map(self, message):
@@ -170,6 +181,56 @@ class Node:
                 (route.route_complete or lanes['global_route'].s[-1]-progress < 2*self.c['spatial_step_m'])):
             self.defer_stop('route_endpoint_stop')
             return
+        selection = self.mode_manager.select(route.progress)
+        if selection.planner != self.active_planner_mode:
+            with self.lock:
+                self.selected = self.selected_stamp = None
+                self.pending_selection = self.pending_selection_stamp = None
+                self.pending_selection_set = False
+            self.planner.committed = self.planner.pending = None
+            self.active_planner_mode = selection.planner
+        self.active_zone = selection.zone_id
+
+        if selection.planner == HYBRID_ASTAR:
+            hybrid = build_hybrid_candidate(
+                self.hybrid_planner,
+                lanes['global_route'],
+                Pose2D(float(position[0]), float(position[1]), yaw(ego.pose.pose.orientation)),
+                progress,
+                flatten_obstacle_points(world.objects),
+                self.hybrid_runtime_config,
+                self.c.get('loop_route', False),
+            )
+            candidate = hybrid.candidate
+            completed = rospy.Time.now()
+            if candidate is not None:
+                _distance, _heading, _curvature, speeds, times = self.planner.profile(candidate, speed)
+                candidate.speed = speeds
+                candidate.times = times
+                candidate.feasible = True
+                candidate.eta = float(times[-1])
+                candidate.cost = candidate.eta
+                self.offer_selection(candidate, completed, ego.reset_id)
+            else:
+                self.offer_selection(None, completed, ego.reset_id)
+            diagnostic = {
+                'planner': HYBRID_ASTAR,
+                'zone': selection.zone_id,
+                'status': hybrid.plan.status.value,
+                'expanded_nodes': hybrid.plan.expanded_nodes,
+                'generated_nodes': hybrid.plan.generated_nodes,
+                'rejected_by_corridor': hybrid.plan.rejected_by_corridor,
+                'rejected_by_obstacle': hybrid.plan.rejected_by_obstacle,
+                'elapsed_sec': hybrid.plan.elapsed_sec,
+            }
+            self.audit.publish(String(data=json.dumps([diagnostic])))
+            self.report(
+                'planner_mode=%s; zone=%s; status=%s; simulator_closed_loop_unverified' %
+                (selection.planner, selection.zone_id, hybrid.plan.status.value),
+                candidate is not None,
+                time.monotonic()-started,
+            )
+            return
         goal_s = (progress+max(route.comparison_goal_s-route.progress,1.)
                   if self.c['rddf_geometry_only'] else max(route.comparison_goal_s,progress+1.))
         if self.c.get('loop_route',False):
@@ -242,8 +303,8 @@ class Node:
             self.audit.publish(String(data=json.dumps([{'key':fast.key,'target':fast.target,
                 'feasible':fast.feasible,'reason':fast.reason,'eta':fast.eta if math.isfinite(fast.eta) else None,
                 'cost':fast.cost if math.isfinite(fast.cost) else None,'comfort':fast.comfort,'changes':fast.changes}])))
-            self.report('frenet; selected=%s; fast_keep; rddf_geometry_only=%s; observed_clusters_only; unverified_development'%
-                        (fast.key,self.c['rddf_geometry_only']), True, time.monotonic()-started)
+            self.report('planner_mode=frenet; zone=%s; selected=%s; fast_keep; rddf_geometry_only=%s; observed_clusters_only; unverified_development'%
+                        (selection.zone_id,fast.key,self.c['rddf_geometry_only']), True, time.monotonic()-started)
             return
 
         self.last_lane_change_evaluation = time.monotonic()
@@ -264,8 +325,8 @@ class Node:
                   'cost':x.cost if math.isfinite(x.cost) else None,
                   'comfort':x.comfort, 'changes':x.changes} for x in candidates]
         self.audit.publish(String(data=json.dumps(audit)))
-        self.report('frenet; selected=%s; candidates=%d; rddf_geometry_only=%s; observed_clusters_only; unverified_development'%
-                    (chosen.key if chosen else 'stop', len(candidates),self.c['rddf_geometry_only']), True, time.monotonic()-started)
+        self.report('planner_mode=frenet; zone=%s; selected=%s; candidates=%d; rddf_geometry_only=%s; observed_clusters_only; unverified_development'%
+                    (selection.zone_id,chosen.key if chosen else 'stop', len(candidates),self.c['rddf_geometry_only']), True, time.monotonic()-started)
 
     def publish(self, _):
         if self.state is None:
@@ -333,7 +394,7 @@ class Node:
 
     def emit(self, output):
         self.trajectory.publish(output)
-        line = Marker(header=output.header, ns='frenet_selected', id=0,
+        line = Marker(header=output.header, ns='planner_selected', id=0,
                       type=Marker.LINE_STRIP, action=Marker.ADD)
         line.pose.orientation.w = 1.
         line.scale.x = .18
@@ -345,7 +406,7 @@ class Node:
         markers = [Marker(action=Marker.DELETEALL), line]
         stops = [i for i, speed in enumerate(output.speed_mps) if speed == 0. and (i > 0 or output.stop_required)]
         if stops:
-            stop = Marker(header=output.header, ns='frenet_stop', id=1,
+            stop = Marker(header=output.header, ns='planner_stop', id=1,
                           type=Marker.SPHERE, action=Marker.ADD)
             stop.pose.position = copy.deepcopy(line.points[stops[0]])
             stop.pose.orientation.w = 1.
