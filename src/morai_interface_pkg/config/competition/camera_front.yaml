@@ -1,0 +1,14 @@
+# Competition profile - Front Camera UDP ingress
+# MORAI Network Settings의 destination IP는 Team PC의 실제 Ethernet IPv4로 설정한다.
+# 아래 port는 현재 Team2 검증값이며 본선 현장 설정과 반드시 대조한다.
+bind_ip: "0.0.0.0"
+port: 9291
+topic: "/molit/sensors/camera/front/image/compressed"
+frame_id: "camera_front_optical_frame"
+timestamp_source: "packet"
+max_frame_bytes: 2000000
+frame_timeout_sec: 0.5
+check_chunk_index: true
+receive_buffer_bytes: 65536
+socket_timeout_sec: 0.5
+stats_log_period_sec: 5.0
