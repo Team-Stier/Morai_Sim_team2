@@ -42,12 +42,6 @@
          value="$(find morai_interface_pkg)/config/competition/lidar.yaml"/>
   </include>
 
-  <include file="$(find morai_interface_pkg)/launch/lidar_watchdog.launch">
-    <arg name="enable" value="$(arg start_lidar_watchdog)"/>
-    <arg name="config"
-         value="$(find morai_interface_pkg)/config/lidar_watchdog.yaml"/>
-  </include>
-
   <include file="$(find morai_interface_pkg)/launch/vehicle_status_bridge.launch">
     <arg name="enable" value="$(arg start_vehicle_status)"/>
     <arg name="config"
