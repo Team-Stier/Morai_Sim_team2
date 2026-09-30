@@ -1,0 +1,36 @@
+schema_version: 1
+profile_name: competition_network_v1
+status: precompetition_live_validation_required
+
+network:
+  client_pc_ipv4: "192.168.0.1"
+  team_pc_ipv4: "SET_TO_TEAM_PC_ETHERNET_IPV4"
+  note: >-
+    MORAI sensor publishers must use the Team PC Ethernet IPv4 as destination.
+    Ego Ctrl Cmd is sent from Team PC to the Client PC IPv4.
+
+channels:
+  camera_front:   {direction: ingress, port: 9291, enabled: true}
+  camera_left:    {direction: ingress, port: 9293, enabled: true}
+  camera_right:   {direction: ingress, port: 9295, enabled: true}
+  gps:            {direction: ingress, port: 7801, enabled: true}
+  imu:            {direction: ingress, port: 7802, enabled: true}
+  lidar:          {direction: ingress, port: 2368, enabled: true}
+  vehicle_status: {direction: ingress, port: 7803, enabled: true}
+  collision:      {direction: ingress, port: 7804, enabled: true}
+  control:
+    direction: egress
+    destination_ip: "192.168.0.1"
+    port: 7805
+    enabled: true
+    dry_run_until_live_verified: true
+
+validation:
+  required_before_competition:
+    - confirm_client_pc_ipv4
+    - confirm_team_pc_ethernet_ipv4
+    - confirm_all_morai_destination_ports
+    - capture_and_validate_competition_vehicle_status_packet
+    - capture_and_validate_collision_packet
+    - validate_ego_ctrl_cmd_steering_conversion
+    - disable_control_dry_run_only_after_live_validation
