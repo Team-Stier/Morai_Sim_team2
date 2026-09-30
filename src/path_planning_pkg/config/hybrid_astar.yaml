@@ -13,7 +13,7 @@ hybrid_astar:
   reference_lateral_cost_weight: 1.50
   yaw_heuristic_weight_m_per_rad: 2.0
   max_search_nodes: 12000
-  maximum_planning_time_sec: 0.30
+  maximum_planning_time_sec: 0.50
   wheelbase_m: 3.0
   front_overhang_m: 3.845
   rear_overhang_m: 0.790

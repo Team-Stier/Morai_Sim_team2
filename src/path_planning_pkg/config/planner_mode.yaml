@@ -6,6 +6,6 @@ planner_mode:
   zones:
     - {id: Z1, start_s: 0.0, end_s: 237.423, planner: hybrid_astar}
     - {id: Z2, start_s: 237.423, end_s: 635.113, planner: hybrid_astar}
-    - {id: Z3, start_s: 635.113, end_s: 1118.7417511690987, planner: hybrid_astar}
+    - {id: Z3, start_s: 635.113, end_s: 1118.7417511690987, planner: frenet}
     - {id: Z4, start_s: 1118.7417511690987, end_s: 1741.7209885112272, planner: frenet}
     - {id: Z5, start_s: 1741.7209885112272, end_s: 2184.6117233360674, planner: hybrid_astar}
