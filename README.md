@@ -5,7 +5,7 @@
 처음 환경 구성:
 
 ```bash
-mkdir -p ~/catkin_ws/src
+
 cd ~/catkin_ws/src
 git clone --recurse-submodules https://github.com/Team-Stier/Morai_Sim_team2.git
 
