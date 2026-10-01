@@ -6,7 +6,9 @@ status: candidate_schema_implemented_pending_runtime_validation
 
 source_evidence:
   competition_rule:
+    url: https://morai.atlassian.net/wiki/external/ZDBiNmI0MGFiNTY2NDRkYWIyZTMzNWFkYzkwY2Q4NTU
     allowed_channels: [Ego Ctrl Cmd, CollisionData, Competition Vehicle Status]
+    referee_only_channels: [Ego Detail Status, Ego Vehicle Status, Get TrafficLight Status]
     ego_ctrl_cmd_constraints:
       command_type: 1
       control_mode: 2
