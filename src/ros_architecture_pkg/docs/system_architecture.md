@@ -63,7 +63,7 @@ cross-sensor fusion 및 tracking을 각각 소유한다. 위 경계와 이름은
 
 ## Planner Mode Manager 내부 아키텍처
 
-![Planner Mode Manager 통합 아키텍처](planner_mode_architecture.png)
+[Planner Mode Manager 통합 아키텍처 Mermaid 원본](planner_mode_architecture.mmd)
 
 공개 node와 topic을 추가하지 않고 `path_planner_node` 내부에 Planner Mode
 Manager, Hybrid A*와 Frenet을 같은 계층으로 둔다. Mode Manager는
@@ -73,11 +73,12 @@ Manager, Hybrid A*와 Frenet을 같은 계층으로 둔다. Mode Manager는
 |---|---:|---|
 | Z1 | 0.000–237.423 m | Hybrid A* |
 | Z2 | 237.423–635.113 m | Hybrid A* |
-| Z3 | 635.113–1,118.741751 m | Hybrid A* |
+| Z3 | 635.113–1,118.741751 m | Frenet |
 | Z4 | 1,118.741751–1,741.720989 m | Frenet |
 | Z5 | 1,741.720989–2,184.611723 m | Hybrid A* |
 
-따라서 실제 Planner 종류 전환은 CP10과 CP13에서만 발생한다. 선택된 Planner만
+따라서 실제 Planner 종류 전환은 CP7과 CP12에서만 발생한다. CP10에서는
+Frenet을 유지한다. 선택된 Planner만
 `/molit/planning/trajectory`를 발행하며 객체 출현은 Planner 선택 조건이 아니다.
 현재 `frenet_rddf.launch`의 downstream transparent relay 구성은 변경하지 않는다.
 상세 구현과 MORAI 연결 후 검증 항목은

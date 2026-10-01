@@ -9,8 +9,9 @@
 - `HybridAStarPlanner`: `morai/test2`의 전진 bicycle arc, 연속 pose/이산 key,
   steering history와 reference guide 원칙을 사용한다.
 - 기존 Frenet과 Hybrid A* 중 선택된 하나만 기존 `Trajectory` publisher에 전달한다.
-- Planner 종류는 CP10과 CP13 경계에서만 변경한다. 객체 출현은 Planner 종류를
-  변경하지 않으며 선택된 Planner의 입력으로만 사용한다.
+- Planner 종류는 CP7과 CP12 경계에서만 변경한다. CP10은 Z3·Z4의 경계지만
+  양쪽 모두 Frenet이다. 객체 출현은 Planner 종류를 변경하지 않으며 선택된
+  Planner의 입력으로만 사용한다.
 
 MORAI 시뮬레이터가 연결되지 않은 상태에서 구현했으므로 ROS topic의 실제 주기,
 UDP, TF 지연과 차량 closed-loop 추종 결과는 검증되지 않았다.
@@ -35,9 +36,9 @@ src/path_planning_pkg/config/hybrid_astar.yaml
 |---|---:|---|---|
 | Z1 | 0.000 ≤ s < 237.423 m | Hybrid A* | 시작 모드 |
 | Z2 | 237.423 ≤ s < 635.113 m | Hybrid A* | 없음 |
-| Z3 | 635.113 ≤ s < 1,118.741751 m | Hybrid A* | 없음 |
-| Z4 | 1,118.741751 ≤ s < 1,741.720989 m | Frenet | CP10에서 전환 |
-| Z5 | 1,741.720989 ≤ s ≤ 2,184.611723 m | Hybrid A* | CP13에서 전환 |
+| Z3 | 635.113 ≤ s < 1,118.741751 m | Frenet | CP7에서 전환 |
+| Z4 | 1,118.741751 ≤ s < 1,741.720989 m | Frenet | 없음(CP10) |
+| Z5 | 1,741.720989 ≤ s ≤ 2,184.611723 m | Hybrid A* | CP12에서 전환 |
 
 한 번의 전진 주행을 전제로 Manager가 수신한 최대 `route_s`를 유지한다. 작은
 역방향 projection jitter가 들어와도 이전 Planner 구간으로 되돌아가지 않는다.
@@ -45,7 +46,7 @@ Localization `reset_id`가 바뀌면 Manager 상태도 초기화한다.
 
 ## 내부 구조
 
-![확정 Planner 통합 아키텍처](../../ros_architecture_pkg/docs/planner_mode_architecture.png)
+[Planner 통합 아키텍처 Mermaid 원본](../../ros_architecture_pkg/docs/planner_mode_architecture.mmd)을 참고한다.
 
 | 구성요소 | 구현 파일 | 역할 |
 |---|---|---|
@@ -105,9 +106,10 @@ Hybrid A*와 Frenet 결과를 합치지 않는다. 선택된 Planner 결과만 �
 ## 오프라인 검증
 
 - Z1~Z5 경계 포함 규칙
-- Z1→Z2→Z3에서 Hybrid A* 유지
-- CP10에서 Hybrid A*→Frenet 전환
-- CP13에서 Frenet→Hybrid A* 전환
+- Z1→Z2에서 Hybrid A* 유지
+- CP7에서 Hybrid A*→Frenet 전환
+- CP10에서 Frenet 유지
+- CP12에서 Frenet→Hybrid A* 전환
 - 역방향 progress jitter가 이전 모드로 복귀시키지 않음
 - Localization reset 후 Z1부터 새 주행 가능
 - 직선·곡률 bicycle path 생성
@@ -122,7 +124,7 @@ Hybrid A*와 Frenet 결과를 합치지 않는다. 선택된 Planner 결과만 �
 
 | 항목 | 예상 문제 | 확인 방법 |
 |---|---|---|
-| Route progress | CP10/CP13 부근 지연·점프 | 실제 `/molit/route/context.progress` 기록과 전환 status 비교 |
+| Route progress | CP7/CP12 부근 지연·점프 | 실제 `/molit/route/context.progress` 기록과 전환 status 비교 |
 | Planner handoff | 첫 Frenet/Hybrid 경로의 위치·접선 차이 | 경계 전후 odom trajectory 곡률과 Controller tracking error 확인 |
 | 계산 시간 | Hybrid A*가 5 Hz decision 주기를 넘을 수 있음 | expanded nodes와 `processing_latency_sec` 측정 후 파라미터 조정 |
 | 좌표계 | Ego/map 객체와 odom 출력 변환 오차 | map pose와 변환된 첫 trajectory 구간을 RViz에서 비교 |

@@ -10,7 +10,7 @@ LiDAR 보정 복원: `c6265ad`의 측정시각 roll·pitch 보정, 자차 반사
 [복원 범위와 설정](src/lidar_perception_pkg/README.md)을 참고한다.
 
 통합 Planner 개발 실행은 [Mode Manager 통합 기록](src/path_planning_pkg/docs/planner_mode_integration.md)을
-따른다. Z1~Z3·Z5는 Hybrid A*, Z4 고주로는 Frenet을 사용하며 시험 상한은 해제한 상태다.
+따른다. Z1·Z2·Z5는 Hybrid A*, Z3·Z4는 Frenet을 사용하며 시험 상한은 해제한 상태다.
 Frenet 세부 동작은 [경로 생성·비용식·시험 범위](src/path_planning_pkg/docs/frenet_rddf.md)에 기록한다.
 현재는 사용자 요청으로 RDDF 형상만 주행에 사용한다. 지도 경계·체크포인트·
 점선 연결 조건은 적용하지 않으며 LiDAR 클러스터 충돌 판단은 유지한다.
