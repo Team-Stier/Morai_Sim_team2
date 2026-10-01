@@ -111,13 +111,14 @@ class CompetitionNetworkBringupTest(unittest.TestCase):
             self.profile["channels"]["control"]["destination_ip"],
         )
 
-    def test_control_stays_fail_closed_until_live_validation(self):
+    def test_control_is_enabled_for_morai_simulator_validation(self):
         with (MORAI_CONFIG_ROOT / "control.yaml").open("r", encoding="utf-8") as stream:
             control = yaml.safe_load(stream)
 
-        self.assertTrue(control["dry_run"])
-        self.assertFalse(control["allow_motion_commands"])
-        self.assertFalse(control["steering_conversion_verified"])
+        self.assertFalse(control["dry_run"])
+        self.assertTrue(control["allow_motion_commands"])
+        self.assertTrue(control["steering_conversion_verified"])
+        self.assertEqual(float(control["steering_normalized_per_rad"]), 1.0)
 
 
 if __name__ == "__main__":
