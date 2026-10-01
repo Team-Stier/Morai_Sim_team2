@@ -2,12 +2,12 @@
 
 ## 신규 개발자 시작
 
-처음 환경 구성:
+처음 환경 구성, 의종성 설치:
 
 ```bash
 
 cd ~/catkin_ws/src
-git clone --recurse-submodules https://github.com/Team-Stier/Morai_Sim_team2.git
+git pull --ff-only origin main
 
 cd ~/catkin_ws
 source /opt/ros/noetic/setup.bash
@@ -27,7 +27,6 @@ source ~/catkin_ws/devel/setup.bash
 ```bash
 cd ~/catkin_ws/src/Morai_Sim_team2
 git pull origin main
-git submodule update --init --recursive
 
 cd ~/catkin_ws
 catkin_make
@@ -39,21 +38,10 @@ source devel/setup.bash
 ```bash
 roslaunch system_bringup_pkg competition.launch
 ```
+<br><br><br><hr>
 
-전체 개발 주행 실행: 저장소 루트에서 `./run.sh`.
-센서·Localization·RViz·구간별 Hybrid A*/Frenet Planning·제어 송신을 함께 실행하며 Ctrl+C로 종료한다.
-MORAI 실행 및 Cmd Control 연결은 별도다.
-[실행 옵션](src/system_bringup_pkg/README.md#한-번에-실행)을 참고한다.
 
-LiDAR 보정 복원: `c6265ad`의 측정시각 roll·pitch 보정, 자차 반사점 제거와
-구역별 지면 제거를 현재 제어 브랜치에 통합했다.
-[복원 범위와 설정](src/lidar_perception_pkg/README.md)을 참고한다.
 
-통합 Planner 개발 실행은 [Mode Manager 통합 기록](src/path_planning_pkg/docs/planner_mode_integration.md)을
-따른다. Z1·Z2·Z5는 Hybrid A*, Z3·Z4는 Frenet을 사용하며 시험 상한은 해제한 상태다.
-Frenet 세부 동작은 [경로 생성·비용식·시험 범위](src/path_planning_pkg/docs/frenet_rddf.md)에 기록한다.
-현재는 사용자 요청으로 RDDF 형상만 주행에 사용한다. 지도 경계·체크포인트·
-점선 연결 조건은 적용하지 않으며 LiDAR 클러스터 충돌 판단은 유지한다.
 
 2026 국토부 KATRI 대학생 AI/SW 모빌리티 경진대회 **AI융합자율주행 부문**을 위한 Team Stier의 MORAI 기반 자율주행 프로젝트다.
 
