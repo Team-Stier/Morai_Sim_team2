@@ -1,5 +1,45 @@
 # Morai_Sim_team2
 
+## 신규 개발자 시작
+
+처음 환경 구성:
+
+```bash
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws/src
+git clone --recurse-submodules https://github.com/Team-Stier/Morai_Sim_team2.git
+
+cd ~/catkin_ws
+source /opt/ros/noetic/setup.bash
+rosdep install --from-paths src --ignore-src -r -y
+catkin_make
+source devel/setup.bash
+```
+
+새 터미널을 열 때마다 팀 workspace를 ROS 환경에 등록한다.
+
+```bash
+source ~/catkin_ws/devel/setup.bash
+```
+
+최신 코드 반영 후에는 필요하면 다시 빌드한다.
+
+```bash
+cd ~/catkin_ws/src/Morai_Sim_team2
+git pull origin main
+git submodule update --init --recursive
+
+cd ~/catkin_ws
+catkin_make
+source devel/setup.bash
+```
+
+현재 본선 전체 스택 실행:
+
+```bash
+roslaunch system_bringup_pkg competition.launch
+```
+
 전체 개발 주행 실행: 저장소 루트에서 `./run.sh`.
 센서·Localization·RViz·구간별 Hybrid A*/Frenet Planning·제어 송신을 함께 실행하며 Ctrl+C로 종료한다.
 MORAI 실행 및 Cmd Control 연결은 별도다.
