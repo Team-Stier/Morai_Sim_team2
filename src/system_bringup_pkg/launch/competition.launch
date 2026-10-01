@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Competition I/O bringup.
-       MORAI <-> Team PC UDP와 ROS bridge만 한 번에 올린다.
-       자율주행 downstream 알고리즘은 이 파일에서 시작하지 않는다. -->
+  <!-- Competition full-stack bringup.
+       본선 MORAI UDP I/O + Localization + Frenet 주행 스택을 한 번에 올린다.
+       개발용 frenet_all.launch의 센서/제어 설정은 재사용하지 않는다. -->
 
+  <!-- Competition I/O -->
   <arg name="start_camera_left" default="true"/>
   <arg name="start_camera_right" default="true"/>
   <arg name="start_imu" default="true"/>
@@ -13,12 +14,17 @@
   <arg name="start_collision" default="true"/>
   <arg name="start_control" default="true"/>
 
+  <!-- Full-stack runtime options -->
+  <arg name="rviz" default="true"/>
+  <arg name="test_speed_cap_kph" default="0.0"/>
+
   <param name="/use_sim_time" value="false"/>
 
   <rosparam command="load"
             file="$(find system_bringup_pkg)/config/competition_network.yaml"
             ns="/molit/internal/competition_network"/>
 
+  <!-- 1) MORAI UDP -> ROS sensors using competition configs only -->
   <include file="$(find morai_interface_pkg)/launch/morai_interface_pkg.launch">
     <arg name="start_cameras" value="true"/>
     <arg name="start_camera_left" value="$(arg start_camera_left)"/>
@@ -42,6 +48,7 @@
          value="$(find morai_interface_pkg)/config/competition/lidar.yaml"/>
   </include>
 
+  <!-- 2) Competition-only vehicle/collision ingress -->
   <include file="$(find morai_interface_pkg)/launch/vehicle_status_bridge.launch">
     <arg name="enable" value="$(arg start_vehicle_status)"/>
     <arg name="config"
@@ -54,6 +61,22 @@
          value="$(find morai_interface_pkg)/config/competition/collision.yaml"/>
   </include>
 
+  <!-- 3) Localization + TF + visualization.
+       Sensor ingress is already running above, so this does not duplicate sensors. -->
+  <include file="$(find system_bringup_pkg)/launch/localization_visualization.launch">
+    <arg name="rviz" value="$(arg rviz)"/>
+  </include>
+
+  <!-- 4) Existing Frenet driving algorithms.
+       send_to_morai=false is deliberate: frenet_rddf.launch otherwise starts
+       the LOCAL development control sender (127.0.0.1 config).
+       The competition sender is started exactly once below. -->
+  <include file="$(find system_bringup_pkg)/launch/frenet_rddf.launch">
+    <arg name="send_to_morai" value="false"/>
+    <arg name="test_speed_cap_kph" value="$(arg test_speed_cap_kph)"/>
+  </include>
+
+  <!-- 5) Safety final command -> MORAI using competition control config -->
   <include file="$(find morai_interface_pkg)/launch/control_sender.launch">
     <arg name="enable" value="$(arg start_control)"/>
     <arg name="config"
