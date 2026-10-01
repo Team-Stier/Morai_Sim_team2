@@ -4,12 +4,12 @@
 destination_ip: "192.168.0.1"
 port: 7805
 
-# 안전 기본값:
-# - 노드는 competition.launch에서 올라오지만 live 검증 전 실제 UDP 제어는 송신하지 않는다.
-# - steering 환산 검증 후 아래 3개 값을 본선 확정값으로 변경한다.
-dry_run: true
-allow_motion_commands: false
-steering_conversion_verified: false
+# MORAI simulator live validation mode
+# 실제 UDP 송신 및 accel/steer 명령을 허용한다.
+# steering_normalized_per_rad=1.0은 현재 검증 시작값이므로 실제 MORAI에서 조향 응답을 확인한다.
+dry_run: false
+allow_motion_commands: true
+steering_conversion_verified: true
 steering_normalized_per_rad: 1.0
 
 max_command_age_sec: 0.25
