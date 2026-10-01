@@ -1,7 +1,7 @@
 # Morai_Sim_team2
 
 전체 개발 주행 실행: 저장소 루트에서 `./run.sh`.
-센서·Localization·RViz·Frenet 회피·제어 송신을 함께 실행하며 Ctrl+C로 종료한다.
+센서·Localization·RViz·구간별 Hybrid A*/Frenet Planning·제어 송신을 함께 실행하며 Ctrl+C로 종료한다.
 MORAI 실행 및 Cmd Control 연결은 별도다.
 [실행 옵션](src/system_bringup_pkg/README.md#한-번에-실행)을 참고한다.
 
@@ -9,8 +9,9 @@ LiDAR 보정 복원: `c6265ad`의 측정시각 roll·pitch 보정, 자차 반사
 구역별 지면 제거를 현재 제어 브랜치에 통합했다.
 [복원 범위와 설정](src/lidar_perception_pkg/README.md)을 참고한다.
 
-Frenet RDDF 개발 실행은 [경로 생성·비용식·시험 범위](src/path_planning_pkg/docs/frenet_rddf.md)를
-따른다. 전역경로와 지정 RDDF 14개를 사용하며 시험 상한은 해제한 상태다.
+통합 Planner 개발 실행은 [Mode Manager 통합 기록](src/path_planning_pkg/docs/planner_mode_integration.md)을
+따른다. Z1~Z3·Z5는 Hybrid A*, Z4 고주로는 Frenet을 사용하며 시험 상한은 해제한 상태다.
+Frenet 세부 동작은 [경로 생성·비용식·시험 범위](src/path_planning_pkg/docs/frenet_rddf.md)에 기록한다.
 현재는 사용자 요청으로 RDDF 형상만 주행에 사용한다. 지도 경계·체크포인트·
 점선 연결 조건은 적용하지 않으며 LiDAR 클러스터 충돌 판단은 유지한다.
 

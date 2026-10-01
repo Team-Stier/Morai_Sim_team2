@@ -39,7 +39,7 @@ lateral_acceleration_mps2: 3.0
 speed_tolerance_mps: 0.5
 stop_margin_m: 5.0
 stationary_speed_mps: 0.5
-follow_gap_m: 12.0
+follow_gap_m: 5.0
 follow_time_sec: 2.0
 normal_cruise_margin_kph: 2.0
 high_cruise_kph: 150.0

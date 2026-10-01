@@ -1,5 +1,16 @@
 # path_planning_pkg
 
+## Planner Mode Manager 통합
+
+현재 단일 `path_planner_node` 안에 기존 Frenet과 route-guided Hybrid A*가 같은
+계층으로 구성되어 있다. [Planner Mode Manager 통합 기록](docs/planner_mode_integration.md)에
+구간 설정 위치, 구현 파일, 공개 topic, 오프라인 검증과 MORAI 연결 후 확인 항목을
+기록한다. Planner 배정은 Z1~Z3·Z5 Hybrid A*, Z4 Frenet이다.
+
+Planner 구간의 원본 설정 파일은
+[`config/planner_mode.yaml`](config/planner_mode.yaml)이다. 객체 출현으로 Planner
+종류를 바꾸지 않으며 CP10과 CP13의 route_s 경계에서만 변경한다.
+
 2026-09-22 bag 기반 시간 단축 설정과 검증 한계는
 [분석 기록](docs/bag_tuning_20260922.md)을 참고한다.
 
@@ -61,8 +72,8 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 
 ## 공개 ROS 입출력
 
-현재 상태는 **개발용 Frenet RDDF 후보 생성·ETA 선택 구현**이며 공개 경계 노드는
-`path_planner_node`다. 실행 범위는 [Frenet 설계](docs/frenet_rddf.md)를 따르며, `Trajectory` schema는
+현재 상태는 **구간 기반 Hybrid A*·Frenet 선택의 오프라인 구현**이며 공개 경계 노드는
+`path_planner_node`다. Frenet 실행 범위는 [Frenet 설계](docs/frenet_rddf.md)를 따르며, `Trajectory` schema는
 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)에 구현됐다.
 
 ![Path Planning 공개 입출력](docs/interface_io.svg)
@@ -92,7 +103,7 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 Trajectory의 공개 frame은 제어 연속성을 위해 `odom`으로 고정한다.
 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `WorldModel` 스키마는 구현됐으며
 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-`RouteContext`와 Frenet Planner 노드가 구현됐다. `Trajectory`는 poses/speed_mps/time_from_start의
+`RouteContext`와 통합 Planner 노드가 구현됐다. `Trajectory`는 poses/speed_mps/time_from_start의
 동일 길이 배열과 valid/stop_required/valid_for/reset_id를 제공한다. v1에서 이 패키지가 생성하는 주행
 출력은 `/molit/planning/trajectory`뿐이며 직접 accel/brake/steer 또는
 UDP 출력은 금지한다.
