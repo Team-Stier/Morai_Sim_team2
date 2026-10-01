@@ -12,6 +12,18 @@
 - 최종 승인된 차량 명령을 대회 패킷으로 직렬화하여 송신
 - 연결 여부, 수신 age, packet drop과 decode 오류 상태 제공
 
+## 대회 네트워크 설정 (2026-10-01)
+
+대회 I/O 통합 실행은 `roslaunch system_bringup_pkg competition.launch`를 사용한다.
+MORAI PC는 `192.168.0.1`, 팀 PC는 `192.168.0.10`이다.
+`config/competition/`와 개별 브리지 기본 설정은 차량 상태 수신 `9099`,
+충돌 수신 `9092`, 제어 송신 목적지 `192.168.0.1:9093`으로 맞췄다.
+제어의 MORAI Destination Port `9094`는 sender의 목적지 포트가 아니다.
+카메라 `9291/9293/9295`, GPS `7801`, IMU `7802`, LiDAR `2368`은 팀 선택값이며
+MORAI Sensor 설정도 같은 Destination Port와 팀 PC IP를 사용해야 한다.
+전체 Host/Destination 포트 표와 활성화 범위는
+[대회 연결 안내](../system_bringup_pkg/README.md#대회-pc-두-대의-io-연결-2026-10-01)를 따른다.
+
 ## 현재 이식된 UDP → ROS 어댑터
 
 지정된 기존 저장소의 `morai_udp_bridge` 중 **MORAI 수신 방향만** 이

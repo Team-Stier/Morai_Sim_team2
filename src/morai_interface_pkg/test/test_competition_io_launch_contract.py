@@ -24,15 +24,26 @@ class CompetitionIoLaunchContractTest(unittest.TestCase):
             self.assertEqual(nodes[0].attrib['name'], expected_node)
             self.assertEqual(nodes[0].attrib.get('if'), '$(arg enable)')
 
-    def test_linux_probe_ports_are_four_digit_and_distinct(self):
-        ports = []
-        for name in ('vehicle_status_bridge.yaml', 'collision_bridge.yaml', 'control_sender.yaml'):
+    def test_default_adapter_ports_match_competition_network(self):
+        expected = {
+            'vehicle_status_bridge.yaml': 9099,
+            'collision_bridge.yaml': 9092,
+            'control_sender.yaml': 9093,
+        }
+        central = yaml.safe_load((
+            ROOT / 'src/ros_architecture_pkg/config/morai_interface/udp_ros_bridge.yaml'
+        ).read_text())
+        channels = {
+            'vehicle_status_bridge.yaml': 'vehicle_status',
+            'collision_bridge.yaml': 'collision',
+            'control_sender.yaml': 'control',
+        }
+        for name, expected_port in expected.items():
             config = yaml.safe_load((PKG / 'config' / name).read_text())
-            port = int(config['port'])
-            self.assertGreaterEqual(port, 1000)
-            self.assertLessEqual(port, 9999)
-            ports.append(port)
-        self.assertEqual(len(set(ports)), len(ports))
+            self.assertEqual(config['port'], expected_port)
+            self.assertEqual(config['port'], central['channels'][channels[name]]['port'])
+        control = yaml.safe_load((PKG / 'config/control_sender.yaml').read_text())
+        self.assertEqual(control['destination_ip'], '192.168.0.1')
 
     def test_control_defaults_fail_closed(self):
         config = yaml.safe_load((PKG / 'config/control_sender.yaml').read_text())

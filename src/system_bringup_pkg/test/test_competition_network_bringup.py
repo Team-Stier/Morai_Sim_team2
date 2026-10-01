@@ -111,6 +111,38 @@ class CompetitionNetworkBringupTest(unittest.TestCase):
             self.profile["channels"]["control"]["destination_ip"],
         )
 
+    def test_competition_network_table_matches_central_contract(self):
+        central_path = (
+            REPOSITORY_ROOT / "src/ros_architecture_pkg/config/morai_interface"
+            / "udp_ros_bridge.yaml"
+        )
+        central = yaml.safe_load(central_path.read_text(encoding="utf-8"))
+        self.assertEqual(self.profile["network"]["client_pc_ipv4"], "192.168.0.1")
+        self.assertEqual(self.profile["network"]["team_pc_ipv4"], "192.168.0.10")
+        for key in ("client_pc_ipv4", "team_pc_ipv4"):
+            self.assertEqual(self.profile["network"][key], central["competition_network"][key])
+
+        expected = {
+            "vehicle_status": {"host_port": 9088, "destination_port": 9099},
+            "collision": {"host_port": 9091, "destination_port": 9092},
+            "control": {"host_port": 9093, "destination_port": 9094},
+        }
+        self.assertEqual(self.profile["simulator_channels"], expected)
+        self.assertEqual(central["competition_network"]["simulator_channels"], expected)
+        for name, ports in expected.items():
+            # Ingress listens on the simulator's Destination Port; egress
+            # targets its Host Port. Do not send commands to 9094.
+            key = "host_port" if name == "control" else "destination_port"
+            self.assertEqual(self.profile["channels"][name]["port"], ports[key])
+
+        ports = [channel["port"] for channel in self.profile["channels"].values()]
+        self.assertEqual(len(ports), len(set(ports)))
+        for name, channel in self.profile["channels"].items():
+            self.assertEqual(channel["port"], central["channels"][name]["port"], name)
+        self.assertEqual(
+            central["channels"]["control"]["destination_ip"], "192.168.0.1"
+        )
+
     def test_control_is_enabled_for_morai_simulator_validation(self):
         with (MORAI_CONFIG_ROOT / "control.yaml").open("r", encoding="utf-8") as stream:
             control = yaml.safe_load(stream)

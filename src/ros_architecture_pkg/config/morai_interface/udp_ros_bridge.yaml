@@ -42,6 +42,17 @@ runtime_timestamp_parameter_mapping:
     allowed_channels: [lidar]
     status: fallback_contract_until_live_packet_timestamp_is_verified
 
+# 사용자 제공 대회 Network 표, 2026-10-01. 과거 live_observation은 당시 기록이다.
+# 포트 확정과 실제 packet/축/단위 검증 상태는 별개다.
+competition_network:
+  source_evidence: user_provided_competition_network_table_2026_10_01
+  client_pc_ipv4: "192.168.0.1"
+  team_pc_ipv4: "192.168.0.10"
+  simulator_channels:
+    vehicle_status: {host_port: 9088, destination_port: 9099}
+    collision:      {host_port: 9091, destination_port: 9092}
+    control:        {host_port: 9093, destination_port: 9094}
+
 live_observation:
   observed_at: "2026-09-03T13:36:24+09:00"
   simulator_version: 25.S4.251001.MolitComp03_Linux
@@ -208,8 +219,8 @@ channels:
     competition_runtime_status: incompatible_until_competition_vehicle_status_spec_verified
     transport: legacy_ego_vehicle_status_229_byte_udp
     bind_ip: 0.0.0.0
-    port: 7803
-    port_evidence: imported_placeholder_not_live_verified
+    port: 9099
+    port_evidence: user_provided_competition_network_table_2026_10_01
     node_name: morai_vehicle_status_bridge
     topic: /molit/vehicle/twist
     message_type: geometry_msgs/TwistWithCovarianceStamped
@@ -257,9 +268,9 @@ channels:
     runtime_activation_allowed: false
     competition_runtime_status: reserved_pending_official_packet_and_port
     transport: competition_collision_data_udp_pending_spec
-    bind_ip: pending_competition_network_spec
-    port: pending_competition_packet_spec
-    port_evidence: not_available
+    bind_ip: 0.0.0.0
+    port: 9092
+    port_evidence: user_provided_competition_network_table_2026_10_01
     node_name: morai_collision_bridge
     topic: /molit/events/collision
     message_type: common_msgs_pkg/CollisionEvent
@@ -274,9 +285,9 @@ channels:
     runtime_activation_allowed: false
     competition_runtime_status: reserved_pending_official_packet_port_and_watchdog
     transport: competition_ego_ctrl_cmd_udp_pending_spec
-    destination_ip: pending_competition_network_spec
-    port: pending_competition_packet_spec
-    port_evidence: not_available
+    destination_ip: 192.168.0.1
+    port: 9093
+    port_evidence: user_provided_competition_network_table_2026_10_01
     node_name: morai_control_sender
     input_topic: /molit/safety/final_command
     message_type: common_msgs_pkg/ActuatorCommand
