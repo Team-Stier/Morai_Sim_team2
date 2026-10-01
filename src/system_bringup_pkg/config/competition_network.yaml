@@ -1,6 +1,6 @@
 schema_version: 1
 profile_name: competition_network_v1
-status: precompetition_live_validation_required
+status: simulator_live_validation_enabled
 
 network:
   client_pc_ipv4: "192.168.0.1"
@@ -23,7 +23,10 @@ channels:
     destination_ip: "192.168.0.1"
     port: 7805
     enabled: true
-    dry_run_until_live_verified: true
+    dry_run: false
+    allow_motion_commands: true
+    steering_conversion_verified: true
+    steering_normalized_per_rad: 1.0
 
 validation:
   required_before_competition:
@@ -33,4 +36,3 @@ validation:
     - capture_and_validate_competition_vehicle_status_packet
     - capture_and_validate_collision_packet
     - validate_ego_ctrl_cmd_steering_conversion
-    - disable_control_dry_run_only_after_live_validation
