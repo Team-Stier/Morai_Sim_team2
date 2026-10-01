@@ -1,0 +1,16 @@
+# Competition profile - Ego Ctrl Cmd UDP egress
+# Client PC Ethernet IPv4는 현재 대회 준비 설정(192.168.0.1)을 기본값으로 둔다.
+# port는 MORAI Cmd Control의 Host Port(수신 포트)다.
+destination_ip: "192.168.0.1"
+port: 9093
+
+# MORAI simulator live validation mode
+# 실제 UDP 송신 및 accel/steer 명령을 허용한다.
+# steering_normalized_per_rad=1.0은 현재 검증 시작값이므로 실제 MORAI에서 조향 응답을 확인한다.
+dry_run: false
+allow_motion_commands: true
+steering_conversion_verified: true
+steering_normalized_per_rad: 1.0
+
+max_command_age_sec: 0.25
+future_tolerance_sec: 0.05

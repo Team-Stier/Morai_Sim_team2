@@ -1,0 +1,50 @@
+schema_version: 1
+profile_name: competition_network_v1
+status: simulator_live_validation_enabled
+
+network:
+  client_pc_ipv4: "192.168.0.1"
+  team_pc_ipv4: "192.168.0.10"
+  note: >-
+    MORAI sensor publishers must use the Team PC Ethernet IPv4 as destination.
+    Ego Ctrl Cmd is sent from Team PC to the Client PC IPv4.
+
+# 사용자가 제공한 대회 Network 표(2026-10-01). Host는 MORAI PC 기준이다.
+# control.port는 Host Port(9093); 수신 채널의 port는 Destination Port다.
+simulator_channels:
+  vehicle_status: {host_port: 9088, destination_port: 9099}
+  collision:      {host_port: 9091, destination_port: 9092}
+  control:        {host_port: 9093, destination_port: 9094}
+
+port_evidence:
+  fixed_channels: user_provided_competition_network_table_2026_10_01
+  cameras: repository_camera_sensor_reference
+  gps_imu_lidar: team_selected_sensor_ports_match_morai_sensor_settings
+
+channels:
+  camera_front:   {direction: ingress, port: 9291, enabled: true}
+  camera_left:    {direction: ingress, port: 9293, enabled: true}
+  camera_right:   {direction: ingress, port: 9295, enabled: true}
+  gps:            {direction: ingress, port: 7801, enabled: true}
+  imu:            {direction: ingress, port: 7802, enabled: true}
+  lidar:          {direction: ingress, port: 2368, enabled: true}
+  vehicle_status: {direction: ingress, port: 9099, enabled: true}
+  collision:      {direction: ingress, port: 9092, enabled: true}
+  control:
+    direction: egress
+    destination_ip: "192.168.0.1"
+    port: 9093
+    enabled: true
+    dry_run: false
+    allow_motion_commands: true
+    steering_conversion_verified: true
+    steering_normalized_per_rad: 1.0
+
+validation:
+  required_before_competition:
+    - confirm_client_pc_ipv4
+    - confirm_team_pc_ethernet_ipv4
+    - confirm_all_morai_destination_ports
+    - capture_and_validate_competition_vehicle_status_packet
+    - capture_and_validate_collision_packet
+    - validate_ego_ctrl_cmd_steering_conversion

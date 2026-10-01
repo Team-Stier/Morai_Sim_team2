@@ -1,0 +1,17 @@
+# Competition profile - IMU UDP ingress
+# 7802는 Team2 개발 기본값이며 본선 현장 설정과 반드시 대조한다.
+bind_ip: "0.0.0.0"
+port: 7802
+topic: "/molit/sensors/imu/data"
+frame_id: "imu_link"
+timestamp_source: "receive"
+angular_velocity_scale: 1.0
+linear_acceleration_scale: 1.0
+orientation_covariance:          [0.01, 0.0, 0.0,  0.0, 0.01, 0.0,  0.0, 0.0, 0.01]
+angular_velocity_covariance:     [0.01, 0.0, 0.0,  0.0, 0.01, 0.0,  0.0, 0.0, 0.01]
+linear_acceleration_covariance:  [0.1,  0.0, 0.0,  0.0, 0.1,  0.0,  0.0, 0.0, 0.1]
+receive_buffer_bytes: 2048
+socket_timeout_sec: 0.5
+stats_log_period_sec: 5.0
+log_raw: false
+log_raw_period_sec: 2.0

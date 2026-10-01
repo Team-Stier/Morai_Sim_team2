@@ -1,0 +1,10 @@
+# Competition profile - MORAI VLP16 UDP ingress
+# MORAI 3D LiDAR는 VLP16, 최대 15 Hz이며 운영 안정성을 위해 10 Hz(600 rpm)를 기본으로 둔다.
+# port는 본선 MORAI Network Settings와 반드시 일치시킨다.
+device_ip: ""
+port: 2368
+model: "VLP16"
+rpm: 600.0
+frame_id: "lidar_link"
+min_range: 0.4
+max_range: 130.0
