@@ -87,8 +87,8 @@ Planner 배정은 `path_planning_pkg/config/planner_mode.yaml`에 저장한다.
 ```text
 route_s
   → Planner Mode Manager
-      → Z1·Z2·Z3·Z5: Hybrid A*
-      → Z4 고주로: Frenet
+      → Z1·Z2·Z5: Hybrid A*
+      → Z3·Z4: Frenet
 ```
 
 Planner 전환 판단은 `global_route_manager_pkg`가 발행하는 하나의 진행값을

@@ -1,5 +1,4 @@
-source: separate official checkpoint page, recorded in root README; not verified by
-  regulation PDF
+source: https://morai.atlassian.net/wiki/external/ZDcwYmMyZGQ1ZTMxNDBjOTk3ODczODIxYzBjYzI2Mzc
 radius_m: 3.0
 points:
 - - -96.341945028
@@ -32,9 +31,6 @@ points:
 - - 62.073913683
   - 256.494927573
   - 28.268789437
-- - 66.884961067
-  - 89.197900524
-  - 28.299356438
 - - 75.414203703
   - -217.855053961
   - 28.382283641

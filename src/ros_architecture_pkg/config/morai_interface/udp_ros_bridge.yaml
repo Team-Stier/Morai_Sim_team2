@@ -302,6 +302,7 @@ channels:
       until the official packet and fail-closed stop encoding are verified.
 
 global_rules:
+  - Ego Detail Status, Ego Vehicle Status and Get TrafficLight Status are referee-only networks and prohibited for team use under rulebook v1.2.
   - Bounding-box UDP packets are not published or used.
   - isolated_probe_activation_allowed permits only a manual sensor connectivity test and never authorizes system bringup or downstream driving use.
   - Only centrally enabled TF in tf/frame_contract.yaml may publish; TF approval does not enable UDP channels.

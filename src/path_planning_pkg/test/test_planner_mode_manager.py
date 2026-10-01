@@ -1,4 +1,7 @@
+from pathlib import Path
 import unittest
+
+import yaml
 
 from path_planning_pkg.planner_mode_manager import (
     FRENET,
@@ -9,13 +12,8 @@ from path_planning_pkg.planner_mode_manager import (
 
 
 def manager():
-    return PlannerModeManager(2184.6117233360674, (
-        PlannerZone("Z1", 0.0, 237.423, HYBRID_ASTAR),
-        PlannerZone("Z2", 237.423, 635.113, HYBRID_ASTAR),
-        PlannerZone("Z3", 635.113, 1118.7417511690987, HYBRID_ASTAR),
-        PlannerZone("Z4", 1118.7417511690987, 1741.7209885112272, FRENET),
-        PlannerZone("Z5", 1741.7209885112272, 2184.6117233360674, HYBRID_ASTAR),
-    ))
+    config = Path(__file__).resolve().parents[1] / "config" / "planner_mode.yaml"
+    return PlannerModeManager.from_mapping(yaml.safe_load(config.read_text())["planner_mode"])
 
 
 class PlannerModeManagerTest(unittest.TestCase):
@@ -23,9 +21,10 @@ class PlannerModeManagerTest(unittest.TestCase):
         subject = manager()
         self.assertEqual(subject.select(0.0).zone_id, "Z1")
         self.assertEqual(subject.select(237.423).zone_id, "Z2")
-        self.assertEqual(subject.select(635.113).zone_id, "Z3")
+        selection = subject.select(635.113)
+        self.assertEqual((selection.zone_id, selection.planner, selection.changed), ("Z3", FRENET, True))
         selection = subject.select(1118.7417511690987)
-        self.assertEqual((selection.zone_id, selection.planner), ("Z4", FRENET))
+        self.assertEqual((selection.zone_id, selection.planner, selection.changed), ("Z4", FRENET, False))
         selection = subject.select(1741.7209885112272)
         self.assertEqual((selection.zone_id, selection.planner), ("Z5", HYBRID_ASTAR))
         self.assertEqual(subject.select(2184.6117233360674).zone_id, "Z5")
