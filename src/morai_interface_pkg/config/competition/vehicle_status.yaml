@@ -1,5 +1,6 @@
 # Competition profile - Competition Vehicle Status UDP ingress
-# 실제 본선 datagram 길이/필드 배치는 live packet으로 최종 검증해야 한다.
+# 2026-10-01 live capture 검증: UDP payload 181 bytes,
+# "#MoraiInfo$" + data_length 152 + Competition Status data + CRLF.
 bind_ip: "0.0.0.0"
 port: 9099
 timestamp_source: "receive"
