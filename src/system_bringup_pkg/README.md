@@ -4,15 +4,28 @@
 
 PC A(MORAI)는 `192.168.0.1/24`, PC B(참가팀)는 `192.168.0.10/24`로
 유선 직결한다. 양쪽 유선 Gateway와 DNS는 비운다.
-PC B에서 아래 명령으로 대회 센서·상태·충돌 수신과 제어 송신을 시작한다.
+PC B에서 아래 명령으로 본선 네트워크 I/O와 자율주행 스택 전체를 한 번에 시작한다.
 
 ```bash
 roslaunch system_bringup_pkg competition.launch
 ```
 
-이 launch의 모든 I/O 시작 인자는 기본 `true`이며 제어는 `dry_run: false`,
-`allow_motion_commands: true`다. Localization·Planner·Controller·Safety는
-시작하지 않는다. 실제 제어 송신에는 `/molit/safety/final_command` 입력이 필요하다.
+`competition.launch`는 Camera/GPS/IMU/LiDAR, Competition Vehicle Status,
+CollisionData 수신과 Localization, TF/RViz, HD Map, Route Manager,
+LiDAR Perception, World Model, Frenet Planner, Vehicle Controller,
+Safety Supervisor, Ego Ctrl Cmd 송신을 한 번에 실행한다.
+
+본선 I/O 시작 인자는 기본 `true`이며 제어는 `dry_run: false`,
+`allow_motion_commands: true`다. 기존 `frenet_rddf.launch`의 개발용
+Control Sender는 `send_to_morai:=false`로 비활성화하고,
+`config/competition/control.yaml`을 사용하는 본선 Control Sender만 한 번 실행한다.
+
+RViz 없이 실행하거나 시험 속도 상한을 적용하려면 다음처럼 사용한다.
+
+```bash
+roslaunch system_bringup_pkg competition.launch rviz:=false
+roslaunch system_bringup_pkg competition.launch test_speed_cap_kph:=10.0
+```
 
 | 채널 | MORAI Host Port | MORAI Destination Port | 팀 코드 설정 |
 |---|---:|---:|---|
