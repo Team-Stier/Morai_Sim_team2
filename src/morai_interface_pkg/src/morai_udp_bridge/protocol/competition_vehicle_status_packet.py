@@ -1,20 +1,29 @@
 # -*- coding: utf-8 -*-
 """Competition Vehicle Status packet parser.
 
-The competition rule says to receive Competition Vehicle Status using the
-MORAI 24.R2.0 EgoVehicleStatus UDP example, while a defined set of fields is
-not provided to competitors. This parser therefore keeps the documented
-229-byte EgoVehicleStatus wire layout only as a transport layout and exposes
-only competition-allowed fields needed by this project.
+Live MORAI competition traffic captured on 2026-10-01 uses a 181-byte UDP
+payload:
 
-No position, lateral/vertical velocity, linear acceleration, or tire-dynamics
-field is parsed or returned.
+- 0..10:  b"#MoraiInfo$"
+- 11..14: little-endian data_length == 152
+- 27..178: Competition Vehicle Status data
+- 179..180: CRLF
+
+The field offsets through front steering match the MORAI EgoVehicleStatus
+example. Competition-withheld position, lateral/vertical velocity and linear
+acceleration slots remain on the wire but are not exposed by this parser.
+The rear-steer slot and the tire/boundary/CTE tail from the full example are
+not present in the observed competition packet.
 """
 
 import struct
 
-COMPETITION_STATUS_PACKET_SIZE = 229
+COMPETITION_STATUS_HEADER = b"#MoraiInfo$"
+COMPETITION_STATUS_DATA_LENGTH = 152
+COMPETITION_STATUS_PACKET_SIZE = 181
+COMPETITION_STATUS_TRAILER = b"\r\n"
 
+_OFF_DATA_LENGTH = 11
 _OFF_SEC = 27
 _OFF_NSEC = 31
 _OFF_CTRL_MODE = 35
@@ -79,6 +88,24 @@ def parse_competition_vehicle_status_packet(data):
                 COMPETITION_STATUS_PACKET_SIZE,
             )
         )
+
+    if data[:len(COMPETITION_STATUS_HEADER)] != COMPETITION_STATUS_HEADER:
+        raise CompetitionVehicleStatusParseError(
+            "Competition Vehicle Status 헤더 오류"
+        )
+
+    data_length = struct.unpack_from("<i", data, _OFF_DATA_LENGTH)[0]
+    if data_length != COMPETITION_STATUS_DATA_LENGTH:
+        raise CompetitionVehicleStatusParseError(
+            "Competition Vehicle Status data_length 오류: %d != %d"
+            % (data_length, COMPETITION_STATUS_DATA_LENGTH)
+        )
+
+    if data[-2:] != COMPETITION_STATUS_TRAILER:
+        raise CompetitionVehicleStatusParseError(
+            "Competition Vehicle Status CRLF trailer 오류"
+        )
+
     try:
         sec = struct.unpack_from("<i", data, _OFF_SEC)[0]
         nsec = struct.unpack_from("<i", data, _OFF_NSEC)[0]
@@ -97,10 +124,12 @@ def parse_competition_vehicle_status_packet(data):
         raise CompetitionVehicleStatusParseError(
             "Competition Vehicle Status struct 언패킹 실패: %s" % error
         )
+
     if nsec < 0 or nsec >= 1000000000:
         raise CompetitionVehicleStatusParseError(
             "Competition Vehicle Status nsec 범위 오류: %d" % nsec
         )
+
     return CompetitionVehicleStatusReading(
         sec, nsec, ctrl_mode, gear, signed_vel, accel, brake,
         roll, pitch, yaw, vel_x, ang_vel, steer,
@@ -111,9 +140,10 @@ def build_competition_vehicle_status_packet(
         sec=0, nsec=0, ctrl_mode=2, gear=4, signed_vel=0.0,
         accel=0.0, brake=0.0, roll=0.0, pitch=0.0, yaw=0.0,
         vel_x=0.0, ang_vel=(0.0, 0.0, 0.0), steer=0.0):
-    """테스트용 229-byte transport packet을 만든다."""
+    """테스트용 181-byte Competition Vehicle Status packet을 만든다."""
     packet = bytearray(COMPETITION_STATUS_PACKET_SIZE)
-    struct.pack_into("<i", packet, 11, COMPETITION_STATUS_PACKET_SIZE)
+    packet[:len(COMPETITION_STATUS_HEADER)] = COMPETITION_STATUS_HEADER
+    struct.pack_into("<i", packet, _OFF_DATA_LENGTH, COMPETITION_STATUS_DATA_LENGTH)
     struct.pack_into("<i", packet, _OFF_SEC, sec)
     struct.pack_into("<i", packet, _OFF_NSEC, nsec)
     struct.pack_into("<b", packet, _OFF_CTRL_MODE, ctrl_mode)
@@ -127,4 +157,5 @@ def build_competition_vehicle_status_packet(
     struct.pack_into("<f", packet, _OFF_VEL_X, vel_x)
     struct.pack_into("<3f", packet, _OFF_ANG_VEL, *ang_vel)
     struct.pack_into("<f", packet, _OFF_STEER, steer)
+    packet[-2:] = COMPETITION_STATUS_TRAILER
     return bytes(packet)
