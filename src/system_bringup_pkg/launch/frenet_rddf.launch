@@ -8,7 +8,7 @@
   </node>
   <include file="$(find lidar_perception_pkg)/launch/lidar_perception_pkg.launch"/>
   <include file="$(find world_model_pkg)/launch/world_model_pkg.launch"/>
-  <include file="$(find path_planning_pkg)/launch/frenet_planner.launch">
+  <include file="$(find path_planning_pkg)/launch/path_planner.launch">
     <arg name="test_speed_cap_kph" value="$(arg test_speed_cap_kph)"/>
   </include>
   <include file="$(find vehicle_control_pkg)/launch/vehicle_control_pkg.launch">

@@ -54,10 +54,10 @@ Localization `reset_id`가 바뀌면 Manager 상태도 초기화한다.
 | Hybrid A* core | `src/path_planning_pkg/hybrid_astar.py` | 전진 motion primitive 탐색 |
 | Hybrid runtime adapter | `src/path_planning_pkg/hybrid_runtime.py` | RDDF·World Model 입력을 Hybrid A* 요청과 기존 Candidate로 변환 |
 | Frenet | `src/path_planning_pkg/frenet.py` | 기존 Z4 경로 계획 |
-| 단일 ROS 실행 노드 | `src/frenet_planner_node.py` | 입력 수신, 선택 Planner 실행, 공통 Trajectory 발행 |
+| 단일 ROS 실행 노드 | `src/path_planner_node.py` | 입력 수신, 선택 Planner 실행, 공통 Trajectory 발행 |
 
-파일명은 기존 launch와 중앙 계약을 유지하기 위해 `frenet_planner_node.py`를
-그대로 사용한다. 실행되는 ROS node 이름은 기존과 같은 `path_planner_node`다.
+두 알고리즘을 실행하는 파일과 패키지 launch는 각각 `path_planner_node.py`,
+`path_planner.launch`다. 공개 ROS node 이름은 기존과 같은 `path_planner_node`다.
 
 ## Hybrid A* 구현 범위
 

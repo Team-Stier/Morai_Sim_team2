@@ -284,7 +284,7 @@ nodes:
     diagram_description_ko: 지도와 센서 관측을 시각과 좌표 기준으로 통합
   - name: path_planner_node
     owner_package: path_planning_pkg
-    executable: frenet_planner_node.py
+    executable: path_planner_node.py
     visibility: public_boundary
     status: development_frenet_rddf_unverified
     diagram_description_ko: 위치와 경로 및 통합 장면으로 지역 궤적을 생성

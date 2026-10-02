@@ -58,11 +58,11 @@
     },
     {
       "png": "src/path_planning_pkg/docs/interface_io.png",
-      "png_sha256": "1d64249e784437809b66ce1f2544939bb43d5cebeca6c7bd86a2c9bfa9511eff",
+      "png_sha256": "5d1b81096c699d4924df45ff22530f34176ea7fe589845645aa6a314c1f7a4bc",
       "source": "src/path_planning_pkg/docs/interface_io.mmd",
-      "source_sha256": "9462e6e8c787aaadbaf4c6ffc0124ed8d14b03b520f67dc37980723889007c11",
+      "source_sha256": "f0ea0ff8f6c0410f0d82540d5310d213d0d6fa0a8e7e9d47f824f85799e6b84e",
       "svg": "src/path_planning_pkg/docs/interface_io.svg",
-      "svg_sha256": "5c467ea006ea87ab376fb609c49e87041f15d53fe0faa9ac9583bdc0db7a1831"
+      "svg_sha256": "fe24b6fa9a5cbe12c139de6d96c1b2f0971eacbf341ed38af56ab584dc42de12"
     },
     {
       "png": "src/ros_architecture_pkg/docs/interface_io.png",
@@ -74,11 +74,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "5165b75be3c6dd576d814591f32271e008e644b04862f630938b2b53f8c7fa14",
+      "png_sha256": "f0b3b1f055c0b4175469a2c98fa4dde857308d95cd08c6128882cef69e8c7871",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "7b63cf9559176aa0f68f91d62a4c7c54851eff5bc899764872a4562ef1f2e8a3",
+      "source_sha256": "080b11d0f40acfe2170ed40e2e8b3ef7b6f8698657559bf664b1b105b858f478",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "f651d2dd35e1bc96a4442d470f2d56604670350733a9f9a2143406dc2a0e8b8b"
+      "svg_sha256": "86ec507e498bd538a6ccf8550c3e0d92357cb1627ca3bf018d8962f3c06a966b"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
@@ -150,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "995bf53e605f140f616127c6c9358cb970e3b1d42782b2ada22ec9bc0972b04c"
+  "source_of_truth_sha256": "1aa80938832f7143c3c0a12d4f4448677539004571f9f0d75daeacb3d4758fc1"
 }

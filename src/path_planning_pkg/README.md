@@ -18,7 +18,7 @@ Planner 구간의 원본 설정 파일은
 
 [Frenet Planner](docs/frenet_rddf.md)는 지정한 RDDF 14개와 전역경로를 사용해
 후보 생성 → 규정·클러스터 충돌 검사 → ETA 비용 비교 → 변경 상태 유지를 수행한다.
-`frenet_planner.launch`가 단독 실행, `system_bringup_pkg/frenet_rddf.launch`가 통합 실행이다.
+`path_planner.launch`가 단독 실행, `system_bringup_pkg/frenet_rddf.launch`가 통합 실행이다.
 출력은 기존 odom Trajectory이며 첫 시험 상한은 10 km/h다.
 
 현재 일반 경로는 최소 0.5초 유지한 뒤 최신 계산 결과로 교체한다.
