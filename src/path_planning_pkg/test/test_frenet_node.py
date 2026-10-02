@@ -1,5 +1,6 @@
 import importlib.util
 import io
+import math
 from pathlib import Path
 import threading
 import unittest
@@ -12,8 +13,10 @@ import yaml
 from common_msgs_pkg.msg import EgoState, HdMap, RouteLane, RouteContext, WorldModel, ComponentStatus, TrackedObject
 from geometry_msgs.msg import PoseStamped, Point, Point32, Polygon
 from nav_msgs.msg import Odometry
-from path_planning_pkg.frenet import Candidate, Planner
-from path_planning_pkg.planner_mode_manager import FRENET, PlannerModeManager, PlannerZone
+from path_planning_pkg.frenet import Candidate, Lane, Planner
+from path_planning_pkg.hybrid_astar import HybridAStarConfig, HybridAStarPlanner, HybridPlanResult, HybridPlanStatus
+from path_planning_pkg.hybrid_runtime import HybridCandidateResult
+from path_planning_pkg.planner_mode_manager import FRENET, HYBRID_ASTAR, PlannerModeManager, PlannerZone
 
 
 spec = importlib.util.spec_from_file_location('path_planner_node', Path(__file__).parents[1]/'src/path_planner_node.py')
@@ -27,6 +30,298 @@ class Output:
 
 
 class FrenetOutputTest(unittest.TestCase):
+    def hybrid_node(self):
+        node = self.node()
+        node.mode_manager = PlannerModeManager(100., (PlannerZone('Ztest', 0., 100., HYBRID_ASTAR),))
+        node.active_planner_mode = HYBRID_ASTAR
+        node.active_zone = 'Ztest'
+        node.hybrid_fallback_deadline = None
+        node.hybrid_runtime_config = yaml.safe_load((Path(__file__).parents[1]/
+            'config/hybrid_astar.yaml').read_text())['hybrid_astar']
+        node.hybrid_planner = HybridAStarPlanner(HybridAStarConfig())
+        node.hybrid_checked_candidate = None
+        node.hybrid_checked_scene_key = None
+        node.planner = Planner(node.c)
+        x = np.arange(0., 101., .5)
+        lane = Lane('global_route', np.column_stack((x, np.zeros_like(x), np.zeros_like(x))),
+                    x, np.full(len(x), 16.), [])
+        node.static_map = ('map-a', {'global_route': lane}, [], [])
+        node.route = RouteContext(map_id='map-a', current_lane='global_route',
+                                  progress=10., comparison_goal_s=40.)
+        node.route.header.stamp = rospy.Time(100)
+        node.route_status = None
+        node.world = WorldModel(objects_valid=True, localization_reset_id=12)
+        node.world.header.stamp = rospy.Time(100)
+        node.state[0].header.stamp = rospy.Time(100)
+        node.state[1].header.stamp = rospy.Time(100)
+        node.epoch = 12
+        node.audit = Output()
+        node.status = Output()
+        x = np.arange(10., 40.1, .5)
+        node.selected = Candidate('hybrid_astar', 'global_route',
+                                  np.column_stack((x, np.zeros_like(x), np.zeros_like(x))),
+                                  x, np.full(len(x), 16.), speed=np.full(len(x), 4.),
+                                  times=np.arange(len(x))*.125, feasible=True)
+        node.selected_stamp = rospy.Time.from_sec(99.8)
+        return node
+
+    def hybrid_failure(self, status):
+        plan = HybridPlanResult(status, (), 12, 20, 0, 0, .5)
+        return HybridCandidateResult(None, plan)
+
+    def hybrid_success(self, candidate):
+        plan = HybridPlanResult(HybridPlanStatus.SUCCESS, (), 12, 20, 0, 0, .2)
+        return HybridCandidateResult(candidate, plan)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_timeout_keeps_only_recent_rechecked_path(self, _):
+        node = self.hybrid_node()
+        selected = node.selected
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                HybridPlanStatus.TIME_LIMIT)) as build:
+            node.plan(None)
+        self.assertIs(node.selected, selected)
+        self.assertEqual(node.selected_stamp, rospy.Time.from_sec(99.8))
+        self.assertIsNotNone(build.call_args.kwargs['previous_path'])
+        self.assertTrue(node.status.message.ready)
+        self.assertFalse(node.status.message.stop_required)
+        self.assertIn('selected=held', node.status.message.reason)
+        node.publish(None)
+        self.assertFalse(node.trajectory.message.stop_required)
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.31)):
+            node.publish(None)
+        self.assertIsNone(node.selected)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertFalse(node.status.message.ready)
+        self.assertIn('transient_hold_expired', node.status.message.reason)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_timeout_stops_if_previous_path_has_new_obstacle(self, _):
+        node = self.hybrid_node()
+        node.world.objects = [TrackedObject(points=[Point(15., 0., 0.)])]
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                HybridPlanStatus.TIME_LIMIT)) as build:
+            node.plan(None)
+        self.assertIsNone(build.call_args.kwargs['previous_path'])
+        self.assertIsNone(node.selected)
+        self.assertFalse(node.status.message.ready)
+        self.assertTrue(node.status.message.stop_required)
+        self.assertTrue(node.trajectory.message.valid)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertEqual(node.trajectory.message.speed_mps, [0., 0.])
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_held_path_is_rechecked_when_scene_changes(self, _):
+        node = self.hybrid_node()
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                HybridPlanStatus.TIME_LIMIT)):
+            node.plan(None)
+        self.assertTrue(node.status.message.ready)
+        node.world.objects = [TrackedObject(points=[Point(15., 0., 0.)])]
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.1)):
+            node.world.header.stamp = rospy.Time.from_sec(100.1)
+            node.route.header.stamp = rospy.Time.from_sec(100.1)
+            node.state[0].header.stamp = rospy.Time.from_sec(100.1)
+            node.publish(None)
+        self.assertIsNone(node.selected)
+        self.assertFalse(node.status.message.ready)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertIn('transient_hold_invalidated', node.status.message.reason)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_timeout_stops_if_vehicle_departed_from_held_path(self, _):
+        node = self.hybrid_node()
+        node.state[0].pose.pose.position.y = 2.
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                HybridPlanStatus.TIME_LIMIT)) as build:
+            node.plan(None)
+        self.assertIsNone(build.call_args.kwargs['previous_path'])
+        self.assertIsNone(node.selected)
+        self.assertFalse(node.status.message.ready)
+        self.assertTrue(node.trajectory.message.stop_required)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_success_replaces_obstructed_active_path_without_hold(self, _):
+        node = self.hybrid_node()
+        node.c['minimum_active_path_hold_sec'] = .5
+        node.selected_stamp = rospy.Time.from_sec(99.9)
+        node.world.objects = [TrackedObject(points=[Point(25., 0., 0.)])]
+        old = node.selected
+        x = np.arange(10., 40.1, .5)
+        y = 2. * np.sin(np.pi/2 * np.clip((x-10.)/8., 0., 1.))
+        detour = Candidate('hybrid_astar', 'global_route',
+                           np.column_stack((x, y, np.zeros_like(x))),
+                           x, np.full(len(x), 16.))
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_success(detour)), \
+                patch.object(module, 'hybrid_path_clear', side_effect=lambda *args: args[3].xy[:,1].max() > 1.):
+            node.plan(None)
+        self.assertIsNot(node.selected, old)
+        self.assertIs(node.selected, detour)
+        self.assertIsNone(node.pending_selection)
+        self.assertTrue(node.status.message.ready)
+        self.assertIn('selected=new', node.status.message.reason)
+
+    def test_hybrid_success_is_rechecked_against_scene_at_completion(self):
+        node = self.hybrid_node()
+        clock = [rospy.Time(100)]
+        candidate = Candidate('hybrid_astar', 'global_route', node.selected.xy.copy(),
+                              node.selected.route_s.copy(), node.selected.limits.copy())
+
+        def new_obstacle_during_search(*_args, **_kwargs):
+            clock[0] = rospy.Time.from_sec(100.2)
+            node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = clock[0]
+            node.world.objects = [TrackedObject(points=[Point(25., 0., 0.)])]
+            return self.hybrid_success(candidate)
+
+        with patch.object(rospy.Time, 'now', side_effect=lambda: clock[0]), \
+                patch.object(module, 'build_hybrid_candidate', side_effect=new_obstacle_during_search):
+            node.plan(None)
+        self.assertIsNone(node.selected)
+        self.assertFalse(node.status.message.ready)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertEqual(node.audit.message.data.find('"rejected_after_search": true') >= 0, True)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_no_path_does_not_reuse_previous_path(self, _):
+        node = self.hybrid_node()
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                HybridPlanStatus.NO_PATH)):
+            node.plan(None)
+        self.assertIsNone(node.selected)
+        self.assertFalse(node.status.message.ready)
+        self.assertTrue(node.status.message.stop_required)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertIn('status=no_path; selected=stop', node.status.message.reason)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_timeout_does_not_refresh_expired_path_stamp(self, _):
+        node = self.hybrid_node()
+        node.selected_stamp = rospy.Time.from_sec(99.4)
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                HybridPlanStatus.TIME_LIMIT)) as build:
+            node.plan(None)
+        self.assertIsNotNone(build.call_args.kwargs['previous_path'])
+        self.assertIsNone(node.selected)
+        self.assertFalse(node.status.message.ready)
+        self.assertTrue(node.trajectory.message.stop_required)
+
+    def test_hybrid_pending_path_keeps_its_computation_stamp(self):
+        import copy
+        node = self.hybrid_node()
+        node.c['minimum_active_path_hold_sec'] = .5
+        node.selected_stamp = rospy.Time.from_sec(99.6)
+        pending = copy.deepcopy(node.selected)
+        node.pending_selection = pending
+        node.pending_selection_stamp = rospy.Time.from_sec(99.95)
+        node.pending_selection_set = True
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.1)):
+            node.publish(None)
+        self.assertIs(node.selected, pending)
+        self.assertEqual(node.selected_stamp, rospy.Time.from_sec(99.95))
+
+    def test_hybrid_pending_path_is_rechecked_before_publication(self):
+        import copy
+        node = self.hybrid_node()
+        node.c['minimum_active_path_hold_sec'] = .5
+        node.selected_stamp = rospy.Time.from_sec(99.6)
+        pending = copy.deepcopy(node.selected)
+        x = pending.xy[:, 0]
+        pending.xy[:, 1] = 2. * np.sin(np.pi/2 * np.clip((x-10.)/8., 0., 1.))
+        node.pending_selection = pending
+        node.pending_selection_stamp = rospy.Time.from_sec(100.)
+        node.pending_selection_set = True
+        node.world.objects = [TrackedObject(points=[Point(25., 2., 0.)])]
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.1)):
+            node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = rospy.Time.from_sec(100.1)
+            node.publish(None)
+        self.assertIsNone(node.selected)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertFalse(node.status.message.ready)
+        self.assertIn('active_path_invalidated', node.status.message.reason)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_normal_active_path_is_not_expired_by_hold_age(self, _):
+        node = self.hybrid_node()
+        node.selected_stamp = rospy.Time.from_sec(99.4)
+        node.publish(None)
+        self.assertIsNotNone(node.selected)
+        self.assertFalse(node.trajectory.message.stop_required)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_near_path_with_opposite_heading_is_not_reused(self, _):
+        node = self.hybrid_node()
+        node.state[0].pose.pose.orientation.z = 1.
+        node.state[0].pose.pose.orientation.w = 0.
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                HybridPlanStatus.TIME_LIMIT)) as build:
+            node.plan(None)
+        self.assertIsNone(build.call_args.kwargs['previous_path'])
+        self.assertIsNone(node.selected)
+        self.assertFalse(node.status.message.ready)
+        self.assertTrue(node.trajectory.message.stop_required)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_heading_check_averages_small_path_kink(self, _):
+        node = self.hybrid_node()
+        node.selected.xy[1, 1] = .25
+        heading = math.radians(20.)
+        node.state[0].pose.pose.orientation.z = math.sin(heading / 2.)
+        node.state[0].pose.pose.orientation.w = math.cos(heading / 2.)
+        node.publish(None)
+        self.assertIsNotNone(node.selected)
+        self.assertFalse(node.trajectory.message.stop_required)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_route_progress_jitter_before_zone_start_keeps_path(self, _):
+        node = self.hybrid_node()
+        node.mode_manager = PlannerModeManager(100., (
+            PlannerZone('prior', 0., 10., FRENET),
+            PlannerZone('Ztest', 10., 100., HYBRID_ASTAR)))
+        node.mode_manager.select(10.1)
+        node.route.progress = 9.95
+        node.publish(None)
+        self.assertIsNotNone(node.selected)
+        self.assertFalse(node.trajectory.message.stop_required)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_publish_skips_full_check_until_nearby_scene_changes(self, _):
+        node = self.hybrid_node()
+        with patch.object(module, 'hybrid_path_clear', wraps=module.hybrid_path_clear) as check:
+            node.publish(None)
+            node.publish(None)
+            self.assertEqual(check.call_count, 1)
+            node.world.objects = [TrackedObject(points=[Point(25., 0., 0.)])]
+            node.publish(None)
+            self.assertEqual(check.call_count, 2)
+        self.assertTrue(node.trajectory.message.stop_required)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_stop_publication_follows_in_flight_motion(self, _):
+        node = self.hybrid_node()
+        entered = threading.Event()
+        release = threading.Event()
+        published = []
+
+        def slow_emit(output):
+            if not published:
+                entered.set()
+                self.assertTrue(release.wait(2.))
+            published.append(output.stop_required)
+
+        node.emit = slow_emit
+        timer = threading.Thread(target=node.publish, args=(None,))
+        timer.start()
+        self.assertTrue(entered.wait(2.))
+        node.offer_selection(None, rospy.Time(100))
+        stop = threading.Thread(target=node.publish, args=(None,))
+        stop.start()
+        release.set()
+        timer.join(2.)
+        stop.join(2.)
+        self.assertFalse(timer.is_alive())
+        self.assertFalse(stop.is_alive())
+        self.assertEqual(published, [False, True])
+
     def test_hd_map_connected_rddf_survives_wire_and_planner_ingestion(self):
         from importlib.machinery import SourceFileLoader
         from hd_map_pkg.lane_rddf import SegmentIndex
@@ -539,6 +834,7 @@ class FrenetOutputTest(unittest.TestCase):
         odom.pose.pose.orientation.z = odom.pose.pose.orientation.w = np.sqrt(.5)
         node.state = ego, odom
         node.lock = threading.Lock()
+        node.publish_lock = threading.Lock()
         node.last_lane_change_evaluation = -np.inf
         node.pending_selection = None
         node.pending_selection_set = False

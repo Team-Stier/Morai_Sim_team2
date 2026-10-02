@@ -30,7 +30,8 @@ class ControllerPipelineTest(unittest.TestCase):
         with self.lock:
             self.status = message
 
-    def inputs(self, speed=1.0, target=2.0, stop=False, localization_stop=False):
+    def inputs(self, speed=1.0, target=2.0, stop=False, localization_stop=False,
+               planning_ready=True):
         stamp = rospy.Time.now()
         odom = Odometry()
         odom.header.stamp = stamp
@@ -64,8 +65,9 @@ class ControllerPipelineTest(unittest.TestCase):
         plan = ComponentStatus()
         plan.header.stamp = stamp
         plan.component = 'path_planning_pkg'
-        plan.state = ComponentStatus.READY
-        plan.ready = True
+        plan.state = ComponentStatus.READY if planning_ready else ComponentStatus.DEGRADED
+        plan.ready = planning_ready
+        plan.stop_required = not planning_ready
         plan.data_stamp = stamp
         self.odom_pub.publish(odom)
         self.loc_pub.publish(loc)
@@ -73,6 +75,9 @@ class ControllerPipelineTest(unittest.TestCase):
         self.plan_pub.publish(plan)
 
     def wait_for(self, predicate, **inputs):
+        with self.lock:
+            self.command = None
+            self.status = None
         deadline = time.monotonic()+6
         while time.monotonic() < deadline and not rospy.is_shutdown():
             self.inputs(**inputs)
@@ -99,6 +104,10 @@ class ControllerPipelineTest(unittest.TestCase):
                       speed=0.0, stop=True)
         self.wait_for(lambda c, s: not c.valid and c.accel == 0 and s.reason == 'upstream_stop_required',
                       localization_stop=True)
+        self.wait_for(lambda c, s: c.valid and c.brake >= 0.35 and s.reason == 'planned_stop',
+                      speed=2.0, stop=True, planning_ready=False)
+        self.wait_for(lambda c, s: not c.valid and s.reason == 'upstream_stop_required',
+                      speed=2.0, stop=False, planning_ready=False)
 
 
 if __name__ == '__main__':

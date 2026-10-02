@@ -11,6 +11,14 @@ Planner 구간의 원본 설정 파일은
 [`config/planner_mode.yaml`](config/planner_mode.yaml)이다. 객체 출현으로 Planner
 종류를 바꾸지 않으며 CP7과 CP12의 route_s 경계에서만 변경한다.
 
+Hybrid 구간에서는 충돌 없이 추종 가능한 RDDF에 차량 위치·방향을 부드럽게
+합류시키고, 장애물이 있거나 합류 경로가 성립하지 않으면 Hybrid A*를 실행한다.
+목표속도 상한 20 km/h와 Hybrid 탐색·조향 설정은 각각
+[`config/frenet_planner.yaml`](config/frenet_planner.yaml),
+[`config/hybrid_astar.yaml`](config/hybrid_astar.yaml)에 있다. 탐색 실패 시에는
+검증된 기존 경로의 원래 생성 시각을 기준으로 최대 0.5초만 유지하고, 사용할
+경로가 없으면 유효한 정지 trajectory를 발행한다.
+
 2026-09-22 bag 기반 시간 단축 설정과 검증 한계는
 [분석 기록](docs/bag_tuning_20260922.md)을 참고한다.
 
