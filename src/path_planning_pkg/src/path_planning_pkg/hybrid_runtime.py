@@ -6,7 +6,7 @@ from typing import Iterable, Mapping, Optional, Sequence
 
 import numpy as np
 
-from .frenet import Candidate, Lane
+from .frenet import Candidate, Lane, sample_limits
 from .hybrid_astar import HybridAStarPlanner, HybridPlanResult, Pose2D
 
 
@@ -139,7 +139,7 @@ def build_hybrid_candidate(
     route_s = np.maximum.accumulate(route_s)
     wrapped_s = np.mod(route_s, route_length) if loop_route else np.clip(route_s, 0.0, route_length)
     xy[:, 2] = np.interp(wrapped_s, lane.s, lane.xy[:, 2])
-    limits = np.interp(wrapped_s, lane.s, lane.limits)
+    limits = sample_limits(lane, wrapped_s)
     candidate = Candidate(
         "hybrid_astar",
         lane.id,

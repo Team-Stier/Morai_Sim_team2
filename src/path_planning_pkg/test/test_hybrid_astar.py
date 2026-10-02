@@ -1,5 +1,6 @@
 import math
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -7,6 +8,8 @@ from path_planning_pkg.frenet import Lane
 from path_planning_pkg.hybrid_astar import (
     HybridAStarConfig,
     HybridAStarPlanner,
+    HybridPathPoint,
+    HybridPlanResult,
     HybridPlanStatus,
     Pose2D,
 )
@@ -74,6 +77,34 @@ class HybridAStarTest(unittest.TestCase):
         self.assertEqual(result.candidate.key, "hybrid_astar")
         self.assertEqual(len(result.candidate.xy), len(result.candidate.route_s))
         self.assertTrue(np.all(np.diff(result.candidate.route_s) >= 0.0))
+
+    def test_runtime_speed_limit_switches_at_source_sample_without_interpolation(self):
+        source_s = np.arange(0.0, 21.0, 1.0)
+        normal_limit = 58.0 / 3.6
+        lane = Lane(
+            "global_route",
+            np.column_stack((source_s, np.zeros_like(source_s), np.zeros_like(source_s))),
+            source_s,
+            np.where(source_s < 10.0, -1.0, normal_limit),
+        )
+        sampled_s = [9.5, 9.75, 10.0, 10.25, 10.5]
+        plan = HybridPlanResult(
+            HybridPlanStatus.SUCCESS,
+            tuple(HybridPathPoint(Pose2D(s, 0.0, 0.0), 0.0, s - sampled_s[0])
+                  for s in sampled_s),
+            0, 0, 0, 0, 0.0,
+        )
+        planner = self.planner()
+        with patch.object(planner, "plan", return_value=plan):
+            result = build_hybrid_candidate(
+                planner, lane, Pose2D(9.5, 0.0, 0.0), 9.5, (),
+                {"reference_step_m": 0.5, "local_goal_distance_m": 5.0}, False,
+            )
+        self.assertEqual(result.plan.status, HybridPlanStatus.SUCCESS)
+        self.assertIsNotNone(result.candidate)
+        np.testing.assert_allclose(result.candidate.route_s, sampled_s)
+        np.testing.assert_allclose(result.candidate.limits,
+                                   [-1.0, -1.0, normal_limit, normal_limit, normal_limit])
 
     def test_straight_route_replanning_stays_on_centerline(self):
         planner = self.planner()

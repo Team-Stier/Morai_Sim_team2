@@ -17,6 +17,7 @@ from path_planning_pkg.frenet import Candidate, Lane, Planner
 from path_planning_pkg.hybrid_astar import HybridAStarConfig, HybridAStarPlanner, HybridPlanResult, HybridPlanStatus
 from path_planning_pkg.hybrid_runtime import HybridCandidateResult
 from path_planning_pkg.planner_mode_manager import FRENET, HYBRID_ASTAR, PlannerModeManager, PlannerZone
+from path_planning_pkg.transition_speed import TransitionSpeedPolicy
 
 
 spec = importlib.util.spec_from_file_location('path_planner_node', Path(__file__).parents[1]/'src/path_planner_node.py')
@@ -29,7 +30,196 @@ class Output:
         self.message = message
 
 
+class TraceOutput(Output):
+    def __init__(self):
+        self.messages = []
+
+    def publish(self, message):
+        super().publish(message)
+        self.messages.append(message)
+
+
 class FrenetOutputTest(unittest.TestCase):
+    def mode_boundary_node(self, boundary, from_mode):
+        node = self.hybrid_node()
+        config = dict(node.c)
+        config['planner_mode'] = yaml.safe_load((Path(__file__).parents[1]/
+            'config/planner_mode.yaml').read_text())['planner_mode']
+        config['mode_transition_speed_kph'] = 30.
+        config['mode_transition_min_distance_m'] = 20.
+        config['mode_transition_reaction_sec'] = .5
+        config['mode_transition_handoff_sec'] = .8
+        config['rddf_geometry_only'] = True
+        node.c = config
+        node.planner = Planner(config)
+        node.transition_speed = TransitionSpeedPolicy(config)
+        node.mode_manager = PlannerModeManager.from_mapping(config['planner_mode'])
+        node.mode_manager.select(boundary-.1)
+        node.active_planner_mode = from_mode
+        node.active_zone = node.mode_manager.current.zone_id
+        x = np.arange(0., 2185.1, .5)
+        lane = Lane('global_route', np.column_stack((x, np.zeros_like(x), np.zeros_like(x))),
+                    x, np.full(len(x), 16.), [])
+        node.static_map = ('map-a', {'global_route': lane}, [], [])
+        node.route.progress = boundary+.1
+        node.route.comparison_goal_s = boundary+30.
+        node.state[0].pose.pose.position.x = boundary+.1
+        x = np.arange(boundary-3., boundary+33.1, .5)
+        node.selected = Candidate('hybrid_astar' if from_mode == HYBRID_ASTAR else 'keep',
+            'global_route', np.column_stack((x, np.zeros_like(x), np.zeros_like(x))),
+            x, np.full(len(x), 16.), speed=np.full(len(x), 4.),
+            times=np.arange(len(x))*.125, feasible=True)
+        node.selected_stamp = rospy.Time.from_sec(99.8)
+        node.trajectory = TraceOutput()
+        node.status = TraceOutput()
+        return node
+
+    def plan_without_frenet_candidate(self, node, reason='steering_limit'):
+        base = node.selected if node.selected is not None else node.handoff_candidate
+        rejected = Candidate('keep', 'global_route', base.xy.copy(),
+            base.route_s.copy(), base.limits.copy())
+
+        def reject(candidate, *_args):
+            candidate.feasible = False
+            candidate.reason = reason
+            candidate.cost = candidate.eta = math.inf
+            return candidate
+
+        with patch.object(node.planner, 'candidates', return_value=[rejected]), \
+                patch.object(node.planner, 'evaluate', side_effect=reject), \
+                patch.object(node.planner, 'obstacle_detours', return_value=[]), \
+                patch.object(node.planner, 'select', return_value=None):
+            node.plan(None)
+        return rejected
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_all_three_mode_boundaries_keep_valid_old_path_while_replanning(self, _):
+        zones = yaml.safe_load((Path(__file__).parents[1]/
+            'config/planner_mode.yaml').read_text())['planner_mode']['zones']
+        boundaries = [(zones[0]['end_s'], FRENET, HYBRID_ASTAR),
+                      (zones[1]['end_s'], HYBRID_ASTAR, FRENET),
+                      (zones[3]['end_s'], FRENET, HYBRID_ASTAR)]
+        for boundary, previous, target in boundaries:
+            with self.subTest(boundary=boundary):
+                node = self.mode_boundary_node(boundary, previous)
+                if target == HYBRID_ASTAR:
+                    with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                            HybridPlanStatus.TIME_LIMIT)):
+                        node.plan(None)
+                else:
+                    rejected = self.plan_without_frenet_candidate(node)
+                    self.assertEqual(len(rejected.speed_cap_mps), len(rejected.xy))
+                    self.assertAlmostEqual(rejected.speed_cap_mps[6], 30./3.6, delta=.1)
+                node.publish(None)
+                self.assertEqual(node.active_planner_mode, target)
+                self.assertIsNotNone(node.handoff_candidate)
+                self.assertTrue(node.status.message.ready)
+                self.assertTrue(all(not message.stop_required for message in node.trajectory.messages))
+                self.assertAlmostEqual(node.handoff_deadline.to_sec(), 100.8)
+
+    def test_mode_handoff_stops_when_new_object_blocks_old_path(self):
+        boundary = 237.423
+        node = self.mode_boundary_node(boundary, FRENET)
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time(100)), \
+                patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                    HybridPlanStatus.TIME_LIMIT)):
+            node.plan(None)
+            node.publish(None)
+        stamp = rospy.Time.from_sec(100.1)
+        node.world.objects = [TrackedObject(points=[Point(boundary+10., 0., 0.)],
+                                            source_stamp=stamp)]
+        node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = stamp
+        with patch.object(rospy.Time, 'now', return_value=stamp):
+            node.publish(None)
+        self.assertIsNone(node.handoff_candidate)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertFalse(node.status.message.ready)
+        self.assertIn('mode_handoff_invalidated', node.status.message.reason)
+
+    def test_mode_handoff_expires_from_boundary_time_without_refresh(self):
+        node = self.mode_boundary_node(237.423, FRENET)
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time(100)), \
+                patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                    HybridPlanStatus.TIME_LIMIT)):
+            node.plan(None)
+            node.publish(None)
+        stamp = rospy.Time.from_sec(100.81)
+        node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = stamp
+        with patch.object(rospy.Time, 'now', return_value=stamp):
+            node.publish(None)
+        self.assertIsNone(node.handoff_candidate)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertFalse(node.status.message.ready)
+        self.assertIn('mode_handoff_expired', node.status.message.reason)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_explicit_stop_discards_mode_handoff(self, _):
+        node = self.mode_boundary_node(237.423, FRENET)
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                HybridPlanStatus.TIME_LIMIT)):
+            node.plan(None)
+        self.assertIsNotNone(node.handoff_candidate)
+        node.defer_stop('route_endpoint_stop')
+        node.publish(None)
+        self.assertIsNone(node.handoff_candidate)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertFalse(node.status.message.ready)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_predicted_hazard_stops_frenet_handoff(self, _):
+        node = self.mode_boundary_node(635.113, HYBRID_ASTAR)
+        node.world.objects = [TrackedObject(points=[Point(645., 5., 0.)])]
+        rejected = self.plan_without_frenet_candidate(
+            node, reason='predicted_cluster_collision')
+        self.assertEqual(rejected.reason, 'predicted_cluster_collision')
+        self.assertIsNone(node.handoff_candidate)
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertFalse(node.status.message.ready)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_new_frenet_candidate_replaces_handoff_immediately(self, _):
+        node = self.mode_boundary_node(635.113, HYBRID_ASTAR)
+        x = np.arange(635.213, 665.213, .5)
+        new_path = Candidate('keep', 'global_route',
+            np.column_stack((x, np.zeros_like(x), np.zeros_like(x))),
+            x, np.full(len(x), 16.))
+
+        def accept(candidate, *_args):
+            candidate.feasible = True
+            candidate.reason = 'ok'
+            candidate.cost = candidate.eta = 1.
+            candidate.speed = np.full(len(candidate.xy), 4.)
+            candidate.times = np.arange(len(candidate.xy))*.125
+            return candidate
+
+        with patch.object(node.planner, 'candidates', return_value=[new_path]), \
+                patch.object(node.planner, 'evaluate', side_effect=accept), \
+                patch.object(node.planner, 'select', return_value=new_path):
+            node.plan(None)
+        self.assertIs(node.selected, new_path)
+        self.assertIsNone(node.handoff_candidate)
+        self.assertFalse(node.pending_selection_set)
+        self.assertTrue(node.status.message.ready)
+        self.assertTrue(all(not message.stop_required for message in node.trajectory.messages))
+        self.assertAlmostEqual(new_path.speed_cap_mps[0], 30./3.6, delta=.1)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_new_hybrid_candidate_replaces_handoff_and_uses_transition_cap(self, _):
+        boundary = 237.423
+        node = self.mode_boundary_node(boundary, FRENET)
+        x = np.arange(boundary+.1, boundary+30.1, .5)
+        new_path = Candidate('hybrid_astar', 'global_route',
+            np.column_stack((x, np.zeros_like(x), np.zeros_like(x))),
+            x, np.full(len(x), 16.))
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_success(new_path)):
+            node.plan(None)
+        self.assertIs(node.selected, new_path)
+        self.assertIsNone(node.pending_selection)
+        self.assertIsNone(node.handoff_candidate)
+        self.assertTrue(node.status.message.ready)
+        self.assertAlmostEqual(new_path.speed_cap_mps[0], 30./3.6, delta=.1)
+        self.assertAlmostEqual(new_path.speed_cap_mps[-1], 20./3.6, delta=.01)
+
     def hybrid_node(self):
         node = self.node()
         node.mode_manager = PlannerModeManager(100., (PlannerZone('Ztest', 0., 100., HYBRID_ASTAR),))
@@ -823,8 +1013,18 @@ class FrenetOutputTest(unittest.TestCase):
         node.mode_manager = PlannerModeManager(2184.6117233360674, (
             PlannerZone('legacy-frenet-test', 0.0, 2184.6117233360674, FRENET),
         ))
-        node.active_planner_mode = None
-        node.active_zone = None
+        node.transition_speed = SimpleNamespace(caps=lambda route_s, _mode, _lane:
+            np.full(len(route_s), np.inf))
+        node.active_planner_mode = FRENET
+        node.active_zone = 'legacy-frenet-test'
+        node.handoff_candidate = None
+        node.handoff_stamp = None
+        node.handoff_deadline = None
+        node.handoff_reset_id = None
+        node.handoff_from_mode = None
+        node.handoff_target_mode = None
+        node.handoff_started = None
+        node.handoff_checked_scene_key = None
         ego, odom = EgoState(), Odometry()
         ego.reset_id = 12
         ego.pose.pose.position.x = 10.

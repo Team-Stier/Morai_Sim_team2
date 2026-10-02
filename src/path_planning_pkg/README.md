@@ -5,11 +5,11 @@
 현재 단일 `path_planner_node` 안에 기존 Frenet과 route-guided Hybrid A*가 같은
 계층으로 구성되어 있다. [Planner Mode Manager 통합 기록](docs/planner_mode_integration.md)에
 구간 설정 위치, 구현 파일, 공개 topic, 오프라인 검증과 MORAI 연결 후 확인 항목을
-기록한다. Planner 배정은 Z1·Z2·Z5 Hybrid A*, Z3·Z4 Frenet이다.
+기록한다. Planner 배정은 Z1·Z3·Z4 Frenet, Z2·Z5 Hybrid A*다.
 
 Planner 구간의 원본 설정 파일은
 [`config/planner_mode.yaml`](config/planner_mode.yaml)이다. 객체 출현으로 Planner
-종류를 바꾸지 않으며 CP7과 CP12의 route_s 경계에서만 변경한다.
+종류를 바꾸지 않으며 Z1→Z2, Z2→Z3, Z4→Z5의 route_s 경계에서 변경한다.
 
 Hybrid 구간에서는 충돌 없이 추종 가능한 RDDF에 차량 위치·방향을 부드럽게
 합류시키고, 장애물이 있거나 합류 경로가 성립하지 않으면 Hybrid A*를 실행한다.
@@ -18,6 +18,12 @@ Hybrid 구간에서는 충돌 없이 추종 가능한 RDDF에 차량 위치·방
 [`config/hybrid_astar.yaml`](config/hybrid_astar.yaml)에 있다. 탐색 실패 시에는
 검증된 기존 경로의 원래 생성 시각을 기준으로 최대 0.5초만 유지하고, 사용할
 경로가 없으면 유효한 정지 trajectory를 발행한다.
+
+Planner가 바뀌는 세 경계에서는 `frenet_planner.yaml`의
+`mode_transition_speed_kph`(현재 30 km/h)를 경계 목표속도로 사용한다.
+경계 전후의 속도 상한은 경로 거리 `route_s`를 따라 선형으로 연결하고,
+가감속 한계와 반응 시간을 고려해 연결 거리를 정한다. Hybrid 구간 안쪽의
+목표속도 상한은 기존 20 km/h다.
 
 2026-09-22 bag 기반 시간 단축 설정과 검증 한계는
 [분석 기록](docs/bag_tuning_20260922.md)을 참고한다.

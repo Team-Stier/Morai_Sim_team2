@@ -9,7 +9,7 @@
 - `HybridAStarPlanner`: `morai/test2`의 전진 bicycle arc, 연속 pose/이산 key,
   steering history와 reference guide 원칙을 사용한다.
 - 기존 Frenet과 Hybrid A* 중 선택된 하나만 기존 `Trajectory` publisher에 전달한다.
-- Planner 종류는 CP7과 CP12 경계에서만 변경한다. CP10은 Z3·Z4의 경계지만
+- Planner 종류는 Z1→Z2, Z2→Z3, Z4→Z5에서 변경한다. Z3·Z4의 경계는
   양쪽 모두 Frenet이다. 객체 출현은 Planner 종류를 변경하지 않으며 선택된
   Planner의 입력으로만 사용한다.
 
@@ -34,11 +34,25 @@ src/path_planning_pkg/config/hybrid_astar.yaml
 
 | 구간 | route_s 범위 | Planner | 실제 Planner 전환 |
 |---|---:|---|---|
-| Z1 | 0.000 ≤ s < 237.423 m | Hybrid A* | 시작 모드 |
-| Z2 | 237.423 ≤ s < 635.113 m | Hybrid A* | 없음 |
-| Z3 | 635.113 ≤ s < 1,118.741751 m | Frenet | CP7에서 전환 |
+| Z1 | 0.000 ≤ s < 237.423 m | Frenet | 시작 모드 |
+| Z2 | 237.423 ≤ s < 635.113 m | Hybrid A* | Z1→Z2에서 전환 |
+| Z3 | 635.113 ≤ s < 1,118.741751 m | Frenet | Z2→Z3에서 전환 |
 | Z4 | 1,118.741751 ≤ s < 1,741.720989 m | Frenet | 없음(CP10) |
-| Z5 | 1,741.720989 ≤ s ≤ 2,184.611723 m | Hybrid A* | CP12에서 전환 |
+| Z5 | 1,741.720989 ≤ s ≤ 2,184.611723 m | Hybrid A* | Z4→Z5에서 전환 |
+
+전환 속도 설정은 `config/frenet_planner.yaml`의 `mode_transition_*` 키에 있다.
+세 Planner 전환점에서 속도 상한을 30 km/h로 두고, 전후 `route_s`에 따라
+기존 Frenet 순항 상한과 Hybrid 20 km/h 상한을 선형 연결한다. 연결 거리는
+가감속 한계와 반응 시간으로 계산한다. Z4→Z5는 고속 구간 끝과 같으므로
+30 km/h 감속 상한이 Z3 후반부터 시작된다. 실제 trajectory 속도는 곡률,
+관측 객체와 차량 가감속 조건 때문에 이 상한보다 낮을 수 있다.
+고속 구간의 `-1` 속도 제한 표식과 일반 제한값은 수치 보간하지 않고
+`route_s` 구간별로 선택한다. 경계 사이에 거의 0인 가짜 제한이 생기지 않게 한다.
+
+새 Planner 경로 계산 중에는 기존 유효 궤적을 최대
+`mode_transition_handoff_sec`(현재 0.8초) 이어 사용한다. 새 경로가 준비되면
+일반 경로 유지 시간을 기다리지 않고 즉시 교체한다. 입력이나 기존 경로가
+유효하지 않으면 정지 trajectory를 발행한다.
 
 한 번의 전진 주행을 전제로 Manager가 수신한 최대 `route_s`를 유지한다. 작은
 역방향 projection jitter가 들어와도 이전 Planner 구간으로 되돌아가지 않는다.
@@ -54,6 +68,7 @@ Localization `reset_id`가 바뀌면 Manager 상태도 초기화한다.
 | Hybrid A* core | `src/path_planning_pkg/hybrid_astar.py` | 전진 motion primitive 탐색 |
 | Hybrid runtime adapter | `src/path_planning_pkg/hybrid_runtime.py` | RDDF·World Model 입력을 Hybrid A* 요청과 기존 Candidate로 변환 |
 | Frenet | `src/path_planning_pkg/frenet.py` | 기존 Z4 경로 계획 |
+| 전환 속도 | `src/path_planning_pkg/transition_speed.py` | 세 Planner 전환점에서 30 km/h 상한과 거리 기반 선형 연결 |
 | 단일 ROS 실행 노드 | `src/path_planner_node.py` | 입력 수신, 선택 Planner 실행, 공통 Trajectory 발행 |
 
 두 알고리즘을 실행하는 파일과 패키지 launch는 각각 `path_planner_node.py`,
@@ -124,10 +139,10 @@ Hybrid A*와 Frenet 결과를 합치지 않는다. 선택된 Planner 결과만 �
 ## 오프라인 검증
 
 - Z1~Z5 경계 포함 규칙
-- Z1→Z2에서 Hybrid A* 유지
-- CP7에서 Hybrid A*→Frenet 전환
+- Z1→Z2에서 Frenet→Hybrid A* 전환
+- Z2→Z3에서 Hybrid A*→Frenet 전환
 - CP10에서 Frenet 유지
-- CP12에서 Frenet→Hybrid A* 전환
+- Z4→Z5에서 Frenet→Hybrid A* 전환
 - 역방향 progress jitter가 이전 모드로 복귀시키지 않음
 - Localization reset 후 Z1부터 새 주행 가능
 - 직선·곡률 bicycle path 생성
