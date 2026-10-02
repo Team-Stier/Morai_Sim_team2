@@ -1,7 +1,7 @@
 contract_version: 0.2.0
 activation_scope: user_authorized_morai_development_only
 node: path_planner_node
-executable: frenet_planner_node.py
+executable: path_planner_node.py
 internal_planners: [hybrid_astar, frenet]
 planner_mode_source: RouteContext.progress_and_path_planning_pkg_config_planner_mode_yaml
 planner_mode_policy: Z1_Z2_Z5_hybrid_astar_Z3_Z4_frenet_switch_only_at_CP7_CP12

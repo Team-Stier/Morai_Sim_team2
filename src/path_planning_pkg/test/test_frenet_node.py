@@ -16,7 +16,7 @@ from path_planning_pkg.frenet import Candidate, Planner
 from path_planning_pkg.planner_mode_manager import FRENET, PlannerModeManager, PlannerZone
 
 
-spec = importlib.util.spec_from_file_location('frenet_node', Path(__file__).parents[1]/'src/frenet_planner_node.py')
+spec = importlib.util.spec_from_file_location('path_planner_node', Path(__file__).parents[1]/'src/path_planner_node.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
