@@ -15,9 +15,10 @@ from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
 from common_msgs_pkg.msg import ComponentStatus, EgoState, HdMap, LocalizationStatus, RouteContext, Trajectory, WorldModel
 from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, geometry, geometry_windows, project
-from path_planning_pkg.hybrid_astar import HybridAStarConfig, HybridAStarPlanner, Pose2D
-from path_planning_pkg.hybrid_runtime import build_hybrid_candidate, flatten_obstacle_points
+from path_planning_pkg.hybrid_astar import HybridAStarConfig, HybridAStarPlanner, HybridPlanStatus, Pose2D
+from path_planning_pkg.hybrid_runtime import build_hybrid_candidate, flatten_obstacle_points, hybrid_path_clear
 from path_planning_pkg.planner_mode_manager import HYBRID_ASTAR, PlannerModeManager
+from path_planning_pkg.transition_speed import TransitionSpeedPolicy
 from hd_map_pkg.course_speed import CourseSpeedZones, load_course_speed_policy
 
 
@@ -30,10 +31,22 @@ class Node:
         self.c = rospy.get_param('~')
         self.planner = Planner(self.c)
         self.mode_manager = PlannerModeManager.from_mapping(self.c['planner_mode'])
+        self.transition_speed = TransitionSpeedPolicy(self.c)
         self.hybrid_planner = HybridAStarPlanner(HybridAStarConfig.from_mapping(self.c['hybrid_astar']))
         self.hybrid_runtime_config = self.c['hybrid_astar']
         self.active_planner_mode = None
         self.active_zone = None
+        self.hybrid_fallback_deadline = None
+        self.hybrid_checked_candidate = None
+        self.hybrid_checked_scene_key = None
+        self.handoff_candidate = None
+        self.handoff_stamp = None
+        self.handoff_deadline = None
+        self.handoff_reset_id = None
+        self.handoff_from_mode = None
+        self.handoff_target_mode = None
+        self.handoff_started = None
+        self.handoff_checked_scene_key = None
         self.route = self.world = self.state = self.selected = None
         self.selected_stamp = None
         self.pending_selection = None
@@ -44,6 +57,7 @@ class Node:
         self.route_status = self.world_status = self.localization_status = None
         self.last_lane_change_evaluation = -math.inf
         self.lock = threading.Lock()
+        self.publish_lock = threading.Lock()
         self.trajectory = rospy.Publisher('/molit/planning/trajectory', Trajectory, queue_size=2)
         self.status = rospy.Publisher('/molit/planning/status', ComponentStatus, queue_size=1, latch=True)
         self.audit = rospy.Publisher('~candidate_costs', String, queue_size=1)
@@ -62,15 +76,20 @@ class Node:
         rospy.Timer(rospy.Duration(1/self.c['trajectory_rate_hz']), self.publish)
 
     def on_state(self, ego, odom):
-        with self.lock:
-            if self.state is not None and self.state[0].reset_id != ego.reset_id:
-                self.selected = self.selected_stamp = None
-                self.pending_selection = self.pending_selection_stamp = None
-                self.pending_selection_set = False
-                self.mode_manager.reset()
-                self.active_planner_mode = None
-                self.active_zone = None
-            self.state = ego, odom
+        with self.publish_lock:
+            with self.lock:
+                if self.state is not None and self.state[0].reset_id != ego.reset_id:
+                    self.selected = self.selected_stamp = None
+                    self.pending_selection = self.pending_selection_stamp = None
+                    self.pending_selection_set = False
+                    self.mode_manager.reset()
+                    self.active_planner_mode = None
+                    self.active_zone = None
+                    self.hybrid_fallback_deadline = None
+                    self.hybrid_checked_candidate = None
+                    self.hybrid_checked_scene_key = None
+                    self.clear_handoff_locked()
+                self.state = ego, odom
 
     def on_map(self, message):
         if self.static_map is not None and self.static_map[0] == message.map_id:
@@ -131,10 +150,18 @@ class Node:
         with self.lock:
             if reset_id is not None and self.state[0].reset_id != reset_id:
                 return
+            if candidate is not None and getattr(self, 'handoff_candidate', None) is not None:
+                self.clear_handoff_locked()
+                self.selected, self.selected_stamp = candidate, completed
+                self.pending_selection = self.pending_selection_stamp = None
+                self.pending_selection_set = False
+                self.hybrid_fallback_deadline = None
+                return
             stopping = candidate is None or bool(np.any(candidate.speed <= 0.))
             active_stop = self.selected is None or bool(np.any(self.selected.speed <= 0.))
             age = (completed-self.selected_stamp).to_sec() if self.selected_stamp is not None else math.inf
             if (not stopping and not active_stop and
+                    getattr(self, 'hybrid_fallback_deadline', None) is None and
                     0. <= age < self.c['minimum_active_path_hold_sec']):
                 self.pending_selection = candidate
                 self.pending_selection_stamp = completed
@@ -144,10 +171,172 @@ class Node:
             self.pending_selection = None
             self.pending_selection_set = False
             self.pending_selection_stamp = None
+            self.hybrid_fallback_deadline = None
+
+    def clear_handoff_locked(self):
+        self.handoff_candidate = None
+        self.handoff_stamp = None
+        self.handoff_deadline = None
+        self.handoff_reset_id = None
+        self.handoff_from_mode = None
+        self.handoff_target_mode = None
+        self.handoff_started = None
+        self.handoff_checked_scene_key = None
 
     def defer_stop(self, reason):
+        with self.lock:
+            self.clear_handoff_locked()
         self.offer_selection(None, rospy.Time.now())
+        self.publish(None)
         self.report(reason, False)
+
+    def hybrid_scene_key(self, candidate, world):
+        """Key only observed points close enough to affect this selected path."""
+        if candidate is None or world is None:
+            return None
+        points = flatten_obstacle_points(world.objects)
+        if not np.isfinite(points).all():
+            return None
+        radius = (math.hypot(self.hybrid_planner.config.front_overhang_m,
+                             self.hybrid_planner.config.vehicle_width_m / 2.) +
+                  self.hybrid_planner.config.obstacle_margin_m)
+        low = np.min(candidate.xy[:, :2], axis=0)-radius
+        high = np.max(candidate.xy[:, :2], axis=0)+radius
+        nearby = points[np.all((points >= low) & (points <= high), axis=1)]
+        return nearby.tobytes()
+
+    def aligned_path_suffix(self, candidate, ego, max_distance=None):
+        """Return the forward map-frame path only when ego can follow its tangent."""
+        if (candidate is None or len(candidate.xy) < 2 or
+                len(candidate.route_s) != len(candidate.xy) or
+                len(candidate.limits) != len(candidate.xy) or
+                not np.isfinite(candidate.xy).all() or
+                (len(candidate.speed) and (len(candidate.speed) != len(candidate.xy) or
+                 not np.isfinite(candidate.speed).all() or np.any(candidate.speed < 0.)))):
+            return None
+        p = ego.pose.pose.position
+        position = np.array([p.x, p.y, p.z])
+        nearest = int(np.argmin(np.linalg.norm(candidate.xy[:, :2]-position[:2], axis=1)))
+        max_error = float(self.hybrid_runtime_config.get('fallback_max_path_error_m', 1.5))
+        if (nearest >= len(candidate.xy)-1 or
+                np.linalg.norm(candidate.xy[nearest, :2]-position[:2]) > max_error):
+            return None
+        # Average over one primitive so a 0.3 m discretization kink is not
+        # mistaken for a vehicle heading reversal.
+        path_s = np.r_[0., np.cumsum(np.linalg.norm(np.diff(candidate.xy[:, :2], axis=0), axis=1))]
+        half_window = self.hybrid_planner.config.primitive_length_m / 2.
+        before = max(0, int(np.searchsorted(path_s, path_s[nearest]-half_window, side='right'))-1)
+        after = min(len(path_s)-1, int(np.searchsorted(path_s, path_s[nearest]+half_window)))
+        forward = candidate.xy[after, :2]-candidate.xy[before, :2]
+        if np.linalg.norm(forward) <= 1.0e-6:
+            return None
+        path_heading = math.atan2(forward[1], forward[0])
+        heading_error = math.atan2(math.sin(yaw(ego.pose.pose.orientation)-path_heading),
+                                   math.cos(yaw(ego.pose.pose.orientation)-path_heading))
+        maximum_heading_error = math.radians(float(
+            self.hybrid_runtime_config.get('reuse_max_heading_error_deg', 35.0)))
+        if not math.isfinite(maximum_heading_error) or abs(heading_error) > maximum_heading_error:
+            return None
+        start = max(0, nearest-1)
+        end = len(candidate.xy)
+        if max_distance is not None:
+            end = min(end, max(start+2, int(np.searchsorted(
+                path_s, path_s[nearest] + max_distance, side='right')) + 1))
+        return Candidate(candidate.key, candidate.target, candidate.xy[start:end].copy(),
+                         candidate.route_s[start:end].copy(), candidate.limits[start:end].copy(),
+                         candidate.changes, candidate.change_end, candidate.return_start)
+
+    def hybrid_path_usable(self, candidate, now, map_id, zone_id, lane, boundaries,
+                           route, world, state, check_geometry=True):
+        """Check a Hybrid result against inputs and ego pose current at acceptance."""
+        if candidate is None or route is None or world is None or state is None:
+            return False
+        ego, _odom = state
+        world_max_age = (self.c.get('world_model_input_age_sec', self.c['input_age_sec'])
+                         if self.c['rddf_geometry_only'] else self.c['input_age_sec'])
+        zone = next((item for item in self.mode_manager.zones if item.zone_id == zone_id), None)
+        current_mode = self.mode_manager.current
+        if (self.static_map is None or self.static_map[0] != map_id or
+                self.active_planner_mode != HYBRID_ASTAR or zone is None or
+                (current_mode is not None and current_mode.zone_id != zone_id) or
+                (zone is not self.mode_manager.zones[-1] and route.progress >= zone.end_s) or
+                route.map_id != map_id or not world.objects_valid or
+                world.localization_reset_id != ego.reset_id or
+                self.epoch != ego.reset_id or self.active_zone != zone_id or
+                any(not 0. <= (now-stamp).to_sec() <= self.c['input_age_sec']
+                    for stamp in (ego.header.stamp, route.header.stamp)) or
+                not 0. <= (now-world.header.stamp).to_sec() <= world_max_age):
+            return False
+        if candidate.key != 'hybrid_astar':
+            return False
+        suffix = self.aligned_path_suffix(candidate, ego)
+        if suffix is None:
+            return False
+        if not check_geometry:
+            return True
+        p = ego.pose.pose.position
+        position = np.array([p.x, p.y, p.z])
+        progress = project(lane.xy, lane.s, position[:2])[0]
+        return hybrid_path_clear(self.hybrid_planner, lane, progress, suffix,
+                                 flatten_obstacle_points(world.objects),
+                                 self.hybrid_runtime_config,
+                                 self.c.get('loop_route', False), boundaries)
+
+    def reusable_hybrid_path(self, now, map_id, zone_id, lane, boundaries,
+                             route, world, state, check_geometry=True):
+        """Recheck a recent Hybrid path before using it after an interrupted search."""
+        with self.lock:
+            selected, selected_stamp = self.selected, self.selected_stamp
+        hold_sec = min(float(self.hybrid_runtime_config.get('transient_path_hold_sec', 0.5)),
+                       float(self.c['trajectory_valid_for_sec']))
+        age = (now-selected_stamp).to_sec() if selected_stamp is not None else math.inf
+        if (selected is None or selected.key != 'hybrid_astar' or not selected.feasible or
+                not 0. <= age < hold_sec or len(selected.speed) != len(selected.xy)):
+            return None
+        if not self.hybrid_path_usable(selected, now, map_id, zone_id, lane, boundaries,
+                                       route, world, state, check_geometry):
+            return None
+        return selected, selected_stamp
+
+    def handoff_usable(self, now, map_id, lane, boundaries, route, world, state,
+                       check_geometry=True):
+        """Check the old mode's path during one bounded planner transition."""
+        with self.lock:
+            candidate = self.handoff_candidate
+            deadline = self.handoff_deadline
+            started = self.handoff_started
+            reset_id = self.handoff_reset_id
+            target_mode = self.handoff_target_mode
+        if (candidate is None or deadline is None or started is None or
+                not started <= now < deadline or self.active_planner_mode != target_mode or
+                route is None or world is None or state is None or
+                self.static_map is None or self.static_map[0] != map_id or
+                route.map_id != map_id or not world.objects_valid or
+                state[0].reset_id != reset_id or world.localization_reset_id != reset_id or
+                self.epoch != reset_id or not candidate.feasible or
+                len(candidate.speed) != len(candidate.xy) or
+                len(candidate.times) != len(candidate.xy) or
+                not np.isfinite(candidate.speed).all() or
+                not np.any(candidate.speed > .01) or
+                np.count_nonzero(np.isfinite(candidate.times)) < 2):
+            return False
+        world_max_age = (self.c.get('world_model_input_age_sec', self.c['input_age_sec'])
+                         if self.c['rddf_geometry_only'] else self.c['input_age_sec'])
+        if (any(not 0. <= (now-stamp).to_sec() <= self.c['input_age_sec']
+                for stamp in (state[0].header.stamp, route.header.stamp)) or
+                not 0. <= (now-world.header.stamp).to_sec() <= world_max_age):
+            return False
+        suffix = self.aligned_path_suffix(candidate, state[0],
+            float(self.hybrid_runtime_config['local_goal_distance_m']))
+        if suffix is None:
+            return False
+        if not check_geometry:
+            return True
+        p = state[0].pose.pose.position
+        progress = project(lane.xy, lane.s, np.array([p.x, p.y]))[0]
+        return hybrid_path_clear(self.hybrid_planner, lane, progress, suffix,
+            flatten_obstacle_points(world.objects), self.hybrid_runtime_config,
+            self.c.get('loop_route', False), boundaries)
 
     def plan(self, _):
         started = time.monotonic()
@@ -182,16 +371,74 @@ class Node:
             self.defer_stop('route_endpoint_stop')
             return
         selection = self.mode_manager.select(route.progress)
-        if selection.planner != self.active_planner_mode:
-            with self.lock:
-                self.selected = self.selected_stamp = None
-                self.pending_selection = self.pending_selection_stamp = None
-                self.pending_selection_set = False
+        mode_changed = selection.planner != self.active_planner_mode
+        reset_selection = (mode_changed or
+            (selection.planner == HYBRID_ASTAR and selection.zone_id != self.active_zone))
+        handoff_ready = False
+        if reset_selection:
+            with self.publish_lock:
+                with self.lock:
+                    old_mode = self.active_planner_mode
+                    old_candidate, old_stamp = self.selected, self.selected_stamp
+                    self.selected = self.selected_stamp = None
+                    self.pending_selection = self.pending_selection_stamp = None
+                    self.pending_selection_set = False
+                    self.hybrid_fallback_deadline = None
+                    self.clear_handoff_locked()
+                    if mode_changed and old_mode is not None and old_candidate is not None:
+                        self.handoff_candidate = old_candidate
+                        self.handoff_stamp = old_stamp
+                        self.handoff_started = now
+                        self.handoff_deadline = now + rospy.Duration(float(
+                            self.c.get('mode_transition_handoff_sec', .8)))
+                        self.handoff_reset_id = ego.reset_id
+                        self.handoff_from_mode = old_mode
+                        self.handoff_target_mode = selection.planner
+                self.active_planner_mode = selection.planner
+                self.active_zone = selection.zone_id
+                if self.handoff_candidate is not None:
+                    handoff_ready = self.handoff_usable(now, map_id, lanes['global_route'],
+                        boundaries, route, world, state)
+                    with self.lock:
+                        if handoff_ready:
+                            self.handoff_checked_scene_key = self.hybrid_scene_key(
+                                self.handoff_candidate, world)
+                        else:
+                            self.clear_handoff_locked()
             self.planner.committed = self.planner.pending = None
-            self.active_planner_mode = selection.planner
-        self.active_zone = selection.zone_id
+            if handoff_ready:
+                self.report('planner_mode=%s; zone=%s; selected=handoff; replanning' %
+                            (selection.planner, selection.zone_id), True)
+            elif old_mode is not None:
+                self.publish(None)
+                self.report('planner_mode=%s; zone=%s; selected=stop; replanning' %
+                            (selection.planner, selection.zone_id), False)
+        else:
+            self.active_zone = selection.zone_id
 
         if selection.planner == HYBRID_ASTAR:
+            with self.lock:
+                previous_candidate = self.selected
+            previous_usable = self.hybrid_path_usable(
+                previous_candidate, now, map_id, selection.zone_id,
+                lanes['global_route'], boundaries, route, world, state)
+            if not previous_usable and self.handoff_usable(
+                    now, map_id, lanes['global_route'], boundaries,
+                    route, world, state):
+                with self.lock:
+                    previous_candidate = self.handoff_candidate
+                previous_usable = previous_candidate is not None
+            if not previous_usable:
+                with self.lock:
+                    had_active = self.selected is not None
+                    self.selected = self.selected_stamp = None
+                    self.pending_selection = self.pending_selection_stamp = None
+                    self.pending_selection_set = False
+                    self.hybrid_fallback_deadline = None
+                if had_active:
+                    self.publish(None)
+                    self.report('planner_mode=hybrid_astar; zone=%s; selected=stop; replanning' %
+                                selection.zone_id, False)
             hybrid = build_hybrid_candidate(
                 self.hybrid_planner,
                 lanes['global_route'],
@@ -200,19 +447,67 @@ class Node:
                 flatten_obstacle_points(world.objects),
                 self.hybrid_runtime_config,
                 self.c.get('loop_route', False),
+                previous_path=previous_candidate.xy if previous_usable else None,
+                forbidden_boundaries=boundaries,
             )
             candidate = hybrid.candidate
             completed = rospy.Time.now()
-            if candidate is not None:
-                _distance, _heading, _curvature, speeds, times = self.planner.profile(candidate, speed)
+            accepted = activated = held = handoff_held = False
+            rejected_after_search = False
+            current_route, current_world, current_state = self.route, self.world, self.state
+            if candidate is not None and self.hybrid_path_usable(
+                    candidate, completed, map_id, selection.zone_id, lanes['global_route'],
+                    boundaries, current_route, current_world, current_state):
+                with self.lock:
+                    active_candidate = self.selected
+                if not self.hybrid_path_usable(
+                        active_candidate, completed, map_id, selection.zone_id,
+                        lanes['global_route'], boundaries, current_route, current_world,
+                        current_state):
+                    with self.lock:
+                        self.selected = self.selected_stamp = None
+                        self.pending_selection = self.pending_selection_stamp = None
+                        self.pending_selection_set = False
+                        self.hybrid_fallback_deadline = None
+                current_speed = max(0., current_state[1].twist.twist.linear.x)
+                candidate.speed_cap_mps = self.transition_speed.caps(
+                    candidate.route_s, selection.planner, lanes['global_route'])
+                _distance, _heading, _curvature, speeds, times = self.planner.profile(
+                    candidate, current_speed)
                 candidate.speed = speeds
                 candidate.times = times
                 candidate.feasible = True
                 candidate.eta = float(times[-1])
                 candidate.cost = candidate.eta
-                self.offer_selection(candidate, completed, ego.reset_id)
-            else:
-                self.offer_selection(None, completed, ego.reset_id)
+                self.offer_selection(candidate, completed, current_state[0].reset_id)
+                with self.lock:
+                    accepted = self.selected is candidate or self.pending_selection is candidate
+                    activated = self.selected is candidate
+            elif candidate is not None:
+                rejected_after_search = True
+            if not accepted:
+                if (candidate is not None or hybrid.plan.status in
+                        (HybridPlanStatus.TIME_LIMIT, HybridPlanStatus.SEARCH_LIMIT)):
+                    held_path = self.reusable_hybrid_path(
+                        completed, map_id, selection.zone_id, lanes['global_route'],
+                        boundaries, current_route, current_world, current_state)
+                    if held_path is not None:
+                        with self.lock:
+                            if self.selected is held_path[0] and self.selected_stamp == held_path[1]:
+                                held = True
+                                self.hybrid_fallback_deadline = held_path[1] + rospy.Duration(
+                                    min(float(self.hybrid_runtime_config.get('transient_path_hold_sec', 0.5)),
+                                        float(self.c['trajectory_valid_for_sec'])))
+                                self.pending_selection = self.pending_selection_stamp = None
+                                self.pending_selection_set = False
+                if not held:
+                    handoff_held = self.handoff_usable(completed, map_id,
+                        lanes['global_route'], boundaries, current_route, current_world,
+                        current_state)
+                    held = handoff_held
+                if not held:
+                    self.offer_selection(None, completed, ego.reset_id)
+                    self.publish(None)
             diagnostic = {
                 'planner': HYBRID_ASTAR,
                 'zone': selection.zone_id,
@@ -222,12 +517,19 @@ class Node:
                 'rejected_by_corridor': hybrid.plan.rejected_by_corridor,
                 'rejected_by_obstacle': hybrid.plan.rejected_by_obstacle,
                 'elapsed_sec': hybrid.plan.elapsed_sec,
+                'accepted': accepted,
+                'activated': activated,
+                'held': held,
+                'handoff_held': handoff_held,
+                'rejected_after_search': rejected_after_search,
             }
             self.audit.publish(String(data=json.dumps([diagnostic])))
             self.report(
-                'planner_mode=%s; zone=%s; status=%s; simulator_closed_loop_unverified' %
-                (selection.planner, selection.zone_id, hybrid.plan.status.value),
-                candidate is not None,
+                'planner_mode=%s; zone=%s; status=%s; selected=%s; simulator_closed_loop_unverified' %
+                (selection.planner, selection.zone_id, hybrid.plan.status.value,
+                 'new' if activated else 'pending' if accepted else 'handoff' if handoff_held
+                 else 'held' if held else 'stop'),
+                accepted or held,
                 time.monotonic()-started,
             )
             return
@@ -255,6 +557,8 @@ class Node:
         obstacle_grid = ObstacleGrid(objects,self.c)
 
         def evaluate(candidate):
+            candidate.speed_cap_mps = self.transition_speed.caps(
+                candidate.route_s, selection.planner, lanes['global_route'])
             self.planner.evaluate(candidate, speed, obstacle_grid, boundaries, goal_s)
             index = min(np.searchsorted(candidate.route_s,goal_s),len(candidate.xy)-1)
             goal = route.comparison_goal
@@ -290,10 +594,13 @@ class Node:
         completed = rospy.Time.now()
         # An unfinished search is not a stop result. Keep the published selection
         # until alternatives finish, unless this evaluation found a safety hazard.
-        if fast.feasible or fast.reason in (
+        if fast.feasible:
+            self.offer_selection(fast,completed,ego.reset_id)
+        elif fast.reason in (
                 'predicted_cluster_collision', 'insufficient_stopping_distance',
                 'no_collision_free_stop', 'forbidden_boundary'):
-            self.offer_selection(fast if fast.feasible else None,completed,ego.reset_id)
+            self.defer_stop('planner_mode=frenet; zone=%s; reason=%s' %
+                            (selection.zone_id, fast.reason))
 
         lateral_period = 1./self.c['lane_change_evaluation_rate_hz']
         # A traversable committed manoeuvre stays selected regardless of other
@@ -319,20 +626,44 @@ class Node:
             if candidate is not fast and candidate is not candidates[0]:
                 evaluate(candidate)
         chosen = self.planner.select(candidates, now.to_sec(), progress)
-        self.offer_selection(chosen,rospy.Time.now(),ego.reset_id)
+        handoff_held = False
+        if chosen is not None:
+            self.offer_selection(chosen,rospy.Time.now(),ego.reset_id)
+        else:
+            handoff_held = self.handoff_usable(rospy.Time.now(), map_id,
+                lanes['global_route'], boundaries, self.route, self.world, self.state)
+            if not handoff_held:
+                self.offer_selection(None,rospy.Time.now(),ego.reset_id)
+                self.publish(None)
         audit = [{'key':x.key, 'target':x.target, 'feasible':x.feasible, 'reason':x.reason,
                   'eta':x.eta if math.isfinite(x.eta) else None,
                   'cost':x.cost if math.isfinite(x.cost) else None,
                   'comfort':x.comfort, 'changes':x.changes} for x in candidates]
         self.audit.publish(String(data=json.dumps(audit)))
         self.report('planner_mode=frenet; zone=%s; selected=%s; candidates=%d; rddf_geometry_only=%s; observed_clusters_only; unverified_development'%
-                    (selection.zone_id,chosen.key if chosen else 'stop', len(candidates),self.c['rddf_geometry_only']), True, time.monotonic()-started)
+                    (selection.zone_id,chosen.key if chosen else 'handoff' if handoff_held else 'stop',
+                     len(candidates),self.c['rddf_geometry_only']),
+                    chosen is not None or handoff_held, time.monotonic()-started)
 
-    def publish(self, _):
+    def publish(self, event):
+        # Plan-triggered stop publication must be ordered after any in-flight
+        # timer publication, so an older motion path cannot follow the stop.
+        with self.publish_lock:
+            self._publish_once(event)
+
+    def _publish_once(self, _):
         if self.state is None:
             return
         now = rospy.Time.now()
+        fallback_stop_reason = None
         with self.lock:
+            deadline = getattr(self, 'hybrid_fallback_deadline', None)
+            if deadline is not None and now >= deadline:
+                self.selected = self.selected_stamp = None
+                self.pending_selection = self.pending_selection_stamp = None
+                self.pending_selection_set = False
+                self.hybrid_fallback_deadline = None
+                fallback_stop_reason = 'transient_hold_expired'
             if self.selected_stamp is not None and now < self.selected_stamp:
                 self.selected = self.selected_stamp = None
                 self.pending_selection = self.pending_selection_stamp = None
@@ -340,11 +671,68 @@ class Node:
             if (self.pending_selection_set and self.selected_stamp is not None and
                     (now-self.selected_stamp).to_sec() >= self.c['minimum_active_path_hold_sec']):
                 self.selected = self.pending_selection
-                self.selected_stamp = now
+                self.selected_stamp = (self.pending_selection_stamp if
+                    self.active_planner_mode == HYBRID_ASTAR else now)
                 self.pending_selection = self.pending_selection_stamp = None
                 self.pending_selection_set = False
             ego, odom = self.state
             chosen, stamp = self.selected, self.selected_stamp
+            handoff = self.handoff_candidate if chosen is None else None
+            handoff_stamp = self.handoff_stamp
+            handoff_deadline = self.handoff_deadline
+        using_handoff = False
+        if handoff is not None:
+            static_map = self.static_map
+            scene_key = self.hybrid_scene_key(handoff, self.world)
+            full_check = (scene_key is None or
+                          self.handoff_checked_scene_key != scene_key)
+            usable = (static_map is not None and 'global_route' in static_map[1] and
+                self.handoff_usable(now, static_map[0], static_map[1]['global_route'],
+                    static_map[3], self.route, self.world, self.state, full_check))
+            if usable:
+                chosen, stamp = handoff, handoff_stamp
+                using_handoff = True
+                if full_check:
+                    self.handoff_checked_scene_key = scene_key
+            else:
+                with self.lock:
+                    if self.handoff_candidate is handoff:
+                        self.clear_handoff_locked()
+                        fallback_stop_reason = ('mode_handoff_expired' if
+                            handoff_deadline is not None and now >= handoff_deadline else
+                            'mode_handoff_invalidated')
+        if (self.active_planner_mode == HYBRID_ASTAR and chosen is not None and
+                not using_handoff and fallback_stop_reason is None):
+            static_map = self.static_map
+            checked = False
+            if static_map is not None and 'global_route' in static_map[1]:
+                scene_key = self.hybrid_scene_key(chosen, self.world)
+                full_check = (scene_key is None or self.hybrid_checked_candidate is not chosen or
+                              self.hybrid_checked_scene_key != scene_key)
+                args = (now, static_map[0], self.active_zone,
+                        static_map[1]['global_route'], static_map[3], self.route,
+                        self.world, self.state)
+                if deadline is not None:
+                    held_path = self.reusable_hybrid_path(*args, check_geometry=full_check)
+                    checked = held_path is not None and held_path[0] is chosen
+                else:
+                    checked = self.hybrid_path_usable(chosen, *args,
+                                                      check_geometry=full_check)
+                if checked and full_check:
+                    self.hybrid_checked_candidate = chosen
+                    self.hybrid_checked_scene_key = scene_key
+            if not checked:
+                with self.lock:
+                    if self.selected is chosen:
+                        self.selected = self.selected_stamp = None
+                        self.pending_selection = self.pending_selection_stamp = None
+                        self.pending_selection_set = False
+                        self.hybrid_fallback_deadline = None
+                        chosen = stamp = None
+                        fallback_stop_reason = ('transient_hold_invalidated' if deadline is not None
+                                                else 'active_path_invalidated')
+                    else:
+                        chosen, stamp = self.selected, self.selected_stamp
         output = Trajectory()
         output.header.stamp, output.header.frame_id = now, 'odom'
         output.reset_id = ego.reset_id
@@ -369,6 +757,9 @@ class Node:
             output.speed_mps = [0., 0.]
             output.time_from_start = [rospy.Duration(0), rospy.Duration(1)]
             self.emit(output)
+            if fallback_stop_reason:
+                self.report('planner_mode=%s; status=%s; selected=stop' %
+                            (self.active_planner_mode, fallback_stop_reason), False)
             return
         # Relative map->odom transform from a synchronized estimate pair.
         rotation = yaw(odom.pose.pose.orientation)-yaw(ego.pose.pose.orientation)

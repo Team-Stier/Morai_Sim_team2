@@ -13,6 +13,7 @@ catkin_install_python(PROGRAMS src/global_path_demo.py src/path_planner_node.py 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_global_path_demo.py)
   catkin_add_nosetests(test/test_route_speed_profile.py)
+  catkin_add_nosetests(test/test_transition_speed.py)
   catkin_add_nosetests(test/test_frenet.py)
   catkin_add_nosetests(test/test_frenet_node.py)
   catkin_add_nosetests(test/test_hybrid_astar.py)

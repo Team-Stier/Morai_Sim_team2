@@ -19,8 +19,10 @@ def manager():
 class PlannerModeManagerTest(unittest.TestCase):
     def test_exact_boundaries_are_start_inclusive(self):
         subject = manager()
-        self.assertEqual(subject.select(0.0).zone_id, "Z1")
-        self.assertEqual(subject.select(237.423).zone_id, "Z2")
+        selection = subject.select(0.0)
+        self.assertEqual((selection.zone_id, selection.planner), ("Z1", FRENET))
+        selection = subject.select(237.423)
+        self.assertEqual((selection.zone_id, selection.planner, selection.changed), ("Z2", HYBRID_ASTAR, True))
         selection = subject.select(635.113)
         self.assertEqual((selection.zone_id, selection.planner, selection.changed), ("Z3", FRENET, True))
         selection = subject.select(1118.7417511690987)
@@ -31,9 +33,9 @@ class PlannerModeManagerTest(unittest.TestCase):
 
     def test_same_planner_zone_boundary_is_not_a_mode_change(self):
         subject = manager()
-        subject.select(200.0)
-        selection = subject.select(300.0)
-        self.assertEqual(selection.zone_id, "Z2")
+        subject.select(1100.0)
+        selection = subject.select(1200.0)
+        self.assertEqual(selection.zone_id, "Z4")
         self.assertFalse(selection.changed)
 
     def test_progress_does_not_reenter_previous_planner_zone(self):
@@ -50,7 +52,7 @@ class PlannerModeManagerTest(unittest.TestCase):
         subject.select(1800.0)
         subject.reset()
         selection = subject.select(10.0)
-        self.assertEqual((selection.zone_id, selection.planner), ("Z1", HYBRID_ASTAR))
+        self.assertEqual((selection.zone_id, selection.planner), ("Z1", FRENET))
 
     def test_rejects_gap_or_overlap(self):
         with self.assertRaises(ValueError):

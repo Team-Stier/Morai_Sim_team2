@@ -71,9 +71,12 @@ class Node {
     if (!odometry_ || !localization_ || !trajectory_ || !planning_) {
       o = controller_.stop(now, dt, speed, "waiting_for_inputs");
     } else if (!localization_->local_odometry_valid || (localization_->stop_required && !global_path_only_) ||
-               !planning_->ready || planning_->stop_required || !trajectory_->valid) {
+               !trajectory_->valid ||
+               ((!planning_->ready || planning_->stop_required) && !trajectory_->stop_required)) {
       o = controller_.stop(now, dt, speed, "upstream_stop_required");
     } else {
+      // An explicit zero-speed trajectory remains a valid controller input when
+      // planning cannot supply motion. Controller::step issues its normal brake.
       o = controller_.step(*odometry_, *trajectory_, now, dt);
     }
     // Preserve producer stamps as telemetry; only command/status use generation time.

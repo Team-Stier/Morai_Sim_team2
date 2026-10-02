@@ -6,7 +6,7 @@ from typing import Iterable, Mapping, Optional, Sequence
 
 import numpy as np
 
-from .frenet import Candidate, Lane
+from .frenet import Candidate, Lane, sample_limits
 from .hybrid_astar import HybridAStarPlanner, HybridPlanResult, Pose2D
 
 
@@ -48,6 +48,59 @@ def flatten_obstacle_points(objects: Iterable[object]) -> np.ndarray:
     return np.asarray(points, dtype=float).reshape((-1, 2)) if points else np.empty((0, 2))
 
 
+def _reference_segment(planner: HybridAStarPlanner, lane: Lane, progress_s: float,
+                       runtime_config: Mapping[str, object], loop_route: bool):
+    step = float(runtime_config["reference_step_m"])
+    goal_distance = float(runtime_config["local_goal_distance_m"])
+    if step <= 0.0 or goal_distance <= planner.config.primitive_length_m:
+        raise ValueError("Hybrid runtime reference step and goal distance are invalid")
+    begin = float(progress_s) - max(2.0, planner.config.rear_overhang_m + 1.0)
+    finish = float(progress_s) + goal_distance + planner.config.front_overhang_m + 2.0
+    reference_s = np.arange(begin, finish + step * 0.5, step)
+    return reference_s, _sample_lane(lane, reference_s, loop_route)
+
+
+def _previous_steering(planner: HybridAStarPlanner, previous_path: Optional[np.ndarray],
+                       start: Pose2D) -> Optional[float]:
+    if previous_path is None:
+        return None
+    raw = np.asarray(previous_path, dtype=float)
+    if raw.ndim != 2 or raw.shape[1] < 2 or len(raw) < 3 or not np.isfinite(raw).all():
+        return None
+    cumulative = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(raw[:, :2], axis=0), axis=1))]
+    keep = np.r_[True, np.diff(cumulative) > 1.0e-6]
+    cumulative, xy = cumulative[keep], raw[keep, :2]
+    if len(xy) < 3 or cumulative[-1] < 2.0:
+        return None
+    nearest = int(np.argmin(np.sum((xy - np.array([start.x, start.y])) ** 2, axis=1)))
+    center = float(np.clip(cumulative[nearest], 1.0, cumulative[-1] - 1.0))
+    samples = np.column_stack([np.interp([center - 1.0, center, center + 1.0],
+                                         cumulative, xy[:, column]) for column in range(2)])
+    first = math.atan2(*(samples[1] - samples[0])[::-1])
+    second = math.atan2(*(samples[2] - samples[1])[::-1])
+    curvature = ((second - first + math.pi) % (2.0 * math.pi) - math.pi)
+    steering = math.atan(planner.config.wheelbase_m * curvature)
+    maximum = max(abs(value) for value in planner.steering)
+    return float(np.clip(steering, -maximum, maximum))
+
+
+def hybrid_path_clear(
+    planner: HybridAStarPlanner,
+    lane: Lane,
+    progress_s: float,
+    candidate: Candidate,
+    obstacle_points: Iterable[Sequence[float]],
+    runtime_config: Mapping[str, object],
+    loop_route: bool,
+    forbidden_boundaries: Iterable[Sequence[Sequence[float]]] = (),
+) -> bool:
+    """Validate a retained candidate suffix against the current local scene."""
+    _reference_s, reference_xyz = _reference_segment(
+        planner, lane, progress_s, runtime_config, loop_route)
+    return planner.path_clear(candidate.xy, reference_xyz, obstacle_points,
+                              forbidden_boundaries)
+
+
 def build_hybrid_candidate(
     planner: HybridAStarPlanner,
     lane: Lane,
@@ -56,17 +109,14 @@ def build_hybrid_candidate(
     obstacle_points: Iterable[Sequence[float]],
     runtime_config: Mapping[str, object],
     loop_route: bool,
+    previous_path: Optional[np.ndarray] = None,
+    forbidden_boundaries: Iterable[Sequence[Sequence[float]]] = (),
 ) -> HybridCandidateResult:
     step = float(runtime_config["reference_step_m"])
     goal_distance = float(runtime_config["local_goal_distance_m"])
-    if step <= 0.0 or goal_distance <= planner.config.primitive_length_m:
-        raise ValueError("Hybrid runtime reference step and goal distance are invalid")
-
     route_length = float(lane.s[-1])
-    begin = float(progress_s) - max(2.0, planner.config.rear_overhang_m + 1.0)
-    finish = float(progress_s) + goal_distance + planner.config.front_overhang_m + 2.0
-    reference_s = np.arange(begin, finish + step * 0.5, step)
-    reference_xyz = _sample_lane(lane, reference_s, loop_route)
+    reference_s, reference_xyz = _reference_segment(planner, lane, progress_s,
+                                                     runtime_config, loop_route)
     goal_xyz = _sample_lane(lane, np.array([progress_s + goal_distance]), loop_route)[0]
     tangent_points = _sample_lane(
         lane,
@@ -75,7 +125,9 @@ def build_hybrid_candidate(
     )
     tangent = tangent_points[1, :2] - tangent_points[0, :2]
     goal = Pose2D(float(goal_xyz[0]), float(goal_xyz[1]), math.atan2(tangent[1], tangent[0]))
-    plan = planner.plan(start, goal, reference_xyz[:, :2], obstacle_points)
+    plan = planner.plan(start, goal, reference_xyz, obstacle_points,
+                        forbidden_boundaries=forbidden_boundaries,
+                        initial_steering_rad=_previous_steering(planner, previous_path, start))
     if not plan.success or len(plan.path) < 2:
         return HybridCandidateResult(None, plan)
 
@@ -87,7 +139,7 @@ def build_hybrid_candidate(
     route_s = np.maximum.accumulate(route_s)
     wrapped_s = np.mod(route_s, route_length) if loop_route else np.clip(route_s, 0.0, route_length)
     xy[:, 2] = np.interp(wrapped_s, lane.s, lane.xy[:, 2])
-    limits = np.interp(wrapped_s, lane.s, lane.limits)
+    limits = sample_limits(lane, wrapped_s)
     candidate = Candidate(
         "hybrid_astar",
         lane.id,

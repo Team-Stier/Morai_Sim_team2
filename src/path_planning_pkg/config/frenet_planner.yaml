@@ -1,5 +1,11 @@
 # User course speeds apply; 0 removes the test-only speed cap.
 test_speed_cap_kph: 0.0
+hybrid_speed_cap_kph: 20.0
+# Planner-change boundaries target 30 km/h; speed ramps use route distance.
+mode_transition_speed_kph: 30.0
+mode_transition_min_distance_m: 20.0
+mode_transition_reaction_sec: 0.5
+mode_transition_handoff_sec: 0.8
 rddf_geometry_only: true
 loop_route: true
 rddf_neighbor_min_m: 1.0
