@@ -204,7 +204,8 @@ class Node:
             candidate = hybrid.candidate
             completed = rospy.Time.now()
             if candidate is not None:
-                _distance, _heading, _curvature, speeds, times = self.planner.profile(candidate, speed)
+                _distance, _heading, _curvature, speeds, times = self.planner.profile(
+                    candidate, speed, cap=self.c['hybrid_speed_cap_kph']/3.6)
                 candidate.speed = speeds
                 candidate.times = times
                 candidate.feasible = True
