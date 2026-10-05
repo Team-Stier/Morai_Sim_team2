@@ -1,55 +1,107 @@
-# User course speeds apply; 0 removes the test-only speed cap.
+# Frenet 및 통합 Planner 설정. 각 주석의 단위와 적용 범위는 현재 구현 기준이다.
+# 경로 생성·충돌 검사 설정이며, Controller의 직접 제어 게인을 설정하는 파일은 아니다.
+
+# 시험용 추가 속도 상한 [km/h]. 0이면 해제하며 지도·곡률·장애물 제한은 계속 적용한다.
 test_speed_cap_kph: 0.0
+# true: RDDF 형상으로 인접 경로를 판단하는 개발 모드. 지도 금지 경계·차로변경 window·체크포인트 검사를 제외한다. 객체 충돌 검사는 유지한다.
 rddf_geometry_only: true
+# true: 경로 끝을 시작점에 이어 반복 주행한다. false: 종점에서 종료·정지 처리를 한다.
 loop_route: true
+# 인접 RDDF 사이 최소 평면 거리 [m]. 진행 방향으로 어긋난 거리의 최대 허용값으로도 사용한다.
 rddf_neighbor_min_m: 1.0
+# 인접 RDDF로 인정하는 최대 평면 거리 [m]. 클수록 더 멀리 떨어진 경로도 차로변경 후보에 포함할 수 있다.
 rddf_neighbor_max_m: 5.0
+# 인접 RDDF 진행 방향의 최소 내적 [무단위]. 1에 가까울수록 평행한 경로만 허용한다. 0.8은 약 37도 이내다.
 rddf_heading_dot_min: 0.8
+# 인접 RDDF로 인정할 최대 높이 차 [m]. 서로 다른 높이의 도로를 연결하는 것을 제한한다.
 rddf_height_difference_m: 1.5
+# 경로 재계획 호출 주기 [Hz]. 5이면 초당 5회. 높이면 반응은 빨라지지만 계산 부하가 늘어난다.
 decision_rate_hz: 5.0
+# Frenet 차로변경 후보 비용 비교 주기 [Hz]. 막힌 경로는 이 주기를 기다리지 않고 대안을 평가할 수 있다.
 lane_change_evaluation_rate_hz: 2.0
+# 선택한 궤적을 Controller에 발행하는 주기 [Hz]. 경로 재계획 주기와 별개다.
 trajectory_rate_hz: 10.0
+# 발행 trajectory의 유효기간 [s]. 소비자가 오래된 경로인지 판단하는 데 사용한다.
 trajectory_valid_for_sec: 0.5
+# 일반 경로를 새 계산 결과로 바꾸기 전 최소 유지 시간 [s]. 충돌·정지·입력 오류·reset은 기다리지 않고 반영한다.
 minimum_active_path_hold_sec: 0.5
+# 객체 속도로 미래 충돌을 예측하는 최대 시간 [s]. 대기 후 출발 평가에도 적용하며, 클수록 계산량이 늘어난다.
 prediction_horizon_sec: 8.0
+# Frenet 후보 경로의 점 간격 [m]. 작을수록 형상을 촘촘히 표현하지만 계산량이 늘어난다.
 spatial_step_m: 0.5
+# 경로 사이를 보간하여 충돌·지도 경계를 검사하는 공간 간격 [m]. 작을수록 검사 지점이 많아진다.
 collision_step_m: 0.2
+# 차량 앞쪽 정밀 객체 충돌 검사의 최대 경로 거리 [m]. 클수록 멀리까지 검사하지만 계산량이 늘어난다.
 collision_precision_distance_m: 50.0
+# 충돌 검사에서 주변 객체를 빠르게 찾는 격자 한 칸의 크기 [m]. 객체 형상을 단순화하는 값은 아니다.
 obstacle_grid_cell_m: 5.0
+# 지도 금지 경계와 경로의 높이 비교 허용 오차 [m]. 형상 전용 모드에서는 지도 경계를 검사하지 않는다.
 map_height_tolerance_m: 1.5
+# 지도 경로 전체의 XY 범위에 더할 경계 수집 여유 [m]. 차량과 장애물 사이의 안전거리가 아니다.
 map_boundary_margin_m: 15.0
+# 움직이는 객체와 충돌 검사 시 시간 보간 간격 [s]. 작을수록 빠른 이동을 촘촘히 검사한다.
 collision_time_step_sec: 0.05
+# 후보 비교 목표 지점 뒤에 추가로 생성하는 경로 길이 [m]. 후속 추종을 위한 여유다.
 tail_m: 40.0
+# 현재 진행도 앞에 확보하려는 최소 후보 경로 길이 [m]. 실제 종점에서는 경로 길이에 제한된다.
 minimum_path_m: 20.0
+# 현재 차량 위치·방향을 RDDF 후보에 부드럽게 연결하는 최소 거리 [m]. connection_sec로 계산한 거리와 큰 값을 쓴다.
 connection_m: 20.0
+# RDDF 연결 거리 계산에 쓰는 시간 [s]. 연결 거리는 max(connection_m, 현재 속도 × 이 값)이다.
 connection_sec: 1.0
+# 차로변경 거리 계산에 쓰는 최소 기준 속도 [m/s]. 실제 주행 속도 하한이 아니며 현재 속도와 큰 값을 쓴다.
 lane_change_speed_mps: 3.0
+# 차로변경 시작 전 준비 시간 후보 [s]. 각 시간 × 기준 속도로 시작 위치를 정하고 가능한 조합을 비교한다.
 prepare_times_sec: [0.0, 1.0, 2.0]
+# 차로변경 소요 시간 후보 [s]. 클수록 더 긴 거리에서 옆 RDDF로 이동한다.
 change_times_sec: [3.0, 4.0, 5.0]
+# 이동 객체가 지나간 뒤 출발할 때 시험하는 대기 시간 후보 [s]. 예측 범위 안에서 충돌 없는 경우만 사용한다.
 wait_times_sec: [1.0, 2.0, 3.0, 4.0, 5.0]
+# 차로변경 1회당 후보 비용에 더하는 벌점 [s]. 클수록 ETA 이득이 작은 차로변경을 억제한다.
 lane_change_penalty_sec: 0.75
+# 가감속·조향 변화로 계산한 승차감 비용의 가중치 [s]. 클수록 변화가 작은 경로를 선호한다.
 comfort_penalty_sec: 0.25
+# 현재 경로보다 후보 비용이 이 값 이상 좋아야 변경한다 [s]. ETA와 변경·승차감 벌점을 모두 포함한 비용 차이다.
 minimum_gain_sec: 1.0
-# Adopt a fully checked better candidate on this decision tick.
+# 더 좋은 후보가 유지되는지 확인할 시간 [s]. 0이면 해당 판단 주기에 즉시 선택할 수 있다.
 gain_confirmation_sec: 0.0
+# 체크포인트 통과 허용 반경 [m]. 형상 전용 모드에서는 이 검사를 제외한다.
 checkpoint_radius_m: 3.0
+# 속도 프로파일의 가속도 상한 [m/s²]. 클수록 더 빠르게 가속하며 전환 속도 연결 거리 계산에도 쓰인다.
 acceleration_mps2: 2.0
+# 속도 프로파일의 감속도 크기 [m/s², 양수]. 클수록 더 짧은 거리에서 감속 가능한 것으로 계산한다.
 deceleration_mps2: 2.0
+# 곡선 주행 횡가속도 상한 [m/s²]. 작을수록 굽은 경로의 속도를 낮춘다.
 lateral_acceleration_mps2: 3.0
+# 현재 속도가 계산 속도를 초과했는지 판단할 허용 여유 [m/s]. 초과 시 가능한 감속 프로파일을 계산한다.
 speed_tolerance_mps: 0.5
+# 충돌·금지 경계 예상 지점보다 앞에 정지 위치를 잡는 여유 [m]. 클수록 더 일찍 정지하도록 계획한다.
 stop_margin_m: 5.0
+# 객체를 정적으로 취급할 속도 기준 [m/s]. 이 값 이하이거나 속도가 불명확하면 정지 제약을 만든다.
 stationary_speed_mps: 0.5
+# 앞차 추종 속도 계산에 쓰는 기본 간격 [m]. 클수록 같은 거리에서 추종 속도가 낮아진다.
 follow_gap_m: 12.0
+# 앞차 추종 속도 계산의 시간 간격 [s]. 속도 상한은 앞차 진행 속도 + 남은 간격 / 이 값으로 계산한다.
 follow_time_sec: 2.0
+# 일반 지도 제한속도에서 빼는 순항 여유 [km/h]. 예: 제한 58, 여유 2이면 기본 순항 상한 56이다.
 normal_cruise_margin_kph: 2.0
+# 제한속도가 음수로 표시된 제한 없음 구간의 순항 목표 [km/h]. 곡률·가감속·충돌 제한은 별도로 적용한다.
 high_cruise_kph: 150.0
+# 객체 충돌 검사에서 차량 사각형의 앞·뒤·양옆에 더하는 여유 [m]. 0이면 지정 차량 크기 그대로 검사한다.
 object_margin_m: 0.0
+# 차량 pose 기준점에서 앞 끝까지의 거리 [m]. 일반적인 앞 범퍼 돌출 길이만을 뜻하지 않는다. 충돌 검사에 사용한다.
 front_overhang_m: 3.845
+# 차량 pose 기준점에서 뒤 끝까지의 거리 [m]. 충돌 검사와 차로변경 허용 구간 계산에 사용한다.
 rear_overhang_m: 0.790
+# 충돌 검사에 사용할 차량 전체 폭 [m]. 차량 중심 좌우에 각각 절반을 적용한다.
 vehicle_width_m: 1.892
+# 차량 축간 거리 [m]. 경로 곡률을 조향각으로 환산하는 데 사용한다.
 wheelbase_m: 3.0
+# 새 차로변경 후보의 최대 조향각 [rad]. 현재 약 40도이며 keep·committed 경로에는 해당 후보 탈락 검사를 적용하지 않는다.
 max_steering_rad: 0.6981317007977318
+# 새 차로변경 후보의 최대 조향각 변화율 [rad/s]. keep·committed 경로에는 해당 후보 탈락 검사를 적용하지 않는다.
 max_steering_rate_rps: 1.5
+# 위치·경로 등 입력 측정시각의 최대 허용 경과 시간 [s]. 오래되거나 미래 시각이면 정상 계획에 사용하지 않는다.
 input_age_sec: 0.5
-# Development geometry-only profile: tolerate measured scene processing jitter.
+# 형상 전용 모드에서 World Model 입력에만 적용하는 최대 경과 시간 [s]. 일반 모드는 input_age_sec를 사용한다.
 world_model_input_age_sec: 0.7
