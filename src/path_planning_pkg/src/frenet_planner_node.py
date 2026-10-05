@@ -248,12 +248,9 @@ class Node:
 
         self.last_lane_change_evaluation = time.monotonic()
         # A blocked committed manoeuvre must allow checked recovery candidates.
-        # Evaluate keep first so detours are generated only if it is also blocked.
+        # Evaluate the existing RDDF candidates without adding obstacle offsets.
         if candidates[0] is not fast:
             evaluate(candidates[0])
-        if not math.isfinite(candidates[0].cost) and (self.planner.committed is None or
-                not fast.feasible or not math.isfinite(fast.cost)):
-            candidates.extend(self.planner.obstacle_detours(candidates[0], objects))
         for candidate in candidates:
             if candidate is not fast and candidate is not candidates[0]:
                 evaluate(candidate)

@@ -23,9 +23,8 @@ Localization reset과 시간 역행은 즉시 반영하고 대기 경로를 폐�
 첫 점을 차량 위치로 강제 이동하여 추종 오차를 숨기거나 꺾임을 만들지 않는다.
 Localization reset 시 활성·대기 경로를 폐기하고 새 상태로 계산한 경로를 기다린다.
 
-정적 LiDAR 클러스터로 RDDF 유지 경로가 막히면 근거리 우회·복귀 후보도 비교한다.
-`local_detour_offsets_m`의 양수는 RDDF 왼쪽, 음수는 오른쪽이며 양쪽 모두
-1.5/2.5/3.5 m 우회 후보를 생성해 같은 비용식으로 비교한다. 회피 구간은 최대 10 km/h이며 차량 footprint 충돌·조향 한계를 검사한다.
+Frenet은 정적 장애물 전용 좌우 offset 우회·복귀 경로를 생성하지 않는다.
+기존 RDDF 후보의 충돌 검사·감속·정지와 RDDF 차로변경 후보는 유지한다.
 
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의

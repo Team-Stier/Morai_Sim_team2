@@ -433,7 +433,6 @@ class FrenetOutputTest(unittest.TestCase):
             return candidate
 
         with patch.object(node.planner, 'candidates', return_value=[fast, alternative]), \
-                patch.object(node.planner, 'obstacle_detours', return_value=[]), \
                 patch.object(node.planner, 'evaluate', side_effect=evaluate), \
                 patch.object(node.planner, 'select', return_value=alternative if alternative_valid else None):
             node.plan(None)
@@ -444,7 +443,7 @@ class FrenetOutputTest(unittest.TestCase):
             self.assertEqual(len(active_checks), 1)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
-    def test_blocked_commit_evaluates_recovery_and_generates_detours(self, _):
+    def test_blocked_commit_evaluates_existing_recovery_candidates(self, _):
         import copy
         node = self.node()
         node.c['rddf_geometry_only'] = True
@@ -475,11 +474,9 @@ class FrenetOutputTest(unittest.TestCase):
             return candidate
 
         with patch.object(node.planner, 'candidates', return_value=[keep, recovery]), \
-                patch.object(node.planner, 'obstacle_detours', return_value=[]) as detours, \
                 patch.object(node.planner, 'evaluate', side_effect=evaluate):
             node.plan(None)
         self.assertEqual(evaluated, ['committed', 'keep', 'recovery'])
-        detours.assert_called_once()
         self.assertIs(node.selected, recovery)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
@@ -609,7 +606,7 @@ class FrenetOutputTest(unittest.TestCase):
         node.offer_selection(candidate, rospy.Time(102), reset_id=11)
         self.assertEqual(node.selected_stamp, rospy.Time(100))
 
-    def test_world_model_box_selects_and_publishes_local_detour(self):
+    def test_world_model_static_box_publishes_stop_without_local_detour(self):
         node = self.node()
         node.c['rddf_geometry_only'] = True
         message = self.static_map()
@@ -638,23 +635,11 @@ class FrenetOutputTest(unittest.TestCase):
             with patch.object(rospy.Time,'now',return_value=stamp):
                 node.plan(None)
                 node.publish(None)
-        self.assertTrue(node.planner.committed.key.startswith('detour:'))
-        stamp = rospy.Time(102)
-        node.state[0].header.stamp = node.route.header.stamp = node.world.header.stamp = obj.source_stamp = stamp
-        node.last_lane_change_evaluation = -np.inf
-        with patch.object(node.planner, 'evaluate', wraps=node.planner.evaluate) as evaluate:
-            with patch.object(rospy.Time, 'now', return_value=stamp):
-                node.plan(None)
-            self.assertEqual(evaluate.call_count, 1)
-            self.assertEqual(evaluate.call_args[0][0].key, 'committed')
-        with patch.object(rospy.Time,'now',return_value=rospy.Time(102)):
-            node.publish(None)
+        self.assertIsNone(node.planner.committed)
         output = node.trajectory.message
-        self.assertFalse(output.stop_required)
-        self.assertGreater(len(output.poses),20)
-        # Map lateral offset transforms to negative odom x at this 90-degree pose.
-        direction = np.sign(float(node.planner.committed.key.split(':')[1]))
-        self.assertGreater(max(direction*(100.-p.position.x) for p in output.poses),1.)
+        self.assertTrue(output.valid)
+        self.assertTrue(output.stop_required)
+        self.assertTrue(all(v == 0. for v in output.speed_mps))
         wire = io.BytesIO()
         output.serialize(wire)
         decoded = type(output)().deserialize(wire.getvalue())
