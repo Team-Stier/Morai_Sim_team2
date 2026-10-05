@@ -218,7 +218,7 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertIsNone(node.handoff_candidate)
         self.assertTrue(node.status.message.ready)
         self.assertAlmostEqual(new_path.speed_cap_mps[0], 30./3.6, delta=.1)
-        self.assertAlmostEqual(new_path.speed_cap_mps[-1], 20./3.6, delta=.01)
+        self.assertAlmostEqual(new_path.speed_cap_mps[-1], 25./3.6, delta=.01)
 
     def hybrid_node(self):
         node = self.node()

@@ -13,7 +13,7 @@ Planner 구간의 원본 설정 파일은
 
 Hybrid 구간에서는 충돌 없이 추종 가능한 RDDF에 차량 위치·방향을 부드럽게
 합류시키고, 장애물이 있거나 합류 경로가 성립하지 않으면 Hybrid A*를 실행한다.
-목표속도 상한 20 km/h와 Hybrid 탐색·조향 설정은 각각
+목표속도 상한 25 km/h와 Hybrid 탐색·조향 설정은 각각
 [`config/frenet_planner.yaml`](config/frenet_planner.yaml),
 [`config/hybrid_astar.yaml`](config/hybrid_astar.yaml)에 있다. 탐색 실패 시에는
 검증된 기존 경로의 원래 생성 시각을 기준으로 최대 0.5초만 유지하고, 사용할
@@ -26,7 +26,7 @@ Planner가 바뀌는 세 경계에서는 `frenet_planner.yaml`의
 `mode_transition_speed_kph`(현재 30 km/h)를 경계 목표속도로 사용한다.
 경계 전후의 속도 상한은 경로 거리 `route_s`를 따라 선형으로 연결하고,
 가감속 한계와 반응 시간을 고려해 연결 거리를 정한다. Hybrid 구간 안쪽의
-목표속도 상한은 기존 20 km/h다.
+목표속도 상한은 25 km/h다.
 
 2026-09-22 bag 기반 시간 단축 설정과 검증 한계는
 [분석 기록](docs/bag_tuning_20260922.md)을 참고한다.

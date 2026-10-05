@@ -39,8 +39,8 @@ class TransitionSpeedPolicyTest(unittest.TestCase):
             caps = self.policy.caps(stations, mode, self.lane)
             np.testing.assert_allclose(caps, transition, atol=1.e-5)
 
-    def test_candidate_tail_uses_adjacent_mode_and_hybrid_base_is_twenty(self):
-        hybrid = 20. / 3.6
+    def test_candidate_tail_uses_adjacent_mode_and_hybrid_base_is_twenty_five(self):
+        hybrid = 25. / 3.6
         entry = self.policy.caps([self.b1 - 10., self.b1, self.b1 + 20.,
                                   self.b1 + 100.], FRENET, self.lane)
         self.assertAlmostEqual(entry[1], 30. / 3.6)
@@ -53,6 +53,22 @@ class TransitionSpeedPolicyTest(unittest.TestCase):
         self.assertAlmostEqual(exit_caps[2], 30. / 3.6)
         self.assertTrue(np.isinf(exit_caps[3]))
         self.assertTrue(np.isinf(self.policy.caps([100.], FRENET, self.lane)[0]))
+
+    def test_z2_and_z5_interior_profiles_use_twenty_five_cap(self):
+        hybrid = 25. / 3.6
+        for start in (self.b1 + 80., self.b3 + 80.):
+            with self.subTest(start=start):
+                stations = np.linspace(start, start + 20., 41)
+                xyz = np.column_stack([stations, np.zeros_like(stations),
+                                       np.zeros_like(stations)])
+                candidate = Candidate('hybrid_astar', 'global_route', xyz, stations,
+                                      np.full(len(stations), 58. / 3.6))
+                candidate.speed_cap_mps = self.policy.caps(stations, HYBRID_ASTAR,
+                                                            self.lane)
+                _, _, _, speeds, _ = Planner(self.config).profile(
+                    candidate, 20. / 3.6)
+                np.testing.assert_allclose(candidate.speed_cap_mps, hybrid)
+                self.assertTrue(np.all(speeds <= hybrid + 1.e-9))
 
     def test_linear_ramps_fit_acceleration_and_begin_early_for_high_speed(self):
         high = 150. / 3.6

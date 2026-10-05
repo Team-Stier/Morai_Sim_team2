@@ -42,7 +42,7 @@ src/path_planning_pkg/config/hybrid_astar.yaml
 
 전환 속도 설정은 `config/frenet_planner.yaml`의 `mode_transition_*` 키에 있다.
 세 Planner 전환점에서 속도 상한을 30 km/h로 두고, 전후 `route_s`에 따라
-기존 Frenet 순항 상한과 Hybrid 20 km/h 상한을 선형 연결한다. 연결 거리는
+기존 Frenet 순항 상한과 Hybrid 25 km/h 상한을 선형 연결한다. 연결 거리는
 가감속 한계와 반응 시간으로 계산한다. Z4→Z5는 고속 구간 끝과 같으므로
 30 km/h 감속 상한이 Z3 후반부터 시작된다. 실제 trajectory 속도는 곡률,
 관측 객체와 차량 가감속 조건 때문에 이 상한보다 낮을 수 있다.
