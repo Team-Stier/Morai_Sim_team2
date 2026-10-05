@@ -593,12 +593,18 @@ class FrenetOutputTest(unittest.TestCase):
                     forbidden_boundary_ids=[], graph=dict(lane_changes=[],
                     longitudinal_connections=[dict(source_lane='global_route', target_lane='connected')]))
         policy = dict(normal_limit_kph=58., high_speed=dict(start_map_xy=[0., 0.], end_map_xy=[200., 0.]))
+        stops = [dict(id='source-stop', points=[[100., -1., 28.], [100., 4., 28.]],
+                      approach_link_ids=['source-approach'], signal_ids=['source-signal'])]
         data = build_static_map(reference, rddf, dict(points=[], radius_m=3., source='fixture'),
-                                policy, 'fixture-sha')
+                                policy, 'fixture-sha', stops)
         message = producer.map_message(data, rospy.Time(1))
         wire = io.BytesIO()
         message.serialize(wire)
         decoded = HdMap().deserialize(wire.getvalue())
+        self.assertEqual(decoded.signal_stop_lines[0].id, 'source-stop')
+        self.assertEqual(decoded.signal_stop_lines[0].signal_ids, ['source-signal'])
+        self.assertEqual([(p.x, p.y, p.z) for p in decoded.signal_stop_lines[0].points],
+                         [(100., -1., 28.), (100., 4., 28.)])
         node = self.node()
         for geometry_only in (False, True):
             node.c['rddf_geometry_only'] = geometry_only

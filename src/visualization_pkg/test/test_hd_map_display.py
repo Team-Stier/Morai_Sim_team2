@@ -63,6 +63,26 @@ class LaneRddfDisplayTest(unittest.TestCase):
         self.assertEqual(layers['lane_rddf'][0][0][2], 28)
 
 
+class SignalStopLineDisplayTest(unittest.TestCase):
+    def test_stop_bars_are_red_separate_serializable_lines_with_static_labels(self):
+        rows = [dict(id='source-a', points=[[0., -1., 28.], [0., 3., 28.]]),
+                dict(id='source-b', points=[[10., -1., 28.], [10., 3., 28.]])]
+        original = copy.deepcopy(rows)
+        result = map_markers({'signal_stop_lines': [r['points'] for r in rows]}, -.1, .1)
+        result.markers.extend(stop_line_labels(rows, -.1, 1.5))
+        wire = io.BytesIO()
+        result.serialize(wire)
+        markers = MarkerArray().deserialize(wire.getvalue()).markers
+        bars = markers[0]
+        self.assertEqual(bars.type, Marker.LINE_LIST)
+        self.assertEqual(len(bars.points), 4)
+        self.assertEqual(bars.scale.x, .4)
+        self.assertGreater(bars.color.r, bars.color.g)
+        self.assertEqual([m.text for m in markers[1:]], ['STOP 1', 'STOP 2'])
+        self.assertTrue(all(m.header.frame_id == 'map' and m.header.stamp.to_sec() == 0 for m in markers))
+        self.assertEqual(rows, original)
+
+
 class CheckpointDisplayTest(unittest.TestCase):
     def test_points_and_labels_survive_ros_serialization_without_changing_source(self):
         points = [[-96., -365., 28.5], [70., -366., 28.3], [-132., -428., 28.5]]
