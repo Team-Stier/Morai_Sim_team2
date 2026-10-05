@@ -12,7 +12,7 @@ import yaml
 from common_msgs_pkg.msg import EgoState, HdMap, RouteLane, RouteContext, WorldModel, ComponentStatus, TrackedObject
 from geometry_msgs.msg import PoseStamped, Point, Point32, Polygon
 from nav_msgs.msg import Odometry
-from path_planning_pkg.frenet import Candidate, Planner
+from path_planning_pkg.frenet import Candidate, Planner, Lane
 
 
 spec = importlib.util.spec_from_file_location('frenet_node', Path(__file__).parents[1]/'src/frenet_planner_node.py')
@@ -516,10 +516,38 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertEqual(decoded.header.frame_id, 'odom')
         self.assertTrue(np.all(np.diff([t.to_sec() for t in decoded.time_from_start]) > 0.))
 
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_relaxed_candidate_preserves_geometry_in_controller_trajectory(self, _):
+        node = self.node()
+        node.c['rddf_relaxation_enabled'] = True
+        node.c['loop_route'] = False
+        x = np.arange(0., 121., .5)
+        xyz = np.column_stack((x, .15*np.sin(2*np.pi*x/6.), x*0))
+        lane = Lane('global_route', xyz, x, np.full(len(x), 58/3.6))
+        planner = Planner(node.c)
+        candidate = planner.candidates({'global_route': lane}, [], 'global_route',
+                                       0., 80., np.array([10., 0., 0.]), 0., 2.)[0]
+        node.selected = planner.evaluate(candidate, 2., [], [], 80.)
+        self.assertTrue(node.selected.feasible)
+        node.publish(None)
+        wire = io.BytesIO()
+        node.trajectory.message.serialize(wire)
+        message = type(node.trajectory.message)().deserialize(wire.getvalue())
+        actual = np.array([[pose.position.x, pose.position.y] for pose in message.poses])
+        # The fixture's map -> odom transform is a 90-degree rotation at ego.
+        expected = np.column_stack((100.-candidate.xy[:, 1], 200.+candidate.xy[:, 0]-10.))
+        np.testing.assert_allclose(actual, expected[:len(actual)], atol=1e-10)
+        self.assertTrue(message.valid)
+        self.assertFalse(message.stop_required)
+        self.assertEqual(message.header.frame_id, 'odom')
+        self.assertEqual(message.reset_id, 12)
+        self.assertTrue(np.all(np.diff([t.to_sec() for t in message.time_from_start]) > 0.))
+
     def node(self):
         node = module.Node.__new__(module.Node)
         node.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
         node.c['rddf_geometry_only'] = False
+        node.c['rddf_relaxation_enabled'] = False  # Legacy exact-geometry fixtures.
         node.c['minimum_active_path_hold_sec'] = 0.0  # Unrelated fixtures test immediate selection.
         ego, odom = EgoState(), Odometry()
         ego.reset_id = 12

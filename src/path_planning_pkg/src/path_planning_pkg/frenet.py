@@ -12,6 +12,32 @@ def sample(xy, s, q):
     return np.column_stack([np.interp(q, s, xy[:, i]) for i in range(xy.shape[1])])
 
 
+def relaxed_sample(lane, q, config):
+    """Smooth RDDF XY in station space with bounded displacement; preserve Z."""
+    original = sample(lane.xy, lane.s, q)
+    if not config.get('rddf_relaxation_enabled', False):
+        return original
+    sigma = config['rddf_smoothing_sigma_m']
+    deviation = config['rddf_max_deviation_m']
+    if sigma <= 0 or deviation <= 0:
+        return original
+    radius = int(math.ceil(3*sigma/config['spatial_step_m']))
+    offsets = np.arange(-radius, radius+1)*config['spatial_step_m']
+    weights = np.exp(-.5*(offsets/sigma)**2)
+    weights /= weights.sum()
+    neighbors = sample(lane.xy, lane.s, (q[:, None]+offsets).ravel())
+    neighbors = neighbors.reshape(len(q), len(offsets), -1)
+    shift = np.sum(neighbors[:, :, :2]*weights[None, :, None], axis=1)-original[:, :2]
+    # A smooth saturation avoids new kinks where a hard clip reaches its bound.
+    shift /= np.sqrt(1+np.sum(shift*shift, axis=1)/deviation**2)[:, None]
+    support = offsets[-1]
+    # Preserve true RDDF endpoints and avoid interpolation's clamped-end bias.
+    fade = smooth((q-lane.s[0])/support)*smooth((lane.s[-1]-q)/support)
+    result = original.copy()
+    result[:, :2] += fade[:, None]*shift
+    return result
+
+
 def project(xy, s, p):
     v = np.diff(xy[:, :2], axis=0)
     u = np.clip(np.sum((p-xy[:-1, :2])*v, axis=1)/np.sum(v*v, axis=1), 0, 1)
@@ -299,7 +325,7 @@ class Planner:
             reference = lanes['global_route']
         end = min(reference.s[-1], max(goal_s+c['tail_m'], progress+c['minimum_path_m']))
         qs = np.arange(progress, end, c['spatial_step_m'])
-        ref = sample(reference.xy, reference.s, qs)
+        ref = relaxed_sample(reference, qs, c)
         tangent = np.gradient(ref[:, :2], qs, axis=0)
         tangent /= np.linalg.norm(tangent, axis=1)[:, None]
         normal = np.column_stack((-tangent[:, 1], tangent[:, 0]))
@@ -307,7 +333,7 @@ class Planner:
         ref_heading = math.atan2(tangent[0, 1], tangent[0, 0])
         initial_slope = math.tan(np.clip(math.atan2(math.sin(heading-ref_heading), math.cos(heading-ref_heading)), -1., 1.))
         source = self.chain(current, lanes, end)
-        source_xy = sample(source.xy, source.s, qs)
+        source_xy = relaxed_sample(source, qs, c)
         source_d = np.sum((source_xy[:, :2]-ref[:, :2])*normal, axis=1)
         source_limits = np.interp(qs, source.s, source.limits)
         results = []
@@ -343,7 +369,7 @@ class Planner:
             if window.source != current or window.target not in lanes:
                 continue
             target = self.chain(window.target, lanes, end)
-            target_xy = sample(target.xy, target.s, qs)
+            target_xy = relaxed_sample(target, qs, c)
             target_d = np.sum((target_xy[:, :2]-ref[:, :2])*normal, axis=1)
             for prepare in c['prepare_times_sec']:
                 for duration in c['change_times_sec']:

@@ -5,6 +5,12 @@
 test_speed_cap_kph: 0.0
 # true: RDDF 형상으로 인접 경로를 판단하는 개발 모드. 지도 금지 경계·차로변경 window·체크포인트 검사를 제외한다. 객체 충돌 검사는 유지한다.
 rddf_geometry_only: true
+# true: 원본 RDDF의 작은 꺾임을 평활화한 기준 경로로 후보를 만든다. false: 원본 형상을 보간한다.
+rddf_relaxation_enabled: true
+# 평활화 Gaussian 표준편차 [m]. 앞뒤 약 3배 거리까지 평균하며 클수록 더 넓은 구간의 꺾임을 완화한다. 0이면 해제한다.
+rddf_smoothing_sigma_m: 2.0
+# 평활화 기준 경로가 같은 station의 원본 RDDF에서 벗어날 최대 XY 거리 [m]. 현재 위치 합류·차로변경 폭과는 별개다. 0이면 해제한다.
+rddf_max_deviation_m: 0.3
 # true: 경로 끝을 시작점에 이어 반복 주행한다. false: 종점에서 종료·정지 처리를 한다.
 loop_route: true
 # 인접 RDDF 사이 최소 평면 거리 [m]. 진행 방향으로 어긋난 거리의 최대 허용값으로도 사용한다.

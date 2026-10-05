@@ -26,6 +26,12 @@ Localization reset 시 활성·대기 경로를 폐기하고 새 상태로 계�
 Frenet은 정적 장애물 전용 좌우 offset 우회·복귀 경로를 생성하지 않는다.
 기존 RDDF 후보의 충돌 검사·감속·정지와 RDDF 차로변경 후보는 유지한다.
 
+Frenet 후보의 기준 RDDF는 기본적으로 주변 형상을 평활화해 작은 꺾임을 완화한다.
+Gaussian 표준편차는 2 m, 같은 station의 원본 RDDF에서 허용하는 기준 경로 이동은
+최대 0.3 m다. 현재 위치·방향 합류와 차로변경은 그 기준 위에서 생성하고 최종
+후보에 기존 충돌·곡률·속도 검사를 적용한다. 설정은 `frenet_planner.yaml`의
+`rddf_relaxation_enabled`, `rddf_smoothing_sigma_m`, `rddf_max_deviation_m`이다.
+
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
 > 읽기용 투영이다. 통합 시 정확히 일치해야 하며 이 README에서 독립 변경하지 않는다.
