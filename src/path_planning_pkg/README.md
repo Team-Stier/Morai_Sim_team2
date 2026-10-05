@@ -17,7 +17,10 @@ Hybrid 구간에서는 충돌 없이 추종 가능한 RDDF에 차량 위치·방
 [`config/frenet_planner.yaml`](config/frenet_planner.yaml),
 [`config/hybrid_astar.yaml`](config/hybrid_astar.yaml)에 있다. 탐색 실패 시에는
 검증된 기존 경로의 원래 생성 시각을 기준으로 최대 0.5초만 유지하고, 사용할
-경로가 없으면 유효한 정지 trajectory를 발행한다.
+경로가 없으면 유효한 정지 trajectory를 발행한다. 활성 Hybrid 경로가 무효화될
+때 이미 계산한 대기 경로가 현재 입력에서도 유효하면 즉시 교체한다.
+Z2·Z5의 MORAI 반복 주행 결과와 채택·되돌린 튜닝은
+[2026-10-05 실주행 기록](docs/planner_mode_integration.md)에 정리했다.
 
 Planner가 바뀌는 세 경계에서는 `frenet_planner.yaml`의
 `mode_transition_speed_kph`(현재 30 km/h)를 경계 목표속도로 사용한다.

@@ -12,6 +12,7 @@ from path_planning_pkg.hybrid_astar import (
     HybridPlanResult,
     HybridPlanStatus,
     Pose2D,
+    _ReferenceGuide,
 )
 from path_planning_pkg.hybrid_runtime import build_hybrid_candidate
 from path_planning_pkg.hybrid_runtime import hybrid_path_clear
@@ -55,6 +56,169 @@ class HybridAStarTest(unittest.TestCase):
         self.assertTrue(planner.path_clear(
             [(point.pose.x, point.pose.y, 0.0) for point in result.path],
             [(0.0, 0.0, 0.0), (22.0, 0.0, 0.0)], obstacle))
+
+    def test_corridor_batch_matches_individual_corner_projection(self):
+        planner = self.planner()
+        theta = np.linspace(0.0, 0.9, 61)
+        routes = (
+            np.column_stack((np.linspace(-20.0, 20.0, 81), np.zeros(81))),
+            np.column_stack((30.0 * np.sin(theta), 30.0 * (1.0 - np.cos(theta)))),
+            np.array([(0.0, 0.0), (10.0, 0.0), (10.0, 10.0),
+                      (5.0, 10.0), (5.0, 20.0)]),
+        )
+        rng = np.random.default_rng(1193)
+        lateral_edge = planner.config.corridor_half_width_m - planner.config.vehicle_width_m / 2.0
+        edge_poses = [Pose2D(x, sign * (lateral_edge + delta), 0.0)
+                      for x in (-20.0, 0.0, 20.0)
+                      for sign in (-1.0, 1.0)
+                      for delta in (-1.0e-8, 0.0, 1.0e-8)]
+
+        for route_index, route in enumerate(routes):
+            guide = _ReferenceGuide(route)
+            low = np.min(guide.xy, axis=0) - 7.0
+            high = np.max(guide.xy, axis=0) + 7.0
+            random_xy = rng.uniform(low, high, size=(250, 2))
+            random_yaw = rng.uniform(-math.pi, math.pi, size=250)
+            poses = [Pose2D(float(x), float(y), float(yaw))
+                     for (x, y), yaw in zip(random_xy, random_yaw)]
+            if route_index == 0:
+                poses.extend(edge_poses)
+            for pose in poses:
+                expected = all(guide.project(corner)[1] <= planner.config.corridor_half_width_m
+                               for corner in planner._corners(pose))
+                self.assertEqual(planner._inside_corridor(pose, guide), expected,
+                                 msg='route=%d pose=%r' % (route_index, pose))
+
+    def test_obstacle_index_matches_full_footprint_at_random_and_boundary_points(self):
+        planner = self.planner()
+        config = planner.config
+        rng = np.random.default_rng(3401)
+        outcomes = {True: 0, False: 0}
+
+        def full_footprint_hit(pose, points):
+            delta = points[:, :2] - np.array([pose.x, pose.y])
+            co, si = math.cos(pose.yaw), math.sin(pose.yaw)
+            local_x = co * delta[:, 0] + si * delta[:, 1]
+            local_y = -si * delta[:, 0] + co * delta[:, 1]
+            margin = config.obstacle_margin_m
+            return bool(np.any(
+                (local_x >= -config.rear_overhang_m - margin) &
+                (local_x <= config.front_overhang_m + margin) &
+                (np.abs(local_y) <= config.vehicle_width_m / 2.0 + margin)))
+
+        def check(pose, points):
+            sorted_points = points[np.argsort(points[:, 0])]
+            expected = full_footprint_hit(pose, points)
+            outcomes[expected] += 1
+            self.assertEqual(planner._hits_obstacle(pose, sorted_points), expected,
+                             msg='pose=%r point_count=%d' % (pose, len(points)))
+
+        for _ in range(300):
+            pose = Pose2D(float(rng.uniform(-500.0, 500.0)),
+                          float(rng.uniform(-500.0, 500.0)),
+                          float(rng.uniform(-math.pi, math.pi)))
+            points = rng.uniform(-12.0, 12.0, size=(int(rng.integers(0, 600)), 2))
+            points += (pose.x, pose.y)
+            check(pose, points)
+            far_points = points[np.linalg.norm(points - (pose.x, pose.y), axis=1) >= 7.0]
+            check(pose, far_points)
+            check(pose, np.empty((0, 2)))
+            co, si = math.cos(pose.yaw), math.sin(pose.yaw)
+            for longitudinal in (-config.rear_overhang_m - config.obstacle_margin_m,
+                                 config.front_overhang_m + config.obstacle_margin_m):
+                for lateral in (-config.vehicle_width_m / 2.0 - config.obstacle_margin_m,
+                                config.vehicle_width_m / 2.0 + config.obstacle_margin_m):
+                    for offset in (-1.0e-8, 0.0, 1.0e-8):
+                        local_x = longitudinal + offset
+                        point = (pose.x + co * local_x - si * lateral,
+                                 pose.y + si * local_x + co * lateral)
+                        check(pose, np.vstack((far_points, point)))
+        self.assertGreater(outcomes[True], 0)
+        self.assertGreater(outcomes[False], 0)
+
+    def test_obstacle_index_matches_full_footprint_with_production_margin(self):
+        planner = HybridAStarPlanner(HybridAStarConfig(obstacle_margin_m=0.2))
+        config = planner.config
+        rng = np.random.default_rng(3402)
+        front = config.front_overhang_m + config.obstacle_margin_m
+        rear = -config.rear_overhang_m - config.obstacle_margin_m
+        side = config.vehicle_width_m / 2.0 + config.obstacle_margin_m
+        outcomes = {True: 0, False: 0}
+
+        def check(pose, points):
+            delta = points - np.array([pose.x, pose.y])
+            co, si = math.cos(pose.yaw), math.sin(pose.yaw)
+            local_x = co * delta[:, 0] + si * delta[:, 1]
+            local_y = -si * delta[:, 0] + co * delta[:, 1]
+            expected = bool(np.any((local_x >= rear) & (local_x <= front) &
+                                   (np.abs(local_y) <= side)))
+            outcomes[expected] += 1
+            shuffled = points[rng.permutation(len(points))]
+            sorted_points = shuffled[np.argsort(shuffled[:, 0])]
+            self.assertEqual(planner._hits_obstacle(pose, sorted_points), expected,
+                             msg='pose=%r margin=0.2 point_count=%d' % (pose, len(points)))
+
+        for _ in range(80):
+            pose = Pose2D(float(rng.uniform(-500.0, 500.0)),
+                          float(rng.uniform(-500.0, 500.0)),
+                          float(rng.uniform(-math.pi, math.pi)))
+            co, si = math.cos(pose.yaw), math.sin(pose.yaw)
+
+            def world(local):
+                return np.column_stack((pose.x + co * local[:, 0] - si * local[:, 1],
+                                        pose.y + si * local[:, 0] + co * local[:, 1]))
+
+            random_local = rng.uniform((-7.0, -4.0), (7.0, 4.0), size=(120, 2))
+            check(pose, world(random_local))
+            distractors = world(np.column_stack((rng.uniform(-10.0, 10.0, 90),
+                                                  np.full(90, side + 5.0))))
+            for edge in (front, rear):
+                for offset in (-1.0e-7, 0.0, 1.0e-7):
+                    check(pose, np.vstack((distractors, world(np.array([[edge + offset, 0.0]])))))
+            for edge in (side, -side):
+                for offset in (-1.0e-7, 0.0, 1.0e-7):
+                    check(pose, np.vstack((distractors, world(np.array([[0.0, edge + offset]])))))
+
+        # This rotated inflated corner approaches the x-prefilter's furthest
+        # possible hit, so a too-small search window would miss a real collision.
+        yaw = -math.atan2(side, front)
+        pose = Pose2D(30.0, -40.0, yaw)
+        corner = np.array([[pose.x + math.cos(yaw) * front - math.sin(yaw) * side,
+                            pose.y + math.sin(yaw) * front + math.cos(yaw) * side]])
+        check(pose, corner)
+        self.assertGreater(outcomes[True], 0)
+        self.assertGreater(outcomes[False], 0)
+
+    def test_obstacle_index_keeps_detour_search_result(self):
+        reference = [(0.0, 0.0), (22.0, 0.0)]
+        obstacle = [(7.0 + dx, dy) for dx in (-0.5, 0.0, 0.5)
+                    for dy in (-0.5, 0.0, 0.5)]
+        obstacle.extend((float(x), 9.0) for x in np.linspace(-5.0, 25.0, 500))
+        planner = self.planner()
+        old_planner = self.planner()
+
+        def full_footprint_hit(pose, points):
+            delta = points[:, :2] - np.array([pose.x, pose.y])
+            co, si = math.cos(pose.yaw), math.sin(pose.yaw)
+            local_x = co * delta[:, 0] + si * delta[:, 1]
+            local_y = -si * delta[:, 0] + co * delta[:, 1]
+            margin = old_planner.config.obstacle_margin_m
+            return bool(np.any(
+                (local_x >= -old_planner.config.rear_overhang_m - margin) &
+                (local_x <= old_planner.config.front_overhang_m + margin) &
+                (np.abs(local_y) <= old_planner.config.vehicle_width_m / 2.0 + margin)))
+
+        with patch.object(old_planner, '_hits_obstacle', side_effect=full_footprint_hit):
+            old = old_planner.plan(Pose2D(0.0, 0.0, 0.0), Pose2D(15.0, 0.0, 0.0),
+                                   reference, obstacle)
+        new = planner.plan(Pose2D(0.0, 0.0, 0.0), Pose2D(15.0, 0.0, 0.0),
+                           reference, obstacle)
+        self.assertEqual(new.status, HybridPlanStatus.SUCCESS)
+        self.assertEqual(new.path, old.path)
+        self.assertEqual((new.expanded_nodes, new.generated_nodes,
+                          new.rejected_by_corridor, new.rejected_by_obstacle),
+                         (old.expanded_nodes, old.generated_nodes,
+                          old.rejected_by_corridor, old.rejected_by_obstacle))
 
     def test_runtime_adapter_returns_existing_candidate_contract(self):
         route_s = np.linspace(0.0, 40.0, 81)

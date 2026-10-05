@@ -263,6 +263,16 @@ class FrenetOutputTest(unittest.TestCase):
         plan = HybridPlanResult(HybridPlanStatus.SUCCESS, (), 12, 20, 0, 0, .2)
         return HybridCandidateResult(candidate, plan)
 
+    def queue_hybrid_detour(self, node, stamp=100.):
+        import copy
+        pending = copy.deepcopy(node.selected)
+        x = pending.xy[:, 0]
+        pending.xy[:, 1] = 2. * np.sin(np.pi/2 * np.clip((x-10.)/8., 0., 1.))
+        node.pending_selection = pending
+        node.pending_selection_stamp = rospy.Time.from_sec(stamp)
+        node.pending_selection_set = True
+        return pending
+
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
     def test_hybrid_timeout_keeps_only_recent_rechecked_path(self, _):
         node = self.hybrid_node()
@@ -299,6 +309,46 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertTrue(node.trajectory.message.valid)
         self.assertTrue(node.trajectory.message.stop_required)
         self.assertEqual(node.trajectory.message.speed_mps, [0., 0.])
+
+    def test_hybrid_plan_promotes_valid_pending_detour_before_clearing_active(self):
+        node = self.hybrid_node()
+        node.c['minimum_active_path_hold_sec'] = .5
+        node.selected_stamp = rospy.Time.from_sec(99.9)
+        pending = self.queue_hybrid_detour(node)
+        node.world.objects = [TrackedObject(points=[Point(25., 0., 0.)])]
+        now = rospy.Time.from_sec(100.1)
+        node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = now
+        node.trajectory = TraceOutput()
+        with patch.object(rospy.Time, 'now', return_value=now), \
+                patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                    HybridPlanStatus.TIME_LIMIT)) as build:
+            node.plan(None)
+            node.publish(None)
+        self.assertIs(node.selected, pending)
+        self.assertEqual(node.selected_stamp, rospy.Time.from_sec(100.))
+        self.assertIsNone(node.pending_selection)
+        np.testing.assert_array_equal(build.call_args.kwargs['previous_path'], pending.xy)
+        self.assertTrue(node.status.message.ready)
+        self.assertIn('selected=held', node.status.message.reason)
+        self.assertTrue(all(not message.stop_required for message in node.trajectory.messages))
+
+    def test_hybrid_plan_stops_when_active_and_pending_are_both_blocked(self):
+        node = self.hybrid_node()
+        node.c['minimum_active_path_hold_sec'] = .5
+        node.selected_stamp = rospy.Time.from_sec(99.9)
+        self.queue_hybrid_detour(node)
+        node.world.objects = [TrackedObject(points=[Point(25., 0., 0.), Point(25., 2., 0.)])]
+        now = rospy.Time.from_sec(100.1)
+        node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = now
+        with patch.object(rospy.Time, 'now', return_value=now), \
+                patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                    HybridPlanStatus.TIME_LIMIT)) as build:
+            node.plan(None)
+        self.assertIsNone(build.call_args.kwargs['previous_path'])
+        self.assertIsNone(node.selected)
+        self.assertIsNone(node.pending_selection)
+        self.assertFalse(node.status.message.ready)
+        self.assertTrue(node.trajectory.message.stop_required)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
     def test_hybrid_held_path_is_rechecked_when_scene_changes(self, _):
@@ -409,25 +459,158 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertIs(node.selected, pending)
         self.assertEqual(node.selected_stamp, rospy.Time.from_sec(99.95))
 
-    def test_hybrid_pending_path_is_rechecked_before_publication(self):
+    def test_hybrid_hold_expiry_keeps_valid_active_when_pending_is_blocked(self):
+        node = self.hybrid_node()
+        node.c['minimum_active_path_hold_sec'] = .5
+        node.selected_stamp = rospy.Time.from_sec(99.5)
+        active = node.selected
+        self.queue_hybrid_detour(node)
+        node.world.objects = [TrackedObject(points=[Point(25., 2., 0.)])]
+        now = rospy.Time.from_sec(100.1)
+        node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = now
+        with patch.object(rospy.Time, 'now', return_value=now):
+            node.publish(None)
+        self.assertIs(node.selected, active)
+        self.assertEqual(node.selected_stamp, rospy.Time.from_sec(99.5))
+        self.assertIsNone(node.pending_selection)
+        self.assertFalse(node.pending_selection_set)
+        self.assertFalse(node.trajectory.message.stop_required)
+
+    def test_hybrid_hold_expiry_waits_for_replaced_pending_to_be_checked(self):
+        node = self.hybrid_node()
+        node.c['minimum_active_path_hold_sec'] = .5
+        node.selected_stamp = rospy.Time.from_sec(99.5)
+        active = node.selected
+        original = self.queue_hybrid_detour(node)
+        import copy
+        replacement = copy.deepcopy(original)
+        now = rospy.Time.from_sec(100.1)
+        node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = now
+        original_check = node.hybrid_pending_usable
+
+        def replace_during_check(*args):
+            usable = original_check(*args)
+            with node.lock:
+                node.pending_selection = replacement
+            return usable
+
+        with patch.object(rospy.Time, 'now', return_value=now), \
+                patch.object(node, 'hybrid_pending_usable', side_effect=replace_during_check):
+            node.publish(None)
+        self.assertIs(node.selected, active)
+        self.assertIs(node.pending_selection, replacement)
+        self.assertFalse(node.trajectory.message.stop_required)
+        with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.11)):
+            node.publish(None)
+        self.assertIs(node.selected, replacement)
+        self.assertEqual(node.selected_stamp, rospy.Time.from_sec(100.))
+        self.assertIsNone(node.pending_selection)
+        self.assertFalse(node.trajectory.message.stop_required)
+
+    def test_hybrid_pending_detour_replaces_invalid_active_path_before_hold_ends(self):
         import copy
         node = self.hybrid_node()
         node.c['minimum_active_path_hold_sec'] = .5
-        node.selected_stamp = rospy.Time.from_sec(99.6)
+        node.selected_stamp = rospy.Time.from_sec(99.9)
         pending = copy.deepcopy(node.selected)
         x = pending.xy[:, 0]
         pending.xy[:, 1] = 2. * np.sin(np.pi/2 * np.clip((x-10.)/8., 0., 1.))
         node.pending_selection = pending
         node.pending_selection_stamp = rospy.Time.from_sec(100.)
         node.pending_selection_set = True
-        node.world.objects = [TrackedObject(points=[Point(25., 2., 0.)])]
+        node.world.objects = [TrackedObject(points=[Point(25., 0., 0.)])]
+        now = rospy.Time.from_sec(100.1)
+        node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = now
+        with patch.object(rospy.Time, 'now', return_value=now):
+            node.publish(None)
+        self.assertIs(node.selected, pending)
+        self.assertEqual(node.selected_stamp, rospy.Time.from_sec(100.))
+        self.assertIsNone(node.pending_selection)
+        self.assertFalse(node.pending_selection_set)
+        self.assertFalse(node.trajectory.message.stop_required)
+        self.assertGreater(max(p.position.y for p in node.trajectory.message.poses), 1.)
+
+    def test_hybrid_pending_path_is_rechecked_before_publication(self):
+        import copy
+        node = self.hybrid_node()
+        node.c['minimum_active_path_hold_sec'] = .5
+        node.selected_stamp = rospy.Time.from_sec(99.9)
+        pending = copy.deepcopy(node.selected)
+        x = pending.xy[:, 0]
+        pending.xy[:, 1] = 2. * np.sin(np.pi/2 * np.clip((x-10.)/8., 0., 1.))
+        node.pending_selection = pending
+        node.pending_selection_stamp = rospy.Time.from_sec(100.)
+        node.pending_selection_set = True
+        node.world.objects = [TrackedObject(points=[Point(25., 0., 0.), Point(25., 2., 0.)])]
         with patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.1)):
             node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = rospy.Time.from_sec(100.1)
             node.publish(None)
         self.assertIsNone(node.selected)
+        self.assertIsNone(node.pending_selection)
+        self.assertFalse(node.pending_selection_set)
         self.assertTrue(node.trajectory.message.stop_required)
         self.assertFalse(node.status.message.ready)
         self.assertIn('active_path_invalidated', node.status.message.reason)
+
+    def test_hybrid_malformed_pending_path_is_not_promoted(self):
+        import copy
+        for malformed in ('infeasible', 'short_speed', 'short_times', 'nonfinite_times'):
+            with self.subTest(malformed=malformed):
+                node = self.hybrid_node()
+                node.c['minimum_active_path_hold_sec'] = .5
+                node.selected_stamp = rospy.Time.from_sec(99.9)
+                pending = copy.deepcopy(node.selected)
+                x = pending.xy[:, 0]
+                pending.xy[:, 1] = 2. * np.sin(np.pi/2 * np.clip((x-10.)/8., 0., 1.))
+                if malformed == 'infeasible':
+                    pending.feasible = False
+                elif malformed == 'short_speed':
+                    pending.speed = pending.speed[:-1]
+                elif malformed == 'short_times':
+                    pending.times = pending.times[:-1]
+                else:
+                    pending.times[-1] = np.inf
+                node.pending_selection = pending
+                node.pending_selection_stamp = rospy.Time.from_sec(100.)
+                node.pending_selection_set = True
+                node.world.objects = [TrackedObject(points=[Point(25., 0., 0.)])]
+                now = rospy.Time.from_sec(100.1)
+                node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = now
+                with patch.object(rospy.Time, 'now', return_value=now):
+                    node.publish(None)
+                self.assertIsNone(node.selected)
+                self.assertIsNone(node.pending_selection)
+                self.assertTrue(node.trajectory.message.stop_required)
+
+    def test_hybrid_pending_replaced_during_recheck_is_not_promoted(self):
+        import copy
+        node = self.hybrid_node()
+        node.c['minimum_active_path_hold_sec'] = .5
+        node.selected_stamp = rospy.Time.from_sec(99.9)
+        pending = copy.deepcopy(node.selected)
+        x = pending.xy[:, 0]
+        pending.xy[:, 1] = 2. * np.sin(np.pi/2 * np.clip((x-10.)/8., 0., 1.))
+        node.pending_selection = pending
+        node.pending_selection_stamp = rospy.Time.from_sec(100.)
+        node.pending_selection_set = True
+        node.world.objects = [TrackedObject(points=[Point(25., 0., 0.)])]
+        now = rospy.Time.from_sec(100.1)
+        node.world.header.stamp = node.route.header.stamp = node.state[0].header.stamp = now
+        original_check = node.hybrid_path_usable
+
+        def replace_after_check(candidate, *args, **kwargs):
+            usable = original_check(candidate, *args, **kwargs)
+            if candidate is pending:
+                with node.lock:
+                    node.pending_selection = copy.deepcopy(pending)
+            return usable
+
+        with patch.object(rospy.Time, 'now', return_value=now), \
+                patch.object(node, 'hybrid_path_usable', side_effect=replace_after_check):
+            node.publish(None)
+        self.assertIsNone(node.selected)
+        self.assertIsNone(node.pending_selection)
+        self.assertTrue(node.trajectory.message.stop_required)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
     def test_hybrid_normal_active_path_is_not_expired_by_hold_age(self, _):
