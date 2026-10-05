@@ -8,7 +8,7 @@ from unittest.mock import patch
 import yaml
 from visualization_msgs.msg import Marker, MarkerArray
 from hd_map_pkg.display_geometry import display_layers
-from visualization_pkg.hd_map_display import map_markers, checkpoint_markers, load_map_markers
+from visualization_pkg.hd_map_display import map_markers, checkpoint_markers, load_map_markers, stop_line_labels
 
 
 class MapDisplayTest(unittest.TestCase):

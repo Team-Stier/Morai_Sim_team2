@@ -5,7 +5,7 @@ import math
 import rospy
 from geometry_msgs.msg import Point, Point32, Polygon, PoseStamped
 from nav_msgs.msg import Path
-from common_msgs_pkg.msg import ComponentStatus, HdMap, LaneChangeWindow, RouteLane
+from common_msgs_pkg.msg import ComponentStatus, HdMap, LaneChangeWindow, RouteLane, SignalStopLine
 
 from hd_map_pkg.runtime_map import load_static_map
 
@@ -42,6 +42,10 @@ def map_message(data, stamp):
     result.checkpoint_radius_m = data['checkpoint_radius_m']
     result.forbidden_boundaries = [Polygon(points=[Point32(*point) for point in line])
                                    for line in data['forbidden_boundaries']]
+    result.signal_stop_lines = [SignalStopLine(id=row['id'],
+        points=[Point(*point) for point in row['points']],
+        approach_link_ids=row['approach_link_ids'], signal_ids=row['signal_ids'])
+        for row in data['signal_stop_lines']]
     return result
 
 

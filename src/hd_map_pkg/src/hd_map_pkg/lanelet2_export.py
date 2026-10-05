@@ -6,6 +6,7 @@ adjacent lanelets share topology, and records every unavoidable derivation.
 
 import json
 import math
+from .stop_lines import match_stop_lines
 from collections import defaultdict
 from pathlib import Path
 from xml.sax.saxutils import quoteattr
@@ -1114,54 +1115,9 @@ class Lanelet2Exporter(object):
         ]
 
     def _stop_lines_for_links(self, link_ids):
-        """Match stop bars crossing the downstream portion of each approach."""
-        matches = {}
-        for link_id in link_ids:
-            if link_id in self._stop_line_match_by_link:
-                cached = self._stop_line_match_by_link[link_id]
-                if cached is not None:
-                    boundary_id, lateral_distance, upstream_distance = cached
-                    existing = matches.get(boundary_id)
-                    value = (lateral_distance, upstream_distance)
-                    if existing is None or value < existing:
-                        matches[boundary_id] = value
-                continue
-            link = self.dataset.links.get(link_id)
-            points = link.get("points") if link else None
-            if not points:
-                continue
-            downstream_segments = []
-            distance_from_end = 0.0
-            for upstream, downstream in reversed(list(zip(points, points[1:]))):
-                segment_length = math.hypot(
-                    downstream[0] - upstream[0], downstream[1] - upstream[1])
-                if distance_from_end > self.stop_line_radius:
-                    break
-                downstream_segments.append((upstream, downstream, distance_from_end))
-                distance_from_end += segment_length
-            best = None
-            for boundary_id in sorted(self.stop_line_way_ids):
-                geometry = self.boundary_geometries[boundary_id]
-                closest = min(
-                    (min(segment_distance_2d(upstream, downstream, start, end)
-                         for start, end in zip(geometry, geometry[1:])), progress)
-                    for upstream, downstream, progress in downstream_segments)
-                if closest[0] <= self.stop_line_tolerance:
-                    score = (closest[1], closest[0], boundary_id)
-                    if best is None or score < best[0]:
-                        best = (score, boundary_id, closest[0], closest[1])
-            if best is not None:
-                _, boundary_id, lateral_distance, upstream_distance = best
-                self._stop_line_match_by_link[link_id] = (
-                    boundary_id, lateral_distance, upstream_distance)
-                existing = matches.get(boundary_id)
-                value = (lateral_distance, upstream_distance)
-                if existing is None or value < existing:
-                    matches[boundary_id] = value
-            else:
-                self._stop_line_match_by_link[link_id] = None
-        return [(boundary_id, values[0], values[1])
-                for boundary_id, values in sorted(matches.items())]
+        return match_stop_lines(link_ids, self.dataset.links,
+            {key: self.boundary_geometries[key] for key in self.stop_line_way_ids},
+            self.stop_line_radius, self.stop_line_tolerance, self._stop_line_match_by_link)
 
     def _add_traffic_lights(self):
         associations = self.dataset.traffic_light_link_ids()

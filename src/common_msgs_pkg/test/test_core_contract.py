@@ -17,7 +17,7 @@ def read(path):
 class CoreContractTest(unittest.TestCase):
     def test_rddf_wire_definitions_match_map_route_planner_contract(self):
         schema = read(CONFIG / 'messages/rddf_planning_messages.yaml')
-        self.assertEqual(set(schema['messages']), {'HdMap', 'RouteLane', 'LaneChangeWindow', 'RouteContext'})
+        self.assertEqual(set(schema['messages']), {'HdMap', 'SignalStopLine', 'RouteLane', 'LaneChangeWindow', 'RouteContext'})
         for name, entry in schema['messages'].items():
             self.assertEqual((PACKAGE / 'msg' / (name + '.msg')).read_text(), entry['wire_definition'])
 
@@ -46,6 +46,8 @@ class CoreContractTest(unittest.TestCase):
                             if topic['name'].startswith('/molit/localization/')
                             else 'development_map_object_tracking_unverified'
                             if topic['name'] == '/molit/world_model/status'
+                            else 'development_visualization_only'
+                            if topic['name'] == '/molit/internal/visualization/planner_status'
                             else 'schema_implemented_runtime_not_implemented')
                 self.assertEqual(topic['status'], expected)
 
@@ -69,7 +71,7 @@ class CoreContractTest(unittest.TestCase):
             'LidarObjectObservation.msg', 'LidarObservationArray.msg',
             'ActuatorCommand.msg', 'CollisionEvent.msg',
             'Trajectory.msg', 'ControllerStatus.msg', 'TrackedObject.msg', 'WorldModel.msg',
-            'HdMap.msg', 'RouteLane.msg', 'LaneChangeWindow.msg', 'RouteContext.msg',
+            'HdMap.msg', 'SignalStopLine.msg', 'RouteLane.msg', 'LaneChangeWindow.msg', 'RouteContext.msg',
         })
         manifest = ET.parse(PACKAGE / 'package.xml').getroot()
         self.assertIn('message_generation', [e.text for e in manifest.findall('build_depend')])

@@ -19,6 +19,7 @@ add_message_files(FILES
   TrackedObject.msg
   WorldModel.msg
   HdMap.msg
+  SignalStopLine.msg
   RouteContext.msg
   RouteLane.msg
   LaneChangeWindow.msg

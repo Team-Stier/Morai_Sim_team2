@@ -4,3 +4,5 @@ hd_map_line_width_m: 0.10
 # 체크포인트 점 지름과 번호 글자 높이 [m]. 위치는 중앙 체크포인트 설정에서 읽는다.
 checkpoint_point_diameter_m: 1.5
 checkpoint_label_height_m: 1.5
+# 신호 구간 정지선 번호 글자 높이 [m]. 실제 정지선 좌표는 HD Map 원본에서 추출한다.
+stop_line_label_height_m: 1.5

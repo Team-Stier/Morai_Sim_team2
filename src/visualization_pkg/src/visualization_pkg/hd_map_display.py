@@ -36,6 +36,9 @@ def map_markers(layers, plane_z, line_width):
         elif layer in ('global_route_unlimited', 'lane_rddf_unlimited'):
             color = (1.0, 0.25, 0.86, 1.0)
             marker.scale.x = line_width * 3
+        elif layer == 'signal_stop_lines':
+            color = (1.0, 0.1, 0.1, 1.0)
+            marker.scale.x = line_width * 4
         marker.color.r, marker.color.g, marker.color.b, marker.color.a = color
         # Flatten display only; authoritative source geometry and localization stay intact.
         for line in lines:
@@ -62,6 +65,28 @@ def map_markers(layers, plane_z, line_width):
             marker.text = label
             result.markers.append(marker)
     return result
+
+
+def stop_line_labels(stops, plane_z, label_height):
+    if not math.isfinite(label_height) or label_height <= 0:
+        raise ValueError('Invalid stop-line label height')
+    labels = []
+    for index, row in enumerate(stops):
+        marker = Marker()
+        marker.header.frame_id = 'map'
+        marker.header.stamp = rospy.Time(0)
+        marker.ns = 'signal_stop_line_labels'
+        marker.id = index
+        marker.type = Marker.TEXT_VIEW_FACING
+        marker.action = Marker.ADD
+        marker.pose.orientation.w = 1.0
+        a, b = row['points'][0], row['points'][-1]
+        marker.pose.position = Point((a[0]+b[0])/2, (a[1]+b[1])/2, plane_z+label_height)
+        marker.scale.z = label_height
+        marker.color.r, marker.color.g, marker.color.b, marker.color.a = (1.0, 0.1, 0.1, 1.0)
+        marker.text = 'STOP %d' % (index+1)
+        labels.append(marker)
+    return labels
 
 
 def checkpoint_markers(points, plane_z, diameter, label_height):
@@ -113,6 +138,8 @@ def load_map_markers():
     rospy.loginfo('Route-cropped HD map: %s; bounds=%s', metadata['counts'], metadata['bounds'])
     plane_z = rospy.get_param('~hd_map_plane_z_m', -0.10)
     result = map_markers(layers, plane_z, rospy.get_param('~hd_map_line_width_m', 0.10))
+    result.markers.extend(stop_line_labels(metadata.get('signal_stop_lines', []), plane_z,
+        rospy.get_param('~stop_line_label_height_m', 1.5)))
     checkpoints = yaml.safe_load((architecture / 'config/map/checkpoints.yaml').read_text())
     result.markers.extend(checkpoint_markers(checkpoints['points'], plane_z,
         rospy.get_param('~checkpoint_point_diameter_m', 1.5),

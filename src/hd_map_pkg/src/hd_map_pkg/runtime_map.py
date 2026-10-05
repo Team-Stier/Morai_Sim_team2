@@ -13,7 +13,7 @@ from .mgeo_v3 import MGeoV3Dataset
 from .validation import validate_source
 
 
-def build_static_map(raw_route, rddf, checkpoints, policy, reference_sha256):
+def build_static_map(raw_route, rddf, checkpoints, policy, reference_sha256, signal_stop_lines=None):
     """Keep the official route and explicit MGeo edges as distinct graph lanes."""
     indices = [i for i, point in enumerate(raw_route)
                if i == 0 or point != raw_route[i-1]]
@@ -42,7 +42,8 @@ def build_static_map(raw_route, rddf, checkpoints, policy, reference_sha256):
                   checkpoint_source=checkpoints['source'],
                   forbidden_boundaries=rddf['forbidden_boundaries'],
                   forbidden_boundary_ids=rddf['forbidden_boundary_ids'],
-                  source_hashes=rddf['source_hashes'], course_speed_policy=policy)
+                  source_hashes=rddf['source_hashes'], course_speed_policy=policy,
+                  signal_stop_lines=signal_stop_lines or [])
     result['map_id'] = 'katri-rddf-' + hashlib.sha256(
         json.dumps(result, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     return result
@@ -68,4 +69,6 @@ def load_static_map(config_file, source, reference_path, checkpoints_file, polic
     rddf = build_lane_rddf(dataset, transform, route, config['lane_rddf'])
     rddf['source_hashes'] = dataset.source_hashes()
     checkpoints = yaml.safe_load(Path(checkpoints_file).read_text())
-    return build_static_map(route, rddf, checkpoints, policy, digest)
+    from .stop_lines import build_signal_stop_lines
+    stop_lines = build_signal_stop_lines(dataset, transform, route, config)
+    return build_static_map(route, rddf, checkpoints, policy, digest, stop_lines)

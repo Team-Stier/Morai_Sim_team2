@@ -8,3 +8,5 @@ geometry_msgs/Point[] checkpoints
 float64 checkpoint_radius_m
 # Original solid/center/restricted/unknown boundary polylines; no joins across IDs.
 geometry_msgs/Polygon[] forbidden_boundaries
+# Original signal-controlled stop bars on same-direction course approaches, in map.
+common_msgs_pkg/SignalStopLine[] signal_stop_lines
