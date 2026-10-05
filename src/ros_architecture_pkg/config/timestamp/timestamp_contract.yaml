@@ -112,6 +112,7 @@ timestamp_source_registry:
       - /molit/route/status
       - /molit/world_model/status
       - /molit/planning/status
+      - /molit/internal/visualization/planner_status
       - /molit/control/status
       - /molit/system/readiness
       - /molit/safety/state

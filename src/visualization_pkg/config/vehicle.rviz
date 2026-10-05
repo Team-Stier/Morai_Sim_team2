@@ -11,6 +11,11 @@ Panels:
 Visualization Manager:
   Class: ""
   Displays:
+    - Class: visualization_pkg/PlannerStatus
+      Name: Current planner
+      Enabled: true
+      Value: true
+      Display timeout: 2.0
     - Class: rviz/MarkerArray
       Name: Frenet trajectory (cyan) and stop (red)
       Enabled: true

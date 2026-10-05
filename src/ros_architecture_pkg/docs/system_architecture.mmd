@@ -112,9 +112,10 @@ flowchart LR
     topic_033["/molit/safety/final_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
     topic_034["/molit/safety/state<br/>type: common_msgs_pkg/SafetyState<br/>state: RESERVED"]
     topic_035["/molit/evaluation/metrics<br/>type: common_msgs_pkg/RunMetrics<br/>state: RESERVED"]
-    topic_036["/molit/internal/visualization/vehicle_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
-    topic_037["/molit/internal/visualization/lidar_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
-    topic_038["/molit/internal/visualization/world_model_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_036["/molit/internal/visualization/planner_status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
+    topic_037["/molit/internal/visualization/vehicle_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_038["/molit/internal/visualization/lidar_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_039["/molit/internal/visualization/world_model_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
 
     node_000 --> topic_000
     topic_000 --> node_014
@@ -231,6 +232,7 @@ flowchart LR
     topic_029 --> node_022
     topic_029 --> node_023
     topic_029 --> node_024
+    topic_029 --> node_025
     node_021 --> topic_030
     topic_030 --> node_023
     topic_030 --> node_024
@@ -253,6 +255,8 @@ flowchart LR
     topic_037 --> node_026
     node_025 --> topic_038
     topic_038 --> node_026
+    node_025 --> topic_039
+    topic_039 --> node_026
     external_ingress --> node_000
     external_ingress --> node_001
     external_ingress --> node_002
@@ -329,3 +333,4 @@ flowchart LR
     class topic_036 reservedTopic;
     class topic_037 reservedTopic;
     class topic_038 reservedTopic;
+    class topic_039 reservedTopic;
