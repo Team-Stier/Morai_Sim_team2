@@ -69,16 +69,29 @@ references:
 lane_rddf:
   # User-requested derived geometry; does not create legal crossing permissions.
   course_connections:
+    # 진입 커브는 공식 경로로 연결하고 CP10부터 분기한다. 고주로 끝을 지난 직선에서 합류한다.
+    prefix_reference_link: A2256W000846
     start_reference_link: A2256W000411
-    end_reference_link: A2256W000423
-    entry_blend_m: 80.0
-    exit_blend_m: 45.0
+    end_reference_link: A2256W000451
+    entry_blend_m: 220.0
+    exit_blend_m: 220.0
+    # 원본 successor 접속부만 최대 20 m 길이로 둥글게 연결한다. 이동 폭은 최대 15 cm다.
+    junction_blend_m: 20.0
+    junction_max_deviation_m: 0.15
     chains:
+      # 진입부의 두 번째 차선은 실제로 420에서 전역경로 차선으로 합쳐진다.
+      - id: high_speed_entry
+        link_ids: [A2256W000409]
+        end_reference_link: A2256W000411
+        entry_blend_m: 100.0
+        exit_blend_m: 40.0
       - id: high_speed_inner
-        link_ids: [A2256W000410, A2256W000430, A2256W000434, A2256W000422]
+        link_ids: [A2256W000410, A2256W000430, A2256W000434, A2256W000422, A2256W000432, A2256W000427]
       - id: high_speed_outer
-        link_ids: [A2256W000418, A2256W000431, A2256W000435, A2256W000423]
-  allowed_link_ids: [A2256W000009, A2256W000307, A2256W000309, A2256W000310, A2256W000314, A2256W000319, A2256W000410, A2256W000418, A2256W000422, A2256W000423, A2256W000430, A2256W000431, A2256W000434, A2256W000435]
+        link_ids: [A2256W000418, A2256W000431, A2256W000435, A2256W000423, A2256W000432, A2256W000427]
+      - id: high_speed_left
+        link_ids: [A2256W000429, A2256W000433, A2256W000421, A2256W000425, A2256W000424, A2256W000426]
+  allowed_link_ids: [A2256W000009, A2256W000307, A2256W000309, A2256W000310, A2256W000314, A2256W000319, A2256W000409, A2256W000410, A2256W000418, A2256W000421, A2256W000422, A2256W000423, A2256W000424, A2256W000425, A2256W000426, A2256W000427, A2256W000429, A2256W000430, A2256W000431, A2256W000432, A2256W000433, A2256W000434, A2256W000435]
   # User-required intersection entry near checkpoint 8 (2026-09-21).
   # Exclude the outer bypass and its continuation, even if geometrically close to the course.
   excluded_link_ids: [A2256W000739, A2256W000849]

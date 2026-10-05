@@ -174,3 +174,10 @@ HD Map 표시에는 하늘색 `lane_rddf`와 주황색 `lane_change_windows` nam
 주행용 차선변경 궤적이 아니다. [추출 조건과 검증](../hd_map_pkg/docs/lane_rddf.md)을 따른다.
 
 HD Map의 고주로 전역경로/추가 RDDF는 분홍색(제한 없음·목표 150 km/h), 일반 전역경로는 초록색(최대 58 km/h), 일반 추가 RDDF는 하늘색이다. 정적 구간은 Planner와 같은 중앙 코스 정책을 읽는다.
+
+HD Map 위에 체크포인트 1~14번과 START/END를 노란 점과 `CP 1`~`CP 14`,
+`START / END` 글자로 표시한다. 좌표는 루트 README와 같은
+`ros_architecture_pkg/config/map/checkpoints.yaml`에서 읽고, 지도 표시 평면에만
+높이를 맞춘다. 원본 좌표나 주행 판단은 변경하지 않는다. `HD Map` display의
+`checkpoints`와 `checkpoint_labels` namespace에서 점과 글자를 각각 숨길 수 있다.
+점 지름과 글자 높이는 `config/hd_map_display.yaml`에서 설정한다.

@@ -1,32 +1,31 @@
 schema_version: 1
-contract_version: 0.3.0
+contract_version: 0.4.0
 authority: ros_architecture_pkg
 implementation_owner: common_msgs_pkg
 status: development_frenet_rddf
 messages:
   HdMap:
-    wire_definition: '# Authority: ros_architecture_pkg/config/messages/rddf_planning_messages.yaml
-
+    wire_definition: |
+      # Authority: ros_architecture_pkg/config/messages/rddf_planning_messages.yaml
       std_msgs/Header header
-
       string map_id
-
       string reference_sha256
-
       common_msgs_pkg/RouteLane[] lanes
-
       common_msgs_pkg/LaneChangeWindow[] lane_changes
-
       geometry_msgs/Point[] checkpoints
-
       float64 checkpoint_radius_m
-
-      # Original solid/center/restricted/unknown boundary polylines; no joins across
-      IDs.
-
+      # Original solid/center/restricted/unknown boundary polylines; no joins across IDs.
       geometry_msgs/Polygon[] forbidden_boundaries
-
-      '
+      # Original signal-controlled stop bars on same-direction course approaches, in map.
+      common_msgs_pkg/SignalStopLine[] signal_stop_lines
+  SignalStopLine:
+    wire_definition: |
+      # Authority: ros_architecture_pkg/config/messages/rddf_planning_messages.yaml
+      # Immutable MGeo stop-line ID and source approach/signal IDs; no live signal state.
+      string id
+      geometry_msgs/Point[] points
+      string[] approach_link_ids
+      string[] signal_ids
   RouteLane:
     wire_definition: '# Authority: ros_architecture_pkg/config/messages/rddf_planning_messages.yaml
 
@@ -96,3 +95,14 @@ messages:
       bool route_complete
 
       '
+stop_line_semantics:
+  owner: hd_map_pkg
+  frame: parent_HdMap_header_map
+  unit: m
+  geometry: original_source_XYZ_polyline_at_least_two_distinct_points_no_connections_across_ids
+  association: original_MGeo_vehicle_signal_to_same_direction_course_approach_and_downstream_530_stop_bar
+  selection: approved_additional_lane_or_reference_route_match_with_aligned_heading_at_stop_bar
+  timestamp: parent_static_map_version_load_time
+  signal_state: absent_dynamic_phase_requires_perception
+  consumer_effect: static_geometry_only_no_automatic_stop_or_change_to_trajectory
+  migration: HdMap_MD5_changes_rebuild_and_restart_all_HdMap_producers_and_consumers_together

@@ -64,4 +64,9 @@ def load_route_display_layers(source, projection, config, reference_path):
             lane_sections = [s for lane in alternatives['lanes'] for s in lane['speed_sections']]
             layers['lane_rddf'] = [s['p'] for s in lane_sections if s['speed_limit_kph'] is not None]
             layers['lane_rddf_unlimited'] = [s['p'] for s in lane_sections if s['speed_limit_kph'] is None]
+    from .stop_lines import build_signal_stop_lines
+    from .lane_rddf import read_route
+    stops = build_signal_stop_lines(dataset, transform, read_route(reference_path), config)
+    layers['signal_stop_lines'] = [row['points'] for row in stops]
+    preview['metadata']['signal_stop_lines'] = stops
     return layers, preview['metadata']

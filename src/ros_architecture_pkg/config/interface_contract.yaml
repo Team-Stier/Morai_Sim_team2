@@ -96,7 +96,7 @@ contract_modules:
     required_contract_version: 0.2.0
   rddf_planning_messages:
     path: messages/rddf_planning_messages.yaml
-    required_contract_version: 0.3.0
+    required_contract_version: 0.4.0
   course_speed_policy:
     path: map/course_speed_policy.yaml
     required_contract_version: 0.1.0
@@ -511,7 +511,7 @@ topics:
     consumers: [localization_node, global_route_manager_node, world_model_node, path_planner_node]
     status: development_frenet_rddf_unverified
     visibility: public
-    data_meaning: Versioned immutable HD map layers and topology
+    data_meaning: Versioned immutable HD map layers topology and signal-controlled course stop-line geometry
     diagram_description_ko: 버전이 고정된 정적 지도와 연결 구조
     data_type: common_msgs_pkg/HdMap
     unit: m_rad_and_semantic_attributes
@@ -1033,7 +1033,11 @@ messages:
     status: development_not_runtime_verified
     schema: messages/lidar_messages.yaml#LidarObservationArray
   - type: common_msgs_pkg/HdMap
-    status: type_name_reserved_schema_not_implemented
+    status: development_frenet_rddf_unverified
+    schema: messages/rddf_planning_messages.yaml#HdMap
+  - type: common_msgs_pkg/SignalStopLine
+    status: development_frenet_rddf_unverified
+    schema: messages/rddf_planning_messages.yaml#SignalStopLine
   - type: common_msgs_pkg/EgoState
     status: schema_implemented_runtime_not_implemented
     schema: messages/core_messages.yaml#EgoState

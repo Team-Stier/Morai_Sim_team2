@@ -37,3 +37,17 @@ TF를 발행하지 않았으며 `map -> odom -> base_link`나 센서 TF 잠금�
 `base_link`와 활성 MORAI pivot의 동일성, 박스의 수직 중심 및 주행 준비 완료를
 증명하지 않는다. 차체 footprint 후보·MORAI 치수의 근거는
 [중앙 시각화 문서](../../ros_architecture_pkg/docs/visualization_vehicle.md)를 따른다.
+
+## 2026-10-06 체크포인트 표시
+
+`paik`에서 중앙 `config/map/checkpoints.yaml`을 읽어 기존 HD Map 마커에
+노란 점 15개와 CP 1~14, START/END 라벨을 추가했다. 표시 평면에만 높이를
+맞추고 원본 ENU 좌표와 공개 ROS 인터페이스는 유지한다. 점 지름과 글자 높이는
+각각 기본 1.5 m이며 `config/hd_map_display.yaml`에서 조정한다.
+
+README 표와 중앙 좌표의 일치, 마커 직렬화, 원본 좌표 보존과 잘못된 설정 거부를
+포함한 표시 단위 테스트 19개 및 인터페이스 계약 테스트 2개가 통과했다.
+Visualization 포함 catkin 빌드, YAML/launch 파싱과 중앙 다이어그램 검사도 통과했다.
+실행 중인 표시 노드를 재시작하고 map frame의 점 15개와 라벨 15개를 수신했으며
+RViz의 기존 HD Map 구독 연결을 확인했다. 검증 결과는 외부 작업 산출물
+`/home/paik/morai-artifacts/rviz-checkpoints-20261006/live_verification.json`에 보관했다.
