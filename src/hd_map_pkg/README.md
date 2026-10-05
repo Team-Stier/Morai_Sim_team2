@@ -9,6 +9,7 @@ MGeo 연결·허용 점선 구간·금지 경계·체크포인트를 HdMap으로
 합류한다. 진입·합류 각각 220 m의 파생 접속 곡선과 원본 링크 목록은
 `lane_rddf.course_connections`로 관리한다.
 진입부에서 먼저 합쳐지는 `high_speed_entry`만 100 m 진입·40 m 합류를 사용한다.
+`high_speed_left`는 CP11을 통과하도록 합류 길이 280 m를 사용한다.
 원본 링크 접속부의 방향 꺾임은 최대 15 cm 이내에서 완화한다.
 
 MORAI 공식 조직의 KATRI MGeo 3.0 스냅샷을 immutable 후보로 고정하고, 이를
