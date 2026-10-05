@@ -9,7 +9,8 @@
 
 Planner 구간의 원본 설정 파일은
 [`config/planner_mode.yaml`](config/planner_mode.yaml)이다. 객체 출현으로 Planner
-종류를 바꾸지 않으며 Z1→Z2, Z2→Z3, Z4→Z5의 route_s 경계에서 변경한다.
+종류를 바꾸지 않으며 현재 추정 map 위치를 global RDDF에 투영해 구간을 선택한다.
+RouteContext의 누적 진행도는 선택에 사용하지 않으며 후진·재배치 시에도 현재 위치를 따른다.
 
 Hybrid 구간에서는 충돌 없이 추종 가능한 RDDF에 차량 위치·방향을 부드럽게
 합류시키고, 장애물이 있거나 합류 경로가 성립하지 않으면 Hybrid A*를 실행한다.
@@ -48,9 +49,16 @@ Localization reset과 시간 역행은 즉시 반영하고 대기 경로를 폐�
 첫 점을 차량 위치로 강제 이동하여 추종 오차를 숨기거나 꺾임을 만들지 않는다.
 Localization reset 시 활성·대기 경로를 폐기하고 새 상태로 계산한 경로를 기다린다.
 
-정적 LiDAR 클러스터로 RDDF 유지 경로가 막히면 근거리 우회·복귀 후보도 비교한다.
-`local_detour_offsets_m`의 양수는 RDDF 왼쪽, 음수는 오른쪽이며 양쪽 모두
-1.5/2.5/3.5 m 우회 후보를 생성해 같은 비용식으로 비교한다. 회피 구간은 최대 10 km/h이며 차량 footprint 충돌·조향 한계를 검사한다.
+Frenet은 정적 장애물 전용 좌우 offset 우회·복귀 경로를 생성하지 않는다.
+정적 장애물 구간의 회피 경로 탐색은 구간 설정에 따라 Hybrid A*가 담당한다.
+Frenet의 기존 RDDF 후보 충돌 검사·감속·정지와 RDDF 차로변경 후보는 유지한다.
+객체 감지만으로 Planner 모드를 전환하지 않는다.
+
+Frenet 후보의 기준 RDDF는 기본적으로 주변 형상을 평활화해 작은 꺾임을 완화한다.
+Gaussian 표준편차는 2 m, 같은 station의 원본 RDDF에서 허용하는 기준 경로 이동은
+최대 0.15 m다. 현재 위치·방향 합류와 차로변경은 그 기준 위에서 생성하고 최종
+후보에 기존 충돌·곡률·속도 검사를 적용한다. 설정은 `frenet_planner.yaml`의
+`rddf_relaxation_enabled`, `rddf_smoothing_sigma_m`, `rddf_max_deviation_m`이다.
 
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의
@@ -153,3 +161,7 @@ UDP 출력은 금지한다.
 실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
 
 전역경로 실행의 고정 속도 규칙은 중앙 `config/map/course_speed_policy.yaml`이다. 일반 상한 58 km/h(순항 56), 고주로 제한 없음(순항 150)을 곡률·출구 전 감속 프로파일에 적용한다.
+
+Frenet은 현재 경로가 충돌로 거부돼도 대체 후보 평가를 마친 뒤 최종 정지를
+결정한다. 검사를 통과한 대체 경로는 기존 경로 유지·이득 확인 시간을 기다리지
+않고 즉시 선택하며, 선택 가능한 경로가 없으면 정지 trajectory를 발행한다.

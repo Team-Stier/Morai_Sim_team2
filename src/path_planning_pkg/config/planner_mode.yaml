@@ -1,6 +1,6 @@
-# Planner choice is based only on RouteContext.progress (route_s).
+# Planner choice uses current EgoState map position projected onto global_route.
 # Bounds are start-inclusive and end-exclusive, except the final route endpoint.
-# The manager keeps progress monotonic for the single agreed competition run.
+# Backward movement or relocation immediately selects the current position zone.
 planner_mode:
   route_length_m: 2184.6117233360674
   zones:

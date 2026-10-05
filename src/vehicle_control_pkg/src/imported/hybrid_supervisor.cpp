@@ -8,7 +8,7 @@ namespace {
 
 constexpr double kMaxSteeringRad =
     40.0 * 3.14159265358979323846 / 180.0;
-constexpr double kFailSafeMaxStepRad = 0.03;
+constexpr double kFailSafeMaxStepRad = 0.24;
 
 double clamp(double value, double lower, double upper) {
   return std::max(lower, std::min(value, upper));

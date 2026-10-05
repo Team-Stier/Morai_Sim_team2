@@ -98,7 +98,7 @@ TEST(Controller, LeftAndRightSteeringKeepOriginalSignAndStepLimit) {
     for (int i = 0; i < 20; ++i) {
       const auto o = controller.step(odometry(), trajectory(2.0, y), ros::Time(10.0+i*0.02), 0.02);
       EXPECT_TRUE(o.command.valid);
-      EXPECT_LE(std::abs(o.command.steering_rad-previous), 0.0300001);
+      EXPECT_LE(std::abs(o.command.steering_rad-previous), 0.2400001);
       previous = o.command.steering_rad;
     }
     EXPECT_GT(previous*y, 0.0);

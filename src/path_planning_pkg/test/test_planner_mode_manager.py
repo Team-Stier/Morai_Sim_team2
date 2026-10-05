@@ -38,14 +38,14 @@ class PlannerModeManagerTest(unittest.TestCase):
         self.assertEqual(selection.zone_id, "Z4")
         self.assertFalse(selection.changed)
 
-    def test_progress_does_not_reenter_previous_planner_zone(self):
+    def test_position_can_reenter_previous_planner_zone(self):
         subject = manager()
-        self.assertEqual(subject.select(1200.0).planner, FRENET)
-        selection = subject.select(1100.0)
-        self.assertEqual(selection.planner, FRENET)
-        self.assertEqual(selection.progress_s, 1200.0)
         self.assertEqual(subject.select(1800.0).planner, HYBRID_ASTAR)
-        self.assertEqual(subject.select(1700.0).planner, HYBRID_ASTAR)
+        selection = subject.select(1700.0)
+        self.assertEqual((selection.planner, selection.progress_s, selection.changed),
+                         (FRENET, 1700.0, True))
+        self.assertEqual(subject.select(300.0).zone_id, "Z2")
+        self.assertEqual(subject.select(10.0).zone_id, "Z1")
 
     def test_reset_starts_a_new_run(self):
         subject = manager()

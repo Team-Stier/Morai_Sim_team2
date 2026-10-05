@@ -145,7 +145,7 @@ class Node:
             m.data_age_sec = (m.header.stamp-m.data_stamp).to_sec()
         self.status.publish(m)
 
-    def offer_selection(self, candidate, completed, reset_id=None):
+    def offer_selection(self, candidate, completed, reset_id=None, force=False):
         """Hold normal paths; stop results override and discard pending motion."""
         with self.lock:
             if reset_id is not None and self.state[0].reset_id != reset_id:
@@ -160,7 +160,7 @@ class Node:
             stopping = candidate is None or bool(np.any(candidate.speed <= 0.))
             active_stop = self.selected is None or bool(np.any(self.selected.speed <= 0.))
             age = (completed-self.selected_stamp).to_sec() if self.selected_stamp is not None else math.inf
-            if (not stopping and not active_stop and
+            if (not force and not stopping and not active_stop and
                     getattr(self, 'hybrid_fallback_deadline', None) is None and
                     0. <= age < self.c['minimum_active_path_hold_sec']):
                 self.pending_selection = candidate
@@ -255,11 +255,12 @@ class Node:
         world_max_age = (self.c.get('world_model_input_age_sec', self.c['input_age_sec'])
                          if self.c['rddf_geometry_only'] else self.c['input_age_sec'])
         zone = next((item for item in self.mode_manager.zones if item.zone_id == zone_id), None)
-        current_mode = self.mode_manager.current
+        p = ego.pose.pose.position
+        position_s = project(lane.xy, lane.s, np.array([p.x, p.y]))[0]
         if (self.static_map is None or self.static_map[0] != map_id or
                 self.active_planner_mode != HYBRID_ASTAR or zone is None or
-                (current_mode is not None and current_mode.zone_id != zone_id) or
-                (zone is not self.mode_manager.zones[-1] and route.progress >= zone.end_s) or
+                not (zone.start_s <= position_s < zone.end_s or
+                     (zone is self.mode_manager.zones[-1] and position_s == zone.end_s)) or
                 route.map_id != map_id or not world.objects_valid or
                 world.localization_reset_id != ego.reset_id or
                 self.epoch != ego.reset_id or self.active_zone != zone_id or
@@ -370,7 +371,7 @@ class Node:
                 (route.route_complete or lanes['global_route'].s[-1]-progress < 2*self.c['spatial_step_m'])):
             self.defer_stop('route_endpoint_stop')
             return
-        selection = self.mode_manager.select(route.progress)
+        selection = self.mode_manager.select(progress)
         mode_changed = selection.planner != self.active_planner_mode
         reset_selection = (mode_changed or
             (selection.planner == HYBRID_ASTAR and selection.zone_id != self.active_zone))
@@ -573,6 +574,7 @@ class Node:
         # actual active path against this scene while replacements are waiting.
         with self.lock:
             active, active_stamp = self.selected, self.selected_stamp
+        active_invalid = False
         if (active is not None and active_stamp is not None and
                 0. <= (now-active_stamp).to_sec() < self.c['minimum_active_path_hold_sec']):
             nearest = int(np.argmin(np.linalg.norm(active.xy[:,:2]-position[:2],axis=1)))
@@ -582,25 +584,18 @@ class Node:
                     active.route_s[i:].copy(), active.limits[i:].copy(), active.changes,
                     active.change_end, active.return_start)
                 evaluate(checked)
-                if not checked.feasible or np.any(checked.speed <= 0.):
-                    self.offer_selection(checked if checked.feasible else None,now,ego.reset_id)
+                active_invalid = not checked.feasible
             else:
-                self.offer_selection(None,now,ego.reset_id)
+                active_invalid = True
 
         # Refresh the currently-followed trajectory first. The 10 Hz publisher
         # can use this result while lateral alternatives continue evaluating.
         fast = next((x for x in candidates if x.key == 'committed'),candidates[0])
         evaluate(fast)
         completed = rospy.Time.now()
-        # An unfinished search is not a stop result. Keep the published selection
-        # until alternatives finish, unless this evaluation found a safety hazard.
+        # A rejected current path is not the final result: check alternatives first.
         if fast.feasible:
-            self.offer_selection(fast,completed,ego.reset_id)
-        elif fast.reason in (
-                'predicted_cluster_collision', 'insufficient_stopping_distance',
-                'no_collision_free_stop', 'forbidden_boundary'):
-            self.defer_stop('planner_mode=frenet; zone=%s; reason=%s' %
-                            (selection.zone_id, fast.reason))
+            self.offer_selection(fast,completed,ego.reset_id,force=active_invalid)
 
         lateral_period = 1./self.c['lane_change_evaluation_rate_hz']
         # A traversable committed manoeuvre stays selected regardless of other
@@ -616,20 +611,23 @@ class Node:
 
         self.last_lane_change_evaluation = time.monotonic()
         # A blocked committed manoeuvre must allow checked recovery candidates.
-        # Evaluate keep first so detours are generated only if it is also blocked.
+        # Evaluate the existing RDDF candidates without adding obstacle offsets.
         if candidates[0] is not fast:
             evaluate(candidates[0])
-        if not math.isfinite(candidates[0].cost) and (self.planner.committed is None or
-                not fast.feasible or not math.isfinite(fast.cost)):
-            candidates.extend(self.planner.obstacle_detours(candidates[0], objects))
         for candidate in candidates:
             if candidate is not fast and candidate is not candidates[0]:
                 evaluate(candidate)
         chosen = self.planner.select(candidates, now.to_sec(), progress)
         handoff_held = False
         if chosen is not None:
-            self.offer_selection(chosen,rospy.Time.now(),ego.reset_id)
+            self.offer_selection(chosen,rospy.Time.now(),ego.reset_id,
+                                 force=active_invalid or not fast.feasible)
         else:
+            if fast.reason in (
+                    'predicted_cluster_collision', 'insufficient_stopping_distance',
+                    'no_collision_free_stop', 'forbidden_boundary'):
+                with self.lock:
+                    self.clear_handoff_locked()
             handoff_held = self.handoff_usable(rospy.Time.now(), map_id,
                 lanes['global_route'], boundaries, self.route, self.world, self.state)
             if not handoff_held:
