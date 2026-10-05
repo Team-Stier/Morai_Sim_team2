@@ -54,6 +54,10 @@ topic은 두지 않는다.
 필드와 통합 범위는 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md),
 Localization/ComponentStatus는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 
+Planner가 주행 경로를 내지 못해 `ready=false`여도 유효한 정지 Trajectory를
+명시적으로 발행하면 기존 정지 제어가 제동 명령을 만든다. 주행 Trajectory에는
+기존 Planner 준비 조건을 그대로 적용한다.
+
 Safety Supervisor가 Controller 뒤에서 최종 gate를 수행하므로 이 출력은 아직 MORAI 송신 승인을 의미하지 않는다.
 
 ## 통합 전 자체 확인

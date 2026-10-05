@@ -1,7 +1,13 @@
 contract_version: 0.2.0
 activation_scope: user_authorized_morai_development_only
 node: path_planner_node
-executable: frenet_planner_node.py
+executable: path_planner_node.py
+internal_planners: [hybrid_astar, frenet]
+planner_mode_source: RouteContext.progress_and_path_planning_pkg_config_planner_mode_yaml
+planner_mode_policy: Z1_Z2_Z5_hybrid_astar_Z3_Z4_frenet_switch_only_at_CP7_CP12
+hybrid_astar_occupancy_input: none
+hybrid_astar_obstacle_input: WorldModel_tracked_object_map_frame_points
+simulator_validation: pending_MORAI_closed_loop
 geometry_inputs: [HdMap, WorldModel]
 route_progress_input: RouteContext
 static_geometry_cache: RDDF_arrays_and_geometric_neighbor_windows_reused_until_map_id_changes

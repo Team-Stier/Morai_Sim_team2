@@ -25,7 +25,7 @@ class VisualizationContractTest(unittest.TestCase):
         self.assertEqual(visualizer["public_nodes"], ["vehicle_visualizer_node"])
         self.assertEqual(
             set(visualizer["inputs"]),
-            set(expected) | {"/molit/perception/lidar/observations", "/molit/world_model/scene"},
+            set(expected) | {"/molit/perception/lidar/observations", "/molit/world_model/scene", "/molit/planning/status"},
         )
         lidar = next(t for t in contract["topics"] if t["name"] == "/molit/perception/lidar/observations")
         self.assertEqual(lidar["data_type"], "common_msgs_pkg/LidarObservationArray")
@@ -36,6 +36,19 @@ class VisualizationContractTest(unittest.TestCase):
         self.assertIn("vehicle_visualizer_node", world_model["consumers"])
         self.assertEqual(visualizer["outputs"], [])
         topics = {entry["name"]: entry for entry in contract["topics"]}
+        planning = topics["/molit/planning/status"]
+        self.assertEqual(planning["data_type"], "common_msgs_pkg/ComponentStatus")
+        self.assertEqual(planning["producers"], ["path_planner_node"])
+        self.assertIn("vehicle_visualizer_node", planning["consumers"])
+        internal = topics["/molit/internal/visualization/planner_status"]
+        self.assertEqual(internal["producers"], ["vehicle_visualizer_node"])
+        self.assertEqual(internal["consumers"], ["vehicle_rviz"])
+        self.assertEqual(internal["data_type"], planning["data_type"])
+        config = yaml.safe_load((PACKAGE / "config/vehicle.rviz").read_text())
+        self.assertTrue(any(display["Class"] == "visualization_pkg/PlannerStatus" and display["Enabled"]
+                            for display in config["Visualization Manager"]["Displays"]))
+        plugin = ET.parse(PACKAGE / "rviz_plugins.xml").getroot().find("class")
+        self.assertEqual(plugin.get("name"), "visualization_pkg/PlannerStatus")
         for name, data_type in expected.items():
             self.assertEqual(topics[name]["data_type"], data_type)
             self.assertIn("localization_node", topics[name]["producers"])

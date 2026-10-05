@@ -1,5 +1,31 @@
 # path_planning_pkg
 
+## Planner Mode Manager 통합
+
+현재 단일 `path_planner_node` 안에 기존 Frenet과 route-guided Hybrid A*가 같은
+계층으로 구성되어 있다. [Planner Mode Manager 통합 기록](docs/planner_mode_integration.md)에
+구간 설정 위치, 구현 파일, 공개 topic, 오프라인 검증과 MORAI 연결 후 확인 항목을
+기록한다. Planner 배정은 Z1·Z3·Z4 Frenet, Z2·Z5 Hybrid A*다.
+
+Planner 구간의 원본 설정 파일은
+[`config/planner_mode.yaml`](config/planner_mode.yaml)이다. 객체 출현으로 Planner
+종류를 바꾸지 않으며 현재 추정 map 위치를 global RDDF에 투영해 구간을 선택한다.
+RouteContext의 누적 진행도는 선택에 사용하지 않으며 후진·재배치 시에도 현재 위치를 따른다.
+
+Hybrid 구간에서는 충돌 없이 추종 가능한 RDDF에 차량 위치·방향을 부드럽게
+합류시키고, 장애물이 있거나 합류 경로가 성립하지 않으면 Hybrid A*를 실행한다.
+목표속도 상한 20 km/h와 Hybrid 탐색·조향 설정은 각각
+[`config/frenet_planner.yaml`](config/frenet_planner.yaml),
+[`config/hybrid_astar.yaml`](config/hybrid_astar.yaml)에 있다. 탐색 실패 시에는
+검증된 기존 경로의 원래 생성 시각을 기준으로 최대 0.5초만 유지하고, 사용할
+경로가 없으면 유효한 정지 trajectory를 발행한다.
+
+Planner가 바뀌는 세 경계에서는 `frenet_planner.yaml`의
+`mode_transition_speed_kph`(현재 30 km/h)를 경계 목표속도로 사용한다.
+경계 전후의 속도 상한은 경로 거리 `route_s`를 따라 선형으로 연결하고,
+가감속 한계와 반응 시간을 고려해 연결 거리를 정한다. Hybrid 구간 안쪽의
+목표속도 상한은 기존 20 km/h다.
+
 2026-09-22 bag 기반 시간 단축 설정과 검증 한계는
 [분석 기록](docs/bag_tuning_20260922.md)을 참고한다.
 
@@ -7,7 +33,7 @@
 
 [Frenet Planner](docs/frenet_rddf.md)는 지정한 RDDF 14개와 전역경로를 사용해
 후보 생성 → 규정·클러스터 충돌 검사 → ETA 비용 비교 → 변경 상태 유지를 수행한다.
-`frenet_planner.launch`가 단독 실행, `system_bringup_pkg/frenet_rddf.launch`가 통합 실행이다.
+`path_planner.launch`가 단독 실행, `system_bringup_pkg/frenet_rddf.launch`가 통합 실행이다.
 출력은 기존 odom Trajectory이며 첫 시험 상한은 10 km/h다.
 
 현재 일반 경로는 최소 0.5초 유지한 뒤 최신 계산 결과로 교체한다.
@@ -24,7 +50,9 @@ Localization reset과 시간 역행은 즉시 반영하고 대기 경로를 폐�
 Localization reset 시 활성·대기 경로를 폐기하고 새 상태로 계산한 경로를 기다린다.
 
 Frenet은 정적 장애물 전용 좌우 offset 우회·복귀 경로를 생성하지 않는다.
-기존 RDDF 후보의 충돌 검사·감속·정지와 RDDF 차로변경 후보는 유지한다.
+정적 장애물 구간의 회피 경로 탐색은 구간 설정에 따라 Hybrid A*가 담당한다.
+Frenet의 기존 RDDF 후보 충돌 검사·감속·정지와 RDDF 차로변경 후보는 유지한다.
+객체 감지만으로 Planner 모드를 전환하지 않는다.
 
 Frenet 후보의 기준 RDDF는 기본적으로 주변 형상을 평활화해 작은 꺾임을 완화한다.
 Gaussian 표준편차는 2 m, 같은 station의 원본 RDDF에서 허용하는 기준 경로 이동은
@@ -66,8 +94,8 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 
 ## 공개 ROS 입출력
 
-현재 상태는 **개발용 Frenet RDDF 후보 생성·ETA 선택 구현**이며 공개 경계 노드는
-`path_planner_node`다. 실행 범위는 [Frenet 설계](docs/frenet_rddf.md)를 따르며, `Trajectory` schema는
+현재 상태는 **구간 기반 Hybrid A*·Frenet 선택의 오프라인 구현**이며 공개 경계 노드는
+`path_planner_node`다. Frenet 실행 범위는 [Frenet 설계](docs/frenet_rddf.md)를 따르며, `Trajectory` schema는
 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)에 구현됐다.
 
 ![Path Planning 공개 입출력](docs/interface_io.svg)
@@ -97,7 +125,7 @@ tracking을 소유하며, Planner는 통합된 scene만 사용한다.
 Trajectory의 공개 frame은 제어 연속성을 위해 `odom`으로 고정한다.
 `ComponentStatus`, `EgoState`, `LocalizationStatus`, `WorldModel` 스키마는 구현됐으며
 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
-`RouteContext`와 Frenet Planner 노드가 구현됐다. `Trajectory`는 poses/speed_mps/time_from_start의
+`RouteContext`와 통합 Planner 노드가 구현됐다. `Trajectory`는 poses/speed_mps/time_from_start의
 동일 길이 배열과 valid/stop_required/valid_for/reset_id를 제공한다. v1에서 이 패키지가 생성하는 주행
 출력은 `/molit/planning/trajectory`뿐이며 직접 accel/brake/steer 또는
 UDP 출력은 금지한다.
@@ -133,3 +161,7 @@ UDP 출력은 금지한다.
 실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
 
 전역경로 실행의 고정 속도 규칙은 중앙 `config/map/course_speed_policy.yaml`이다. 일반 상한 58 km/h(순항 56), 고주로 제한 없음(순항 150)을 곡률·출구 전 감속 프로파일에 적용한다.
+
+Frenet은 현재 경로가 충돌로 거부돼도 대체 후보 평가를 마친 뒤 최종 정지를
+결정한다. 검사를 통과한 대체 경로는 기존 경로 유지·이득 확인 시간을 기다리지
+않고 즉시 선택하며, 선택 가능한 경로가 없으면 정지 trajectory를 발행한다.

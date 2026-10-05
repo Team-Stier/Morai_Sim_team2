@@ -6,9 +6,9 @@ runtime_nodes_implemented: true
 runtime_implementation_scope: localization_gps_imu_development_and_visualization
 autonomous_driving_ready: false
 regulation_source:
-  url: https://morai.atlassian.net/wiki/external/YTRiNWMwZTNjODc3NDBkYzgxMTMzOWMwMWY3YWRkZDc
-  evidence: user_supplied_regulation_excerpt_2026_09_10
-  live_page_verified_in_this_change: false
+  url: https://morai.atlassian.net/wiki/external/ZDBiNmI0MGFiNTY2NDRkYWIyZTMzNWFkYzkwY2Q4NTU
+  evidence: official_rulebook_v1_2_verified_2026_10_01
+  live_page_verified_in_this_change: true
   gps_imu_artificial_noise_applied_2026: false
   gps_blackout_still_required: true
   competition_vehicle_status_missing:
@@ -22,7 +22,7 @@ regulation_source:
     - accel_z
     - tire_lateral_force_fr_to_rr
     - side_slip_angle_fl_to_rr
-    - tire_cornering_stiffnesss_fl_to_rr
+    - tire_cornering_stiffness_fl_to_rr
 rules:
   - Field masks describe estimated validity, never availability of raw UDP fields.
   - ComponentStatus component must equal the central topic owner package; nonempty text alone is insufficient for consumers.

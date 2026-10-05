@@ -11,9 +11,8 @@ v0.1.0에서 세 타입의 필드를 구현한다. 필드와 의미의 유일한
 
 ## 규정 반영 근거
 
-[규정] 2026-09-10 사용자가 제공한 규정집 2-6-2, 2-8 발췌를 적용했다.
-[공식 링크](https://morai.atlassian.net/wiki/external/YTRiNWMwZTNjODc3NDBkYzgxMTMzOWMwMWY3YWRkZDc)의
-전체 원문·개정번호를 이번 변경에서 새로 검증했다고 주장하지 않는다.
+[규정] [공식 규정집 v1.2](https://morai.atlassian.net/wiki/external/ZDBiNmI0MGFiNTY2NDRkYWIyZTMzNWFkYzkwY2Q4NTU)의
+§2-6-2와 §2-8을 2026-10-01에 확인했다. 공개 메시지 필드와 의미는 변경되지 않는다.
 
 - 올해 한시적으로 GPS·IMU에 Noise를 인가하지 않는다. GPS blackout 요구는 유지된다.
 - Competition Vehicle Status에는 pos_x/y/z, vel_y/z, accel_x/y/z 및 지정된

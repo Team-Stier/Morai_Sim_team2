@@ -38,6 +38,12 @@ def relaxed_sample(lane, q, config):
     return result
 
 
+def sample_limits(lane, route_s):
+    """Select the speed limit active at each station without blending sentinels."""
+    indices = np.searchsorted(lane.s, route_s, side='right') - 1
+    return np.asarray(lane.limits)[np.clip(indices, 0, len(lane.limits) - 1)]
+
+
 def project(xy, s, p):
     v = np.diff(xy[:, :2], axis=0)
     u = np.clip(np.sum((p-xy[:-1, :2])*v, axis=1)/np.sum(v*v, axis=1), 0, 1)
@@ -107,6 +113,7 @@ class Candidate:
     feasible: bool = False
     wait: float = 0.
     geometry_cache: tuple = None
+    speed_cap_mps: np.ndarray = field(default_factory=lambda: np.array([]))
 
 
 def geometry(xy):
@@ -335,7 +342,7 @@ class Planner:
         source = self.chain(current, lanes, end)
         source_xy = relaxed_sample(source, qs, c)
         source_d = np.sum((source_xy[:, :2]-ref[:, :2])*normal, axis=1)
-        source_limits = np.interp(qs, source.s, source.limits)
+        source_limits = sample_limits(source, qs)
         results = []
 
         def make(key, target, d, limits, changes=0, change_end=0., return_start=math.inf):
@@ -360,7 +367,7 @@ class Planner:
             return_start = return_end-max(c['connection_m'], nominal*max(c['change_times_sec']))
             return_weight = smooth((qs-return_start)/(return_end-return_start))
             keep_d = source_d*(1-return_weight)
-            reference_limits = np.interp(qs, reference.s, reference.limits)
+            reference_limits = sample_limits(reference, qs)
             keep_limits = np.where(qs >= return_end, reference_limits, source_limits)
             make('keep', 'global_route', keep_d, keep_limits, 1, return_end, return_start)
         else:
@@ -379,9 +386,8 @@ class Planner:
                         continue
                     weight = smooth((qs-start)/(stop-start))
                     d = source_d+(target_d-source_d)*weight
-                    limits = np.minimum(source_limits, np.interp(qs, target.s, target.limits))
                     source_cap = np.where(source_limits < 0, c['high_cruise_kph']/3.6, source_limits)
-                    target_limits = np.interp(qs, target.s, target.limits)
+                    target_limits = sample_limits(target, qs)
                     target_cap = np.where(target_limits < 0,c['high_cruise_kph']/3.6,target_limits)
                     limits = np.minimum(source_cap,target_cap)
                     changes, return_start = 1, math.inf
@@ -412,6 +418,10 @@ class Planner:
         if c['test_speed_cap_kph'] > 0:
             limits = np.minimum(limits, c['test_speed_cap_kph']/3.6)
         limits = np.minimum(limits, np.sqrt(c['lateral_acceleration_mps2']/np.maximum(np.abs(curvature), 1e-8)))
+        if len(candidate.speed_cap_mps):
+            if len(candidate.speed_cap_mps) != len(limits):
+                raise ValueError('Candidate speed cap must match trajectory points')
+            limits = np.minimum(limits, candidate.speed_cap_mps)
         if cap is not None:
             limits = np.minimum(limits, cap)
         limits[s >= stop] = 0.
@@ -573,6 +583,8 @@ class Planner:
             if moving:
                 stop_index=int(np.flatnonzero(np.isfinite(times))[-1])
                 rest=Candidate('resume',candidate.target,candidate.xy[stop_index:],candidate.route_s[stop_index:],candidate.limits[stop_index:])
+                if len(candidate.speed_cap_mps):
+                    rest.speed_cap_mps = candidate.speed_cap_mps[stop_index:].copy()
                 free = self.profile(rest, 0.)
                 for delay in c['wait_times_sec']:
                     offset=times[stop_index]+delay
@@ -621,6 +633,10 @@ class Planner:
         if not feasible:
             return None
         best = min(feasible, key=lambda x:x.cost)
+        if not keep.feasible:
+            # Confirmation is for improving a safe path, not retaining a rejected one.
+            self.committed, self.pending = (best if best.changes else None), None
+            return best
         if best is keep or not math.isfinite(best.cost) or keep.cost-best.cost < self.c['minimum_gain_sec']:
             self.pending = None
             return keep if keep.feasible else None

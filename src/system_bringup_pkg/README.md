@@ -1,5 +1,66 @@
 # system_bringup_pkg
 
+## 대회 PC 두 대의 I/O 연결 (2026-10-01)
+
+PC A(MORAI)는 `192.168.0.1/24`, PC B(참가팀)는 `192.168.0.10/24`로
+유선 직결한다. 양쪽 유선 Gateway와 DNS는 비운다.
+PC B에서 아래 명령으로 본선 네트워크 I/O와 자율주행 스택 전체를 한 번에 시작한다.
+
+```bash
+roslaunch system_bringup_pkg competition.launch
+```
+
+`competition.launch`는 Camera/GPS/IMU/LiDAR, Competition Vehicle Status,
+CollisionData 수신과 Localization, TF/RViz, HD Map, Route Manager,
+LiDAR Perception, World Model, Frenet Planner, Vehicle Controller,
+Safety Supervisor, Ego Ctrl Cmd 송신을 한 번에 실행한다.
+
+본선 I/O 시작 인자는 기본 `true`이며 제어는 `dry_run: false`,
+`allow_motion_commands: true`다. 기존 `frenet_rddf.launch`의 개발용
+Control Sender는 `send_to_morai:=false`로 비활성화하고,
+`config/competition/control.yaml`을 사용하는 본선 Control Sender만 한 번 실행한다.
+
+RViz 없이 실행하거나 시험 속도 상한을 적용하려면 다음처럼 사용한다.
+
+```bash
+roslaunch system_bringup_pkg competition.launch rviz:=false
+roslaunch system_bringup_pkg competition.launch test_speed_cap_kph:=10.0
+```
+
+| 채널 | MORAI Host Port | MORAI Destination Port | 팀 코드 설정 |
+|---|---:|---:|---|
+| Competition Vehicle Status | 9088 | 9099 | `0.0.0.0:9099` 수신 |
+| CollisionData | 9091 | 9092 | `0.0.0.0:9092` 수신 |
+| Ego Ctrl Cmd | 9093 | 9094 | `192.168.0.1:9093` 송신 |
+
+위 3개 쌍은 사용자가 제공한 대회 Network 표 기준이다. MORAI의 Host IP는
+`192.168.0.1`, Destination IP는 `192.168.0.10`으로 설정한다.
+`UdpSender`는 Host Port `9093`으로 `sendto()`하며 로컬 송신 포트는 OS가
+할당한다. 표의 Destination Port `9094`는 MORAI 설정에 기록하는 값이며,
+현재 코드가 `9094`를 송신 목적지나 고정 로컬 송신 포트로 사용하는 것은 아니다.
+MORAI 공식 [UDP 예제](https://help-morai-sim-en.scrollhelp.site/morai-sim-standard-en/msc-udp-unit-test-quick-start-manual)도
+제어 sender의 목적지에 `ctrl_cmd_host_port`를 사용한다.
+
+센서 포트는 대회 고정 3개 채널과 구분된 팀 선택값이다. MORAI Sensor 설정의
+Destination IP를 `192.168.0.10`으로 바꾸고 아래 Destination Port를 맞춘다.
+
+| 센서 | Destination Port |
+|---|---:|
+| Front Camera | 9291 |
+| Left Camera | 9293 |
+| Right Camera | 9295 |
+| GPS | 7801 |
+| IMU | 7802 |
+| VLP16 LiDAR | 2368 |
+
+카메라 포트는 제공 센서 JSON 기준이며 GPS·IMU·LiDAR는 기존 팀 설정을
+사용한다. `참고파일들/`의 원본 카메라 JSON은 loopback IP가 포함된 원본으로
+보존되므로, 불러온 뒤 MORAI에서 IP를 변경해야 한다.
+중앙 [UDP 계약](../ros_architecture_pkg/config/morai_interface/udp_ros_bridge.yaml),
+[대회 실행 프로필](config/competition_network.yaml),
+`morai_interface_pkg/config/competition/`과 개별 브리지 기본 설정의 포트를 함께 맞췄다.
+네트워크 설정 일치는 실제 패킷·축·조향 변환 검증 완료를 뜻하지 않는다.
+
 ## 한 번에 실행
 
 저장소 루트에서 `./run.sh`로 센서, Localization, RViz,
@@ -24,7 +85,7 @@ LiDAR 관측, World Model, Frenet Planner와 Controller→Safety 연결을 추�
 `send_to_morai:=true`로 개발 주행을 활성화한다. 시험 상한은 기본적으로 해제하며
 Q 전환은 기존 MORAI sender 동작을 유지한다.
 [중앙 개발 프로필](../ros_architecture_pkg/config/messages/frenet_runtime.yaml)과
-[검증 범위](../path_planning_pkg/docs/frenet_rddf.md)를 따른다.
+[통합 Planner 검증 범위](../path_planning_pkg/docs/planner_mode_integration.md)를 따른다.
 
 > **PUBLIC INTERFACE LOCK v1.0.0:** 아래 node/topic/type은
 > [`interface_contract.yaml`](../ros_architecture_pkg/config/interface_contract.yaml)의

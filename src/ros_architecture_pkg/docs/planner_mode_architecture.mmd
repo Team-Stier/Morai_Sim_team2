@@ -1,0 +1,31 @@
+flowchart TB
+  S["MORAI sensors"] --> I["morai_interface_pkg"]
+  I --> L["localization_pkg"]
+  I --> P["camera / lidar perception"]
+  P --> W["world_model_pkg"]
+  M["hd_map_pkg"] --> R["global_route_manager_pkg<br/>RDDF projection / RouteContext.progress"]
+  L --> R
+
+  subgraph PP["path_planning_pkg / path_planner_node"]
+    PM["Planner Mode Manager<br/>Z1/Z2/Z5 Hybrid · Z3/Z4 Frenet"]
+    H["Hybrid A* Planner"]
+    F["Frenet Planner"]
+    O["Selected Trajectory"]
+    PM --> H
+    PM --> F
+    H --> O
+    F --> O
+  end
+
+  R -->|"/molit/route/context"| PM
+  M --> H
+  M --> F
+  L --> H
+  L --> F
+  R --> H
+  R --> F
+  W --> H
+  W --> F
+  O -->|"/molit/planning/trajectory"| C["vehicle_controller_node"]
+  C -->|"/molit/control/nominal_command"| X["existing transparent relay"]
+  X -->|"/molit/safety/final_command"| TX["morai_control_sender"]

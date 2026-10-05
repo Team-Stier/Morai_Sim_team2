@@ -161,19 +161,6 @@ class FrenetTest(unittest.TestCase):
         self.assertEqual(self.p.select(candidates, 1., 0.).key, 'keep')
         self.assertTrue(math.isfinite(candidates[0].cost))
 
-    def test_static_box_without_rddf_window_keeps_stop_path(self):
-        candidates = self.p.candidates(self.lanes, [], 'global_route', 0., 80.,
-                                       np.zeros(3), 0., 0.)
-        box = Obstacle(np.array([[9.,-.25,0.],[9.,.5,0.],[9.,1.2,0.]]),
-                       np.zeros(2), True)
-        self.assertEqual([c.key for c in candidates], ['keep'])
-        base = self.p.evaluate(candidates[0], 0., [box], [], 80.)
-        self.assertFalse(math.isfinite(base.cost))
-        for now in (1., 2.):
-            chosen = self.p.select(candidates, now, 0.)
-            self.assertTrue(chosen is None or chosen.key == 'keep')
-        self.assertIsNone(self.p.committed)
-
     def test_loop_candidate_continues_across_identical_endpoints(self):
         self.c['loop_route']=True
         angles=np.linspace(0.,2*math.pi,1001)
@@ -414,6 +401,19 @@ class FrenetTest(unittest.TestCase):
         c = self.candidates([Obstacle(np.array([[25.,0.,0.]]),np.zeros(2))])[0]
         self.assertGreater(c.speed[0],0)
         self.assertTrue(np.any(c.speed==0))
+
+
+class RejectedKeepRecoveryTest(unittest.TestCase):
+    def test_safe_alternative_bypasses_gain_confirmation_when_keep_is_rejected(self):
+        config = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
+        config['gain_confirmation_sec'] = 10.0
+        planner = Planner(config)
+        xy = np.array([[0., 0., 0.], [1., 0., 0.], [2., 0., 0.]])
+        keep = Candidate('keep', 'global_route', xy, np.arange(3.), np.ones(3))
+        alternative = Candidate('alternative', 'other_lane', xy, np.arange(3.),
+                                np.ones(3), changes=1, feasible=True, cost=1.0)
+        self.assertIs(planner.select([keep, alternative], 100.0, 0.0), alternative)
+        self.assertIs(planner.committed, alternative)
 
 
 class RddfRelaxationTest(unittest.TestCase):

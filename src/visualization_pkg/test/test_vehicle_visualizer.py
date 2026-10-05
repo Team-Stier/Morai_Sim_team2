@@ -10,7 +10,7 @@ import unittest
 import rosgraph
 import rospy
 import rostest
-from common_msgs_pkg.msg import EgoState, LocalizationStatus
+from common_msgs_pkg.msg import EgoState, LocalizationStatus, ComponentStatus
 from common_msgs_pkg.validation import validate_pair
 from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
@@ -24,6 +24,33 @@ STATUS = "/molit/localization/status"
 
 
 class VehicleVisualizerRuntimeTest(unittest.TestCase):
+    def test_planner_status_forwarding_preserves_producer_message(self):
+        messages = []
+        sub = rospy.Subscriber('/molit/internal/visualization/planner_status',
+                               ComponentStatus, messages.append, queue_size=1)
+        pub = rospy.Publisher('/molit/planning/status', ComponentStatus, queue_size=1)
+        try:
+            deadline = time.monotonic() + 5.0
+            while not pub.get_num_connections() and time.monotonic() < deadline:
+                time.sleep(.02)
+            self.assertGreater(pub.get_num_connections(), 0)
+            source = ComponentStatus(component='path_planning_pkg', ready=False,
+                                     stop_required=True, state=ComponentStatus.DEGRADED,
+                                     reason='planner_mode=hybrid_astar; zone=Z2; status=no_path')
+            source.header.stamp = rospy.Time(50, 123)
+            pub.publish(source)
+            deadline = time.monotonic() + 4.0
+            while not messages and time.monotonic() < deadline:
+                time.sleep(.02)
+            self.assertTrue(messages)
+            self.assertEqual(messages[-1], source)
+            latest = rospy.wait_for_message('/molit/internal/visualization/planner_status',
+                                           ComponentStatus, timeout=4.0)
+            self.assertEqual(latest, source)
+        finally:
+            sub.unregister()
+            pub.unregister()
+
     @classmethod
     def setUpClass(cls):
         rospy.init_node("vehicle_visualizer_test", anonymous=True)
@@ -202,7 +229,7 @@ class VehicleVisualizerRuntimeTest(unittest.TestCase):
         consumed = {topic for topic, nodes in subscribers if node in nodes and topic.startswith("/molit/")}
         self.assertEqual(emitted, {
             MARKERS,
-            "/molit/internal/visualization/hd_map_markers",
+            "/molit/internal/visualization/planner_status",
             "/molit/internal/visualization/lidar_markers",
             "/molit/internal/visualization/world_model_markers",
             "/rosout",
@@ -211,6 +238,7 @@ class VehicleVisualizerRuntimeTest(unittest.TestCase):
             EGO,
             ODOMETRY,
             STATUS,
+            "/molit/planning/status",
             "/molit/perception/lidar/observations",
             "/molit/world_model/scene",
         })
