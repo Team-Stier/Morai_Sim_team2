@@ -5,6 +5,7 @@
   <node pkg="visualization_pkg" type="vehicle_visualizer_node.py"
         name="vehicle_visualizer_node" output="screen">
     <param name="reference_frame" value="map"/>
+    <param name="show_hd_map" value="false"/>
     <param name="display_mode" value="box"/>
     <param name="vehicle_length_m" value="4.635"/>
     <param name="vehicle_width_m" value="1.892"/>

@@ -23,7 +23,8 @@ struct SupervisorConfig {
   int confirmation_samples{3};
   double minimum_dwell_sec{1.0};
   double blend_duration_sec{0.5};
-  double max_step_rad{0.03};
+  // 12 rad/s at the contracted 50 Hz control frequency.
+  double max_step_rad{0.24};
 };
 
 struct SupervisorContext {

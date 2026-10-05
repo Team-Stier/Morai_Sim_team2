@@ -1,9 +1,7 @@
-"""Stateful route-station based planner selection.
+"""Choose the planner for the current ego position projected onto the map route.
 
-The manager owns no ROS interface and does not inspect obstacles.  A planner
-mode changes only when monotonic route progress crosses a configured zone
-boundary.  This keeps planner choice independent from the scene handled by the
-selected planner.
+No forward-only history is imposed: moving back or relocating selects the
+zone at the current position. The manager owns no ROS interface.
 """
 
 from dataclasses import dataclass
@@ -42,7 +40,7 @@ class PlannerModeSelection:
 
 
 class PlannerModeManager:
-    """Select one planner for one forward-only competition run."""
+    """Select the zone at the current projected ego position."""
 
     def __init__(self, route_length_m: float, zones: Iterable[PlannerZone]) -> None:
         self.route_length_m = float(route_length_m)
@@ -91,11 +89,6 @@ class PlannerModeManager:
         if not math.isfinite(progress):
             raise ValueError("route progress must be finite")
         progress = min(max(progress, 0.0), self.route_length_m)
-        if self._progress_s is not None:
-            # The agreed run is forward-only.  Local projection jitter must not
-            # re-enter an earlier planner zone after a boundary was crossed.
-            progress = max(progress, self._progress_s)
-
         index = len(self.zones) - 1
         for candidate, zone in enumerate(self.zones[:-1]):
             if progress < zone.end_s:

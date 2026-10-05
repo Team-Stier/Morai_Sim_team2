@@ -812,7 +812,7 @@ topics:
   - name: /molit/planning/status
     owner_package: path_planning_pkg
     producers: [path_planner_node]
-    consumers: [vehicle_controller_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node]
+    consumers: [vehicle_controller_node, system_readiness_node, safety_supervisor_node, runtime_evaluator_node, vehicle_visualizer_node]
     status: schema_implemented_runtime_not_implemented
     visibility: public
     data_meaning: Planner input freshness replanning state computation latency readiness and trajectory validity
@@ -926,6 +926,23 @@ topics:
     queue_policy: publisher_queue_1_latched
     timeout_sec: not_applicable_observer_output
     invalid_data_policy: report_unknown_without_affecting_any_driving_node
+
+  - name: /molit/internal/visualization/planner_status
+    owner_package: visualization_pkg
+    producers: [vehicle_visualizer_node]
+    consumers: [vehicle_rviz]
+    status: development_visualization_only
+    visibility: package_internal
+    data_meaning: Unmodified planning status forwarded for screen-fixed RViz text; never control input
+    diagram_description_ko: 현재 플래너와 정지 상태를 화면 고정 글씨로 표시
+    data_type: common_msgs_pkg/ComponentStatus
+    unit: state_age_sec_and_counters
+    frame: not_applicable
+    timestamp_source: status_evaluation_time
+    expected_rate_hz: 2.0
+    queue_policy: publisher_queue_1_latched
+    timeout_sec: display_only_configurable_not_driving_freshness
+    invalid_data_policy: Show_WAITING_or_STALE_without_affecting_driving
 
   - name: /molit/internal/visualization/vehicle_markers
     owner_package: visualization_pkg
@@ -1330,6 +1347,7 @@ package_boundaries:
       - /molit/localization/ego_state
       - /molit/localization/local/odometry
       - /molit/localization/status
+      - /molit/planning/status
     outputs: []
 
 architecture_views:

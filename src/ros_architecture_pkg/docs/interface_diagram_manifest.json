@@ -74,11 +74,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "f0b3b1f055c0b4175469a2c98fa4dde857308d95cd08c6128882cef69e8c7871",
+      "png_sha256": "9459b5af4af9346448c1860965ce57da644c8c004bf17e3982672cc6270d2006",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "080b11d0f40acfe2170ed40e2e8b3ef7b6f8698657559bf664b1b105b858f478",
+      "source_sha256": "a1b8a337e393449a96927fba135302d7179b65c279b232869ab197080373865a",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "86ec507e498bd538a6ccf8550c3e0d92357cb1627ca3bf018d8962f3c06a966b"
+      "svg_sha256": "f07658f7338ea4600c7043114ce25cd743f9b53e43e774a65e1a5255bb3b57d7"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
@@ -130,11 +130,11 @@
     },
     {
       "png": "src/visualization_pkg/docs/interface_io.png",
-      "png_sha256": "762af5d2a3b8b397c03eb2c4183d6101e821701a7100efb24572d43553990f08",
+      "png_sha256": "f740e905510241ca84c2320dd2ca3a5f0b41d8df930046b73f69fdcd4df4ee35",
       "source": "src/visualization_pkg/docs/interface_io.mmd",
-      "source_sha256": "9e7d4aad4c636fd94e6d5c7334fc0f52b3a710bc413f04a43a87c02a32732f15",
+      "source_sha256": "71c4f3a8ee73cd60f96b7ccf9cd397b3892766d20e8891a37275bc4c600293d2",
       "svg": "src/visualization_pkg/docs/interface_io.svg",
-      "svg_sha256": "630fb5df907777a87a9f2eac6bb9b79e792041bf2b00dd1c19bf851d10dfba8c"
+      "svg_sha256": "0919ce721f18ed45304402cb51c19cd2c8e3f9d016fdde1f427425ecb35b6cd5"
     },
     {
       "png": "src/world_model_pkg/docs/interface_io.png",
@@ -150,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "1aa80938832f7143c3c0a12d4f4448677539004571f9f0d75daeacb3d4758fc1"
+  "source_of_truth_sha256": "844e7429fdab7e0e1ed107b3482031fa2f6c05b8689eedbb59cc7068cfa04d89"
 }

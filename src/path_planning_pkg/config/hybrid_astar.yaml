@@ -21,7 +21,7 @@ hybrid_astar:
   rear_overhang_m: 0.790
   vehicle_width_m: 1.892
   minimum_turning_radius_m: 5.87
-  corridor_half_width_m: 6.0
+  corridor_half_width_m: 10.0
   obstacle_margin_m: 0.2
   maximum_progress_regression_m: 0.50
   reference_join_min_distance_m: 18.0

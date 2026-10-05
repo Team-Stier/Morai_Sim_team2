@@ -7,7 +7,7 @@ from dataclasses import fields
 
 import rospy
 import tf2_ros
-from common_msgs_pkg.msg import LidarObservationArray, WorldModel
+from common_msgs_pkg.msg import LidarObservationArray, WorldModel, ComponentStatus
 from visualization_pkg.lidar_display import LidarDisplay
 from visualization_pkg.world_model_display import WorldModelDisplay
 from common_msgs_pkg.msg import EgoState, LocalizationStatus
@@ -31,6 +31,8 @@ class VehicleVisualizerNode:
         self._last_valid_display = None
         self.publisher = rospy.Publisher('/molit/internal/visualization/vehicle_markers',
                                          MarkerArray, queue_size=100, latch=True)
+        self.planner_status_publisher = rospy.Publisher(
+            '/molit/internal/visualization/planner_status', ComponentStatus, queue_size=1, latch=True)
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         self.lidar_publisher = rospy.Publisher(
@@ -55,6 +57,8 @@ class VehicleVisualizerNode:
             except (OSError, ValueError, KeyError, TypeError) as error:
                 rospy.logerr("HD map display unavailable: %s", error)
         self.subscribers = [
+            rospy.Subscriber('/molit/planning/status', ComponentStatus,
+                             self._planner_status, queue_size=1),
             rospy.Subscriber("/molit/perception/lidar/observations", LidarObservationArray,
                              self._lidar, queue_size=2),
             rospy.Subscriber("/molit/world_model/scene", WorldModel,
@@ -73,6 +77,10 @@ class VehicleVisualizerNode:
         self._worker.start()
         rospy.loginfo('Vehicle display frame=%s; waiting for valid localization/status pair',
                       self.config.reference_frame)
+
+    def _planner_status(self, message):
+        if message.component == 'path_planning_pkg':
+            self.planner_status_publisher.publish(message)
 
     def _ingest(self, method, message):
         with self._lock:

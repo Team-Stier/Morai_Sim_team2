@@ -42,12 +42,28 @@ roslaunch visualization_pkg visualization_pkg.launch
 | 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` |
 | 입력 | `/molit/localization/local/odometry` | `nav_msgs/Odometry` |
 | 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
+| 입력 | `/molit/planning/status` | `common_msgs_pkg/ComponentStatus` |
 
 공개 출력은 없다. 패키지 내부 `vehicle_rviz`만
 `/molit/internal/visualization/vehicle_markers`, `lidar_markers`,
 `world_model_markers` (`visualization_msgs/MarkerArray`)를 구독한다. 마커는 위치 추정이나
 주행 판단의 입력이 아니다. raw GPS/IMU, 다른
 패키지 내부 topic, Ground Truth를 사용하지 않으며 제어·초기 위치·목표 전송 도구도 없다.
+
+## 현재 플래너 표시
+
+RViz 화면 왼쪽 위, Interact 도구 아래에 `Planner: Hybrid A* | Z2` 또는
+`Planner: Frenet (RDDF) | Z3`를 표시한다. Lanelet은 현재 코드의 플래너 이름이
+아니며 RDDF를 사용하는 Frenet으로 표시한다. `STOP`은 정지 요청 상태이며,
+경로 생성 실패 때도 선택된 플래너를 구분할 수 있다.
+상태/모드가 없으면 `WAITING`, 수신이 2초 이상 끊기면 `STALE`을 표시한다.
+Displays의 `Current planner`에서 표시를 끄거나 `Display timeout`을 바꿀 수 있다.
+표시는 카메라 이동·확대와 관계없이 고정되며 마우스 조작을 가로막지 않는다.
+vehicle_visualizer_node가 공개 planning status를 원본 그대로 내부
+`/molit/internal/visualization/planner_status`에 전달하고 RViz plugin이 읽는다.
+제어에는 관여하지 않는다.
+[중앙 표시 계약](../ros_architecture_pkg/docs/rviz_planner_status.md)을 따른다.
+코드 갱신 후 catkin 빌드와 RViz 재시작이 필요하다.
 
 ## 차량 크기와 기준점
 

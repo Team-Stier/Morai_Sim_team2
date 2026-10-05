@@ -87,7 +87,6 @@ class FrenetOutputTest(unittest.TestCase):
 
         with patch.object(node.planner, 'candidates', return_value=[rejected]), \
                 patch.object(node.planner, 'evaluate', side_effect=reject), \
-                patch.object(node.planner, 'obstacle_detours', return_value=[]), \
                 patch.object(node.planner, 'select', return_value=None):
             node.plan(None)
         return rejected
@@ -219,6 +218,72 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertTrue(node.status.message.ready)
         self.assertAlmostEqual(new_path.speed_cap_mps[0], 30./3.6, delta=.1)
         self.assertAlmostEqual(new_path.speed_cap_mps[-1], 20./3.6, delta=.01)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_planner_choice_uses_ego_position_when_route_progress_disagrees(self, _):
+        node = self.mode_boundary_node(237.423, FRENET)
+        node.route.progress = 1200.0  # Reported progress points to Frenet Z4.
+        with patch.object(module, 'build_hybrid_candidate', return_value=self.hybrid_failure(
+                HybridPlanStatus.TIME_LIMIT)):
+            node.plan(None)
+        self.assertEqual(node.active_planner_mode, HYBRID_ASTAR)
+        self.assertEqual(node.active_zone, 'Z2')
+        self.assertAlmostEqual(node.mode_manager.current.progress_s,
+                               node.state[0].pose.pose.position.x)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_hybrid_path_is_rejected_after_ego_moves_to_previous_zone(self, _):
+        node = self.hybrid_node()
+        node.mode_manager = PlannerModeManager(100., (
+            PlannerZone('prior', 0., 10., FRENET),
+            PlannerZone('Ztest', 10., 100., HYBRID_ASTAR)))
+        node.mode_manager.select(10.1)
+        node.route.progress = 50.0
+        node.state[0].pose.pose.position.x = 9.95
+        self.assertFalse(node.hybrid_path_usable(node.selected, rospy.Time(100),
+            'map-a', 'Ztest', node.static_map[1]['global_route'], [],
+            node.route, node.world, node.state, check_geometry=False))
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_frenet_rejected_active_path_checks_alternatives_before_final_stop(self, _):
+        for safe_alternative in (True, False):
+            with self.subTest(safe_alternative=safe_alternative):
+                node = self.mode_boundary_node(900.0, FRENET)
+                node.c['minimum_active_path_hold_sec'] = 0.5
+                base = node.selected
+                keep = Candidate('keep', 'global_route', base.xy.copy(),
+                    base.route_s.copy(), base.limits.copy())
+                rejected = Candidate('committed', 'global_route', base.xy.copy(),
+                    base.route_s.copy(), base.limits.copy(), changes=1)
+                evaluated = []
+
+                def evaluate(candidate, *_args):
+                    evaluated.append(candidate.key)
+                    candidate.feasible = safe_alternative and candidate is keep
+                    candidate.reason = ('feasible' if candidate.feasible else
+                                        'predicted_cluster_collision')
+                    candidate.cost = candidate.eta = 1.0 if candidate.feasible else math.inf
+                    if candidate.feasible:
+                        candidate.speed = np.full(len(candidate.xy), 4.0)
+                        candidate.times = np.arange(len(candidate.xy)) * .125
+                    # The publisher can run between candidate evaluations.
+                    node.publish(None)
+                    self.assertFalse(node.trajectory.message.stop_required)
+                    return candidate
+
+                with patch.object(node.planner, 'candidates', return_value=[keep, rejected]), \
+                        patch.object(node.planner, 'evaluate', side_effect=evaluate):
+                    node.plan(None)
+                self.assertIn('keep', evaluated)
+                node.publish(None)
+                self.assertEqual(node.trajectory.message.stop_required, not safe_alternative)
+                if safe_alternative:
+                    self.assertIs(node.selected, keep)
+                    self.assertFalse(node.pending_selection_set)
+                    self.assertTrue(all(not m.stop_required for m in node.trajectory.messages))
+                else:
+                    self.assertIsNone(node.selected)
+                    self.assertFalse(node.status.message.ready)
 
     def hybrid_node(self):
         node = self.node()
@@ -872,15 +937,15 @@ class FrenetOutputTest(unittest.TestCase):
         self.check_search_publication('steering_limit', False, False)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
-    def test_known_hazards_stop_before_alternative_search_finishes(self, _):
+    def test_known_hazards_wait_for_alternatives_before_final_stop(self, _):
         for reason in ('predicted_cluster_collision', 'insufficient_stopping_distance',
                        'no_collision_free_stop', 'forbidden_boundary'):
             with self.subTest(reason=reason):
-                self.check_search_publication(reason, True, True)
+                self.check_search_publication(reason, False, True)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time.from_sec(100.1))
     def test_held_geometry_is_rechecked_before_pending_replacement(self, _):
-        self.check_search_publication('steering_limit', True, True, hold_active=True)
+        self.check_search_publication('steering_limit', False, True, hold_active=True)
 
     def check_search_publication(self, reason, interim_stop, alternative_valid, hold_active=False):
         import copy
@@ -919,7 +984,6 @@ class FrenetOutputTest(unittest.TestCase):
             return candidate
 
         with patch.object(node.planner, 'candidates', return_value=[fast, alternative]), \
-                patch.object(node.planner, 'obstacle_detours', return_value=[]), \
                 patch.object(node.planner, 'evaluate', side_effect=evaluate), \
                 patch.object(node.planner, 'select', return_value=alternative if alternative_valid else None):
             node.plan(None)
@@ -930,7 +994,7 @@ class FrenetOutputTest(unittest.TestCase):
             self.assertEqual(len(active_checks), 1)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
-    def test_blocked_commit_evaluates_recovery_and_generates_detours(self, _):
+    def test_blocked_commit_evaluates_existing_recovery_candidates(self, _):
         import copy
         node = self.node()
         node.c['rddf_geometry_only'] = True
@@ -961,11 +1025,9 @@ class FrenetOutputTest(unittest.TestCase):
             return candidate
 
         with patch.object(node.planner, 'candidates', return_value=[keep, recovery]), \
-                patch.object(node.planner, 'obstacle_detours', return_value=[]) as detours, \
                 patch.object(node.planner, 'evaluate', side_effect=evaluate):
             node.plan(None)
         self.assertEqual(evaluated, ['committed', 'keep', 'recovery'])
-        detours.assert_called_once()
         self.assertIs(node.selected, recovery)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
@@ -1005,10 +1067,38 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertEqual(decoded.header.frame_id, 'odom')
         self.assertTrue(np.all(np.diff([t.to_sec() for t in decoded.time_from_start]) > 0.))
 
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_relaxed_candidate_preserves_geometry_in_controller_trajectory(self, _):
+        node = self.node()
+        node.c['rddf_relaxation_enabled'] = True
+        node.c['loop_route'] = False
+        x = np.arange(0., 121., .5)
+        xyz = np.column_stack((x, .15*np.sin(2*np.pi*x/6.), x*0))
+        lane = Lane('global_route', xyz, x, np.full(len(x), 58/3.6))
+        planner = Planner(node.c)
+        candidate = planner.candidates({'global_route': lane}, [], 'global_route',
+                                       0., 80., np.array([10., 0., 0.]), 0., 2.)[0]
+        node.selected = planner.evaluate(candidate, 2., [], [], 80.)
+        self.assertTrue(node.selected.feasible)
+        node.publish(None)
+        wire = io.BytesIO()
+        node.trajectory.message.serialize(wire)
+        message = type(node.trajectory.message)().deserialize(wire.getvalue())
+        actual = np.array([[pose.position.x, pose.position.y] for pose in message.poses])
+        # The fixture's map -> odom transform is a 90-degree rotation at ego.
+        expected = np.column_stack((100.-candidate.xy[:, 1], 200.+candidate.xy[:, 0]-10.))
+        np.testing.assert_allclose(actual, expected[:len(actual)], atol=1e-10)
+        self.assertTrue(message.valid)
+        self.assertFalse(message.stop_required)
+        self.assertEqual(message.header.frame_id, 'odom')
+        self.assertEqual(message.reset_id, 12)
+        self.assertTrue(np.all(np.diff([t.to_sec() for t in message.time_from_start]) > 0.))
+
     def node(self):
         node = module.Node.__new__(module.Node)
         node.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
         node.c['rddf_geometry_only'] = False
+        node.c['rddf_relaxation_enabled'] = False  # Legacy exact-geometry fixtures.
         node.c['minimum_active_path_hold_sec'] = 0.0  # Unrelated fixtures test immediate selection.
         node.mode_manager = PlannerModeManager(2184.6117233360674, (
             PlannerZone('legacy-frenet-test', 0.0, 2184.6117233360674, FRENET),
@@ -1111,7 +1201,7 @@ class FrenetOutputTest(unittest.TestCase):
         node.offer_selection(candidate, rospy.Time(102), reset_id=11)
         self.assertEqual(node.selected_stamp, rospy.Time(100))
 
-    def test_world_model_box_selects_and_publishes_local_detour(self):
+    def test_world_model_static_box_publishes_stop_without_local_detour(self):
         node = self.node()
         node.c['rddf_geometry_only'] = True
         message = self.static_map()
@@ -1140,23 +1230,11 @@ class FrenetOutputTest(unittest.TestCase):
             with patch.object(rospy.Time,'now',return_value=stamp):
                 node.plan(None)
                 node.publish(None)
-        self.assertTrue(node.planner.committed.key.startswith('detour:'))
-        stamp = rospy.Time(102)
-        node.state[0].header.stamp = node.route.header.stamp = node.world.header.stamp = obj.source_stamp = stamp
-        node.last_lane_change_evaluation = -np.inf
-        with patch.object(node.planner, 'evaluate', wraps=node.planner.evaluate) as evaluate:
-            with patch.object(rospy.Time, 'now', return_value=stamp):
-                node.plan(None)
-            self.assertEqual(evaluate.call_count, 1)
-            self.assertEqual(evaluate.call_args[0][0].key, 'committed')
-        with patch.object(rospy.Time,'now',return_value=rospy.Time(102)):
-            node.publish(None)
+        self.assertIsNone(node.planner.committed)
         output = node.trajectory.message
-        self.assertFalse(output.stop_required)
-        self.assertGreater(len(output.poses),20)
-        # Map lateral offset transforms to negative odom x at this 90-degree pose.
-        direction = np.sign(float(node.planner.committed.key.split(':')[1]))
-        self.assertGreater(max(direction*(100.-p.position.x) for p in output.poses),1.)
+        self.assertTrue(output.valid)
+        self.assertTrue(output.stop_required)
+        self.assertTrue(all(v == 0. for v in output.speed_mps))
         wire = io.BytesIO()
         output.serialize(wire)
         decoded = type(output)().deserialize(wire.getvalue())

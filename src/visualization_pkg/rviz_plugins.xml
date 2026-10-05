@@ -1,0 +1,5 @@
+<library path="lib/libplanner_status_display">
+  <class name="visualization_pkg/PlannerStatus" type="visualization_pkg::PlannerStatusDisplay" base_class_type="rviz::Display">
+    <description>Read-only active planner label below the RViz toolbar.</description>
+  </class>
+</library>

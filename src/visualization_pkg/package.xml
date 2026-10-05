@@ -16,7 +16,10 @@
   <depend>rospy</depend>
   <depend>tf2_ros</depend>
   <depend>visualization_msgs</depend>
-  <exec_depend>rviz</exec_depend>
+  <depend>rviz</depend>
+  <depend>roscpp</depend>
+  <depend>pluginlib</depend>
+  <build_depend>qtbase5-dev</build_depend>
   <test_depend>rostest</test_depend>
   <test_depend>lidar_perception_pkg</test_depend>
   <test_depend>sensor_msgs</test_depend>
@@ -25,5 +28,7 @@
   <test_depend>rosgraph_msgs</test_depend>
   <test_depend>python3-nose</test_depend>
   <test_depend>python3-yaml</test_depend>
-  <export />
+  <export>
+    <rviz plugin="${prefix}/rviz_plugins.xml" />
+  </export>
 </package>

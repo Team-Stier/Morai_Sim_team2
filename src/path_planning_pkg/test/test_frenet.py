@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 import numpy as np
 import yaml
-from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, footprint_hit, footprint_hits, quintic, geometry, candidate_geometry, geometry_windows
+from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, footprint_hit, footprint_hits, quintic, geometry, candidate_geometry, geometry_windows, relaxed_sample, sample, arc
 
 
 # Frozen scalar oracle for collision batching regression checks.
@@ -46,6 +46,7 @@ class FrenetTest(unittest.TestCase):
         self.c['test_speed_cap_kph'] = 10.0  # Low-speed scenario fixtures.
         self.c['rddf_geometry_only'] = False  # Original map-rule scenarios.
         self.c['loop_route'] = False
+        self.c['rddf_relaxation_enabled'] = False  # Legacy exact-geometry fixtures.
         self.c['gain_confirmation_sec'] = 0.05  # Explicit delayed-selection fixtures.
         self.p = Planner(self.c)
         s = np.arange(0., 121., .5)
@@ -160,68 +161,6 @@ class FrenetTest(unittest.TestCase):
         self.assertEqual(self.p.select(candidates, 1., 0.).key, 'keep')
         self.assertTrue(math.isfinite(candidates[0].cost))
 
-    def test_static_box_detour_without_adjacent_rddf_window(self):
-        base = self.p.candidates(self.lanes, [], 'global_route', 0., 80.,
-                                 np.array([0.,0.,0.]), 0., 0.)[0]
-        box = Obstacle(np.array([[9.,-.25,0.],[9.,.5,0.],[9.,1.2,0.]]), np.zeros(2), True)
-        self.p.evaluate(base, 0., [box], [], 80.)
-        self.assertFalse(math.isfinite(base.cost))
-        detours = self.p.obstacle_detours(base, [box])
-        evaluated = [self.p.evaluate(x, 0., [box], [], 80.) for x in detours]
-        clear = [x for x in evaluated if x.feasible and math.isfinite(x.cost)]
-        self.assertTrue(clear)
-        for candidate in clear:
-            s, theta, curvature = geometry(candidate.xy)
-            np.testing.assert_allclose(candidate.xy[[0,-1]], base.xy[[0,-1]])
-            self.assertIsNone(self.p.collision(candidate.xy, theta, candidate.times, [box]))
-            self.assertLessEqual(np.max(np.abs(np.arctan(3*curvature))), self.c['max_steering_rad'])
-            self.assertLessEqual(np.max(candidate.speed[candidate.route_s <= candidate.change_end]),
-                                 self.c['local_detour_speed_kph']/3.6+1e-8)
-        candidates = [base]+evaluated
-        self.assertIs(self.p.select(candidates, 1., 0.), base)
-        chosen = self.p.select(candidates, 2., 0.)
-        self.assertTrue(chosen.key.startswith('detour:'))
-        self.assertIs(self.p.committed, chosen)
-
-    def test_detours_choose_either_side_when_opposite_side_is_blocked(self):
-        for blocked_side in (-1., 1.):
-            with self.subTest(blocked_side=blocked_side):
-                planner = Planner(self.c)
-                base = planner.candidates(self.lanes, [], 'global_route', 0., 80.,
-                                          np.zeros(3), 0., 0.)[0]
-                box = Obstacle(np.array([[9., y, 0.] for y in np.linspace(-.5,.5,11)]),
-                               np.zeros(2), True)
-                wall = Obstacle(np.array([[x, blocked_side*y, 0.]
-                    for x in np.arange(1.,25.,.5) for y in np.arange(1.,5.,.25)]),
-                    np.zeros(2), True)
-                objects = [box,wall]
-                planner.evaluate(base,0.,objects,[],80.)
-                detours = planner.obstacle_detours(base,objects)
-                offsets = {float(c.key.split(':')[1]) for c in detours}
-                self.assertEqual(offsets, {-3.5,-2.5,-1.5,1.5,2.5,3.5})
-                evaluated = [planner.evaluate(c,0.,objects,[],80.) for c in detours]
-                planner.select([base]+evaluated,1.,0.)
-                chosen = planner.select([base]+evaluated,2.,0.)
-                self.assertIsNotNone(chosen)
-                self.assertTrue(math.isfinite(chosen.cost))
-                self.assertLess(float(chosen.key.split(':')[1])*blocked_side,0.)
-
-    def test_local_detour_never_bypasses_a_fully_blocked_corridor(self):
-        base = self.p.candidates(self.lanes, [], 'global_route', 0., 80.,
-                                 np.array([0.,0.,0.]), 0., 0.)[0]
-        wall = Obstacle(np.array([[9., y, 0.] for y in np.arange(-7.,7.,.2)]), np.zeros(2), False)
-        evaluated = [self.p.evaluate(x, 0., [wall], [], 80.)
-                     for x in self.p.obstacle_detours(base, [wall])]
-        self.assertTrue(evaluated)
-        self.assertFalse(any(x.feasible and math.isfinite(x.cost) for x in evaluated))
-
-    def test_local_detours_only_for_static_obstruction(self):
-        base = self.p.candidates(self.lanes, [], 'global_route', 0., 80.,
-                                 np.array([0.,0.,0.]), 0., 0.)[0]
-        moving = Obstacle(np.array([[9.,0.,0.]]), np.array([3.,0.]), True)
-        self.assertEqual(self.p.obstacle_detours(base, [moving]), [])
-        self.assertEqual(self.p.obstacle_detours(base, []), [])
-
     def test_loop_candidate_continues_across_identical_endpoints(self):
         self.c['loop_route']=True
         angles=np.linspace(0.,2*math.pi,1001)
@@ -247,7 +186,7 @@ class FrenetTest(unittest.TestCase):
         self.assertEqual(self.p.select(candidates, 1.04, 0.).key, 'keep')
         self.assertNotEqual(self.p.select(candidates, 1.06, 0.).key, 'keep')
 
-    def test_zero_confirmation_selects_checked_detour_without_an_extra_stop_tick(self):
+    def test_zero_confirmation_selects_checked_rddf_alternative_without_an_extra_stop_tick(self):
         self.c['gain_confirmation_sec'] = 0.0
         obstacle = Obstacle(np.array([[25.,-.5,0.],[25.,0.,0.],[25.,.5,0.]]), np.zeros(2))
         candidates = self.candidates([obstacle])
@@ -462,6 +401,84 @@ class FrenetTest(unittest.TestCase):
         c = self.candidates([Obstacle(np.array([[25.,0.,0.]]),np.zeros(2))])[0]
         self.assertGreater(c.speed[0],0)
         self.assertTrue(np.any(c.speed==0))
+
+
+class RejectedKeepRecoveryTest(unittest.TestCase):
+    def test_safe_alternative_bypasses_gain_confirmation_when_keep_is_rejected(self):
+        config = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
+        config['gain_confirmation_sec'] = 10.0
+        planner = Planner(config)
+        xy = np.array([[0., 0., 0.], [1., 0., 0.], [2., 0., 0.]])
+        keep = Candidate('keep', 'global_route', xy, np.arange(3.), np.ones(3))
+        alternative = Candidate('alternative', 'other_lane', xy, np.arange(3.),
+                                np.ones(3), changes=1, feasible=True, cost=1.0)
+        self.assertIs(planner.select([keep, alternative], 100.0, 0.0), alternative)
+        self.assertIs(planner.committed, alternative)
+
+
+class RddfRelaxationTest(unittest.TestCase):
+    def setUp(self):
+        self.c = yaml.safe_load((Path(__file__).parents[1]/'config/frenet_planner.yaml').read_text())
+        self.c['loop_route'] = False
+        x = np.arange(0., 121., .5)
+        xy = np.column_stack((x, .15*np.sin(2*np.pi*x/6.), .02*x))
+        self.lane = Lane('global_route', xy, arc(xy), np.full(len(x), 58/3.6))
+
+    def test_small_bends_have_lower_curvature_without_changing_map(self):
+        before = self.lane.xy.copy()
+        q = np.arange(0., self.lane.s[-1], .5)
+        raw = sample(self.lane.xy, self.lane.s, q)
+        relaxed = relaxed_sample(self.lane, q, self.c)
+        interior = (q > 10.) & (q < 110.)
+        self.assertLess(np.max(np.abs(geometry(relaxed)[2][interior])),
+                        .6*np.max(np.abs(geometry(raw)[2][interior])))
+        self.assertLessEqual(np.max(np.linalg.norm(relaxed[:, :2]-raw[:, :2], axis=1)), self.c['rddf_max_deviation_m'])
+        np.testing.assert_array_equal(relaxed[:, 2], raw[:, 2])
+        np.testing.assert_array_equal(self.lane.xy, before)
+
+    def test_sharp_corner_stays_bounded_and_preserves_endpoints(self):
+        xy = np.array([[0., 0., 0.], [20., 0., 1.], [20., 20., 2.]])
+        lane = Lane('global_route', xy, np.array([0., 20., 40.]), np.ones(3))
+        q = np.arange(-1., 41.5, .5)
+        raw = sample(lane.xy, lane.s, q)
+        relaxed = relaxed_sample(lane, q, self.c)
+        self.assertLessEqual(np.max(np.linalg.norm(relaxed[:, :2]-raw[:, :2], axis=1)), self.c['rddf_max_deviation_m'])
+        ends = (q <= 0.) | (q >= 40.)
+        np.testing.assert_array_equal(relaxed[ends], raw[ends])
+        np.testing.assert_array_equal(relaxed[:, 2], raw[:, 2])
+        self.assertTrue(np.all(np.isfinite(geometry(relaxed[(q >= 0.) & (q <= 40.)])[2])))
+
+    def test_straight_line_remains_straight(self):
+        xy = np.array([[0., 0., 0.], [120., 60., 3.]])
+        lane = Lane('global_route', xy, np.array([0., 134.]), np.ones(2))
+        q = np.arange(0., 134., .5)
+        relaxed = relaxed_sample(lane, q, self.c)
+        # Endpoint padding can move along a straight line but must not bend it.
+        np.testing.assert_allclose(relaxed[:, 1], .5*relaxed[:, 0], atol=1e-12)
+        self.assertLess(np.max(np.abs(geometry(relaxed)[2])), 1e-10)
+
+    def test_disabled_or_zero_settings_restore_original_sampling(self):
+        q = np.arange(0., 100., .5)
+        expected = sample(self.lane.xy, self.lane.s, q)
+        for key, value in (('rddf_relaxation_enabled', False),
+                           ('rddf_smoothing_sigma_m', 0.), ('rddf_max_deviation_m', 0.)):
+            config = dict(self.c, **{key: value})
+            np.testing.assert_array_equal(relaxed_sample(self.lane, q, config), expected)
+
+    def test_candidate_smooths_after_ego_join_and_still_checks_collision(self):
+        planner = Planner(self.c)
+        ego = self.lane.xy[40].copy()
+        ego[1] += .2
+        candidate = planner.candidates({'global_route': self.lane}, [],
+                                       'global_route', 0., 80., ego, 0., 5.)[0]
+        np.testing.assert_array_equal(candidate.xy[0, :2], ego[:2])
+        relaxed = relaxed_sample(self.lane, candidate.route_s, self.c)
+        after_join = candidate.route_s-candidate.route_s[0] >= self.c['connection_m']
+        np.testing.assert_allclose(candidate.xy[after_join], relaxed[after_join], atol=1e-12)
+        _, theta, _ = candidate_geometry(candidate)
+        _, _, _, candidate.speed, candidate.times = planner.profile(candidate, 5.)
+        obstacle = Obstacle(candidate.xy[12:13].copy(), np.zeros(2), False)
+        self.assertIsNotNone(planner.collision(candidate.xy, theta, candidate.times, [obstacle]))
 
 
 if __name__ == '__main__':

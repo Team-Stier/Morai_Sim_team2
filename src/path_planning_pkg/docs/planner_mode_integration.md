@@ -5,7 +5,7 @@
 이 변경은 기존 `main`의 단일 공개 Planning 경계를 유지하면서 다음 기능을
 `path_planning_pkg` 내부에 추가한다.
 
-- `PlannerModeManager`: `/molit/route/context.progress`의 `route_s`만으로 Z1~Z5를 판정한다.
+- `PlannerModeManager`: `EgoState`의 현재 map 위치를 global RDDF에 투영한 `route_s`로 Z1~Z5를 판정한다.
 - `HybridAStarPlanner`: `morai/test2`의 전진 bicycle arc, 연속 pose/이산 key,
   steering history와 reference guide 원칙을 사용한다.
 - 기존 Frenet과 Hybrid A* 중 선택된 하나만 기존 `Trajectory` publisher에 전달한다.
@@ -54,8 +54,8 @@ src/path_planning_pkg/config/hybrid_astar.yaml
 일반 경로 유지 시간을 기다리지 않고 즉시 교체한다. 입력이나 기존 경로가
 유효하지 않으면 정지 trajectory를 발행한다.
 
-한 번의 전진 주행을 전제로 Manager가 수신한 최대 `route_s`를 유지한다. 작은
-역방향 projection jitter가 들어와도 이전 Planner 구간으로 되돌아가지 않는다.
+RouteContext의 누적 진행도와 이전 최대 위치는 Planner 선택에 사용하지 않는다.
+후진하거나 재배치되면 현재 추정 위치가 속한 구간의 Planner로 즉시 돌아간다.
 Localization `reset_id`가 바뀌면 Manager 상태도 초기화한다.
 
 ## 내부 구조
@@ -126,7 +126,7 @@ MORAI 연결 후 확인해야 한다.
 | 입력 | `/molit/localization/ego_state` | `common_msgs_pkg/EgoState` | map pose, yaw, reset id |
 | 입력 | `/molit/localization/local/odometry` | `nav_msgs/Odometry` | odom pose와 현재 속도 |
 | 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` | 기존 상태 입력 유지 |
-| 입력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` | Mode Manager의 `progress`, 경로 목표 |
+| 입력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` | 경로 목표와 기존 입력 유효성 검사 |
 | 입력 | `/molit/route/status` | `common_msgs_pkg/ComponentStatus` | 기존 Route 상태 입력 유지 |
 | 입력 | `/molit/world_model/scene` | `common_msgs_pkg/WorldModel` | map 좌표 객체 점 |
 | 입력 | `/molit/world_model/status` | `common_msgs_pkg/ComponentStatus` | 기존 World Model 상태 입력 유지 |
@@ -143,7 +143,7 @@ Hybrid A*와 Frenet 결과를 합치지 않는다. 선택된 Planner 결과만 �
 - Z2→Z3에서 Hybrid A*→Frenet 전환
 - CP10에서 Frenet 유지
 - Z4→Z5에서 Frenet→Hybrid A* 전환
-- 역방향 progress jitter가 이전 모드로 복귀시키지 않음
+- 현재 위치가 이전 구간으로 이동하면 해당 Planner로 복귀
 - Localization reset 후 Z1부터 새 주행 가능
 - 직선·곡률 bicycle path 생성
 - 객체 점을 우회하는 경로 생성
@@ -161,7 +161,7 @@ Hybrid A*와 Frenet 결과를 합치지 않는다. 선택된 Planner 결과만 �
 
 | 항목 | 예상 문제 | 확인 방법 |
 |---|---|---|
-| Route progress | CP7/CP12 부근 지연·점프 | 실제 `/molit/route/context.progress` 기록과 전환 status 비교 |
+| 현재 위치 투영 | 경계 부근 위치 오차로 모드 반복 전환 | EgoState 위치의 RDDF 투영과 전환 status 비교 |
 | Planner handoff | 첫 Frenet/Hybrid 경로의 위치·접선 차이 | 경계 전후 odom trajectory 곡률과 Controller tracking error 확인 |
 | 계산 시간 | Hybrid A*가 5 Hz decision 주기를 넘을 수 있음 | expanded nodes와 `processing_latency_sec` 측정 후 파라미터 조정 |
 | 좌표계 | Ego/map 객체와 odom 출력 변환 오차 | map pose와 변환된 첫 trajectory 구간을 RViz에서 비교 |

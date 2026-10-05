@@ -8,7 +8,7 @@ x_min: -30.0
 x_max: 70.0
 y_min: -15.0
 y_max: 15.0
-z_min: -1.6
+z_min: -1.5
 z_max: 1.0
 leaf_size: 0.03
 epsilon: 0.44

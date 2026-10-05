@@ -12,6 +12,32 @@ def sample(xy, s, q):
     return np.column_stack([np.interp(q, s, xy[:, i]) for i in range(xy.shape[1])])
 
 
+def relaxed_sample(lane, q, config):
+    """Smooth RDDF XY in station space with bounded displacement; preserve Z."""
+    original = sample(lane.xy, lane.s, q)
+    if not config.get('rddf_relaxation_enabled', False):
+        return original
+    sigma = config['rddf_smoothing_sigma_m']
+    deviation = config['rddf_max_deviation_m']
+    if sigma <= 0 or deviation <= 0:
+        return original
+    radius = int(math.ceil(3*sigma/config['spatial_step_m']))
+    offsets = np.arange(-radius, radius+1)*config['spatial_step_m']
+    weights = np.exp(-.5*(offsets/sigma)**2)
+    weights /= weights.sum()
+    neighbors = sample(lane.xy, lane.s, (q[:, None]+offsets).ravel())
+    neighbors = neighbors.reshape(len(q), len(offsets), -1)
+    shift = np.sum(neighbors[:, :, :2]*weights[None, :, None], axis=1)-original[:, :2]
+    # A smooth saturation avoids new kinks where a hard clip reaches its bound.
+    shift /= np.sqrt(1+np.sum(shift*shift, axis=1)/deviation**2)[:, None]
+    support = offsets[-1]
+    # Preserve true RDDF endpoints and avoid interpolation's clamped-end bias.
+    fade = smooth((q-lane.s[0])/support)*smooth((lane.s[-1]-q)/support)
+    result = original.copy()
+    result[:, :2] += fade[:, None]*shift
+    return result
+
+
 def sample_limits(lane, route_s):
     """Select the speed limit active at each station without blending sentinels."""
     indices = np.searchsorted(lane.s, route_s, side='right') - 1
@@ -306,7 +332,7 @@ class Planner:
             reference = lanes['global_route']
         end = min(reference.s[-1], max(goal_s+c['tail_m'], progress+c['minimum_path_m']))
         qs = np.arange(progress, end, c['spatial_step_m'])
-        ref = sample(reference.xy, reference.s, qs)
+        ref = relaxed_sample(reference, qs, c)
         tangent = np.gradient(ref[:, :2], qs, axis=0)
         tangent /= np.linalg.norm(tangent, axis=1)[:, None]
         normal = np.column_stack((-tangent[:, 1], tangent[:, 0]))
@@ -314,7 +340,7 @@ class Planner:
         ref_heading = math.atan2(tangent[0, 1], tangent[0, 0])
         initial_slope = math.tan(np.clip(math.atan2(math.sin(heading-ref_heading), math.cos(heading-ref_heading)), -1., 1.))
         source = self.chain(current, lanes, end)
-        source_xy = sample(source.xy, source.s, qs)
+        source_xy = relaxed_sample(source, qs, c)
         source_d = np.sum((source_xy[:, :2]-ref[:, :2])*normal, axis=1)
         source_limits = sample_limits(source, qs)
         results = []
@@ -350,7 +376,7 @@ class Planner:
             if window.source != current or window.target not in lanes:
                 continue
             target = self.chain(window.target, lanes, end)
-            target_xy = sample(target.xy, target.s, qs)
+            target_xy = relaxed_sample(target, qs, c)
             target_d = np.sum((target_xy[:, :2]-ref[:, :2])*normal, axis=1)
             for prepare in c['prepare_times_sec']:
                 for duration in c['change_times_sec']:
@@ -382,44 +408,6 @@ class Planner:
                     if changes == 1 and target.s[-1] < end:
                         limits[qs > target.s[-1]] = 0.
                     make('%s:%.1f:%.1f'%(window.target, prepare, duration), window.target, d, limits, changes, back_end if changes==2 else stop, return_start)
-        return results
-
-    def obstacle_detours(self, reference, objects):
-        """Return to the current RDDF after a nearby static measured obstruction."""
-        c = self.c
-        if not c.get('local_detour_enabled', False):
-            return []
-        s, theta, _ = candidate_geometry(reference)
-        hits = []
-        for obj in objects:
-            if obj.velocity_valid and np.linalg.norm(obj.velocity[:2]) > c['stationary_speed_mps']:
-                continue
-            points = obj.points.copy()
-            if obj.velocity_valid:
-                points[:, :2] += obj.age*obj.velocity[:2]
-            indices = np.flatnonzero(s <= c['collision_precision_distance_m'])
-            hits.extend(indices[footprint_hits(points, reference.xy[indices], theta[indices], c)])
-        if not hits:
-            return []
-        normal = np.column_stack((-np.sin(theta), np.cos(theta)))
-        results = []
-        for length in c['local_detour_transition_m']:
-            return_begin = max(length, s[max(hits)]+c['local_detour_clearance_m'])
-            finish = return_begin+length
-            if finish >= min(s[-1], c['collision_precision_distance_m']):
-                continue
-            weight = smooth(s/length)*(1-smooth((s-return_begin)/length))
-            for offset in c['local_detour_offsets_m']:
-                xyz = reference.xy.copy()
-                xyz[:, :2] += (offset*weight)[:, None]*normal
-                limits = reference.limits.copy()
-                maneuver = s <= finish
-                limits[maneuver] = np.minimum(
-                    np.where(limits[maneuver] < 0, math.inf, limits[maneuver]),
-                    c['local_detour_speed_kph']/3.6+c['normal_cruise_margin_kph']/3.6)
-                results.append(Candidate('detour:%.1f:%.1f' % (offset, length), reference.target,
-                    xyz, reference.route_s.copy(), limits, 2,
-                    float(np.interp(finish, s, reference.route_s))))
         return results
 
     def profile(self, candidate, speed, stop=math.inf, cap=None):
@@ -645,6 +633,10 @@ class Planner:
         if not feasible:
             return None
         best = min(feasible, key=lambda x:x.cost)
+        if not keep.feasible:
+            # Confirmation is for improving a safe path, not retaining a rejected one.
+            self.committed, self.pending = (best if best.changes else None), None
+            return best
         if best is keep or not math.isfinite(best.cost) or keep.cost-best.cost < self.c['minimum_gain_sec']:
             self.pending = None
             return keep if keep.feasible else None

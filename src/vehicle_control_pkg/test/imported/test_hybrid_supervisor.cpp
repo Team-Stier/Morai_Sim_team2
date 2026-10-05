@@ -33,7 +33,11 @@ ControllerCandidate invalidCandidate() {
   return {false, 0.0, 0.0, 0.0, 0.0, false, "invalid"};
 }
 
-SupervisorConfig defaultSupervisorConfig() { return SupervisorConfig{}; }
+SupervisorConfig defaultSupervisorConfig() {
+  SupervisorConfig config;
+  config.max_step_rad = 0.03;  // Exercise an explicitly configured lower limit.
+  return config;
+}
 SupervisorContext globalContext(double now_sec = 10.0) {
   return {PathSource::GLOBAL, now_sec, true};
 }
@@ -472,7 +476,7 @@ TEST(HybridSupervisor, FinalStepLimitAppliesThroughoutTransition) {
 
 TEST(HybridSupervisor, ConfigurationAboveHardStepLimitFailsSafe) {
   SupervisorConfig config = defaultSupervisorConfig();
-  config.max_step_rad = 0.2;
+  config.max_step_rad = 0.25;
   HybridSupervisor supervisor(config);
   supervisor.seedSteering(0.0);
 
@@ -530,7 +534,7 @@ TEST(HybridSupervisor, RejectsConfigurationJustOutsideSafetyEnvelope) {
   configs[4].confirmation_samples = 2;
   configs[5].minimum_dwell_sec = 0.999999;
   configs[6].blend_duration_sec = 0.499999;
-  configs[7].max_step_rad = 0.030001;
+  configs[7].max_step_rad = 0.240001;
 
   for (int i = 0; i < 8; ++i) {
     SCOPED_TRACE(i);
@@ -540,7 +544,7 @@ TEST(HybridSupervisor, RejectsConfigurationJustOutsideSafetyEnvelope) {
         ppCandidate(0.12), stanleyCandidate(), globalContext());
     EXPECT_EQ(supervisor.mode(), HybridMode::STOP);
     EXPECT_TRUE(std::isfinite(steer));
-    EXPECT_NEAR(steer, 0.07, 1e-12);
+    EXPECT_NEAR(steer, i == 7 ? 0.0 : 0.07, 1e-12);
   }
 }
 
@@ -573,3 +577,14 @@ TEST(HybridSupervisor, OverLimitCandidateUsesEligibleFallbackAndStaysLimited) {
 
 }  // namespace
 }  // namespace hybrid_path_tracking
+
+TEST(SteeringRateDefaults, TwelveRadiansPerSecondAtFiftyHz) {
+  using namespace hybrid_path_tracking;
+  SupervisorConfig config;
+  EXPECT_DOUBLE_EQ(config.max_step_rad * 50.0, 12.0);
+  HybridSupervisor supervisor(config);
+  supervisor.seedSteering(0.6);
+  const ControllerCandidate invalid{false, 0.0, 0.0, 0.0, 0.0, false, "invalid"};
+  const SupervisorContext context{PathSource::GLOBAL, 10.0, false};
+  EXPECT_NEAR(supervisor.select(invalid, invalid, context), 0.36, 1e-12);
+}
