@@ -25,11 +25,11 @@ class InterfaceContractTest(unittest.TestCase):
         self.assertEqual(node.attrib['ns'], '/')
         self.assertFalse(launch.findall('.//remap'))
 
-    def test_original_core_and_tests_are_unchanged(self):
+    def test_imported_core_and_documented_local_changes_match_manifest(self):
         manifest = yaml.safe_load((PACKAGE / 'docs/upstream_manifest.yaml').read_text())
         self.assertEqual(manifest['commit'], 'ff8eb424585183790165ef2f50042ec7c8517e4b')
         for item in manifest['files']:
-            self.assertEqual(hashlib.sha256((PACKAGE / item['destination']).read_bytes()).hexdigest(), item['sha256'])
+            self.assertEqual(hashlib.sha256((PACKAGE / item['destination']).read_bytes()).hexdigest(), item.get('local_sha256', item['sha256']))
 
     def test_pi_class_body_matches_original_excerpt(self):
         manifest = yaml.safe_load((PACKAGE / 'docs/upstream_manifest.yaml').read_text())

@@ -100,7 +100,7 @@ wheelbase_m: 3.0
 # 새 차로변경 후보의 최대 조향각 [rad]. 현재 약 40도이며 keep·committed 경로에는 해당 후보 탈락 검사를 적용하지 않는다.
 max_steering_rad: 0.6981317007977318
 # 새 차로변경 후보의 최대 조향각 변화율 [rad/s]. keep·committed 경로에는 해당 후보 탈락 검사를 적용하지 않는다.
-max_steering_rate_rps: 1.5
+max_steering_rate_rps: 12.0
 # 위치·경로 등 입력 측정시각의 최대 허용 경과 시간 [s]. 오래되거나 미래 시각이면 정상 계획에 사용하지 않는다.
 input_age_sec: 0.5
 # 형상 전용 모드에서 World Model 입력에만 적용하는 최대 경과 시간 [s]. 일반 모드는 input_age_sec를 사용한다.

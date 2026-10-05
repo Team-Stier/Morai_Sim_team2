@@ -16,6 +16,8 @@ files:
 - source: control_pkg/hybrid_path_tracking/include/hybrid_path_tracking/hybrid_supervisor.hpp
   destination: src/imported/hybrid_path_tracking/hybrid_supervisor.hpp
   sha256: cc37e7eb0e0c2d457b8ec49f4f14a167715e3e3b07081731c6b77c199e9cf403
+  local_sha256: b475176f02dd3f751cf848fc1731f1a05e018f94765413784ddd0fef32a5822f
+  local_change: "사용자 지정 조향 변화율 12 rad/s 반영"
 - source: control_pkg/hybrid_path_tracking/include/hybrid_path_tracking/path_source_manager.hpp
   destination: src/imported/hybrid_path_tracking/path_source_manager.hpp
   sha256: 2b4b89c77f89ce436a104b504a618bf90fe1fc8f0e111a85281b5e3cb672d438
@@ -40,9 +42,13 @@ files:
 - source: control_pkg/hybrid_path_tracking/src/hybrid_supervisor.cpp
   destination: src/imported/hybrid_supervisor.cpp
   sha256: 7e9ffbc144c3f2e7a42d1c633417e145b03062eb4057957ef4c39f406a1258d9
+  local_sha256: 6cd465b6465c32acb8d29258a300d64147527d22cd22e026b330cde15ced011a
+  local_change: "사용자 지정 조향 변화율 12 rad/s 반영"
 - source: control_pkg/hybrid_path_tracking/test/test_hybrid_supervisor.cpp
   destination: test/imported/test_hybrid_supervisor.cpp
   sha256: 2d2eb4de1c32569c7c355176c6f508e700d088dcc68bb0bec8c77665e94b5a84
+  local_sha256: cccff42c86b11e301dfe1d6600f49935b32af3f2f0090709bb4043e20272f306
+  local_change: "사용자 지정 조향 변화율 12 rad/s 반영"
 - source: control_pkg/hybrid_path_tracking/src/path_source_manager.cpp
   destination: test/imported/path_source_manager.cpp
   sha256: 19415c3538ee5e1223c908140931bc6555ba55059c747b1b83a6747a39584340
