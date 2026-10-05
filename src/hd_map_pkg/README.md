@@ -9,6 +9,7 @@ MGeo 연결·허용 점선 구간·금지 경계·체크포인트를 HdMap으로
 합류한다. 진입·합류 각각 220 m의 파생 접속 곡선과 원본 링크 목록은
 `lane_rddf.course_connections`로 관리한다.
 진입부에서 먼저 합쳐지는 `high_speed_entry`만 100 m 진입·40 m 합류를 사용한다.
+`high_speed_left`는 CP11을 통과하도록 합류 길이 280 m를 사용한다.
 원본 링크 접속부의 방향 꺾임은 최대 15 cm 이내에서 완화한다.
 
 MORAI 공식 조직의 KATRI MGeo 3.0 스냅샷을 immutable 후보로 고정하고, 이를
@@ -235,6 +236,8 @@ catkin_test_results
 공유 타입 `ComponentStatus`, `HdMap`, `RouteLane`, `LaneChangeWindow`가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 런타임 노드는 전역경로·허용 RDDF·점선 연결·금지 경계와 체크포인트를 발행한다.
+`HdMap.signal_stop_lines`에는 코스 주행 방향에 연결된 신호 정지선 5개의 원본
+좌표·접근 링크·신호등 ID를 포함한다. [중앙 계약과 이식 영향](../ros_architecture_pkg/docs/signal_stop_lines.md)을 따른다.
 
 ## 통합 전 자체 확인
 
@@ -263,6 +266,7 @@ catkin_test_results
 
 RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 30 m + 북쪽 지정 경계 확장을 사용한다.
 `hd_map_pkg/config/map_conversion.yaml`의 crop 설정을 공유하고 전역경로는 초록색으로 표시한다.
+신호 구간 정지선은 빨간 횡선과 `STOP 1`~`STOP 5`로 구분해 표시한다.
 
 ## 추가 차로 RDDF와 차선변경 구간
 

@@ -181,3 +181,9 @@ HD Map 위에 체크포인트 1~14번과 START/END를 노란 점과 `CP 1`~`CP 1
 높이를 맞춘다. 원본 좌표나 주행 판단은 변경하지 않는다. `HD Map` display의
 `checkpoints`와 `checkpoint_labels` namespace에서 점과 글자를 각각 숨길 수 있다.
 점 지름과 글자 높이는 `config/hd_map_display.yaml`에서 설정한다.
+
+코스 주행 방향의 신호 정지선 5개는 빨간 횡선과 `STOP 1`~`STOP 5`로 표시한다.
+`HD Map` display의 `signal_stop_lines`, `signal_stop_line_labels`에서 각각 숨길 수 있다.
+번호는 원본 ID 정렬 기준이며 미션 순서나 현재 적색 신호를 뜻하지 않는다.
+HD Map과 같은 원본 좌표·신호/접근 차로 연결을 사용하며 표시만 평면에 투영한다.
+[중앙 정지선 계약](../ros_architecture_pkg/docs/signal_stop_lines.md)을 따른다.
