@@ -28,7 +28,7 @@ Frenet은 정적 장애물 전용 좌우 offset 우회·복귀 경로를 생성�
 
 Frenet 후보의 기준 RDDF는 기본적으로 주변 형상을 평활화해 작은 꺾임을 완화한다.
 Gaussian 표준편차는 2 m, 같은 station의 원본 RDDF에서 허용하는 기준 경로 이동은
-최대 0.3 m다. 현재 위치·방향 합류와 차로변경은 그 기준 위에서 생성하고 최종
+최대 0.15 m다. 현재 위치·방향 합류와 차로변경은 그 기준 위에서 생성하고 최종
 후보에 기존 충돌·곡률·속도 검사를 적용한다. 설정은 `frenet_planner.yaml`의
 `rddf_relaxation_enabled`, `rddf_smoothing_sigma_m`, `rddf_max_deviation_m`이다.
 

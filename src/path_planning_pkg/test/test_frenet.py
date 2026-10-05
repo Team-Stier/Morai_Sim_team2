@@ -431,8 +431,8 @@ class RddfRelaxationTest(unittest.TestCase):
         relaxed = relaxed_sample(self.lane, q, self.c)
         interior = (q > 10.) & (q < 110.)
         self.assertLess(np.max(np.abs(geometry(relaxed)[2][interior])),
-                        .4*np.max(np.abs(geometry(raw)[2][interior])))
-        self.assertLessEqual(np.max(np.linalg.norm(relaxed[:, :2]-raw[:, :2], axis=1)), .3)
+                        .6*np.max(np.abs(geometry(raw)[2][interior])))
+        self.assertLessEqual(np.max(np.linalg.norm(relaxed[:, :2]-raw[:, :2], axis=1)), self.c['rddf_max_deviation_m'])
         np.testing.assert_array_equal(relaxed[:, 2], raw[:, 2])
         np.testing.assert_array_equal(self.lane.xy, before)
 
@@ -442,7 +442,7 @@ class RddfRelaxationTest(unittest.TestCase):
         q = np.arange(-1., 41.5, .5)
         raw = sample(lane.xy, lane.s, q)
         relaxed = relaxed_sample(lane, q, self.c)
-        self.assertLessEqual(np.max(np.linalg.norm(relaxed[:, :2]-raw[:, :2], axis=1)), .3)
+        self.assertLessEqual(np.max(np.linalg.norm(relaxed[:, :2]-raw[:, :2], axis=1)), self.c['rddf_max_deviation_m'])
         ends = (q <= 0.) | (q >= 40.)
         np.testing.assert_array_equal(relaxed[ends], raw[ends])
         np.testing.assert_array_equal(relaxed[:, 2], raw[:, 2])
