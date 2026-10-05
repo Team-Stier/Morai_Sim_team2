@@ -15,7 +15,7 @@ class SignalStopLineTest(unittest.TestCase):
             return dict(points=points[::-1] if reverse else points)
 
         def bar(x, code=530):
-            return dict(points=[[x, -1., 28.1], [x, 5., 28.2]], lane_type=[code])
+            return dict(idx='bar-%g' % x, points=[[x, -1., 28.1], [x, 5., 28.2]], lane_type=[code])
 
         self.links = dict(incoming=line(100), parallel=line(100, 3.5),
                           opposing=line(100, reverse=True), pedestrian=line(60))

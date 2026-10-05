@@ -62,3 +62,8 @@ World Model은 중앙 `messages/world_model_messages.yaml`을 따르며
 기존 `ActuatorCommand`는 `messages/competition_io_messages.yaml`을 따른다.
 [중앙 제어 계약](../ros_architecture_pkg/docs/controller_integration.md)에 producer/consumer 영향을 기록했다.
 TrackedObject/WorldModel의 기존 `.msg`도 catkin 메시지 생성 목록에 등록했다.
+
+`HdMap`, `RouteLane`, `LaneChangeWindow`, `RouteContext`, `SignalStopLine`은 중앙
+`messages/rddf_planning_messages.yaml`을 따른다. 신호 정지선 추가에 따른
+HdMap MD5 변경과 생산자·소비자 재시작 범위는
+[중앙 정지선 계약](../ros_architecture_pkg/docs/signal_stop_lines.md)에 기록했다.
