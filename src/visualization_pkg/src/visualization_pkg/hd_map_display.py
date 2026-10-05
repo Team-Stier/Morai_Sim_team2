@@ -64,6 +64,43 @@ def map_markers(layers, plane_z, line_width):
     return result
 
 
+def checkpoint_markers(points, plane_z, diameter, label_height):
+    """Display central ENU checkpoints; the final point is START/END."""
+    if (not all(math.isfinite(v) for v in (plane_z, diameter, label_height))
+            or diameter <= 0 or label_height <= 0):
+        raise ValueError('Invalid checkpoint display size or height')
+    if any(len(p) != 3 or not all(math.isfinite(v) for v in p) for p in points):
+        raise ValueError('Checkpoint coordinates must be finite XYZ rows')
+    result = MarkerArray()
+    dots = Marker()
+    dots.header.frame_id = 'map'
+    dots.header.stamp = rospy.Time(0)
+    dots.ns = 'checkpoints'
+    dots.id = 0
+    dots.type = Marker.SPHERE_LIST
+    dots.action = Marker.ADD
+    dots.pose.orientation.w = 1.0
+    dots.scale.x = dots.scale.y = dots.scale.z = diameter
+    dots.color.r, dots.color.g, dots.color.b, dots.color.a = (1.0, 0.9, 0.1, 1.0)
+    for index, point in enumerate(points):
+        # The map is planar in RViz; source heights stay untouched.
+        dots.points.append(Point(point[0], point[1], plane_z+diameter/2))
+        label = Marker()
+        label.header = dots.header
+        label.ns = 'checkpoint_labels'
+        label.id = index
+        label.type = Marker.TEXT_VIEW_FACING
+        label.action = Marker.ADD
+        label.pose.orientation.w = 1.0
+        label.pose.position = Point(point[0]+diameter, point[1], plane_z+diameter)
+        label.scale.z = label_height
+        label.color = dots.color
+        label.text = 'START / END' if index == len(points)-1 else 'CP %d' % (index+1)
+        result.markers.append(label)
+    result.markers.insert(0, dots)
+    return result
+
+
 def load_map_markers():
     packages = rospkg.RosPack()
     map_root = Path(packages.get_path('hd_map_pkg'))
@@ -74,5 +111,10 @@ def load_map_markers():
     reference = map_root / config['references']['simulator_global_path']
     layers, metadata = load_route_display_layers(source, projection, config, reference)
     rospy.loginfo('Route-cropped HD map: %s; bounds=%s', metadata['counts'], metadata['bounds'])
-    return map_markers(layers, rospy.get_param('~hd_map_plane_z_m', -0.10),
-                       rospy.get_param('~hd_map_line_width_m', 0.10))
+    plane_z = rospy.get_param('~hd_map_plane_z_m', -0.10)
+    result = map_markers(layers, plane_z, rospy.get_param('~hd_map_line_width_m', 0.10))
+    checkpoints = yaml.safe_load((architecture / 'config/map/checkpoints.yaml').read_text())
+    result.markers.extend(checkpoint_markers(checkpoints['points'], plane_z,
+        rospy.get_param('~checkpoint_point_diameter_m', 1.5),
+        rospy.get_param('~checkpoint_label_height_m', 1.5)).markers)
+    return result
