@@ -300,6 +300,16 @@ class HybridAStarPlanner:
         maximum = math.atan(self.config.wheelbase_m / self.config.minimum_turning_radius_m)
         self.steering = tuple(maximum * fraction for fraction in self.config.steering_fractions)
         self.neutral_steering_index = min(range(len(self.steering)), key=lambda i: abs(self.steering[i]))
+        margin = self.config.obstacle_margin_m
+        self.obstacle_search_radius_m = math.hypot(
+            max(abs(-self.config.rear_overhang_m - margin),
+                abs(self.config.front_overhang_m + margin)),
+            abs(self.config.vehicle_width_m / 2.0 + margin)) + 1.0e-9
+        corner_radius = math.hypot(
+            max(self.config.front_overhang_m, self.config.rear_overhang_m),
+            self.config.vehicle_width_m / 2.0)
+        self.corridor_fast_accept_radius_m = max(
+            0.0, self.config.corridor_half_width_m - corner_radius - 1.0e-9)
 
     def _key(self, pose: Pose2D, steering_index: int) -> Tuple[int, int, int, int]:
         yaw_bins = max(1, int(round(2.0 * math.pi / self.config.yaw_resolution_rad)))
@@ -365,13 +375,34 @@ class HybridAStarPlanner:
         ))
 
     def _inside_corridor(self, pose: Pose2D, guide: _ReferenceGuide) -> bool:
-        return all(guide.project(corner)[1] <= self.config.corridor_half_width_m
-                   for corner in self._corners(pose))
+        if self.corridor_fast_accept_radius_m > 0.0:
+            center_delta = guide.xy - np.array([pose.x, pose.y])
+            if np.any(np.sum(center_delta * center_delta, axis=1) <=
+                      self.corridor_fast_accept_radius_m ** 2):
+                return True
+        corners = self._corners(pose)
+        delta_x = corners[:, 0, None] - guide.xy[:-1, 0]
+        delta_y = corners[:, 1, None] - guide.xy[:-1, 1]
+        fraction = np.clip(
+            (delta_x * guide.segment[:, 0] + delta_y * guide.segment[:, 1]) /
+            (guide.segment_length * guide.segment_length), 0.0, 1.0)
+        projected_x = guide.xy[:-1, 0] + fraction * guide.segment[:, 0]
+        projected_y = guide.xy[:-1, 1] + fraction * guide.segment[:, 1]
+        residual_x = corners[:, 0, None] - projected_x
+        residual_y = corners[:, 1, None] - projected_y
+        nearest_distance = np.sqrt(np.min(residual_x * residual_x + residual_y * residual_y,
+                                          axis=1))
+        return bool(np.all(nearest_distance <= self.config.corridor_half_width_m))
 
     def _hits_obstacle(self, pose: Pose2D, obstacle_points: np.ndarray) -> bool:
         if not len(obstacle_points):
             return False
-        delta = obstacle_points[:, :2] - np.array([pose.x, pose.y])
+        x = obstacle_points[:, 0]
+        begin = int(np.searchsorted(x, pose.x - self.obstacle_search_radius_m, side="left"))
+        end = int(np.searchsorted(x, pose.x + self.obstacle_search_radius_m, side="right"))
+        if begin == end:
+            return False
+        delta = obstacle_points[begin:end, :2] - np.array([pose.x, pose.y])
         co, si = math.cos(pose.yaw), math.sin(pose.yaw)
         local_x = co * delta[:, 0] + si * delta[:, 1]
         local_y = -si * delta[:, 0] + co * delta[:, 1]
@@ -410,6 +441,7 @@ class HybridAStarPlanner:
                 return False
         except (TypeError, ValueError):
             return False
+        obstacles = obstacles[np.argsort(obstacles[:, 0])]
         cumulative = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(raw[:, :2], axis=0), axis=1))]
         keep = np.r_[True, np.diff(cumulative) > 1.0e-9]
         cumulative, raw = cumulative[keep], raw[keep]
@@ -614,6 +646,7 @@ class HybridAStarPlanner:
                 raise ValueError("initial steering exceeds the turning radius")
         except (TypeError, ValueError):
             return self._result(HybridPlanStatus.INVALID_REQUEST, (), 0, 0, 0, 0, started)
+        obstacles = obstacles[np.argsort(obstacles[:, 0])]
 
         start_progress, start_lateral, _ = guide.project((start.x, start.y))
         if (start_lateral > self.config.corridor_half_width_m or
