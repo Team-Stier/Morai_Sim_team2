@@ -66,3 +66,25 @@ HD Map 56개, 공유 메시지 전체 42개, Localization 계약 2개, 지도 �
 중앙 공개 계약 29개 통과. TF/timestamp 17개 중 16개 통과, 외부 저장 프로필
 SHA 검사 1개는 원래 작업 브랜치에서도 같은 실패가 재현됐다.
 중앙 다이어그램 생성·SVG/PNG manifest 검사도 통과했다.
+
+## paik 브랜치 재연결 — 2026-10-08
+
+기존 벽 지도 추출·표시와 벽 정합을 paik의 체크포인트·신호 정지선 기능과
+함께 통합했다. `frenet_all.launch`의 기존 HD Map producer와 Localization
+consumer를 사용하며 `wall_matching.enabled: true`가 기본값이다. 중앙
+StaticWallMap 계약, 공유 메시지, 지도 발행, 측정시각 점군 구독과 테스트를
+함께 가져왔다. GPS 시간 제한을 전부 제거한 후속 커밋은 포함하지 않았다.
+
+전체 catkin 빌드 성공. Localization 49개, common_msgs 42개, HD Map 64개
+catkin 결과에서 errors/failures 0. 격리 ROS 벽 정합 producer-consumer
+테스트와 중앙 공개 계약 29개, YAML/launch/manifest 파싱 및 다이어그램
+생성 검사가 통과했다. 빌드 머신의 pyproj는 사용자 site-packages에 있으므로
+PYTHONNOUSERSITE=1로 추정기 테스트를 실행하면 의존성 import가 실패한다.
+동일 실행 환경으로 다시 실행하여 추정기 테스트가 통과함을 확인했다.
+
+전체 검사에는 기존 외부 센서 프로필 SHA 불일치가 남는다. LiDAR 표시
+통합 테스트도 관측을 받지 못해 실패한다. 해당 테스트는 수평화에 필요한
+Localization 자세 입력을 발행하지 않으며 이번 벽 정합과 별개다.
+이를 성공으로 집계하지 않았다. 기존 전체 실행과 센서 입력이 종료된 뒤
+지도·추정 노드만 실행하여 구독 연결을 확인했다. 실제 터널 센서 입력,
+정지 drift 감소와 MORAI closed-loop는 이번 통합 검증에 포함하지 않는다.
