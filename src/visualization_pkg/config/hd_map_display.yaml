@@ -6,3 +6,7 @@ checkpoint_point_diameter_m: 1.5
 checkpoint_label_height_m: 1.5
 # 신호 구간 정지선 번호 글자 높이 [m]. 실제 정지선 좌표는 HD Map 원본에서 추출한다.
 stop_line_label_height_m: 1.5
+
+
+# Cosmetic wall extrusion only; original MGeo wall height is unknown.
+hd_map_wall_display_height_m: 5.0

@@ -71,4 +71,8 @@ def load_static_map(config_file, source, reference_path, checkpoints_file, polic
     checkpoints = yaml.safe_load(Path(checkpoints_file).read_text())
     from .stop_lines import build_signal_stop_lines
     stop_lines = build_signal_stop_lines(dataset, transform, route, config)
-    return build_static_map(route, rddf, checkpoints, policy, digest, stop_lines)
+    from .static_walls import build_static_walls
+    result = build_static_map(route, rddf, checkpoints, policy, digest, stop_lines)
+    result['static_walls'] = build_static_walls(dataset, transform, config)
+    result['wall_horizontal_stddev_m'] = float(config['static_walls']['horizontal_stddev_m'])
+    return result

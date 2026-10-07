@@ -46,17 +46,18 @@ flowchart TB
     view_topic_006["/molit/vehicle/twist<br/>type: geometry_msgs/TwistWithCovarianceStamped<br/>state: RESERVED"]
     view_topic_007["/molit/sensors/lidar/points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
     view_topic_008["/molit/map/hd_map<br/>type: common_msgs_pkg/HdMap<br/>state: RESERVED"]
-    view_topic_009["/molit/perception/camera/front/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
-    view_topic_010["/molit/perception/camera/left/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
-    view_topic_011["/molit/perception/camera/right/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
-    view_topic_012["/molit/perception/lidar/observations<br/>type: common_msgs_pkg/LidarObservationArray<br/>state: RESERVED"]
-    view_topic_013["/molit/localization/local/odometry<br/>type: nav_msgs/Odometry<br/>state: LIVE"]
-    view_topic_014["/molit/localization/ego_state<br/>type: common_msgs_pkg/EgoState<br/>state: LIVE"]
-    view_topic_015["/molit/route/context<br/>type: common_msgs_pkg/RouteContext<br/>state: RESERVED"]
-    view_topic_016["/molit/world_model/scene<br/>type: common_msgs_pkg/WorldModel<br/>state: RESERVED"]
-    view_topic_017["/molit/planning/trajectory<br/>type: common_msgs_pkg/Trajectory<br/>state: RESERVED"]
-    view_topic_018["/molit/control/nominal_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
-    view_topic_019["/molit/safety/final_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
+    view_topic_009["/molit/map/static_walls<br/>type: common_msgs_pkg/StaticWallMap<br/>state: RESERVED"]
+    view_topic_010["/molit/perception/camera/front/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
+    view_topic_011["/molit/perception/camera/left/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
+    view_topic_012["/molit/perception/camera/right/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
+    view_topic_013["/molit/perception/lidar/observations<br/>type: common_msgs_pkg/LidarObservationArray<br/>state: RESERVED"]
+    view_topic_014["/molit/localization/local/odometry<br/>type: nav_msgs/Odometry<br/>state: LIVE"]
+    view_topic_015["/molit/localization/ego_state<br/>type: common_msgs_pkg/EgoState<br/>state: LIVE"]
+    view_topic_016["/molit/route/context<br/>type: common_msgs_pkg/RouteContext<br/>state: RESERVED"]
+    view_topic_017["/molit/world_model/scene<br/>type: common_msgs_pkg/WorldModel<br/>state: RESERVED"]
+    view_topic_018["/molit/planning/trajectory<br/>type: common_msgs_pkg/Trajectory<br/>state: RESERVED"]
+    view_topic_019["/molit/control/nominal_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
+    view_topic_020["/molit/safety/final_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
 
     view_node_000 --> view_topic_000
     view_topic_000 --> view_node_010
@@ -80,39 +81,41 @@ flowchart TB
     view_topic_008 --> view_node_013
     view_topic_008 --> view_node_014
     view_topic_008 --> view_node_015
-    view_node_010 --> view_topic_009
-    view_topic_009 --> view_node_014
+    view_node_009 --> view_topic_009
+    view_topic_009 --> view_node_012
     view_node_010 --> view_topic_010
     view_topic_010 --> view_node_014
     view_node_010 --> view_topic_011
     view_topic_011 --> view_node_014
-    view_node_011 --> view_topic_012
+    view_node_010 --> view_topic_012
     view_topic_012 --> view_node_014
-    view_node_012 --> view_topic_013
+    view_node_011 --> view_topic_013
     view_topic_013 --> view_node_014
-    view_topic_013 --> view_node_015
-    view_topic_013 --> view_node_016
-    view_topic_013 --> view_node_017
     view_node_012 --> view_topic_014
-    view_topic_014 --> view_node_013
     view_topic_014 --> view_node_014
     view_topic_014 --> view_node_015
+    view_topic_014 --> view_node_016
     view_topic_014 --> view_node_017
-    view_topic_014 --> view_node_011
-    view_node_013 --> view_topic_015
+    view_node_012 --> view_topic_015
+    view_topic_015 --> view_node_013
     view_topic_015 --> view_node_014
     view_topic_015 --> view_node_015
     view_topic_015 --> view_node_017
-    view_node_014 --> view_topic_016
+    view_topic_015 --> view_node_011
+    view_node_013 --> view_topic_016
+    view_topic_016 --> view_node_014
     view_topic_016 --> view_node_015
     view_topic_016 --> view_node_017
-    view_node_015 --> view_topic_017
-    view_topic_017 --> view_node_016
+    view_node_014 --> view_topic_017
+    view_topic_017 --> view_node_015
     view_topic_017 --> view_node_017
-    view_node_016 --> view_topic_018
+    view_node_015 --> view_topic_018
+    view_topic_018 --> view_node_016
     view_topic_018 --> view_node_017
-    view_node_017 --> view_topic_019
-    view_topic_019 --> view_node_008
+    view_node_016 --> view_topic_019
+    view_topic_019 --> view_node_017
+    view_node_017 --> view_topic_020
+    view_topic_020 --> view_node_008
     external_ingress --> view_node_000
     external_ingress --> view_node_001
     external_ingress --> view_node_002
@@ -124,11 +127,11 @@ flowchart TB
     %% Invisible constraints keep README views in narrow lanes.
     view_topic_000 ~~~ view_node_001
     view_topic_001 ~~~ view_node_002
-    view_topic_009 ~~~ view_topic_010
     view_topic_010 ~~~ view_topic_011
+    view_topic_011 ~~~ view_topic_012
     view_topic_003 ~~~ view_node_004
     view_topic_005 ~~~ view_node_005
-    view_topic_013 ~~~ view_topic_014
+    view_topic_014 ~~~ view_topic_015
 
     class view_node_000 liveNode;
     class view_node_001 liveNode;
@@ -161,10 +164,11 @@ flowchart TB
     class view_topic_010 reservedTopic;
     class view_topic_011 reservedTopic;
     class view_topic_012 reservedTopic;
-    class view_topic_013 liveTopic;
+    class view_topic_013 reservedTopic;
     class view_topic_014 liveTopic;
-    class view_topic_015 reservedTopic;
+    class view_topic_015 liveTopic;
     class view_topic_016 reservedTopic;
     class view_topic_017 reservedTopic;
     class view_topic_018 reservedTopic;
     class view_topic_019 reservedTopic;
+    class view_topic_020 reservedTopic;

@@ -67,3 +67,6 @@ TrackedObject/WorldModel의 기존 `.msg`도 catkin 메시지 생성 목록에 �
 `messages/rddf_planning_messages.yaml`을 따른다. 신호 정지선 추가에 따른
 HdMap MD5 변경과 생산자·소비자 재시작 범위는
 [중앙 정지선 계약](../ros_architecture_pkg/docs/signal_stop_lines.md)에 기록했다.
+
+`StaticWallMap`과 `static_wall_validation`은 중앙 `static_wall_messages.yaml`의
+원본 벽 ID·열린 XYZ 벽선·출처 해시·수평 불확실성을 구현한다.

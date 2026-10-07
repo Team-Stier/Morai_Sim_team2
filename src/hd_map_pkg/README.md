@@ -230,6 +230,7 @@ catkin_test_results
 
 | 구분 | Topic | Type |
 |---|---|---|
+| 출력 | `/molit/map/static_walls` | `common_msgs_pkg/StaticWallMap` |
 | 출력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
 | 출력 | `/molit/map/status` | `common_msgs_pkg/ComponentStatus` |
 
@@ -274,3 +275,24 @@ RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 
 차로를 XYZ TXT로 추출한다. 기존 경로는 초록색, 추가 차로는 하늘색, 확인된 흰색
 점선 횡단 위치는 주황색으로 RViz에 표시한다. 조건·파일 형식·검증 범위는
 [추가 차로 RDDF](docs/lane_rddf.md)를 따른다.
+
+## 터널 정적 벽 레이어
+
+원본 `object_set.json`의 `wall` 객체 `C3256W000003`과 `C3256W000005`를
+`config/map_conversion.yaml`의 `static_walls.source_object_ids`로 선택한다.
+터널 LCS01/LCS02 부근의 두 벽선이며, 원본 모든 XYZ 꼭짓점을 중앙 map 원점으로
+변환한다. 차량 위치·중앙선·전역경로에 맞춰 벽 좌표를 이동하지 않는다.
+HTML 미리보기와 RViz HD-map 표시 레이어에 포함된다.
+
+`hd_map_tool static-walls`로 `data/derived/KATRI_static_walls.json`을 생성한다.
+원본 ID, source commit, 원본 파일 SHA-256, map XYZ를 보존한다. 원본 높이가 비어
+있어 `height_m: null`이며 RViz의 5 m 돌출 높이는 표시용이다. 이 파일은 정적
+지도 후보 산출물이다. 기존 공개 `HdMap` 메시지는 아직 벽 필드가 없으므로
+벽은 별도 공개 `StaticWallMap`으로 발행한다. Localization이 이를 소비하여
+양쪽 벽의 횡방향 정합을 수행한다. 벽 높이는 정합에 사용하지 않는다.
+
+## 터널 벽 LiDAR 정합
+
+중앙 [벽 계약](../ros_architecture_pkg/config/messages/static_wall_messages.yaml)의
+원본 벽선을 map 좌표로 주고받는다. `hd_map_server_node`가 발행하고
+`localization_node`가 raw LiDAR 및 측정시각의 IMU와 정합한다.

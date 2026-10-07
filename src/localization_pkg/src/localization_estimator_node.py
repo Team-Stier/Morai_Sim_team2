@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Development GPS/IMU adapter. Sensor clocks and central contracts are authoritative."""
 import bisect
+import itertools
 import math
 from pathlib import Path
 import threading
@@ -11,10 +12,13 @@ import rospkg
 import rospy
 import tf2_ros
 import yaml
-from common_msgs_pkg.msg import EgoState, LocalizationStatus
+from common_msgs_pkg.msg import EgoState, LocalizationStatus, StaticWallMap
+from common_msgs_pkg.static_wall_validation import validate_static_walls
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import Imu, NavSatFix
+from sensor_msgs.msg import Imu, NavSatFix, PointCloud2
+from sensor_msgs.point_cloud2 import read_points
+from localization_pkg.wall_matching import WallMatchConfig, WallMatcher
 from localization_pkg.live_estimator import (
     EstimatorConfig, GpsImuEstimator, GpsObservation, ImuObservation,
     MapProjector, covariance, slerp)
@@ -54,6 +58,14 @@ class LocalizationNode:
                                    for key, value in vars(EstimatorConfig()).items()})
         config.max_integration_step_sec = self.timing['max_integration_step_sec']
         self.core = GpsImuEstimator(config, sensor['gps']['candidate_ros_pose']['translation_m'])
+        self.wall_config = WallMatchConfig(**rospy.get_param('~wall_matching', {}))
+        self.wall_matcher = None
+        self.wall_map_identity = None
+        self.lidar_translation = sensor['lidar']['candidate_ros_pose']['translation_m']
+        if self.wall_config.enabled:
+            if (not sensor['lidar']['publish_enabled'] or
+                    sensor['lidar']['candidate_ros_pose']['rotation_rpy_rad'] != [0., 0., 0.]):
+                raise ValueError('wall matching requires approved aligned LiDAR mount')
         self.lock = threading.RLock()
         self.epoch = 0
         self.status_wall = -math.inf
@@ -66,13 +78,17 @@ class LocalizationNode:
         self.tf = tf2_ros.TransformBroadcaster()
         self.subs = [rospy.Subscriber('/molit/sensors/imu/data', Imu, self.imu, queue_size=100),
                      rospy.Subscriber('/molit/sensors/gps/fix', NavSatFix, self.gps, queue_size=30)]
+        if self.wall_config.enabled:
+            self.subs.extend([
+                rospy.Subscriber('/molit/map/static_walls', StaticWallMap, self.wall_map, queue_size=1),
+                rospy.Subscriber('/molit/sensors/lidar/points', PointCloud2, self.lidar, queue_size=1)])
 
     def clear(self):
         self.core.reset()
         self.queue = []
         self.imu_history = []
-        self.seen = {'imu': 0, 'gps': 0}
-        self.arrival = {'imu': None, 'gps': None}
+        self.seen = {'imu': 0, 'gps': 0, 'lidar': 0}
+        self.arrival = {'imu': None, 'gps': None, 'lidar': None}
         self.latest = None
         self.output_stamp = rospy.Time(0)
         self.reason = 'waiting for GPS and IMU'
@@ -136,6 +152,45 @@ class LocalizationNode:
                 bisect.insort(self.queue, (ns, 1, observation))
             except (ValueError, np.linalg.LinAlgError) as error:
                 self.reason = str(error)
+
+    def wall_map(self, message):
+        with self.lock:
+            try:
+                validate_static_walls(message)
+                lines = [[[p.x, p.y, p.z] for p in line.points] for line in message.baselines]
+                identity = (message.map_id, message.source_sha256, repr(lines), message.horizontal_stddev_m)
+                if identity == self.wall_map_identity:
+                    return
+                if self.wall_map_identity and message.map_id == self.wall_map_identity[0]:
+                    raise ValueError('wall geometry changed without a new map_id')
+                self.wall_matcher = WallMatcher(lines, message.horizontal_stddev_m, self.wall_config)
+                self.wall_map_identity = identity
+                self.core.last_wall_stamp = None
+                rospy.loginfo('Wall map loaded: %s, %d walls; development alignment unverified',
+                              message.map_id, len(lines))
+            except (ValueError, TypeError, np.linalg.LinAlgError) as error:
+                self.wall_matcher = None
+                self.core.last_wall_stamp = None
+                self.core.wall_diagnostic = 'wall map rejected: '+str(error)
+                rospy.logwarn('%s', self.core.wall_diagnostic)
+
+    def lidar(self, message):
+        with self.lock:
+            try:
+                ns, wall = self.accept(message, 'lidar', 'lidar_link')
+                if self.wall_matcher is None:
+                    raise ValueError('waiting for valid static wall map')
+                # Bound work before allocating a point array; keep raw scan time.
+                count = message.width*message.height
+                if count == 0 or count > 200000:
+                    raise ValueError('invalid or oversized LiDAR scan')
+                step = max(1, int(math.ceil(count/self.wall_config.max_points)))
+                points = np.asarray(list(itertools.islice(read_points(
+                    message, field_names=('x', 'y', 'z'), skip_nans=False), 0, None, step)))
+                self.seen['lidar'], self.arrival['lidar'] = ns, wall
+                bisect.insort(self.queue, (ns, 2, points))
+            except (ValueError, TypeError, KeyError, AssertionError) as error:
+                self.core.wall_diagnostic = 'wall scan rejected: '+str(error)
 
     def attitude_at(self, ns):
         before = [item for item in self.imu_history if item[0] <= ns]
@@ -204,7 +259,7 @@ class LocalizationNode:
                 ns, kind, observation = self.queue[0]
                 # Wait for the right IMU endpoint when a packet arrives slowly.
                 # The bound is central integration timeout, never stale extrapolation.
-                if (kind == 1 and self.imu_history and self.imu_history[-1][0] < ns
+                if (kind in (1, 2) and self.imu_history and self.imu_history[-1][0] < ns
                         and (now.to_nsec()-ns)*1e-9 < self.timing['max_integration_step_sec']):
                     break
                 self.queue.pop(0)
@@ -218,7 +273,7 @@ class LocalizationNode:
                         if (now.to_nsec()-ns)*1e-9 <= self.timing['estimate_timeout_sec']:
                             self.publish_estimate(ns)
                             self.publish_status(rospy.Time.now(), time.monotonic(), stalled)
-                else:
+                elif kind == 1:
                     attitude = self.attitude_at(ns)
                     if attitude is not None:
                         if self.core.process_gps(observation, attitude):
@@ -231,6 +286,16 @@ class LocalizationNode:
                                 self.reason = 'GPS correction accepted'
                     else:
                         self.reason = 'GPS lacks bracketing IMU: rejected'
+                else:
+                    attitude = self.attitude_at(ns)
+                    if attitude is None or self.wall_matcher is None:
+                        self.core.wall_diagnostic = 'wall scan lacks bracketing IMU or map: rejected'
+                    elif (now.to_nsec()-ns)*1e-9 <= self.timing['lidar_timeout_sec']:
+                        accepted = self.core.process_wall(ns*1e-9, observation, attitude,
+                                                          self.wall_matcher, self.lidar_translation)
+                        if accepted:
+                            rospy.loginfo_throttle(2.0, self.core.wall_diagnostic)
+
             if wall-self.status_wall < 1.0/self.timing['status_publish_rate_hz']:
                 return
             self.publish_status(now, wall, stalled)
@@ -249,9 +314,14 @@ class LocalizationNode:
                      wall-self.arrival['gps'] <= self.timing['gps_timeout_sec'])
         status.gps_fix_valid = bool(not stalled and gps_fresh and
             0 <= status.gps_age_sec <= self.timing['gps_timeout_sec'])
+        wall_age = now.to_sec()-self.core.last_wall_stamp if self.core.last_wall_stamp is not None else -1.
+        wall_aided = bool(self.wall_matcher is not None and self.latest is not None and
+            0 <= wall_age <= self.timing['wall_aiding_timeout_sec'] and
+            0 <= status.gps_age_sec <= self.timing['max_wall_aided_blackout_sec'] and
+            self.latest['map_position_stddev'] <= self.timing['wall_aided_max_position_stddev_m'])
         valid = bool(self.latest is not None and not stalled and imu_fresh and
             (now-self.output_stamp).to_sec() <= self.timing['estimate_timeout_sec'] and
-            0 <= status.gps_age_sec <= self.timing['max_dead_reckoning_sec'])
+            (0 <= status.gps_age_sec <= self.timing['max_dead_reckoning_sec'] or wall_aided))
         status.map_pose_valid = status.local_odometry_valid = valid
         status.ego_state_stamp = status.local_odometry_stamp = self.output_stamp
         status.map_position_stddev_m = self.latest['map_position_stddev'] if self.latest else -1.
@@ -265,6 +335,10 @@ class LocalizationNode:
                           'estimate stale or dead reckoning budget expired' if self.latest and not valid else
                           'GPS blackout; bias-compensated inertial prediction; no independent speed observation' if valid and not status.gps_fix_valid else
                           (self.core.last_rejection or self.reason)))
+        if self.wall_config.enabled:
+            status.reason += '; '+self.core.wall_diagnostic
+            if wall_aided and not status.gps_fix_valid:
+                status.reason += '; bounded wall aid active (age=%.3fs)' % wall_age
         if self.core.gps_diagnostic:
             status.reason += '; ' + self.core.gps_diagnostic
         if self.core.initialized:

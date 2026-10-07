@@ -72,6 +72,7 @@ class CoreContractTest(unittest.TestCase):
             'ActuatorCommand.msg', 'CollisionEvent.msg',
             'Trajectory.msg', 'ControllerStatus.msg', 'TrackedObject.msg', 'WorldModel.msg',
             'HdMap.msg', 'SignalStopLine.msg', 'RouteLane.msg', 'LaneChangeWindow.msg', 'RouteContext.msg',
+            'StaticWallMap.msg',
         })
         manifest = ET.parse(PACKAGE / 'package.xml').getroot()
         self.assertIn('message_generation', [e.text for e in manifest.findall('build_depend')])
