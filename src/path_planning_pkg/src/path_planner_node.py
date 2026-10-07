@@ -197,9 +197,7 @@ class Node:
         points = flatten_obstacle_points(world.objects)
         if not np.isfinite(points).all():
             return None
-        radius = (math.hypot(self.hybrid_planner.config.front_overhang_m,
-                             self.hybrid_planner.config.vehicle_width_m / 2.) +
-                  self.hybrid_planner.config.obstacle_margin_m)
+        radius = self.hybrid_planner.obstacle_search_radius_m
         low = np.min(candidate.xy[:, :2], axis=0)-radius
         high = np.max(candidate.xy[:, :2], axis=0)+radius
         nearby = points[np.all((points >= low) & (points <= high), axis=1)]
@@ -298,6 +296,16 @@ class Node:
                                        route, world, state, check_geometry):
             return None
         return selected, selected_stamp
+
+    def hybrid_pending_usable(self, candidate, stamp, now, map_id, zone_id, lane,
+                              boundaries, route, world, state):
+        """Recheck a queued Hybrid path against the scene before activating it."""
+        return (candidate is not None and stamp is not None and candidate.feasible and
+                len(candidate.speed) == len(candidate.xy) and
+                len(candidate.times) == len(candidate.xy) and
+                np.isfinite(candidate.times).all() and now >= stamp and
+                self.hybrid_path_usable(candidate, now, map_id, zone_id, lane,
+                                        boundaries, route, world, state))
 
     def handoff_usable(self, now, map_id, lane, boundaries, route, world, state,
                        check_geometry=True):
@@ -431,11 +439,34 @@ class Node:
                 previous_usable = previous_candidate is not None
             if not previous_usable:
                 with self.lock:
-                    had_active = self.selected is not None
-                    self.selected = self.selected_stamp = None
-                    self.pending_selection = self.pending_selection_stamp = None
-                    self.pending_selection_set = False
-                    self.hybrid_fallback_deadline = None
+                    pending = (self.pending_selection if self.selected is previous_candidate and
+                               self.pending_selection_set else None)
+                    pending_stamp = self.pending_selection_stamp
+                current_route, current_world, current_state = self.route, self.world, self.state
+                pending_usable = self.hybrid_pending_usable(
+                    pending, pending_stamp, rospy.Time.now(), map_id, selection.zone_id,
+                    lanes['global_route'], boundaries, current_route, current_world, current_state)
+                had_active = False
+                with self.lock:
+                    if self.selected is previous_candidate:
+                        if (pending_usable and self.pending_selection_set and
+                                self.pending_selection is pending and
+                                self.pending_selection_stamp == pending_stamp):
+                            self.selected, self.selected_stamp = pending, pending_stamp
+                            self.pending_selection = self.pending_selection_stamp = None
+                            self.pending_selection_set = False
+                            self.hybrid_fallback_deadline = None
+                            previous_candidate, previous_usable = pending, True
+                        else:
+                            had_active = self.selected is not None
+                            self.selected = self.selected_stamp = None
+                            self.pending_selection = self.pending_selection_stamp = None
+                            self.pending_selection_set = False
+                            self.hybrid_fallback_deadline = None
+                            previous_candidate = None
+                    else:
+                        # Another callback replaced the active path during validation.
+                        previous_candidate = None
                 if had_active:
                     self.publish(None)
                     self.report('planner_mode=hybrid_astar; zone=%s; selected=stop; replanning' %
@@ -460,16 +491,17 @@ class Node:
                     candidate, completed, map_id, selection.zone_id, lanes['global_route'],
                     boundaries, current_route, current_world, current_state):
                 with self.lock:
-                    active_candidate = self.selected
+                    active_candidate, active_stamp = self.selected, self.selected_stamp
                 if not self.hybrid_path_usable(
                         active_candidate, completed, map_id, selection.zone_id,
                         lanes['global_route'], boundaries, current_route, current_world,
                         current_state):
                     with self.lock:
-                        self.selected = self.selected_stamp = None
-                        self.pending_selection = self.pending_selection_stamp = None
-                        self.pending_selection_set = False
-                        self.hybrid_fallback_deadline = None
+                        if self.selected is active_candidate and self.selected_stamp == active_stamp:
+                            self.selected = self.selected_stamp = None
+                            self.pending_selection = self.pending_selection_stamp = None
+                            self.pending_selection_set = False
+                            self.hybrid_fallback_deadline = None
                 current_speed = max(0., current_state[1].twist.twist.linear.x)
                 candidate.speed_cap_mps = self.transition_speed.caps(
                     candidate.route_s, selection.planner, lanes['global_route'])
@@ -666,13 +698,33 @@ class Node:
                 self.selected = self.selected_stamp = None
                 self.pending_selection = self.pending_selection_stamp = None
                 self.pending_selection_set = False
-            if (self.pending_selection_set and self.selected_stamp is not None and
-                    (now-self.selected_stamp).to_sec() >= self.c['minimum_active_path_hold_sec']):
+            pending_due = (self.pending_selection_set and self.selected_stamp is not None and
+                           (now-self.selected_stamp).to_sec() >= self.c['minimum_active_path_hold_sec'])
+            hybrid_pending_due = pending_due and self.active_planner_mode == HYBRID_ASTAR
+            if pending_due and not hybrid_pending_due:
                 self.selected = self.pending_selection
-                self.selected_stamp = (self.pending_selection_stamp if
-                    self.active_planner_mode == HYBRID_ASTAR else now)
+                self.selected_stamp = now
                 self.pending_selection = self.pending_selection_stamp = None
                 self.pending_selection_set = False
+            active_before, active_stamp = self.selected, self.selected_stamp
+            pending = self.pending_selection if hybrid_pending_due else None
+            pending_stamp = self.pending_selection_stamp if hybrid_pending_due else None
+        if hybrid_pending_due:
+            static_map = self.static_map
+            pending_usable = (static_map is not None and 'global_route' in static_map[1] and
+                self.hybrid_pending_usable(pending, pending_stamp, now, static_map[0],
+                    self.active_zone, static_map[1]['global_route'], static_map[3],
+                    self.route, self.world, self.state))
+            with self.lock:
+                if (self.selected is active_before and self.selected_stamp == active_stamp and
+                        self.pending_selection_set and self.pending_selection is pending and
+                        self.pending_selection_stamp == pending_stamp):
+                    if pending_usable:
+                        self.selected, self.selected_stamp = pending, pending_stamp
+                        self.hybrid_fallback_deadline = None
+                    self.pending_selection = self.pending_selection_stamp = None
+                    self.pending_selection_set = False
+        with self.lock:
             ego, odom = self.state
             chosen, stamp = self.selected, self.selected_stamp
             handoff = self.handoff_candidate if chosen is None else None
@@ -721,14 +773,30 @@ class Node:
                     self.hybrid_checked_scene_key = scene_key
             if not checked:
                 with self.lock:
+                    pending = (self.pending_selection if self.selected is chosen and
+                               self.pending_selection_set else None)
+                    pending_stamp = self.pending_selection_stamp
+                pending_usable = (static_map is not None and
+                                  'global_route' in static_map[1] and
+                                  self.hybrid_pending_usable(pending, pending_stamp, *args))
+                with self.lock:
                     if self.selected is chosen:
-                        self.selected = self.selected_stamp = None
-                        self.pending_selection = self.pending_selection_stamp = None
-                        self.pending_selection_set = False
-                        self.hybrid_fallback_deadline = None
-                        chosen = stamp = None
-                        fallback_stop_reason = ('transient_hold_invalidated' if deadline is not None
-                                                else 'active_path_invalidated')
+                        if (pending_usable and self.pending_selection_set and
+                                self.pending_selection is pending and
+                                self.pending_selection_stamp == pending_stamp):
+                            self.selected, self.selected_stamp = pending, pending_stamp
+                            self.pending_selection = self.pending_selection_stamp = None
+                            self.pending_selection_set = False
+                            self.hybrid_fallback_deadline = None
+                            chosen, stamp = pending, pending_stamp
+                        else:
+                            self.selected = self.selected_stamp = None
+                            self.pending_selection = self.pending_selection_stamp = None
+                            self.pending_selection_set = False
+                            self.hybrid_fallback_deadline = None
+                            chosen = stamp = None
+                            fallback_stop_reason = ('transient_hold_invalidated' if deadline is not None
+                                                    else 'active_path_invalidated')
                     else:
                         chosen, stamp = self.selected, self.selected_stamp
         output = Trajectory()
