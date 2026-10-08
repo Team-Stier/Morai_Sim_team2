@@ -91,6 +91,9 @@ runtime_readiness_policy:
     last_gps_fix_must_not_be_reused_as_current_position_truth: true
 
 contract_modules:
+  pointpainting:
+    path: messages/pointpainting.yaml
+    required_contract_version: 0.1.0
   static_wall_messages:
     path: messages/static_wall_messages.yaml
     required_contract_version: 0.1.0
@@ -244,7 +247,7 @@ nodes:
     owner_package: camera_perception_pkg
     executable: camera_perception_node
     visibility: public_boundary
-    status: reserved_not_implemented
+    status: development_front_semantic_scores
     diagram_description_ko: 세 카메라 영상에서 객체와 차선 관측을 생성
   - name: lidar_perception_node
     owner_package: lidar_perception_pkg
@@ -329,6 +332,13 @@ nodes:
     executable: rviz
     visibility: package_internal
     status: development_visualization_only
+
+  - name: pointpainting_node
+    owner_package: world_model_pkg
+    executable: pointpainting_node
+    status: development_pointpainting_projection_unverified
+    visibility: public_boundary
+    diagram_description_ko: 카메라 클래스 확률을 LiDAR 원본 점에 부착
 
 topics:
   - name: /molit/sensors/camera/front/image/compressed
@@ -446,7 +456,7 @@ topics:
   - name: /molit/sensors/lidar/points
     owner_package: morai_interface_pkg
     producers: [morai_velodyne_cloud]
-    consumers: [morai_lidar_watchdog, lidar_perception_node, localization_node]
+    consumers: [morai_lidar_watchdog, lidar_perception_node, localization_node, pointpainting_node]
     runtime_graph_caller: morai_velodyne_manager
     status: provisional_disabled
     visibility: public
@@ -1020,7 +1030,42 @@ topics:
     timeout_sec: display_only_configurable_not_driving_freshness
     invalid_data_policy: Delete tracks on invalid_stale_reset_or_clock_stall
 
+  - name: /molit/perception/camera/front/semantic_scores
+    owner_package: camera_perception_pkg
+    producers: [camera_perception_node]
+    consumers: [pointpainting_node]
+    status: development_front_semantic_scores
+    visibility: public
+    data_meaning: Front RGB PIDNet six-class softmax probabilities; see messages/pointpainting.yaml
+    diagram_description_ko: 전방 영상의 픽셀별 6개 클래스 확률
+    data_type: sensor_msgs/Image
+    unit: probability
+    frame: camera_front_optical_frame
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 20.0
+    queue_policy: publisher_queue_1_latest_pending_frame
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: discard_invalid_image_or_model_failure
+  - name: /molit/world_model/painted_points
+    owner_package: world_model_pkg
+    producers: [pointpainting_node]
+    consumers: []
+    status: development_pointpainting_projection_unverified
+    visibility: public
+    data_meaning: Raw LiDAR points decorated with six camera probabilities, painted flag and original image stamp; see messages/pointpainting.yaml
+    diagram_description_ko: 카메라 클래스 확률과 영상 시각을 부착한 LiDAR 원본 점
+    data_type: sensor_msgs/PointCloud2
+    unit: original_sensor_fields_and_probability
+    frame: lidar_link
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_1_bounded_approximate_time_sync
+    timeout_sec: development_pair_max_age_0_5_sec_configurable
+    invalid_data_policy: reject_stale_zero_regressing_or_mismatched_pairs_unobserved_points_have_zero_scores
+
 messages:
+  - type: sensor_msgs/Image
+    status: external_standard
   - type: visualization_msgs/MarkerArray
     status: approved_standard_type_visualization_only
   - type: sensor_msgs/CompressedImage
@@ -1196,13 +1241,14 @@ package_boundaries:
       - /molit/map/status
   camera_perception_pkg:
     diagram_summary_ko: 카메라 영상에서 객체·차선·신호·주행 가능 영역 관측 생성
-    runtime_status: public_contract_reserved_not_implemented
+    runtime_status: development_front_semantic_scores
     public_nodes: [camera_perception_node]
     inputs:
       - /molit/sensors/camera/front/image/compressed
       - /molit/sensors/camera/left/image/compressed
       - /molit/sensors/camera/right/image/compressed
     outputs:
+      - /molit/perception/camera/front/semantic_scores
       - /molit/perception/camera/front/observations
       - /molit/perception/camera/left/observations
       - /molit/perception/camera/right/observations
@@ -1252,8 +1298,10 @@ package_boundaries:
   world_model_pkg:
     diagram_summary_ko: 지도·차량 상태·센서 관측을 측정시각 기준으로 통합
     runtime_status: development_map_object_tracking_unverified
-    public_nodes: [world_model_node]
+    public_nodes: [world_model_node, pointpainting_node]
     inputs:
+      - /molit/sensors/lidar/points
+      - /molit/perception/camera/front/semantic_scores
       - /molit/map/hd_map
       - /molit/map/status
       - /molit/perception/camera/front/observations
@@ -1268,6 +1316,7 @@ package_boundaries:
       - /molit/route/context
       - /molit/route/status
     outputs:
+      - /molit/world_model/painted_points
       - /molit/world_model/scene
       - /molit/world_model/status
   path_planning_pkg:
@@ -1400,10 +1449,13 @@ architecture_views:
       - localization_node
       - global_route_manager_node
       - world_model_node
+      - pointpainting_node
       - path_planner_node
       - vehicle_controller_node
       - safety_supervisor_node
     topics:
+      - /molit/perception/camera/front/semantic_scores
+      - /molit/world_model/painted_points
       - /molit/sensors/camera/front/image/compressed
       - /molit/sensors/camera/left/image/compressed
       - /molit/sensors/camera/right/image/compressed

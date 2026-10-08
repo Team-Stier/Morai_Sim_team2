@@ -67,6 +67,8 @@ EXPECTED_FINAL_COMMAND_TIMEOUT_POLICY = (
     "never_repeat_last_nonzero_command_and_send_only_a_packet_verified_fail_closed_stop"
 )
 EXPECTED_TOPIC_FRAME_CONTRACT = {
+    "/molit/perception/camera/front/semantic_scores": {"frame": "camera_front_optical_frame"},
+    "/molit/world_model/painted_points": {"frame": "lidar_link"},
     "/molit/internal/visualization/planner_status": {"frame": "not_applicable"},
     "/molit/internal/visualization/vehicle_markers": {"frame": "not_applicable"},
     "/molit/internal/visualization/lidar_markers": {"frame": "not_applicable"},

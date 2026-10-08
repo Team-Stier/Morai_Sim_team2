@@ -1,0 +1,11 @@
+<launch>
+  <arg name="weights"/>
+  <arg name="python" default="python3"/>
+  <arg name="use_sim_time" default="false"/>
+  <param name="/use_sim_time" value="$(arg use_sim_time)"/>
+  <include file="$(find camera_perception_pkg)/launch/camera_perception_pkg.launch">
+    <arg name="weights" value="$(arg weights)"/>
+    <arg name="python" value="$(arg python)"/>
+  </include>
+  <include file="$(find world_model_pkg)/launch/pointpainting.launch"/>
+</launch>

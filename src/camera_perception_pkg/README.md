@@ -26,7 +26,7 @@
 
 ## 공개 ROS 입출력
 
-현재 상태는 **이름 승인, 구현 예약**이다. 내부 모델, 전처리와 보조 노드는
+현재 상태는 **전방 PIDNet 6채널 확률맵 구현, 객체·차선·신호 관측 예약**이다. 내부 모델, 전처리와 보조 노드는
 자유롭게 구성하되 공개 경계는 `camera_perception_node` 하나로 유지한다.
 
 ![Camera Perception 공개 입출력](docs/interface_io.svg)
@@ -41,12 +41,17 @@
 | 입력 | `/molit/sensors/camera/front/image/compressed` | `sensor_msgs/CompressedImage` |
 | 입력 | `/molit/sensors/camera/left/image/compressed` | `sensor_msgs/CompressedImage` |
 | 입력 | `/molit/sensors/camera/right/image/compressed` | `sensor_msgs/CompressedImage` |
+| 출력 | `/molit/perception/camera/front/semantic_scores` | `sensor_msgs/Image` |
 | 출력 | `/molit/perception/camera/front/observations` | `common_msgs_pkg/CameraObservationArray` |
 | 출력 | `/molit/perception/camera/left/observations` | `common_msgs_pkg/CameraObservationArray` |
 | 출력 | `/molit/perception/camera/right/observations` | `common_msgs_pkg/CameraObservationArray` |
 | 출력 | `/molit/perception/camera/status` | `common_msgs_pkg/ComponentStatus` |
 
-`ComponentStatus` 스키마만 구현됐고 `CameraObservationArray`와 노드는 미구현이다.
+`camera_perception_node`는 전방 RGB와 학습한 PIDNet-S로 원본 해상도의
+`32FC6` softmax 확률맵을 발행한다. 원본 영상 header를 보존한다.
+클래스 순서는 중앙 [PointPainting 계약](../ros_architecture_pkg/config/messages/pointpainting.yaml)을 따른다.
+좌·우 영상 처리, `CameraObservationArray`, camera status 발행은 미구현이다.
+실행·의존성·검증은 [PointPainting 문서](docs/pointpainting.md)에 정리했다.
 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 
 World Model이 관측 시각의 pose를 사용해 좌표를 통합하므로 이 패키지는 최신 Localization pose로 검출 결과를 임의 투영하지 않는다.

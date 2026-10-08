@@ -46,10 +46,12 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 - [Mermaid 원본](docs/interface_io.mmd)
 - [PNG 이미지](docs/interface_io.png)
 
-**공개 node (exact):** `world_model_node`
+**공개 node (exact):** `world_model_node`, `pointpainting_node`
 
 | 구분 | Topic | Type |
 |---|---|---|
+| 입력 | `/molit/sensors/lidar/points` | `sensor_msgs/PointCloud2` |
+| 입력 | `/molit/perception/camera/front/semantic_scores` | `sensor_msgs/Image` |
 | 입력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
 | 입력 | `/molit/map/status` | `common_msgs_pkg/ComponentStatus` |
 | 입력 | `/molit/perception/camera/front/observations` | `common_msgs_pkg/CameraObservationArray` |
@@ -63,6 +65,7 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 | 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
 | 입력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` |
 | 입력 | `/molit/route/status` | `common_msgs_pkg/ComponentStatus` |
+| 출력 | `/molit/world_model/painted_points` | `sensor_msgs/PointCloud2` |
 | 출력 | `/molit/world_model/scene` | `common_msgs_pkg/WorldModel` |
 | 출력 | `/molit/world_model/status` | `common_msgs_pkg/ComponentStatus` |
 
@@ -70,6 +73,11 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 `LidarObservationArray`, `TrackedObject`, `WorldModel` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 `HdMap`과 `RouteContext` 스키마도 구현됐으며, 교차 센서 융합 계층은 미구현이다.
+
+`pointpainting_node`는 별도 실행 가능한 첫 Camera/LiDAR fusion 경로다.
+원본 LiDAR 점에 전방 영상의 6개 클래스 확률을 부착한다. 중앙 장착값의
+개발용 투영이며 카메라 TF를 발행하지 않는다. 기존 객체 추적과 Planner는
+이 출력을 아직 소비하지 않는다. [세부 계약과 검증](docs/pointpainting.md)을 따른다.
 
 좌표 변환에는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)에서 승인된 frame과 extrinsic만 사용한다. 시간 정렬에는 중앙 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)을 적용하고, 각 관측의 source stamp를 fusion publication time으로 교체하지 않는다.
 

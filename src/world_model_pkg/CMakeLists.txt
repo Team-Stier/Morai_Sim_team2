@@ -7,6 +7,9 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   ros_architecture_pkg
   tf2_ros
+  sensor_msgs
+  cv_bridge
+  message_filters
 )
 catkin_python_setup()
 catkin_package(CATKIN_DEPENDS
@@ -15,9 +18,12 @@ catkin_package(CATKIN_DEPENDS
   rospy
   ros_architecture_pkg
   tf2_ros
+  sensor_msgs
+  cv_bridge
+  message_filters
 )
 
-catkin_install_python(PROGRAMS scripts/world_model_node
+catkin_install_python(PROGRAMS scripts/world_model_node scripts/pointpainting_node
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 if(CATKIN_ENABLE_TESTING)
@@ -25,7 +31,9 @@ if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_tracking.py)
   catkin_add_nosetests(test/test_transforms.py)
   catkin_add_nosetests(test/test_interface_contract.py)
+  catkin_add_nosetests(test/test_pointpainting.py)
   add_rostest(test/world_model.test)
+  add_rostest(test/pointpainting.test)
 endif()
 
 install(FILES README.md DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
