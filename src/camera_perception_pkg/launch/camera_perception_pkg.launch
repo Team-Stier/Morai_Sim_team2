@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Runtime entities will be added after central contract approval. -->
+  <arg name="weights"/>
+  <arg name="python" default="python3"/>
+  <node pkg="camera_perception_pkg" type="camera_perception_node" name="camera_perception_node"
+        ns="/" output="screen" launch-prefix="$(arg python)">
+    <rosparam command="load" file="$(find camera_perception_pkg)/config/pointpainting.yaml"/>
+    <param name="weights" value="$(arg weights)"/>
+  </node>
 </launch>

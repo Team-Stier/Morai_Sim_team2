@@ -1,0 +1,43 @@
+schema_version: 1
+contract_version: 0.1.0
+status: development_pointpainting_projection_unverified
+authority:
+  package: ros_architecture_pkg
+  rule: Semantic channel order, projection assumptions and decorated cloud fields are defined here.
+classes: [background, person, animal, box, bollard, barrier]
+score_image:
+  encoding: 32FC6
+  layout: H_W_class_interleaved_float32
+  values: softmax_of_full_resolution_logits
+  source_stamp: preserve_front_compressed_image_header
+front_camera:
+  source: "참고파일들/2026_molit_comp_cam_set (1).json"
+  horizontal_fov_deg: 90.0
+  reference_size: [1280, 720]
+  intrinsic_model: pinhole_square_pixels_fx_fy_width_over_2_tan_half_horizontal_fov
+  principal_point: image_center
+  distortion: zero
+  note: Original focalLengthpixel=320 conflicts with 1280px/90deg FOV-derived 640; projection uses FOV candidate and requires visual verification.
+extrinsics:
+  source: tf/sensor_extrinsics.yaml
+  method: inverse_base_camera_mount_times_optical_rotation_times_base_lidar_mount
+  publish_tf: false
+  calibration_verified: false
+painted_cloud:
+  preserve: all_original_field_values_point_order_count_and_lidar_header_stamp_frame
+  output_sequence: rospy_publisher_sequence_not_source_sequence
+  append_float32: [score_0, score_1, score_2, score_3, score_4, score_5]
+  append_uint8: [painted]
+  append_uint32: [image_stamp_sec, image_stamp_nsec]
+  unobserved: painted_0_and_all_scores_0_not_background_prediction
+  observed: painted_1_and_six_softmax_probabilities
+  image_time: original_score_image_stamp_repeated_per_point
+  motion_compensated: false
+  occlusion_filtered: false
+  driving_consumer: none
+timestamp_policy:
+  clock_domain: canonical_message_clock
+  pairing: bounded_approximate_time_sync
+  input_loss: no_output_no_cached_pair_republication
+  regression: reject_within_clock_epoch_clear_sync_on_ros_clock_reset
+  scan_deskew: not_implemented

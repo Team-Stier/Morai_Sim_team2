@@ -5,6 +5,8 @@
 
   <arg name="start_hd_map" default="false"/>
   <arg name="start_camera_perception" default="false"/>
+  <arg name="camera_weights" default=""/>
+  <arg name="camera_python" default="python3"/>
   <arg name="start_lidar_perception" default="false"/>
   <arg name="start_localization" default="false"/>
   <arg name="start_global_route_manager" default="false"/>
@@ -33,7 +35,10 @@
   </group>
 
   <group if="$(arg start_camera_perception)">
-    <include file="$(find camera_perception_pkg)/launch/camera_perception_pkg.launch"/>
+    <include file="$(find camera_perception_pkg)/launch/camera_perception_pkg.launch">
+      <arg name="weights" value="$(arg camera_weights)"/>
+      <arg name="python" value="$(arg camera_python)"/>
+    </include>
   </group>
 
   <group if="$(arg start_lidar_perception)">

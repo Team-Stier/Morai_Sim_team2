@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Front-camera semantic score producer; keep only the newest pending frame."""
+import threading
+import cv2
+import numpy as np
+import rospy
+from cv_bridge import CvBridge
+from sensor_msgs.msg import CompressedImage, Image
+from camera_perception_pkg.semantic import Segmenter
+
+
+class CameraNode:
+    def __init__(self):
+        self.segmenter = Segmenter(rospy.get_param('~weights'), rospy.get_param('~device'))
+        self.bridge = CvBridge()
+        self.pending = None
+        self.lock = threading.Lock()
+        self.publisher = rospy.Publisher('/molit/perception/camera/front/semantic_scores', Image, queue_size=1)
+        self.subscriber = rospy.Subscriber('/molit/sensors/camera/front/image/compressed', CompressedImage,
+                                          self.receive, queue_size=1, buff_size=4 * 1024 * 1024)
+        threading.Thread(target=self.process, daemon=True).start()
+
+    def receive(self, message):
+        with self.lock:
+            self.pending = message
+
+    def process(self):
+        while not rospy.is_shutdown():
+            with self.lock:
+                message, self.pending = self.pending, None
+            if message is None:
+                rospy.rostime.wallsleep(0.005)
+                continue
+            try:
+                bgr = cv2.imdecode(np.frombuffer(message.data, np.uint8), cv2.IMREAD_COLOR)
+                if bgr is None or message.header.stamp.is_zero():
+                    continue
+                scores = self.segmenter(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
+                output = self.bridge.cv2_to_imgmsg(scores, encoding='passthrough')
+                output.header = message.header
+                self.publisher.publish(output)
+            except (ValueError, RuntimeError, cv2.error) as error:
+                rospy.logwarn_throttle(2, 'PIDNet frame rejected: %s', error)
+
+
+if __name__ == '__main__':
+    rospy.init_node('camera_perception_node')
+    CameraNode()
+    rospy.spin()

@@ -40,8 +40,8 @@ flowchart LR
     subgraph pkg_003["hd_map_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_013["hd_map_server_node<br/>exec: hd_map_server_node<br/>state: RESERVED (development_frenet_rddf_unverified)"]
     end
-    subgraph pkg_004["camera_perception_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_014["camera_perception_node<br/>exec: camera_perception_node<br/>state: RESERVED (reserved_not_implemented)"]
+    subgraph pkg_004["camera_perception_pkg<br/>runtime: development_front_semantic_scores"]
+        node_014["camera_perception_node<br/>exec: camera_perception_node<br/>state: RESERVED (development_front_semantic_scores)"]
     end
     subgraph pkg_005["lidar_perception_pkg<br/>runtime: development_not_runtime_verified"]
         node_015["lidar_perception_node<br/>exec: lidar_perception_node<br/>state: RESERVED (development_not_runtime_verified)"]
@@ -54,6 +54,7 @@ flowchart LR
     end
     subgraph pkg_008["world_model_pkg<br/>runtime: development_map_object_tracking_unverified"]
         node_019["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (development_map_object_tracking_unverified)"]
+        node_027["pointpainting_node<br/>exec: pointpainting_node<br/>state: RESERVED (development_pointpainting_projection_unverified)"]
     end
     subgraph pkg_009["path_planning_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_020["path_planner_node<br/>exec: path_planner_node.py<br/>state: RESERVED (development_frenet_rddf_unverified)"]
@@ -117,6 +118,8 @@ flowchart LR
     topic_038["/molit/internal/visualization/vehicle_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
     topic_039["/molit/internal/visualization/lidar_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
     topic_040["/molit/internal/visualization/world_model_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_041["/molit/perception/camera/front/semantic_scores<br/>type: sensor_msgs/Image<br/>state: RESERVED"]
+    topic_042["/molit/world_model/painted_points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
 
     node_000 --> topic_000
     topic_000 --> node_014
@@ -136,6 +139,7 @@ flowchart LR
     topic_007 --> node_009
     topic_007 --> node_015
     topic_007 --> node_016
+    topic_007 --> node_027
     node_009 --> topic_008
     topic_008 --> node_015
     topic_008 --> node_011
@@ -260,6 +264,9 @@ flowchart LR
     topic_039 --> node_026
     node_025 --> topic_040
     topic_040 --> node_026
+    node_014 --> topic_041
+    topic_041 --> node_027
+    node_027 --> topic_042
     external_ingress --> node_000
     external_ingress --> node_001
     external_ingress --> node_002
@@ -297,6 +304,7 @@ flowchart LR
     class node_024 reservedNode;
     class node_025 reservedNode;
     class node_026 reservedNode;
+    class node_027 reservedNode;
     class topic_000 liveTopic;
     class topic_001 liveTopic;
     class topic_002 liveTopic;
@@ -338,3 +346,5 @@ flowchart LR
     class topic_038 reservedTopic;
     class topic_039 reservedTopic;
     class topic_040 reservedTopic;
+    class topic_041 reservedTopic;
+    class topic_042 reservedTopic;

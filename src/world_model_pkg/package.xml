@@ -11,6 +11,12 @@
   <depend>rospy</depend>
   <depend>ros_architecture_pkg</depend>
   <depend>tf2_ros</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>message_filters</depend>
+  <exec_depend>ros_numpy</exec_depend>
+  <exec_depend>tf</exec_depend>
+  <exec_depend>python3-rospkg</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <test_depend>python3-nose</test_depend>

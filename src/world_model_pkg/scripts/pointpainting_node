@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Synchronize image scores and raw LiDAR; publish painted sensor-frame points."""
+from pathlib import Path
+import message_filters
+import rospkg
+import rospy
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image, PointCloud2
+from world_model_pkg.pointpainting import camera_geometry, painted_cloud
+
+
+class PaintingNode:
+    def __init__(self):
+        self.bridge = CvBridge()
+        self.config_root = Path(rospkg.RosPack().get_path('ros_architecture_pkg')) / 'config'
+        self.max_age = rospy.get_param('~max_age_sec')
+        self.slop = rospy.get_param('~sync_slop_sec')
+        self.last_clock = rospy.Time.now()
+        self.last_stamps = (rospy.Time(0), rospy.Time(0))
+        self.geometry = {}
+        self.publisher = rospy.Publisher('/molit/world_model/painted_points', PointCloud2, queue_size=1)
+        self.cloud = message_filters.Subscriber('/molit/sensors/lidar/points', PointCloud2, queue_size=1)
+        self.scores = message_filters.Subscriber('/molit/perception/camera/front/semantic_scores', Image,
+                                               queue_size=1, buff_size=32 * 1024 * 1024)
+        self.sync = message_filters.ApproximateTimeSynchronizer(
+            [self.cloud, self.scores], rospy.get_param('~sync_queue_size'), self.slop, reset=True)
+        self.sync.registerCallback(self.process)
+
+    def process(self, cloud, image):
+        now = rospy.Time.now()
+        stamps = (cloud.header.stamp, image.header.stamp)
+        if now < self.last_clock:
+            self.last_stamps = (rospy.Time(0), rospy.Time(0))
+        self.last_clock = now
+        if (cloud.header.frame_id != 'lidar_link' or image.header.frame_id != 'camera_front_optical_frame'
+                or image.encoding != '32FC6'):
+            return
+        if any(stamp.is_zero() or stamp <= previous or not 0 <= (now - stamp).to_sec() <= self.max_age
+               for stamp, previous in zip(stamps, self.last_stamps)):
+            return
+        if abs((stamps[0] - stamps[1]).to_sec()) > self.slop:
+            return
+        try:
+            scores = self.bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
+            shape = (image.width, image.height)
+            if shape not in self.geometry:
+                self.geometry[shape] = camera_geometry(self.config_root, *shape)
+            transform, intrinsic = self.geometry[shape]
+            output = painted_cloud(cloud, image, scores, transform, intrinsic)
+            self.publisher.publish(output)
+            self.last_stamps = stamps
+        except (ValueError, RuntimeError) as error:
+            rospy.logwarn_throttle(2, 'PointPainting pair rejected: %s', error)
+
+
+if __name__ == '__main__':
+    rospy.init_node('pointpainting_node')
+    PaintingNode()
+    rospy.spin()

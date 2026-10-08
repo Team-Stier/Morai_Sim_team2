@@ -1,0 +1,4 @@
+<launch>
+  <include file="$(find world_model_pkg)/launch/pointpainting.launch"/>
+  <test test-name="pointpainting_transport" pkg="world_model_pkg" type="test_pointpainting_node.py" time-limit="30"/>
+</launch>

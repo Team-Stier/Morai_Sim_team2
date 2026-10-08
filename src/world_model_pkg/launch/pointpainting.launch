@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="world_model_pkg" type="pointpainting_node" name="pointpainting_node" ns="/" output="screen">
+    <rosparam command="load" file="$(find world_model_pkg)/config/pointpainting.yaml"/>
+  </node>
+</launch>

@@ -17,10 +17,11 @@ flowchart LR
         local_node_000["camera_perception_node<br/>역할: 세 카메라 영상에서 객체와 차선 관측을 생성<br/>실행: camera_perception_node<br/>상태: 설계 예약·미구현"]
     end
     subgraph OUTPUTS["출력 (발행)"]
-        output_000["/molit/perception/camera/front/observations<br/>설명: 전방 영상의 객체·차선·신호·빈 공간 관측<br/>메시지: common_msgs_pkg/CameraObservationArray<br/>상태: 설계 예약·미구현"]
-        output_001["/molit/perception/camera/left/observations<br/>설명: 좌측 영상의 객체·차선·신호·빈 공간 관측<br/>메시지: common_msgs_pkg/CameraObservationArray<br/>상태: 설계 예약·미구현"]
-        output_002["/molit/perception/camera/right/observations<br/>설명: 우측 영상의 객체·차선·신호·빈 공간 관측<br/>메시지: common_msgs_pkg/CameraObservationArray<br/>상태: 설계 예약·미구현"]
-        output_003["/molit/perception/camera/status<br/>설명: 영상 신선도·처리 상태·관측 유효성<br/>메시지: common_msgs_pkg/ComponentStatus<br/>상태: 설계 예약·미구현"]
+        output_000["/molit/perception/camera/front/semantic_scores<br/>설명: 전방 영상의 픽셀별 6개 클래스 확률<br/>메시지: sensor_msgs/Image<br/>상태: 설계 예약·미구현"]
+        output_001["/molit/perception/camera/front/observations<br/>설명: 전방 영상의 객체·차선·신호·빈 공간 관측<br/>메시지: common_msgs_pkg/CameraObservationArray<br/>상태: 설계 예약·미구현"]
+        output_002["/molit/perception/camera/left/observations<br/>설명: 좌측 영상의 객체·차선·신호·빈 공간 관측<br/>메시지: common_msgs_pkg/CameraObservationArray<br/>상태: 설계 예약·미구현"]
+        output_003["/molit/perception/camera/right/observations<br/>설명: 우측 영상의 객체·차선·신호·빈 공간 관측<br/>메시지: common_msgs_pkg/CameraObservationArray<br/>상태: 설계 예약·미구현"]
+        output_004["/molit/perception/camera/status<br/>설명: 영상 신선도·처리 상태·관측 유효성<br/>메시지: common_msgs_pkg/ComponentStatus<br/>상태: 설계 예약·미구현"]
     end
 
     input_000 --> local_node_000
@@ -30,6 +31,7 @@ flowchart LR
     local_node_000 --> output_001
     local_node_000 --> output_002
     local_node_000 --> output_003
+    local_node_000 --> output_004
 
     class local_node_000 reservedNode;
     class input_000 liveTopic;
@@ -39,3 +41,4 @@ flowchart LR
     class output_001 reservedTopic;
     class output_002 reservedTopic;
     class output_003 reservedTopic;
+    class output_004 reservedTopic;
