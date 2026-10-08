@@ -38,6 +38,9 @@ class PaintingTransportTest(unittest.TestCase):
         np.testing.assert_array_equal(result['intensity'], records['intensity'])
         np.testing.assert_array_equal(result['painted'], [1, 0])
         np.testing.assert_array_equal(result['score_1'], [1, 0])
+        np.testing.assert_array_equal(result['class_id'], [1, 255])
+        np.testing.assert_array_equal(result['confidence'], [1, 0])
+        np.testing.assert_array_equal(result['rgb'].view(np.uint32), [0xff4646, 0x3c414b])
         np.testing.assert_array_equal(result['image_stamp_nsec'], image.header.stamp.nsecs)
         cloud.header.stamp = rospy.Time.now() - rospy.Duration(2)
         image.header.stamp = cloud.header.stamp

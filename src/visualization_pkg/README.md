@@ -33,7 +33,7 @@ roslaunch visualization_pkg visualization_pkg.launch
 - [Mermaid 원본](docs/interface_io.mmd)
 - [PNG 이미지](docs/interface_io.png)
 
-**공개 node (exact):** `vehicle_visualizer_node`
+**공개 node (exact):** `vehicle_visualizer_node`, `vehicle_rviz`
 
 | 구분 | Topic | Type |
 |---|---|---|
@@ -43,8 +43,10 @@ roslaunch visualization_pkg visualization_pkg.launch
 | 입력 | `/molit/localization/local/odometry` | `nav_msgs/Odometry` |
 | 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
 | 입력 | `/molit/planning/status` | `common_msgs_pkg/ComponentStatus` |
+| 입력 | `/molit/world_model/painted_points` | `sensor_msgs/PointCloud2` |
+| 입력 | `/molit/sensors/camera/front/image/compressed` | `sensor_msgs/CompressedImage` |
 
-공개 출력은 없다. 패키지 내부 `vehicle_rviz`만
+공개 출력은 없다. 표시 노드 `vehicle_rviz`만
 `/molit/internal/visualization/vehicle_markers`, `lidar_markers`,
 `world_model_markers` (`visualization_msgs/MarkerArray`)를 구독한다. 마커는 위치 추정이나
 주행 판단의 입력이 아니다. raw GPS/IMU, 다른
@@ -195,3 +197,11 @@ HD Map의 원본 터널 벽 두 개를 기존 내부 `hd_map_markers`의 `static
 미리보기의 평면 높이로 내리지 않는다. `config/hd_map_display.yaml`의
 `hd_map_wall_display_height_m: 5.0`은 표시용 돌출 높이이며 실측 높이가 아니다.
 이 마커는 Localization 입력이 아니며 표시만으로 드리프트가 보정되지 않는다.
+
+## PointPainting 표시
+
+`roslaunch visualization_pkg pointpainting.launch`는 `lidar_link` 기준 점군과 전방 RGB 영상을 표시한다. 통합 추론 실행에서는 `roslaunch system_bringup_pkg pointpainting.launch weights:=... python:=... rviz:=true`를 사용한다. 센서 브리지는 별도로 연결한다.
+
+청록색=background, 빨강=person, 주황=animal, 노랑=box, 초록=bollard, 보라=barrier, 어두운 회색=카메라 미관측이다. RViz Select 도구로 점을 선택하면 Selection 패널에 `class_id`, `confidence`, `score_0`~`score_5`, 원본 LiDAR/영상 측정시각을 조회할 수 있다. `Confidence (optional)` 표시를 켜면 `confidence` 값을 색으로 확인한다. 카메라 TF는 발행하지 않는다.
+
+이 PC의 표준 압축영상 플러그인 준비와 실측 보정·출력 수치는 [PointPainting 검증 기록](../world_model_pkg/docs/pointpainting_calibration.md)을 참고한다.

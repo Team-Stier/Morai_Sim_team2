@@ -22,7 +22,8 @@
   <build_depend>qtbase5-dev</build_depend>
   <test_depend>rostest</test_depend>
   <test_depend>lidar_perception_pkg</test_depend>
-  <test_depend>sensor_msgs</test_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>compressed_image_transport</exec_depend>
   <test_depend>std_msgs</test_depend>
   <test_depend>rosgraph</test_depend>
   <test_depend>rosgraph_msgs</test_depend>

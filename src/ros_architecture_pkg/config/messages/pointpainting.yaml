@@ -1,10 +1,18 @@
 schema_version: 1
-contract_version: 0.1.0
-status: development_pointpainting_projection_unverified
+contract_version: 0.2.0
+status: development_pointpainting_static_scene_checked
 authority:
   package: ros_architecture_pkg
   rule: Semantic channel order, projection assumptions and decorated cloud fields are defined here.
 classes: [background, person, animal, box, bollard, barrier]
+display_palette_rgb:
+  - [80, 180, 220]  # background
+  - [255, 70, 70]   # person
+  - [255, 145, 40]  # animal
+  - [255, 220, 40]  # box
+  - [50, 235, 100]  # bollard
+  - [195, 100, 255] # barrier
+  - [60, 65, 75]    # unobserved; not a semantic class
 score_image:
   encoding: 32FC6
   layout: H_W_class_interleaved_float32
@@ -14,21 +22,33 @@ front_camera:
   source: "참고파일들/2026_molit_comp_cam_set (1).json"
   horizontal_fov_deg: 90.0
   reference_size: [1280, 720]
-  intrinsic_model: pinhole_square_pixels_fx_fy_width_over_2_tan_half_horizontal_fov
+  intrinsic_matrix: [[640.0, 0.0, 640.0], [0.0, 640.0, 360.0], [0.0, 0.0, 1.0]]
+  intrinsic_model: pinhole_scaled_from_reference_size
   principal_point: image_center
   distortion: zero
-  note: Original focalLengthpixel=320 conflicts with 1280px/90deg FOV-derived 640; projection uses FOV candidate and requires visual verification.
+  input_mode: standard_RGB_camera_Ground_Truth_None
+  note: Active standard Camera UI declares Horizontal FOV=90; focalLengthpixel=320 is an inactive Physical Camera setting. RGB input and measured projection checks are documented in world_model_pkg/docs/pointpainting_calibration.md.
 extrinsics:
   source: tf/sensor_extrinsics.yaml
   method: inverse_base_camera_mount_times_optical_rotation_times_base_lidar_mount
   publish_tf: false
   calibration_verified: false
+  projection_check:
+    date: "2026-10-08"
+    evidence: world_model_pkg/docs/evidence/pointpainting_calibration_20261008.json
+    scope: one_stationary_scene_9_RGB_structure_centerlines_25_measured_LiDAR_points_3_repeat_scans
+    median_centerline_distance_px: 1.1098339596834212
+    p95_centerline_distance_px: 2.244864083380415
+    full_6dof_and_dynamic_alignment_verified: false
 painted_cloud:
   preserve: all_original_field_values_point_order_count_and_lidar_header_stamp_frame
   output_sequence: rospy_publisher_sequence_not_source_sequence
-  append_float32: [score_0, score_1, score_2, score_3, score_4, score_5]
-  append_uint8: [painted]
+  append_float32: [score_0, score_1, score_2, score_3, score_4, score_5, confidence, rgb]
+  append_uint8: [painted, class_id]
   append_uint32: [image_stamp_sec, image_stamp_nsec]
+  class_id: observed_argmax_0_to_5_unobserved_255
+  confidence: observed_max_probability_unobserved_0
+  rgb: PCL_FLOAT32_bitcast_of_packed_0x00RRGGBB_from_display_palette_rgb_not_numeric_float_color
   unobserved: painted_0_and_all_scores_0_not_background_prediction
   observed: painted_1_and_six_softmax_probabilities
   image_time: original_score_image_stamp_repeated_per_point

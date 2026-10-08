@@ -54,7 +54,7 @@ flowchart LR
     end
     subgraph pkg_008["world_model_pkg<br/>runtime: development_map_object_tracking_unverified"]
         node_019["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (development_map_object_tracking_unverified)"]
-        node_027["pointpainting_node<br/>exec: pointpainting_node<br/>state: RESERVED (development_pointpainting_projection_unverified)"]
+        node_027["pointpainting_node<br/>exec: pointpainting_node<br/>state: RESERVED (development_pointpainting_static_scene_checked)"]
     end
     subgraph pkg_009["path_planning_pkg<br/>runtime: public_contract_reserved_not_implemented"]
         node_020["path_planner_node<br/>exec: path_planner_node.py<br/>state: RESERVED (development_frenet_rddf_unverified)"]
@@ -123,6 +123,7 @@ flowchart LR
 
     node_000 --> topic_000
     topic_000 --> node_014
+    topic_000 --> node_026
     node_001 --> topic_001
     topic_001 --> node_014
     node_002 --> topic_002
@@ -267,6 +268,7 @@ flowchart LR
     node_014 --> topic_041
     topic_041 --> node_027
     node_027 --> topic_042
+    topic_042 --> node_026
     external_ingress --> node_000
     external_ingress --> node_001
     external_ingress --> node_002

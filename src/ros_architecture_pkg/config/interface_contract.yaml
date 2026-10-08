@@ -330,13 +330,14 @@ nodes:
     owner_package: visualization_pkg
     implementation_package: rviz
     executable: rviz
-    visibility: package_internal
+    visibility: public_boundary
     status: development_visualization_only
+    diagram_description_ko: RGB 영상과 클래스 확률이 부착된 점군을 읽기 전용으로 표시
 
   - name: pointpainting_node
     owner_package: world_model_pkg
     executable: pointpainting_node
-    status: development_pointpainting_projection_unverified
+    status: development_pointpainting_static_scene_checked
     visibility: public_boundary
     diagram_description_ko: 카메라 클래스 확률을 LiDAR 원본 점에 부착
 
@@ -344,7 +345,7 @@ topics:
   - name: /molit/sensors/camera/front/image/compressed
     owner_package: morai_interface_pkg
     producers: [morai_camera_front]
-    consumers: [camera_perception_node]
+    consumers: [camera_perception_node, vehicle_rviz]
     status: development_live_transport_verified
     visibility: public
     data_meaning: Front camera JPEG image observation
@@ -1049,10 +1050,10 @@ topics:
   - name: /molit/world_model/painted_points
     owner_package: world_model_pkg
     producers: [pointpainting_node]
-    consumers: []
-    status: development_pointpainting_projection_unverified
+    consumers: [vehicle_rviz]
+    status: development_pointpainting_static_scene_checked
     visibility: public
-    data_meaning: Raw LiDAR points decorated with six camera probabilities, painted flag and original image stamp; see messages/pointpainting.yaml
+    data_meaning: Raw LiDAR points decorated with six camera probabilities, class/confidence/RGB display fields, painted flag and original image stamp; see messages/pointpainting.yaml
     diagram_description_ko: 카메라 클래스 확률과 영상 시각을 부착한 LiDAR 원본 점
     data_type: sensor_msgs/PointCloud2
     unit: original_sensor_fields_and_probability
@@ -1418,7 +1419,7 @@ package_boundaries:
   visualization_pkg:
     diagram_summary_ko: 위치 추정 차량·LiDAR 검출·map 추적 객체를 RViz에 표시
     runtime_status: development_visualization_only
-    public_nodes: [vehicle_visualizer_node]
+    public_nodes: [vehicle_visualizer_node, vehicle_rviz]
     inputs:
       - /molit/perception/lidar/observations
       - /molit/world_model/scene
@@ -1426,6 +1427,8 @@ package_boundaries:
       - /molit/localization/local/odometry
       - /molit/localization/status
       - /molit/planning/status
+      - /molit/world_model/painted_points
+      - /molit/sensors/camera/front/image/compressed
     outputs: []
 
 architecture_views:

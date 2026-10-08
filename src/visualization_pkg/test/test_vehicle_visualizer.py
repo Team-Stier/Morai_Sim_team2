@@ -60,7 +60,7 @@ class VehicleVisualizerRuntimeTest(unittest.TestCase):
         cls.epoch = 0
         cls.marker_sub = rospy.Subscriber(
             MARKERS, MarkerArray, cls._on_markers, queue_size=100)
-        cls.clock_pub = rospy.Publisher("/clock", Clock, queue_size=10)
+        cls.clock_pub = rospy.Publisher("/clock", Clock, queue_size=10, latch=True)
         cls.ego_pub = rospy.Publisher(EGO, EgoState, queue_size=10)
         cls.odom_pub = rospy.Publisher(ODOMETRY, Odometry, queue_size=10)
         cls.status_pub = rospy.Publisher(STATUS, LocalizationStatus, queue_size=10)

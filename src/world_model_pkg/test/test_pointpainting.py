@@ -1,15 +1,33 @@
 import unittest
+import json
 from pathlib import Path
 import numpy as np
 import rospy
+import yaml
 from cv_bridge import CvBridge
 from ros_numpy.point_cloud2 import array_to_pointcloud2
 from world_model_pkg.pointpainting import paint, camera_geometry, cloud_records, painted_cloud
 
 ROOT = Path(__file__).resolve().parents[2] / 'ros_architecture_pkg/config'
+PALETTE = yaml.safe_load((ROOT / 'messages/pointpainting.yaml').read_text())['display_palette_rgb']
 
 
 class PointPaintingTest(unittest.TestCase):
+    def test_measured_rgb_lidar_structural_correspondences(self):
+        evidence = json.loads((ROOT.parents[1] / 'world_model_pkg/docs/evidence/pointpainting_calibration_20261008.json').read_text())
+        matches = evidence['reference_correspondences']
+        transform, intrinsic = camera_geometry(ROOT, 1280, 720)
+        xyz = np.array([m['xyz_m'] for m in matches])
+        camera = xyz @ transform[:3, :3].T + transform[:3, 3]
+        projection = camera @ intrinsic.T
+        pixels = projection[:, :2] / projection[:, 2:3]
+        lines = np.array([m['image_segment_px'] for m in matches])
+        direction = lines[:, 1] - lines[:, 0]
+        offset = pixels - lines[:, 0]
+        errors = abs(direction[:, 0] * offset[:, 1] - direction[:, 1] * offset[:, 0]) / np.linalg.norm(direction, axis=1)
+        self.assertLess(np.percentile(errors, 95), 3)
+        self.assertLess(errors.max(), 4)
+
     def test_projection_and_missing_observation(self):
         scores = np.zeros((3, 4, 6), np.float32)
         scores[:, :, 0] = 0.2
@@ -46,13 +64,26 @@ class PointPaintingTest(unittest.TestCase):
         scores = np.full((8, 8, 6), 1 / 6, np.float32)
         image = CvBridge().cv2_to_imgmsg(scores, encoding='passthrough')
         image.header.stamp = rospy.Time(123, 678)
-        output = painted_cloud(cloud, image, scores, np.eye(4), np.eye(3))
+        output = painted_cloud(cloud, image, scores, np.eye(4), np.eye(3), PALETTE)
         decoded = cloud_records(output)
         for name in records.dtype.names:
             np.testing.assert_array_equal(decoded[name], records[name].ravel())
         self.assertEqual(output.header, cloud.header)
         np.testing.assert_array_equal(decoded['image_stamp_nsec'], 678)
         np.testing.assert_allclose(sum(decoded['score_' + str(i)] for i in range(6)), 1, atol=1e-6)
+
+    def test_display_colors_classes_confidence_and_unobserved(self):
+        records = np.array([(float(i), 0., 1.) for i in range(7)],
+                           dtype=[('x', '<f4'), ('y', '<f4'), ('z', '<f4')])
+        scores = np.eye(6, dtype=np.float32)[None, :, :]
+        image = CvBridge().cv2_to_imgmsg(scores)
+        output = cloud_records(painted_cloud(array_to_pointcloud2(records), image,
+                                            scores, np.eye(4), np.eye(3), PALETTE))
+        np.testing.assert_array_equal(output['class_id'], [0, 1, 2, 3, 4, 5, 255])
+        np.testing.assert_array_equal(output['confidence'], [1, 1, 1, 1, 1, 1, 0])
+        np.testing.assert_array_equal(output['painted'], [1, 1, 1, 1, 1, 1, 0])
+        colors = np.asarray(PALETTE, np.uint32)
+        np.testing.assert_array_equal(output['rgb'].view(np.uint32), colors[:, 0] << 16 | colors[:, 1] << 8 | colors[:, 2])
 
     def test_nan_score_map_is_rejected(self):
         with self.assertRaises(ValueError):

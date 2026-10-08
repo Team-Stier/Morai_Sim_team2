@@ -22,10 +22,11 @@ class VisualizationContractTest(unittest.TestCase):
             "/molit/localization/local/odometry": "nav_msgs/Odometry",
             "/molit/localization/status": "common_msgs_pkg/LocalizationStatus",
         }
-        self.assertEqual(visualizer["public_nodes"], ["vehicle_visualizer_node"])
+        self.assertEqual(visualizer["public_nodes"], ["vehicle_visualizer_node", "vehicle_rviz"])
         self.assertEqual(
             set(visualizer["inputs"]),
-            set(expected) | {"/molit/perception/lidar/observations", "/molit/world_model/scene", "/molit/planning/status"},
+            set(expected) | {"/molit/perception/lidar/observations", "/molit/world_model/scene", "/molit/planning/status",
+                             "/molit/world_model/painted_points", "/molit/sensors/camera/front/image/compressed"},
         )
         lidar = next(t for t in contract["topics"] if t["name"] == "/molit/perception/lidar/observations")
         self.assertEqual(lidar["data_type"], "common_msgs_pkg/LidarObservationArray")
@@ -59,7 +60,11 @@ class VisualizationContractTest(unittest.TestCase):
         nodes = []
         for path in (PACKAGE / "launch").glob("*.launch"):
             launch = ET.parse(path).getroot()
-            self.assertEqual(list(launch.iter("remap")), [], str(path))
+            for remap in launch.iter('remap'):
+                # Only redirect an upstream GUI helper into this node's private namespace.
+                self.assertEqual(path.name, 'pointpainting.launch')
+                self.assertEqual(remap.attrib, {'from': '/molit/sensors/camera/front/image/mouse_click',
+                                               'to': '~front_image_click'})
             for param in launch.iter("param"):
                 self.assertNotEqual(param.get("name", "").lstrip("/"), "use_sim_time")
             for node in launch.iter("node"):
@@ -70,6 +75,21 @@ class VisualizationContractTest(unittest.TestCase):
         self.assertEqual(len(visualizers), 1)
         self.assertEqual(visualizers[0].get("pkg"), "visualization_pkg")
         self.assertEqual(visualizers[0].get("ns", "/"), "/")
+
+    def test_pointpainting_rviz_consumes_approved_fields_and_topics(self):
+        contract = yaml.safe_load((ROOT / 'src/ros_architecture_pkg/config/interface_contract.yaml').read_text())
+        topics = {t['name']: t for t in contract['topics']}
+        config = yaml.safe_load((PACKAGE / 'config/pointpainting.rviz').read_text())['Visualization Manager']
+        self.assertEqual(config['Global Options']['Fixed Frame'], topics['/molit/world_model/painted_points']['frame'])
+        cloud = next(d for d in config['Displays'] if d['Name'] == 'Painted points')
+        self.assertEqual(cloud['Color Transformer'], 'RGB8')
+        self.assertIn('vehicle_rviz', topics[cloud['Topic']]['consumers'])
+        image = next(d for d in config['Displays'] if d['Class'] == 'rviz/Image')
+        self.assertEqual(image['Transport Hint'], 'compressed')
+        self.assertIn('vehicle_rviz', topics[image['Image Topic'] + '/compressed']['consumers'])
+        schema = yaml.safe_load((ROOT / 'src/ros_architecture_pkg/config/messages/pointpainting.yaml').read_text())
+        self.assertIn('rgb', schema['painted_cloud']['append_float32'])
+        self.assertEqual(len(schema['display_palette_rgb']), len(schema['classes']) + 1)
 
 
 if __name__ == "__main__":

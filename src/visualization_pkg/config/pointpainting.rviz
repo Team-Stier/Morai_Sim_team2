@@ -1,0 +1,105 @@
+Panels:
+- Class: rviz/Displays
+  Help Height: 70
+  Name: Displays
+  Property Tree Widget:
+    Expanded:
+    - /Global Options1
+    - /Painted points1
+    Splitter Ratio: 0.550000011920929
+  Tree Height: 70
+- Class: rviz/Selection
+  Name: Selection
+Visualization Manager:
+  Class: ''
+  Displays:
+  - Class: rviz/Grid
+    Name: Metre grid
+    Enabled: true
+    Alpha: 0.2
+    Cell Size: 5
+    Color: 100; 110; 125
+    Plane: XY
+    Plane Cell Count: 30
+    Reference Frame: <Fixed Frame>
+    Offset:
+      X: 0
+      Y: 0
+      Z: -1.5
+  - Class: rviz/PointCloud2
+    Name: Painted points
+    Enabled: true
+    Topic: /molit/world_model/painted_points
+    Queue Size: 1
+    Position Transformer: XYZ
+    Color Transformer: RGB8
+    Alpha: 1
+    Style: Points
+    Size (Pixels): 3
+    Size (m): 0.03
+    Decay Time: 0
+    Use Fixed Frame: true
+    Selectable: true
+  - Class: rviz/PointCloud2
+    Name: Confidence (optional)
+    Enabled: false
+    Topic: /molit/world_model/painted_points
+    Queue Size: 1
+    Position Transformer: XYZ
+    Color Transformer: Intensity
+    Channel Name: confidence
+    Autocompute Intensity Bounds: false
+    Min Intensity: 0
+    Max Intensity: 1
+    Use rainbow: true
+    Style: Points
+    Size (Pixels): 3
+    Decay Time: 0
+    Selectable: true
+  - Class: rviz/Image
+    Name: Front RGB (compressed)
+    Enabled: true
+    Image Topic: /molit/sensors/camera/front/image
+    Transport Hint: compressed
+    Queue Size: 1
+    Normalize Range: true
+  Enabled: true
+  Global Options:
+    Background Color: 19; 27; 38
+    Fixed Frame: lidar_link
+    Frame Rate: 30
+  Name: root
+  Tools:
+  - Class: rviz/Interact
+  - Class: rviz/MoveCamera
+  - Class: rviz/Select
+  - Class: rviz/FocusCamera
+  - Class: rviz/Measure
+  Views:
+    Current:
+      Class: rviz/Orbit
+      Name: Current View
+      Target Frame: lidar_link
+      Distance: 55
+      Pitch: 0.65
+      Yaw: 3.14
+      Focal Point:
+        X: 20
+        Y: 0
+        Z: 0
+      Near Clip Distance: 0.01
+    Saved: null
+Window Geometry:
+  Displays:
+    collapsed: false
+  Front RGB (compressed):
+    collapsed: false
+  Height: 1016
+  Hide Left Dock: false
+  Hide Right Dock: true
+  QMainWindow State: 000000ff00000000fd0000000100000000000002020000039efc0200000003fb0000002c00460072006f006e00740020005200470042002000280063006f006d00700072006500730073006500640029010000003d000000eb0000001600fffffffb000000100044006900730070006c006100790073010000012e000000c9000000c900fffffffb0000001200530065006c0065006300740069006f006e01000001fd000001de0000005c00ffffff000005300000039e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Selection:
+    collapsed: false
+  Width: 1848
+  X: 72
+  Y: 27

@@ -4,6 +4,7 @@ from pathlib import Path
 import message_filters
 import rospkg
 import rospy
+import yaml
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image, PointCloud2
 from world_model_pkg.pointpainting import camera_geometry, painted_cloud
@@ -13,6 +14,7 @@ class PaintingNode:
     def __init__(self):
         self.bridge = CvBridge()
         self.config_root = Path(rospkg.RosPack().get_path('ros_architecture_pkg')) / 'config'
+        self.palette = yaml.safe_load((self.config_root / 'messages/pointpainting.yaml').read_text())['display_palette_rgb']
         self.max_age = rospy.get_param('~max_age_sec')
         self.slop = rospy.get_param('~sync_slop_sec')
         self.last_clock = rospy.Time.now()
@@ -46,7 +48,7 @@ class PaintingNode:
             if shape not in self.geometry:
                 self.geometry[shape] = camera_geometry(self.config_root, *shape)
             transform, intrinsic = self.geometry[shape]
-            output = painted_cloud(cloud, image, scores, transform, intrinsic)
+            output = painted_cloud(cloud, image, scores, transform, intrinsic, self.palette)
             self.publisher.publish(output)
             self.last_stamps = stamps
         except (ValueError, RuntimeError) as error:

@@ -1,0 +1,541 @@
+{
+  "date": "2026-10-08",
+  "method": "manual_RGB_centerline_to_measured_LiDAR_projection_distance",
+  "scope": "one_stationary_scene_9_structural_features_3_scans_not_full_6DoF_or_dynamic_calibration",
+  "no_ground_truth_input": true,
+  "frames": [
+    {
+      "frame": 0,
+      "role": "correspondence_selection",
+      "lidar_stamp": 1791430726.5985837,
+      "metrics": {
+        "configured_640_positive_pitch": {
+          "count": 25,
+          "median_px": 1.1098339596834212,
+          "p95_px": 2.244864083380415,
+          "max_px": 3.578691013689582
+        },
+        "inactive_focal_320": {
+          "count": 25,
+          "median_px": 30.63080608229145,
+          "p95_px": 290.8226281722447,
+          "max_px": 296.26734403578706
+        },
+        "opposite_pitch_sign": {
+          "count": 25,
+          "median_px": 44.88241900925094,
+          "p95_px": 46.3571399803032,
+          "max_px": 46.41158753739572
+        }
+      },
+      "image_sha256": "d435ddde25f88182c0e757cceff61fd2dc77d0ca15805080856f6ce6d8cfc664",
+      "cloud_sha256": "c4b91a5546a8f28b575bceacab9583ca992d0347fe91072938d4ee6028b2de4d"
+    },
+    {
+      "frame": 1,
+      "role": "repeat_scan_check_same_stationary_scene",
+      "lidar_stamp": 1791430726.7451825,
+      "metrics": {
+        "configured_640_positive_pitch": {
+          "count": 25,
+          "median_px": 1.1098339596834212,
+          "p95_px": 2.244864083380415,
+          "max_px": 3.578691013689582
+        },
+        "inactive_focal_320": {
+          "count": 25,
+          "median_px": 30.63080608229145,
+          "p95_px": 290.8226281722447,
+          "max_px": 296.26734403578706
+        },
+        "opposite_pitch_sign": {
+          "count": 25,
+          "median_px": 44.88241900925094,
+          "p95_px": 46.3571399803032,
+          "max_px": 46.41158753739572
+        }
+      },
+      "image_sha256": "928fcad04a7849b38c2e32f30d99ac8279784f97f353df6cc4f6ffe4190b1ea1",
+      "cloud_sha256": "7f56b879a98019e2a4a2e88424f6dff199e86db49e75165eff96779dea27f14e"
+    },
+    {
+      "frame": 2,
+      "role": "repeat_scan_check_same_stationary_scene",
+      "lidar_stamp": 1791430726.9284425,
+      "metrics": {
+        "configured_640_positive_pitch": {
+          "count": 25,
+          "median_px": 1.1098339596834212,
+          "p95_px": 2.244864083380415,
+          "max_px": 3.578691013689582
+        },
+        "inactive_focal_320": {
+          "count": 25,
+          "median_px": 30.63080608229145,
+          "p95_px": 290.8226281722447,
+          "max_px": 296.26734403578706
+        },
+        "opposite_pitch_sign": {
+          "count": 25,
+          "median_px": 44.88241900925094,
+          "p95_px": 46.3571399803032,
+          "max_px": 46.41158753739572
+        }
+      },
+      "image_sha256": "4207016ffe04ddac320e05357ba608f3653703107500acecf53b4a0f77b2641b",
+      "cloud_sha256": "fa5a3a0d7ab429e6482067fd8a7aa591224d4b1d93112e4199bfa1dfb2db2543"
+    }
+  ],
+  "reference_correspondences": [
+    {
+      "feature": "left_pole",
+      "xyz_m": [
+        58.458099365234375,
+        50.26414489746094,
+        1.3457201719284058
+      ],
+      "image_segment_px": [
+        [
+          88,
+          295
+        ],
+        [
+          93,
+          373
+        ]
+      ]
+    },
+    {
+      "feature": "left_pole",
+      "xyz_m": [
+        58.511940002441406,
+        50.11542892456055,
+        -1.344742774963379
+      ],
+      "image_segment_px": [
+        [
+          88,
+          295
+        ],
+        [
+          93,
+          373
+        ]
+      ]
+    },
+    {
+      "feature": "left_middle_pole",
+      "xyz_m": [
+        64.98332977294922,
+        42.168460845947266,
+        -1.352177619934082
+      ],
+      "image_segment_px": [
+        [
+          223,
+          312
+        ],
+        [
+          226,
+          369
+        ]
+      ]
+    },
+    {
+      "feature": "left_middle_pole",
+      "xyz_m": [
+        65.09147644042969,
+        41.91645431518555,
+        -1.3513747453689575
+      ],
+      "image_segment_px": [
+        [
+          223,
+          312
+        ],
+        [
+          226,
+          369
+        ]
+      ]
+    },
+    {
+      "feature": "middle_pole",
+      "xyz_m": [
+        66.82713317871094,
+        10.452933311462402,
+        1.1806552410125732
+      ],
+      "image_segment_px": [
+        [
+          538,
+          301
+        ],
+        [
+          541,
+          350
+        ]
+      ]
+    },
+    {
+      "feature": "center_pole",
+      "xyz_m": [
+        87.51890563964844,
+        7.487665176391602,
+        1.533228874206543
+      ],
+      "image_segment_px": [
+        [
+          583,
+          310
+        ],
+        [
+          587,
+          355
+        ]
+      ]
+    },
+    {
+      "feature": "center_pole",
+      "xyz_m": [
+        87.53311920166016,
+        7.3195953369140625,
+        -1.533228874206543
+      ],
+      "image_segment_px": [
+        [
+          583,
+          310
+        ],
+        [
+          587,
+          355
+        ]
+      ]
+    },
+    {
+      "feature": "far_right_pole",
+      "xyz_m": [
+        72.34615325927734,
+        -59.65877151489258,
+        1.6367913484573364
+      ],
+      "image_segment_px": [
+        [
+          1167,
+          274
+        ],
+        [
+          1170,
+          349
+        ]
+      ]
+    },
+    {
+      "feature": "far_right_pole",
+      "xyz_m": [
+        72.21102142333984,
+        -59.58970260620117,
+        4.9066009521484375
+      ],
+      "image_segment_px": [
+        [
+          1167,
+          274
+        ],
+        [
+          1170,
+          349
+        ]
+      ]
+    },
+    {
+      "feature": "right_edge_pole",
+      "xyz_m": [
+        65.73724365234375,
+        -60.2581901550293,
+        1.5565800666809082
+      ],
+      "image_segment_px": [
+        [
+          1227,
+          262
+        ],
+        [
+          1230,
+          345
+        ]
+      ]
+    },
+    {
+      "feature": "right_edge_pole",
+      "xyz_m": [
+        65.74504852294922,
+        -60.30759811401367,
+        4.6755900382995605
+      ],
+      "image_segment_px": [
+        [
+          1227,
+          262
+        ],
+        [
+          1230,
+          345
+        ]
+      ]
+    },
+    {
+      "feature": "left_crossarm",
+      "xyz_m": [
+        58.068111419677734,
+        55.47171401977539,
+        1.4017423391342163
+      ],
+      "image_segment_px": [
+        [
+          24,
+          318
+        ],
+        [
+          86,
+          315
+        ]
+      ]
+    },
+    {
+      "feature": "left_crossarm",
+      "xyz_m": [
+        58.08873748779297,
+        55.104923248291016,
+        1.3975887298583984
+      ],
+      "image_segment_px": [
+        [
+          24,
+          318
+        ],
+        [
+          86,
+          315
+        ]
+      ]
+    },
+    {
+      "feature": "left_crossarm",
+      "xyz_m": [
+        58.237083435058594,
+        54.86067199707031,
+        1.3965415954589844
+      ],
+      "image_segment_px": [
+        [
+          24,
+          318
+        ],
+        [
+          86,
+          315
+        ]
+      ]
+    },
+    {
+      "feature": "middle_left_crossarm",
+      "xyz_m": [
+        76.60636901855469,
+        49.161556243896484,
+        1.588832139968872
+      ],
+      "image_segment_px": [
+        [
+          227,
+          322
+        ],
+        [
+          263,
+          320
+        ]
+      ]
+    },
+    {
+      "feature": "middle_left_crossarm",
+      "xyz_m": [
+        76.6391830444336,
+        48.8057861328125,
+        1.5859699249267578
+      ],
+      "image_segment_px": [
+        [
+          227,
+          322
+        ],
+        [
+          263,
+          320
+        ]
+      ]
+    },
+    {
+      "feature": "middle_left_crossarm",
+      "xyz_m": [
+        77.29763793945312,
+        48.846675872802734,
+        1.596057415008545
+      ],
+      "image_segment_px": [
+        [
+          227,
+          322
+        ],
+        [
+          263,
+          320
+        ]
+      ]
+    },
+    {
+      "feature": "right_crossarm",
+      "xyz_m": [
+        83.91470336914062,
+        -23.318927764892578,
+        4.564428329467773
+      ],
+      "image_segment_px": [
+        [
+          815,
+          300
+        ],
+        [
+          845,
+          298
+        ]
+      ]
+    },
+    {
+      "feature": "right_crossarm",
+      "xyz_m": [
+        80.02189636230469,
+        -23.43036460876465,
+        4.369843482971191
+      ],
+      "image_segment_px": [
+        [
+          815,
+          300
+        ],
+        [
+          845,
+          298
+        ]
+      ]
+    },
+    {
+      "feature": "right_crossarm",
+      "xyz_m": [
+        79.06838989257812,
+        -23.45115089416504,
+        4.32221794128418
+      ],
+      "image_segment_px": [
+        [
+          815,
+          300
+        ],
+        [
+          845,
+          298
+        ]
+      ]
+    },
+    {
+      "feature": "right_crossarm",
+      "xyz_m": [
+        78.26080322265625,
+        -23.52404022216797,
+        4.282756328582764
+      ],
+      "image_segment_px": [
+        [
+          815,
+          300
+        ],
+        [
+          845,
+          298
+        ]
+      ]
+    },
+    {
+      "feature": "right_crossarm",
+      "xyz_m": [
+        77.6776123046875,
+        -23.644697189331055,
+        4.2553324699401855
+      ],
+      "image_segment_px": [
+        [
+          815,
+          300
+        ],
+        [
+          845,
+          298
+        ]
+      ]
+    },
+    {
+      "feature": "right_crossarm",
+      "xyz_m": [
+        76.81014251708984,
+        -23.673913955688477,
+        4.2123122215271
+      ],
+      "image_segment_px": [
+        [
+          815,
+          300
+        ],
+        [
+          845,
+          298
+        ]
+      ]
+    },
+    {
+      "feature": "right_crossarm",
+      "xyz_m": [
+        76.32855987548828,
+        -23.817548751831055,
+        4.190435409545898
+      ],
+      "image_segment_px": [
+        [
+          815,
+          300
+        ],
+        [
+          845,
+          298
+        ]
+      ]
+    },
+    {
+      "feature": "right_crossarm",
+      "xyz_m": [
+        76.35923767089844,
+        -24.11993408203125,
+        4.196715831756592
+      ],
+      "image_segment_px": [
+        [
+          815,
+          300
+        ],
+        [
+          845,
+          298
+        ]
+      ]
+    }
+  ]
+}

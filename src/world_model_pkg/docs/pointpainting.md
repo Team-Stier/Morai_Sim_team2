@@ -20,6 +20,9 @@ TF·timestamp 계약이다. `camera_perception_node`가 semantic score를 생성
 | `score_0` … `score_5` | FLOAT32 | background, person, animal, box, bollard, barrier 확률 |
 | `painted` | UINT8 | 유한·전방·영상 안쪽 투영점이면 1 |
 | `image_stamp_sec`, `image_stamp_nsec` | UINT32 | 사용한 카메라 영상의 원본 시각 |
+| `class_id` | UINT8 | 관측이면 argmax 0~5, 미관측이면 255 |
+| `confidence` | FLOAT32 | 관측이면 최대 확률, 미관측이면 0 |
+| `rgb` | FLOAT32 packed RGB | 중앙 palette 색의 PCL bitcast; RViz RGB8 표시 |
 
 화면 밖·카메라 뒤·NaN 좌표인 점도 보존하고 `painted=0`, 확률은 모두 0이다.
 이를 배경 예측으로 해석하면 안 된다. 출력은 little endian, unorganized cloud다.
@@ -38,9 +41,11 @@ TF·timestamp 계약이다. `camera_perception_node`가 semantic score를 생성
 카메라 mount·optical TF의 `publish_enabled=false`는 유지한다.
 중앙 sensor extrinsics의 **candidate** 행렬을 읽어 개발용 local projection을 계산한다.
 Front 1280×720, horizontal FOV 90°로 fx=fy=640, cx=640, cy=360을 유도한다.
-원본 JSON의 focalLengthpixel=320과 불일치하므로 FOV 기반 후보값을 사용하며,
-현재 MORAI 설정과 영상 정합을 검증하기 전 calibration_verified로 승격하지 않는다.
-해상도가 바뀌면 동일 FOV의 square pixels를 가정해 intrinsic을 다시 계산한다.
+2026-10-08 활성 표준 Camera UI의 Horizontal FOV=90을 확인하고 실측 구조물 투영을 검사했다.
+JSON의 focalLengthpixel=320은 Physical Camera용 비활성 설정이다.
+현재 central intrinsic matrix는 기준 해상도에 명시되며 다른 해상도에서는 축별 비율로 scale한다.
+전체 6DoF와 동적 정합은 미검증으로 `calibration_verified=false`를 유지한다.
+[보정·RViz 실제 검증](pointpainting_calibration.md)의 범위를 따른다.
 
 sync slop 0.05초, pair 최대 age 0.5초, sync queue 4가 개발 기본값이다.
 0 stamp, stale/future·frame 불일치·같은 clock epoch 안의 역행은 버린다.
@@ -64,6 +69,10 @@ ROS clock reset에서는 synchronizer를 비우고 출력 순서 상태도 초�
 
 ## 2026-10-08 수행 결과
 
+아래는 초기 실행 결과다. 최신 보정·RViz 추가 검증에서 저장 profile의 GPS/IMU 범위를
+재확인하고 hash 근거를 갱신했으며, 최종 catkin 집계 129개 모두 통과했다.
+[최신 검증 기록](pointpainting_calibration.md)을 기준으로 현재 상태를 확인한다.
+
 - 16개 catkin 패키지(의존성 포함) 빌드 성공. XML/YAML parsing, 중앙 계약 및
   Mermaid/SVG/PNG hash 검사 통과. Camera/World Model 단위·계약·ROS transport 테스트 통과.
 - 확장 검사 88개 중 87개 통과. 남은 1개는
@@ -84,7 +93,8 @@ ROS clock reset에서는 synchronizer를 비우고 출력 순서 상태도 초�
 - 실제 bag 3개 frame의 원본 영상·segmentation·projected point overlay와
   decorated point NumPy sample을 저장했다. 라이브 probe의 painted argmax는 모두 배경이었다.
   객체가 있는 장면에서 객체별 3D 정확도 평가는 하지 않았다.
-  후보 extrinsic/intrinsic 정합, occlusion과 이동 차량의 시간 오차에 대한 정량 검증은 남아 있다.
+  이후 정지 장면의 extrinsic/intrinsic 투영과 RGB 복구·RViz 표시를 추가 검증했다.
+  occlusion과 이동 차량의 시간 오차에 대한 정량 검증은 남아 있다.
 
 로컬 상세 증거: `/home/paik/morai-artifacts/pointpainting-verification/`의
 `replay.json`, `live-final.json`, `model_equivalence.json`, `offline_samples.json`, `projection_overlay.png`,

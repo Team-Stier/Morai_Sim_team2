@@ -1,5 +1,4 @@
 """PointPainting projection and ROS serialization, using NumPy and ros_numpy."""
-import math
 from pathlib import Path
 import numpy as np
 import yaml
@@ -21,8 +20,9 @@ def camera_geometry(config_root, width, height):
 
     optical = euler_matrix(*extrinsics['camera_optical_convention']['rotation_rpy_rad'])
     lidar_to_camera = np.linalg.inv(pose('camera_front') @ optical) @ pose('lidar')
-    focal = width / (2 * math.tan(math.radians(calibration['front_camera']['horizontal_fov_deg']) / 2))
-    intrinsic = np.array([[focal, 0, width / 2], [0, focal, height / 2], [0, 0, 1]])
+    camera = calibration['front_camera']
+    intrinsic = np.array(camera['intrinsic_matrix'], dtype=np.float64)
+    intrinsic[:2] *= np.array([width, height])[:, None] / np.array(camera['reference_size'])[:, None]
     return lidar_to_camera, intrinsic
 
 
@@ -53,13 +53,14 @@ def cloud_records(cloud):
                       strides=(cloud.row_step, cloud.point_step)).reshape(-1)
 
 
-def painted_cloud(cloud, score_image, scores, transform, intrinsic):
+def painted_cloud(cloud, score_image, scores, transform, intrinsic, palette):
     records = cloud_records(cloud)
     xyz = np.column_stack([records[name] for name in ('x', 'y', 'z')])
     probabilities, observed = paint(xyz, scores, transform, intrinsic)
     original = [(field.name, records.dtype.fields[field.name][0].newbyteorder('<')) for field in cloud.fields]
     extras = [('score_' + str(i), '<f4') for i in range(6)]
     extras += [('painted', 'u1'), ('image_stamp_sec', '<u4'), ('image_stamp_nsec', '<u4')]
+    extras += [('class_id', 'u1'), ('confidence', '<f4'), ('rgb', '<f4')]
     if set(name for name, _ in original) & set(name for name, _ in extras):
         raise ValueError('cloud already contains painting fields')
     output = np.zeros(len(records), dtype=original + extras)
@@ -68,6 +69,11 @@ def painted_cloud(cloud, score_image, scores, transform, intrinsic):
     for i in range(6):
         output['score_' + str(i)] = probabilities[:, i]
     output['painted'] = observed
+    labels = probabilities.argmax(1)
+    output['class_id'] = np.where(observed, labels, 255)
+    output['confidence'] = probabilities.max(1)
+    colors = np.asarray(palette, np.uint32)[np.where(observed, labels, 6)]
+    output['rgb'] = ((colors[:, 0] << 16) | (colors[:, 1] << 8) | colors[:, 2]).view(np.float32)
     output['image_stamp_sec'] = score_image.header.stamp.secs
     output['image_stamp_nsec'] = score_image.header.stamp.nsecs
     message = array_to_pointcloud2(output)

@@ -188,3 +188,7 @@ RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 
 실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
 
 `global_path_demo.launch`는 중앙 고정 코스 속도 규칙(일반 최대 58, 고주로 목표 150 km/h)과 곡률/감속 프로파일을 적용한다. 일반 순항 목표는 56 km/h다.
+
+## PointPainting + RViz
+
+`roslaunch system_bringup_pkg pointpainting.launch weights:=... python:=... rviz:=true`로 PIDNet 전방 추론, 점군 페인팅과 RViz를 실행한다. `rviz:=true`이면 기존 승인된 GPS/IMU/LiDAR static TF publisher를 함께 실행한다. 카메라 TF 발행과 LiDAR UDP 자동 활성화는 추가하지 않는다. 센서 입력과 표준 압축영상 플러그인 준비는 [보정·검증 기록](../world_model_pkg/docs/pointpainting_calibration.md)을 따른다.

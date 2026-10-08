@@ -22,9 +22,11 @@ class PipelineTest(unittest.TestCase):
         transport = rospy.Publisher('/molit/sensors/lidar/status', Bool, queue_size=1, latch=True)
         broadcaster = tf2_ros.StaticTransformBroadcaster()
         end = time.monotonic() + 5
-        while points.get_num_connections() == 0 and time.monotonic() < end:
+        connections = lambda: all([points.get_num_connections(), transport.get_num_connections(),
+                                    subs[0].get_num_connections(), subs[1].get_num_connections()])
+        while not connections() and time.monotonic() < end:
             time.sleep(.02)
-        self.assertGreater(points.get_num_connections(), 0)
+        self.assertTrue(connections())
         transport.publish(Bool(data=True))
         time.sleep(.2)
         stamp = rospy.Time.now()
