@@ -69,7 +69,7 @@ RGB Image plugin의 자동 mouse-click 출력만 RViz private namespace로 보�
 `ros-noetic-compressed-image-transport` 의존성을 설치하면 된다.
 
 ```bash
-source /home/paik/morai-artifacts/pointpainting-catkin/devel/setup.bash
+source /home/paik/Morai_Sim_team2/devel/setup.bash
 source /home/paik/morai-artifacts/pointpainting-image-transport/setup.bash
 roslaunch system_bringup_pkg pointpainting.launch \
   python:=/home/paik/venvs/morai-pidnet/bin/python \
@@ -80,6 +80,28 @@ roslaunch system_bringup_pkg pointpainting.launch \
 이미 같은 노드가 실행 중이면 중복 실행하지 않는다. 카메라 bridge와 수동 격리 LiDAR probe는
 별도로 연결한다. LiDAR UDP 채널의 system bringup 자동 활성화 금지는 유지한다.
 이번 변경은 로컬 commit만 하며 push하지 않는다.
+
+2026-10-09에 PointPainting의 구현·보정 커밋만 로컬 `paik`에 통합했다.
+위 명령은 현재 `paik` 작업 폴더의 빌드 결과를 사용한다. 이 PC의 `ros_numpy`는
+`/home/paik/morai-artifacts/ros-numpy-catkin`에서 별도로 빌드했으며, 현재 작업
+폴더의 `devel/setup.bash`가 해당 의존성 환경을 함께 불러온다.
+재빌드할 때는 아래 순서로 의존성 환경을 먼저 등록한다.
+
+```bash
+source /opt/ros/noetic/setup.bash
+source /home/paik/morai-artifacts/ros-numpy-catkin/devel/setup.bash
+cd /home/paik/Morai_Sim_team2
+PYTHONNOUSERSITE=1 catkin_make -j4 -DPYTHON_EXECUTABLE=/usr/bin/python3
+```
+
+통합 후 현재 작업 폴더에서 catkin 빌드, Camera/World Model/Visualization/중앙 계약의
+패키지 테스트, PointPainting ROS transport 테스트, static TF 계약 테스트 4개와
+다이어그램 동기화 검사를 통과했다. launch XML·YAML·manifest 및 전용 launch의
+파라미터 확장도 확인했다. 실제 `best.pt`를 GPU에 엄격하게 로드하고 저장된 RGB 영상의
+720×1280×6 확률 출력과 픽셀별 확률 합을 확인했다. 기존 경로계획·Localization·HD Map의
+커밋된 코드는 통합 전후 동일하며, 사용자 미커밋 파일은 SHA-256으로 보존을 확인했다.
+검사 로그는 `/home/paik/morai-artifacts/pointpainting-paik-integration/`에 있다.
+이번 통합에서는 라이브 센서 노드를 재시작하거나 MORAI 주행을 수행하지 않았다.
 
 ## 최종 빌드·계약 검사
 
