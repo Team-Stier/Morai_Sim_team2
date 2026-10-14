@@ -12,6 +12,7 @@ flowchart LR
         input_000["/molit/sensors/camera/front/image/compressed<br/>설명: 전방 카메라 압축 영상<br/>메시지: sensor_msgs/CompressedImage<br/>상태: 개발 환경 동작 확인"]
         input_001["/molit/sensors/camera/left/image/compressed<br/>설명: 좌측 카메라 압축 영상<br/>메시지: sensor_msgs/CompressedImage<br/>상태: 개발 환경 동작 확인"]
         input_002["/molit/sensors/camera/right/image/compressed<br/>설명: 우측 카메라 압축 영상<br/>메시지: sensor_msgs/CompressedImage<br/>상태: 개발 환경 동작 확인"]
+        input_003["/molit/sensors/camera/signal/image/compressed<br/>설명: 신호등용 Camera3 압축 영상<br/>메시지: sensor_msgs/CompressedImage<br/>상태: 설계 예약·미구현"]
     end
     subgraph PACKAGE["패키지 처리<br/>camera_perception_pkg<br/>카메라 영상에서 객체·차선·신호·주행 가능 영역 관측 생성"]
         local_node_000["camera_perception_node<br/>역할: 세 카메라 영상에서 객체와 차선 관측을 생성<br/>실행: camera_perception_node<br/>상태: 설계 예약·미구현"]
@@ -27,6 +28,7 @@ flowchart LR
     input_000 --> local_node_000
     input_001 --> local_node_000
     input_002 --> local_node_000
+    input_003 --> local_node_000
     local_node_000 --> output_000
     local_node_000 --> output_001
     local_node_000 --> output_002
@@ -37,6 +39,7 @@ flowchart LR
     class input_000 liveTopic;
     class input_001 liveTopic;
     class input_002 liveTopic;
+    class input_003 reservedTopic;
     class output_000 reservedTopic;
     class output_001 reservedTopic;
     class output_002 reservedTopic;

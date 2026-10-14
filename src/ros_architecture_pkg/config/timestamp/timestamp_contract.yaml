@@ -40,6 +40,7 @@ timestamp_source_registry:
       - /molit/sensors/camera/front/image/compressed
       - /molit/sensors/camera/left/image/compressed
       - /molit/sensors/camera/right/image/compressed
+      - /molit/sensors/camera/signal/image/compressed
   morai_interface_ingress_time:
     kind: canonical_ingress_fallback
     canonical_semantic: measurement_time
@@ -256,6 +257,9 @@ freshness_policy:
     Do not reuse MORAI receiveTimeout or configured sensor period as a stale
     threshold. Approve each timeout only after observed p95/p99 period and jitter.
   configured_targets_not_measurements:
+    camera_signal:
+      configured_period_sec: 0.03333333507180214
+      configured_rate_hz: 30.0
     camera:
       configured_period_sec: 0.05000000074505806
       configured_rate_hz: 20.0

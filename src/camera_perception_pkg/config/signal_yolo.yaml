@@ -1,0 +1,4 @@
+# Inference settings only. Public ingress names live in ros_architecture_pkg.
+signal_device: "0"
+signal_imgsz: 1280
+signal_confidence: 0.15

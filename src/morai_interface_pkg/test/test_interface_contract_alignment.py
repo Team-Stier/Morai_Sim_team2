@@ -42,6 +42,7 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
             "camera_front": "camera_front.yaml",
             "camera_left": "camera_left.yaml",
             "camera_right": "camera_right.yaml",
+            "camera_signal": "camera_signal.yaml",
             "gps": "gps_bridge.yaml",
             "imu": "imu_bridge.yaml",
             "vehicle_status": "vehicle_status_bridge.yaml",
@@ -62,7 +63,7 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
 
     def test_camera_measurement_stamp_is_selected(self):
         mapping = self.contract["runtime_timestamp_parameter_mapping"]["packet"]
-        for role in ("front", "left", "right"):
+        for role in ("front", "left", "right", "signal"):
             local = load_yaml(os.path.join(
                 PACKAGE_ROOT, "config", "camera_%s.yaml" % role))
             self.assertEqual(local["timestamp_source"], "packet")
@@ -147,7 +148,7 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
         enabled = {name for name, channel in self.contract["channels"].items()
                    if channel["runtime_activation_allowed"]}
         self.assertEqual(enabled, {
-            "camera_front", "camera_left", "camera_right", "gps", "imu",
+            "camera_front", "camera_left", "camera_right", "camera_signal", "gps", "imu",
         })
         probe_enabled = {name for name, channel in self.contract["channels"].items()
                          if channel.get("isolated_probe_activation_allowed")}
@@ -190,7 +191,7 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
     def test_detail_and_top_level_topic_contracts_match(self):
         topics = {item["name"]: item
                   for item in self.top_level_contract["topics"]}
-        for channel_name in ("camera_front", "camera_left", "camera_right",
+        for channel_name in ("camera_front", "camera_left", "camera_right", "camera_signal",
                              "gps", "imu", "vehicle_status", "lidar",
                              "lidar_status"):
             channel = self.contract["channels"][channel_name]

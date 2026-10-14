@@ -2,11 +2,11 @@
   "artifacts": [
     {
       "png": "src/camera_perception_pkg/docs/interface_io.png",
-      "png_sha256": "61206c586e5b6e3821bb62c615b734c1868ece45371483b04e810dc43c1286f4",
+      "png_sha256": "60411eb719435494378f221dc7a13c99ba0970bf7da7e7d0fa4a633735a147b8",
       "source": "src/camera_perception_pkg/docs/interface_io.mmd",
-      "source_sha256": "18eeea8f40bb8ad0d21caa3b2061563a9682bc0a9250f305b3936817e55d7d5b",
+      "source_sha256": "2d782f387c6e0a374afbfb4c84115d02ad05c468ad905a1b278b72f0f3acc023",
       "svg": "src/camera_perception_pkg/docs/interface_io.svg",
-      "svg_sha256": "cae9196d3344dc484384207a8b9b3ecf4671680b0dcf857f8eaef70c5d2249b3"
+      "svg_sha256": "8155d91e2e7eaa91b0f18fd176967b33942eb7e41a246aefc2a5a77cb6e4862d"
     },
     {
       "png": "src/common_msgs_pkg/docs/interface_io.png",
@@ -50,11 +50,11 @@
     },
     {
       "png": "src/morai_interface_pkg/docs/interface_io.png",
-      "png_sha256": "bd01301900d61a8dda505ecefb0345cfef57ca951ec8d0fbc9bb27ee9e628d39",
+      "png_sha256": "04b92fe6562fc1db2363f01227a3ccaf3b6d770cdd663f2d5b5fa477070b7232",
       "source": "src/morai_interface_pkg/docs/interface_io.mmd",
-      "source_sha256": "fb5f83376108251b41407e7084aab75f914319d9d852661ffa6adc14b5db5acb",
+      "source_sha256": "d5d16907f0bd93d39285e544755cd48f0a5c67057959c87316c641f79e9efb02",
       "svg": "src/morai_interface_pkg/docs/interface_io.svg",
-      "svg_sha256": "67610fba065689c26fe4f90346e69a36fef1005a14bd239b901644b5af33c9ca"
+      "svg_sha256": "dc982ea0323572735c29d0c223a26b777714500d3b679a724ab1c3479de47607"
     },
     {
       "png": "src/path_planning_pkg/docs/interface_io.png",
@@ -74,11 +74,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "d4fc0f9dd0b0a6ec3d1fa1fa376af735a88997653742e3b6d24b301864bac097",
+      "png_sha256": "dfe431ef1df0f72b7411bc01786d77d0b9e1af313195d221412c33932e9175b2",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "8bb4c8632cba84c255ddbc9201c20213f365f02e01d69287a68f8711f138551a",
+      "source_sha256": "f886b65e38ab4de6ecda2901007ebf06d2a2c5f51318936aa591fae5efec581a",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "479ce332dd41e0b96beab7ea574eff05aa841c1a1b0229687c4aa42ce45381a7"
+      "svg_sha256": "cdd9e38d3b63f694b3fe003917c90510b35abe969a9d41a8f7a08af71ebc8975"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
@@ -90,11 +90,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_nominal_flow.png",
-      "png_sha256": "1f2f194193f947bbfe355b098e4a643fff08b1d15c59c637aa3902f91ea26ead",
+      "png_sha256": "11d9993bed215b76e81c4fc22e5d853a5d0b96e5652f6a17b07eae22b84b4964",
       "source": "src/ros_architecture_pkg/docs/system_nominal_flow.mmd",
-      "source_sha256": "d102fa5ad4262c5806e5332a1e1102ea63403959180bfd4afc2bb9fe42d2d257",
+      "source_sha256": "88cc15b5caffba34120a03263a871ac46e1bfc8db29427e53aa684a4c20a3b76",
       "svg": "src/ros_architecture_pkg/docs/system_nominal_flow.svg",
-      "svg_sha256": "bb36e805f54721e390b9ddab00a4985fa3a1758b55833b22e8e3de4ffdd4293f"
+      "svg_sha256": "4e00f3a447cf5dd99d9e6e2ccb11b47ad89f2fa9a46985fd7a49681a051832ad"
     },
     {
       "png": "src/runtime_evaluation_pkg/docs/interface_io.png",
@@ -150,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "b8f1ad87d87f239a83a0a64662929dba67b712dad0a8522824b61c5bb752280c"
+  "source_of_truth_sha256": "8ae2f787fd70b01cd27e4f2d8f01d03d636c206e75e6aa146c1b19876565a07d"
 }

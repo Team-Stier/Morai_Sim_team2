@@ -629,7 +629,9 @@ class PublicInterfaceContractTest(unittest.TestCase):
         )
 
         altered = copy.deepcopy(self.contract)
-        altered["topics"][3]["timestamp_source"] = "morai_camera_packet_frame_time"
+        gps = next(topic for topic in altered["topics"]
+                   if topic["name"] == "/molit/sensors/gps/fix")
+        gps["timestamp_source"] = "morai_camera_packet_frame_time"
         errors = self.generator.validate_contract(altered, REPOSITORY_ROOT)
         self.assertTrue(
             any("is not allowed on topic /molit/sensors/gps/fix" in error for error in errors),

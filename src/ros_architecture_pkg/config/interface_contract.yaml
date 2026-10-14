@@ -164,6 +164,14 @@ nodes:
     status: development_live_transport_verified
     diagram_description_ko: 우측 카메라 UDP 영상을 ROS 압축 영상으로 변환
     details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_camera_signal
+    owner_package: morai_interface_pkg
+    executable: camera_receiver_node
+    visibility: public_boundary
+    external_transport_role: ingress_adapter
+    status: development_camera3_yolo_ingress
+    diagram_description_ko: 신호등용 Camera3 UDP 영상을 ROS 압축 영상으로 변환
+    details: morai_interface/udp_ros_bridge.yaml
   - name: morai_gps_bridge
     owner_package: morai_interface_pkg
     executable: gps_receiver_node
@@ -387,6 +395,22 @@ topics:
     frame: camera_right_optical_frame
     timestamp_source: morai_camera_packet_frame_time
     expected_rate_hz: 20.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: discard_incomplete_or_invalid_jpeg_frame
+  - name: /molit/sensors/camera/signal/image/compressed
+    owner_package: morai_interface_pkg
+    producers: [morai_camera_signal]
+    consumers: [camera_perception_node]
+    status: development_camera3_yolo_ingress
+    visibility: public
+    data_meaning: Signal camera JPEG image observation
+    diagram_description_ko: 신호등용 Camera3 압축 영상
+    data_type: sensor_msgs/CompressedImage
+    unit: encoded_jpeg_bytes
+    frame: camera_signal_optical_frame
+    timestamp_source: morai_camera_packet_frame_time
+    expected_rate_hz: 30.0
     queue_policy: publisher_queue_2_drop_old
     timeout_sec: pending_live_jitter_measurement
     invalid_data_policy: discard_incomplete_or_invalid_jpeg_frame
@@ -1162,6 +1186,10 @@ frames:
     details: tf/frame_contract.yaml
   - name: camera_right_optical_frame
     details: tf/frame_contract.yaml
+  - name: camera_signal_link
+    details: tf/frame_contract.yaml
+  - name: camera_signal_optical_frame
+    details: tf/frame_contract.yaml
   - name: lidar_link
     details: tf/frame_contract.yaml
   - name: gps_link
@@ -1210,6 +1238,7 @@ package_boundaries:
       - morai_camera_front
       - morai_camera_left
       - morai_camera_right
+      - morai_camera_signal
       - morai_gps_bridge
       - morai_imu_bridge
       - morai_vehicle_status_bridge
@@ -1224,6 +1253,7 @@ package_boundaries:
       - /molit/sensors/camera/front/image/compressed
       - /molit/sensors/camera/left/image/compressed
       - /molit/sensors/camera/right/image/compressed
+      - /molit/sensors/camera/signal/image/compressed
       - /molit/sensors/gps/fix
       - /molit/sensors/imu/data
       - /molit/vehicle/twist
@@ -1242,12 +1272,13 @@ package_boundaries:
       - /molit/map/status
   camera_perception_pkg:
     diagram_summary_ko: 카메라 영상에서 객체·차선·신호·주행 가능 영역 관측 생성
-    runtime_status: development_front_semantic_scores
+    runtime_status: development_front_semantic_and_camera3_yolo_candidates
     public_nodes: [camera_perception_node]
     inputs:
       - /molit/sensors/camera/front/image/compressed
       - /molit/sensors/camera/left/image/compressed
       - /molit/sensors/camera/right/image/compressed
+      - /molit/sensors/camera/signal/image/compressed
     outputs:
       - /molit/perception/camera/front/semantic_scores
       - /molit/perception/camera/front/observations
@@ -1440,6 +1471,7 @@ architecture_views:
       - morai_camera_front
       - morai_camera_left
       - morai_camera_right
+      - morai_camera_signal
       - morai_gps_bridge
       - morai_imu_bridge
       - morai_vehicle_status_bridge
@@ -1462,6 +1494,7 @@ architecture_views:
       - /molit/sensors/camera/front/image/compressed
       - /molit/sensors/camera/left/image/compressed
       - /molit/sensors/camera/right/image/compressed
+      - /molit/sensors/camera/signal/image/compressed
       - /molit/sensors/gps/fix
       - /molit/internal/morai_interface/lidar/packets
       - /molit/sensors/imu/data
@@ -1496,6 +1529,8 @@ architecture_views:
         - /molit/sensors/camera/left/image/compressed
         - morai_camera_right
         - /molit/sensors/camera/right/image/compressed
+        - morai_camera_signal
+        - /molit/sensors/camera/signal/image/compressed
         - camera_perception_node
         - /molit/perception/camera/front/observations
         - /molit/perception/camera/left/observations
@@ -1628,6 +1663,7 @@ external_transport:
         - morai_camera_front
         - morai_camera_left
         - morai_camera_right
+        - morai_camera_signal
         - morai_gps_bridge
         - morai_imu_bridge
         - morai_vehicle_status_bridge

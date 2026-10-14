@@ -1,0 +1,4 @@
+# Versions used by the local GPU inference environment; ROS comes from Noetic.
+ultralytics==8.4.174
+rospkg==1.6.3
+catkin_pkg==1.1.1

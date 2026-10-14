@@ -106,7 +106,7 @@ X11 MORAI 창의 Q 입력을 감지한다. Q를 누른 동안과 놓은 뒤
 - [Mermaid 원본](docs/interface_io.mmd)
 - [PNG 이미지](docs/interface_io.png)
 
-**공개 node (exact):** `morai_camera_front`, `morai_camera_left`, `morai_camera_right`, `morai_gps_bridge`, `morai_imu_bridge`, `morai_vehicle_status_bridge`, `morai_velodyne_cloud`, `morai_lidar_watchdog`, `morai_collision_bridge`, `morai_interface_status_node`, `morai_control_sender`
+**공개 node (exact):** `morai_camera_front`, `morai_camera_left`, `morai_camera_right`, `morai_camera_signal`, `morai_gps_bridge`, `morai_imu_bridge`, `morai_vehicle_status_bridge`, `morai_velodyne_cloud`, `morai_lidar_watchdog`, `morai_collision_bridge`, `morai_interface_status_node`, `morai_control_sender`
 
 | 구분 | Topic | Type |
 |---|---|---|
@@ -114,6 +114,7 @@ X11 MORAI 창의 Q 입력을 감지한다. Q를 누른 동안과 놓은 뒤
 | 출력 | `/molit/sensors/camera/front/image/compressed` | `sensor_msgs/CompressedImage` |
 | 출력 | `/molit/sensors/camera/left/image/compressed` | `sensor_msgs/CompressedImage` |
 | 출력 | `/molit/sensors/camera/right/image/compressed` | `sensor_msgs/CompressedImage` |
+| 출력 | `/molit/sensors/camera/signal/image/compressed` | `sensor_msgs/CompressedImage` |
 | 출력 | `/molit/sensors/gps/fix` | `sensor_msgs/NavSatFix` |
 | 출력 | `/molit/sensors/imu/data` | `sensor_msgs/Imu` |
 | 출력 | `/molit/vehicle/twist` | `geometry_msgs/TwistWithCovarianceStamped` |
@@ -165,3 +166,10 @@ Competition packet 호환이나 센서 축·단위의 실측 증거가 아니다
 전역경로만 10 km/h로 추종한다. 일반 실행과 구분된 개발용 직접 전달 경로이며
 장애물·신호 판단을 수행하지 않는다. 별도 방어 계층은 추가하지 않았다.
 실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
+
+## 개발용 Camera3 신호등 입력
+
+`morai_camera_signal`은 별도 UDP 9297을 수신한다.
+`config/camera3_signal_sensor.json`은 학습 때의 Camera3 자세와 해상도를
+보존하는 RGB 센서 프리셋이다. 실행 중인 MORAI 설정은 자동 변경하지 않는다.
+기존 Right Camera와 다른 개발용 카메라이며 [YOLO 실행 안내](../camera_perception_pkg/docs/camera3_yolo.md)를 따른다.

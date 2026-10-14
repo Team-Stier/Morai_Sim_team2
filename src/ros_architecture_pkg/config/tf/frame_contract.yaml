@@ -73,6 +73,14 @@ frames:
     category: sensor_measurement
     semantic: Right image measurement frame using REP-103 optical axes.
     semantic_owner: camera_perception_pkg
+  - name: camera_signal_link
+    category: sensor_mount
+    semantic: User Camera3 signal camera mounting frame.
+    semantic_owner: camera_perception_pkg
+  - name: camera_signal_optical_frame
+    category: sensor_measurement
+    semantic: Signal camera image using REP-103 optical axes.
+    semantic_owner: camera_perception_pkg
   - name: lidar_link
     category: sensor_measurement
     semantic: LiDAR frame normalized to REP-103 body-style axes.
@@ -149,6 +157,22 @@ transforms:
     publish_enabled: false
   - parent: camera_right_link
     child: camera_right_optical_frame
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#camera_optical_convention
+    verification_status: convention_defined_runtime_pending
+    publish_enabled: false
+  - parent: base_link
+    child: camera_signal_link
+    type: static
+    semantic_owner: ros_architecture_pkg
+    runtime_publisher_owner: system_bringup_pkg
+    source: sensor_extrinsics.yaml#camera_signal
+    verification_status: saved_camera3_geometry_physical_alignment_pending
+    publish_enabled: false
+  - parent: camera_signal_link
+    child: camera_signal_optical_frame
     type: static
     semantic_owner: ros_architecture_pkg
     runtime_publisher_owner: system_bringup_pkg

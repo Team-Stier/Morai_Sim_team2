@@ -3,6 +3,13 @@
   <arg name="rviz" default="true"/>
   <arg name="send_to_morai" default="true"/>
   <arg name="test_speed_cap_kph" default="0.0"/>
+  <arg name="camera3_yolo" default="true"/>
+  <arg name="signal_python" default="$(env HOME)/venvs/morai-yolo/bin/python"/>
+  <arg name="signal_weights" default="$(find camera_perception_pkg)/../../weights/camera3_route_signal.pt"/>
+  <include if="$(arg camera3_yolo)" file="$(find system_bringup_pkg)/launch/camera3_signal.launch">
+    <arg name="python" value="$(arg signal_python)"/>
+    <arg name="weights" value="$(arg signal_weights)"/>
+  </include>
   <include file="$(find morai_interface_pkg)/launch/morai_interface_pkg.launch">
     <arg name="start_imu" value="true"/>
     <arg name="start_lidar" value="true"/>

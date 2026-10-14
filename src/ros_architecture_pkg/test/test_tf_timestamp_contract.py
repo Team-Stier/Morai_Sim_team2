@@ -194,7 +194,7 @@ class TfTimestampContractTest(unittest.TestCase):
         camera_mounts = {
             mount["key"]: mount
             for mount in self.extrinsics["sensor_mounts"]
-            if mount["key"].startswith("camera_")
+            if mount.get("source_evidence") == "repository_camera_reference"
         }
         self.assertEqual(set(camera_mounts), set(evidence["scope"]))
         for mount in camera_mounts.values():
@@ -317,6 +317,7 @@ class TfTimestampContractTest(unittest.TestCase):
             "camera_front": "camera",
             "camera_left": "camera",
             "camera_right": "camera",
+            "camera_signal": "camera_signal",
             "lidar": "lidar",
             "gps": "gps",
             "imu": "imu",

@@ -21,108 +21,112 @@ flowchart TB
     view_node_000["node: morai_camera_front<br/>package: morai_interface_pkg<br/>state: LIVE"]
     view_node_001["node: morai_camera_left<br/>package: morai_interface_pkg<br/>state: LIVE"]
     view_node_002["node: morai_camera_right<br/>package: morai_interface_pkg<br/>state: LIVE"]
-    view_node_003["node: morai_gps_bridge<br/>package: morai_interface_pkg<br/>state: LIVE"]
-    view_node_004["node: morai_imu_bridge<br/>package: morai_interface_pkg<br/>state: RESERVED"]
-    view_node_005["node: morai_vehicle_status_bridge<br/>package: morai_interface_pkg<br/>state: RESERVED"]
-    view_node_006["node: morai_velodyne_driver<br/>package: morai_interface_pkg<br/>state: RESERVED"]
-    view_node_007["node: morai_velodyne_cloud<br/>package: morai_interface_pkg<br/>state: RESERVED"]
-    view_node_008["node: morai_control_sender<br/>package: morai_interface_pkg<br/>state: RESERVED"]
-    view_node_009["node: hd_map_server_node<br/>package: hd_map_pkg<br/>state: RESERVED"]
-    view_node_010["node: camera_perception_node<br/>package: camera_perception_pkg<br/>state: RESERVED"]
-    view_node_011["node: lidar_perception_node<br/>package: lidar_perception_pkg<br/>state: RESERVED"]
-    view_node_012["node: localization_node<br/>package: localization_pkg<br/>state: LIVE"]
-    view_node_013["node: global_route_manager_node<br/>package: global_route_manager_pkg<br/>state: RESERVED"]
-    view_node_014["node: world_model_node<br/>package: world_model_pkg<br/>state: RESERVED"]
-    view_node_015["node: pointpainting_node<br/>package: world_model_pkg<br/>state: RESERVED"]
-    view_node_016["node: path_planner_node<br/>package: path_planning_pkg<br/>state: RESERVED"]
-    view_node_017["node: vehicle_controller_node<br/>package: vehicle_control_pkg<br/>state: RESERVED"]
-    view_node_018["node: safety_supervisor_node<br/>package: safety_supervisor_pkg<br/>state: RESERVED"]
+    view_node_003["node: morai_camera_signal<br/>package: morai_interface_pkg<br/>state: RESERVED"]
+    view_node_004["node: morai_gps_bridge<br/>package: morai_interface_pkg<br/>state: LIVE"]
+    view_node_005["node: morai_imu_bridge<br/>package: morai_interface_pkg<br/>state: RESERVED"]
+    view_node_006["node: morai_vehicle_status_bridge<br/>package: morai_interface_pkg<br/>state: RESERVED"]
+    view_node_007["node: morai_velodyne_driver<br/>package: morai_interface_pkg<br/>state: RESERVED"]
+    view_node_008["node: morai_velodyne_cloud<br/>package: morai_interface_pkg<br/>state: RESERVED"]
+    view_node_009["node: morai_control_sender<br/>package: morai_interface_pkg<br/>state: RESERVED"]
+    view_node_010["node: hd_map_server_node<br/>package: hd_map_pkg<br/>state: RESERVED"]
+    view_node_011["node: camera_perception_node<br/>package: camera_perception_pkg<br/>state: RESERVED"]
+    view_node_012["node: lidar_perception_node<br/>package: lidar_perception_pkg<br/>state: RESERVED"]
+    view_node_013["node: localization_node<br/>package: localization_pkg<br/>state: LIVE"]
+    view_node_014["node: global_route_manager_node<br/>package: global_route_manager_pkg<br/>state: RESERVED"]
+    view_node_015["node: world_model_node<br/>package: world_model_pkg<br/>state: RESERVED"]
+    view_node_016["node: pointpainting_node<br/>package: world_model_pkg<br/>state: RESERVED"]
+    view_node_017["node: path_planner_node<br/>package: path_planning_pkg<br/>state: RESERVED"]
+    view_node_018["node: vehicle_controller_node<br/>package: vehicle_control_pkg<br/>state: RESERVED"]
+    view_node_019["node: safety_supervisor_node<br/>package: safety_supervisor_pkg<br/>state: RESERVED"]
 
     view_topic_000["/molit/perception/camera/front/semantic_scores<br/>type: sensor_msgs/Image<br/>state: RESERVED"]
     view_topic_001["/molit/world_model/painted_points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
     view_topic_002["/molit/sensors/camera/front/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: LIVE"]
     view_topic_003["/molit/sensors/camera/left/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: LIVE"]
     view_topic_004["/molit/sensors/camera/right/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: LIVE"]
-    view_topic_005["/molit/sensors/gps/fix<br/>type: sensor_msgs/NavSatFix<br/>state: LIVE"]
-    view_topic_006["/molit/internal/morai_interface/lidar/packets<br/>type: velodyne_msgs/VelodyneScan<br/>state: RESERVED"]
-    view_topic_007["/molit/sensors/imu/data<br/>type: sensor_msgs/Imu<br/>state: RESERVED"]
-    view_topic_008["/molit/vehicle/twist<br/>type: geometry_msgs/TwistWithCovarianceStamped<br/>state: RESERVED"]
-    view_topic_009["/molit/sensors/lidar/points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
-    view_topic_010["/molit/map/hd_map<br/>type: common_msgs_pkg/HdMap<br/>state: RESERVED"]
-    view_topic_011["/molit/map/static_walls<br/>type: common_msgs_pkg/StaticWallMap<br/>state: RESERVED"]
-    view_topic_012["/molit/perception/camera/front/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
-    view_topic_013["/molit/perception/camera/left/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
-    view_topic_014["/molit/perception/camera/right/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
-    view_topic_015["/molit/perception/lidar/observations<br/>type: common_msgs_pkg/LidarObservationArray<br/>state: RESERVED"]
-    view_topic_016["/molit/localization/local/odometry<br/>type: nav_msgs/Odometry<br/>state: LIVE"]
-    view_topic_017["/molit/localization/ego_state<br/>type: common_msgs_pkg/EgoState<br/>state: LIVE"]
-    view_topic_018["/molit/route/context<br/>type: common_msgs_pkg/RouteContext<br/>state: RESERVED"]
-    view_topic_019["/molit/world_model/scene<br/>type: common_msgs_pkg/WorldModel<br/>state: RESERVED"]
-    view_topic_020["/molit/planning/trajectory<br/>type: common_msgs_pkg/Trajectory<br/>state: RESERVED"]
-    view_topic_021["/molit/control/nominal_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
-    view_topic_022["/molit/safety/final_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
+    view_topic_005["/molit/sensors/camera/signal/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: RESERVED"]
+    view_topic_006["/molit/sensors/gps/fix<br/>type: sensor_msgs/NavSatFix<br/>state: LIVE"]
+    view_topic_007["/molit/internal/morai_interface/lidar/packets<br/>type: velodyne_msgs/VelodyneScan<br/>state: RESERVED"]
+    view_topic_008["/molit/sensors/imu/data<br/>type: sensor_msgs/Imu<br/>state: RESERVED"]
+    view_topic_009["/molit/vehicle/twist<br/>type: geometry_msgs/TwistWithCovarianceStamped<br/>state: RESERVED"]
+    view_topic_010["/molit/sensors/lidar/points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
+    view_topic_011["/molit/map/hd_map<br/>type: common_msgs_pkg/HdMap<br/>state: RESERVED"]
+    view_topic_012["/molit/map/static_walls<br/>type: common_msgs_pkg/StaticWallMap<br/>state: RESERVED"]
+    view_topic_013["/molit/perception/camera/front/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
+    view_topic_014["/molit/perception/camera/left/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
+    view_topic_015["/molit/perception/camera/right/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
+    view_topic_016["/molit/perception/lidar/observations<br/>type: common_msgs_pkg/LidarObservationArray<br/>state: RESERVED"]
+    view_topic_017["/molit/localization/local/odometry<br/>type: nav_msgs/Odometry<br/>state: LIVE"]
+    view_topic_018["/molit/localization/ego_state<br/>type: common_msgs_pkg/EgoState<br/>state: LIVE"]
+    view_topic_019["/molit/route/context<br/>type: common_msgs_pkg/RouteContext<br/>state: RESERVED"]
+    view_topic_020["/molit/world_model/scene<br/>type: common_msgs_pkg/WorldModel<br/>state: RESERVED"]
+    view_topic_021["/molit/planning/trajectory<br/>type: common_msgs_pkg/Trajectory<br/>state: RESERVED"]
+    view_topic_022["/molit/control/nominal_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
+    view_topic_023["/molit/safety/final_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
 
-    view_node_010 --> view_topic_000
-    view_topic_000 --> view_node_015
-    view_node_015 --> view_topic_001
+    view_node_011 --> view_topic_000
+    view_topic_000 --> view_node_016
+    view_node_016 --> view_topic_001
     view_node_000 --> view_topic_002
-    view_topic_002 --> view_node_010
+    view_topic_002 --> view_node_011
     view_node_001 --> view_topic_003
-    view_topic_003 --> view_node_010
+    view_topic_003 --> view_node_011
     view_node_002 --> view_topic_004
-    view_topic_004 --> view_node_010
+    view_topic_004 --> view_node_011
     view_node_003 --> view_topic_005
-    view_topic_005 --> view_node_012
-    view_node_006 --> view_topic_006
-    view_topic_006 --> view_node_007
-    view_node_004 --> view_topic_007
-    view_topic_007 --> view_node_012
+    view_topic_005 --> view_node_011
+    view_node_004 --> view_topic_006
+    view_topic_006 --> view_node_013
+    view_node_007 --> view_topic_007
+    view_topic_007 --> view_node_008
     view_node_005 --> view_topic_008
-    view_topic_008 --> view_node_012
-    view_node_007 --> view_topic_009
-    view_topic_009 --> view_node_011
-    view_topic_009 --> view_node_012
-    view_topic_009 --> view_node_015
-    view_node_009 --> view_topic_010
+    view_topic_008 --> view_node_013
+    view_node_006 --> view_topic_009
+    view_topic_009 --> view_node_013
+    view_node_008 --> view_topic_010
     view_topic_010 --> view_node_012
     view_topic_010 --> view_node_013
-    view_topic_010 --> view_node_014
     view_topic_010 --> view_node_016
-    view_node_009 --> view_topic_011
-    view_topic_011 --> view_node_012
+    view_node_010 --> view_topic_011
+    view_topic_011 --> view_node_013
+    view_topic_011 --> view_node_014
+    view_topic_011 --> view_node_015
+    view_topic_011 --> view_node_017
     view_node_010 --> view_topic_012
-    view_topic_012 --> view_node_014
-    view_node_010 --> view_topic_013
-    view_topic_013 --> view_node_014
-    view_node_010 --> view_topic_014
-    view_topic_014 --> view_node_014
+    view_topic_012 --> view_node_013
+    view_node_011 --> view_topic_013
+    view_topic_013 --> view_node_015
+    view_node_011 --> view_topic_014
+    view_topic_014 --> view_node_015
     view_node_011 --> view_topic_015
-    view_topic_015 --> view_node_014
+    view_topic_015 --> view_node_015
     view_node_012 --> view_topic_016
-    view_topic_016 --> view_node_014
-    view_topic_016 --> view_node_016
-    view_topic_016 --> view_node_017
-    view_topic_016 --> view_node_018
-    view_node_012 --> view_topic_017
-    view_topic_017 --> view_node_013
-    view_topic_017 --> view_node_014
-    view_topic_017 --> view_node_016
+    view_topic_016 --> view_node_015
+    view_node_013 --> view_topic_017
+    view_topic_017 --> view_node_015
+    view_topic_017 --> view_node_017
     view_topic_017 --> view_node_018
-    view_topic_017 --> view_node_011
+    view_topic_017 --> view_node_019
     view_node_013 --> view_topic_018
     view_topic_018 --> view_node_014
-    view_topic_018 --> view_node_016
-    view_topic_018 --> view_node_018
+    view_topic_018 --> view_node_015
+    view_topic_018 --> view_node_017
+    view_topic_018 --> view_node_019
+    view_topic_018 --> view_node_012
     view_node_014 --> view_topic_019
-    view_topic_019 --> view_node_016
-    view_topic_019 --> view_node_018
-    view_node_016 --> view_topic_020
+    view_topic_019 --> view_node_015
+    view_topic_019 --> view_node_017
+    view_topic_019 --> view_node_019
+    view_node_015 --> view_topic_020
     view_topic_020 --> view_node_017
-    view_topic_020 --> view_node_018
+    view_topic_020 --> view_node_019
     view_node_017 --> view_topic_021
     view_topic_021 --> view_node_018
+    view_topic_021 --> view_node_019
     view_node_018 --> view_topic_022
-    view_topic_022 --> view_node_008
+    view_topic_022 --> view_node_019
+    view_node_019 --> view_topic_023
+    view_topic_023 --> view_node_009
     external_ingress --> view_node_000
     external_ingress --> view_node_001
     external_ingress --> view_node_002
@@ -130,21 +134,23 @@ flowchart TB
     external_ingress --> view_node_004
     external_ingress --> view_node_005
     external_ingress --> view_node_006
-    view_node_008 --> external_egress
+    external_ingress --> view_node_007
+    view_node_009 --> external_egress
     %% Invisible constraints keep README views in narrow lanes.
     view_topic_002 ~~~ view_node_001
     view_topic_003 ~~~ view_node_002
-    view_topic_012 ~~~ view_topic_013
+    view_topic_004 ~~~ view_node_003
     view_topic_013 ~~~ view_topic_014
-    view_topic_005 ~~~ view_node_004
-    view_topic_007 ~~~ view_node_005
-    view_topic_016 ~~~ view_topic_017
+    view_topic_014 ~~~ view_topic_015
+    view_topic_006 ~~~ view_node_005
+    view_topic_008 ~~~ view_node_006
+    view_topic_017 ~~~ view_topic_018
 
     class view_node_000 liveNode;
     class view_node_001 liveNode;
     class view_node_002 liveNode;
-    class view_node_003 liveNode;
-    class view_node_004 reservedNode;
+    class view_node_003 reservedNode;
+    class view_node_004 liveNode;
     class view_node_005 reservedNode;
     class view_node_006 reservedNode;
     class view_node_007 reservedNode;
@@ -152,20 +158,21 @@ flowchart TB
     class view_node_009 reservedNode;
     class view_node_010 reservedNode;
     class view_node_011 reservedNode;
-    class view_node_012 liveNode;
-    class view_node_013 reservedNode;
+    class view_node_012 reservedNode;
+    class view_node_013 liveNode;
     class view_node_014 reservedNode;
     class view_node_015 reservedNode;
     class view_node_016 reservedNode;
     class view_node_017 reservedNode;
     class view_node_018 reservedNode;
+    class view_node_019 reservedNode;
     class view_topic_000 reservedTopic;
     class view_topic_001 reservedTopic;
     class view_topic_002 liveTopic;
     class view_topic_003 liveTopic;
     class view_topic_004 liveTopic;
-    class view_topic_005 liveTopic;
-    class view_topic_006 reservedTopic;
+    class view_topic_005 reservedTopic;
+    class view_topic_006 liveTopic;
     class view_topic_007 reservedTopic;
     class view_topic_008 reservedTopic;
     class view_topic_009 reservedTopic;
@@ -175,10 +182,11 @@ flowchart TB
     class view_topic_013 reservedTopic;
     class view_topic_014 reservedTopic;
     class view_topic_015 reservedTopic;
-    class view_topic_016 liveTopic;
+    class view_topic_016 reservedTopic;
     class view_topic_017 liveTopic;
-    class view_topic_018 reservedTopic;
+    class view_topic_018 liveTopic;
     class view_topic_019 reservedTopic;
     class view_topic_020 reservedTopic;
     class view_topic_021 reservedTopic;
     class view_topic_022 reservedTopic;
+    class view_topic_023 reservedTopic;

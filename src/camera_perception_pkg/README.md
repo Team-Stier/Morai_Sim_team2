@@ -41,6 +41,7 @@
 | 입력 | `/molit/sensors/camera/front/image/compressed` | `sensor_msgs/CompressedImage` |
 | 입력 | `/molit/sensors/camera/left/image/compressed` | `sensor_msgs/CompressedImage` |
 | 입력 | `/molit/sensors/camera/right/image/compressed` | `sensor_msgs/CompressedImage` |
+| 입력 | `/molit/sensors/camera/signal/image/compressed` | `sensor_msgs/CompressedImage` |
 | 출력 | `/molit/perception/camera/front/semantic_scores` | `sensor_msgs/Image` |
 | 출력 | `/molit/perception/camera/front/observations` | `common_msgs_pkg/CameraObservationArray` |
 | 출력 | `/molit/perception/camera/left/observations` | `common_msgs_pkg/CameraObservationArray` |
@@ -71,3 +72,9 @@ Camera mount/optical frame은 중앙 [`TF 계약`](../ros_architecture_pkg/confi
 - `docs/`: 데이터셋, calibration, 모델 카드와 평가 근거
 - `launch/`: Camera Perception 단독 실행
 - `src/`: inference, preprocessing와 observation 변환 구현
+
+## Camera3 신호등 YOLO
+
+`./run.sh`는 개발용 Camera3 YOLO 하우징 검출을 함께 시작한다.
+센서 프리셋 로드와 박스 영상 확인은 [실행 안내](docs/camera3_yolo.md)를 따른다.
+신호 후보는 private 진단 출력이며 주행 판단에 연결하지 않았다.
