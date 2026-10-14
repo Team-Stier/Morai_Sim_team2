@@ -5,7 +5,7 @@ from ros_numpy.point_cloud2 import array_to_pointcloud2
 from world_model_pkg.pointpainting import cloud_records
 from world_model_pkg.semantic_objects import foreground_mask, foreground_cloud, semantic_groups
 
-POLICY = {'classes': [1, 2, 3, 4, 5], 'minimum_probability': 0.6}
+POLICY = {'classes': [1, 2, 3, 4, 5], 'minimum_probability': 0.7}
 CONFIG = {'cell_size_m': 0.4, 'minimum_points': 3, 'maximum_points': 100}
 
 
@@ -28,6 +28,18 @@ def records():
 
 
 class SemanticObjectsTest(unittest.TestCase):
+    def test_probability_0_7_boundary_and_geometry_selection(self):
+        data = records()
+        data['score_1'][0] = .69; data['score_0'][0] = .31; data['confidence'][0] = .69
+        data['score_1'][1] = .7; data['score_0'][1] = .3; data['confidence'][1] = .7
+        mask = foreground_mask(data, POLICY)
+        self.assertFalse(mask[0]); self.assertTrue(mask[1])
+        cloud = array_to_pointcloud2(data, stamp=rospy.Time(12,34), frame_id='lidar_link')
+        geometry = np.zeros(len(data),bool); geometry[1] = True
+        result = foreground_cloud(cloud,POLICY,geometry)
+        self.assertEqual(result.header,cloud.header)
+        np.testing.assert_array_equal(cloud_records(result),data[1:2])
+
     def test_selection_and_original_stamp_records(self):
         data = records()
         cloud = array_to_pointcloud2(data, stamp=rospy.Time(12, 34), frame_id='lidar_link')

@@ -210,7 +210,7 @@ PointPainting → World Model 내부 장애물 군집/추적 → 기존 Planner 
 World Model의 내부 `/molit/internal/world_model/pidnet_points`는 다른 패키지가 구독하지 않는다.
 
 중앙 `config/messages/pointpainting.yaml`의 foreground 정책으로
-person/animal/box/bollard/barrier argmax 및 확률 0.6 이상인 실제 LiDAR 반환점만 선택한다.
+person/animal/box/bollard/barrier argmax 및 확률 0.7 이상인 실제 LiDAR 반환점만 선택한다.
 배경, 카메라 시야 밖, NaN과 낮은 확률 점은 제외한다. 모델에 차량/신호 클래스는 없다.
 Softmax는 보정된 객체 confidence가 아니므로 추적 객체 confidence는 -1을 유지한다.
 원본 LiDAR 좌표·field·측정시각과 카메라 측정시각을 보존한다.

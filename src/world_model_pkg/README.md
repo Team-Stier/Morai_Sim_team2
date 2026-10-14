@@ -134,3 +134,8 @@ rostopic echo /molit/world_model/scene
 
 실행 전 Localization, 중앙 `base_link -> lidar_link` 정적 TF와 LiDAR Perception이
 동작해야 한다. HD Map의 RViz 마커는 표시 전용이며 이 첫 구현에는 융합되지 않는다.
+
+PIDNet foreground 출력은 확률 **0.7**과 영상 영역별 가까운 깊이층·클래스 크기
+상한을 함께 적용한다. 뒤쪽 배경점을 그대로 객체로 칠하지 않도록 하는 개발용
+기하 선별이며, 설정은 `config/pointpainting.yaml`, 근거·한계는
+[PointPainting 문서](docs/pointpainting.md)의 뒤쪽 점 제거 절을 따른다.

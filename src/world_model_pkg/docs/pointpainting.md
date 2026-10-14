@@ -51,7 +51,7 @@ sync slop 0.05초, pair 최대 age 0.5초, sync queue 4가 개발 기본값이�
 0 stamp, stale/future·frame 불일치·같은 clock epoch 안의 역행은 버린다.
 ROS clock reset에서는 synchronizer를 비우고 출력 순서 상태도 초기화한다.
 입력 단절 때 새 출력을 만들거나 이전 쌍을 재발행하지 않는다.
-전체 scan deskew, ego motion 보상과 occlusion filtering은 구현하지 않았다.
+전체 scan deskew와 ego motion 보상은 미구현이다. Foreground 출력에는 아래의 개발용 가까운 표면·클래스 크기 제한을 적용하지만 완전한 occlusion 모델은 아니다.
 출력에는 driving consumer가 없고 제어·Safety 정책을 바꾸지 않는다.
 
 ## 검증
@@ -109,7 +109,7 @@ PointPainting → World Model 내부 장애물 군집/추적 → 기존 Planner 
 World Model의 내부 `/molit/internal/world_model/pidnet_points`는 다른 패키지가 구독하지 않는다.
 
 중앙 `config/messages/pointpainting.yaml`의 foreground 정책으로
-person/animal/box/bollard/barrier argmax 및 확률 0.6 이상인 실제 LiDAR 반환점만 선택한다.
+person/animal/box/bollard/barrier argmax 및 확률 0.7 이상인 실제 LiDAR 반환점만 선택한다.
 배경, 카메라 시야 밖, NaN과 낮은 확률 점은 제외한다. 모델에 차량/신호 클래스는 없다.
 Softmax는 보정된 객체 confidence가 아니므로 추적 객체 confidence는 -1을 유지한다.
 원본 LiDAR 좌표·field·측정시각과 카메라 측정시각을 보존한다.
@@ -142,3 +142,37 @@ run.sh 터미널에서 Ctrl+C 후 새 worktree의 run.sh를 사용한다.
 추론은 약 58~70 ms, 전체 처리 약 123~143 ms였다. 당시 foreground는 0점이었으며
 실제 장애물 검출 성능, 동적 calibration과 MORAI closed-loop 주행은 검증하지 않았다.
 근거는 `/home/paik/morai-artifacts/pidnet-detection-live-probe.json`에 있다.
+
+## 뒤쪽 점 제거와 클래스 크기 제한 (2026-10-15)
+
+선별 확률은 중앙 계약의 **0.7**이다. 같은 semantic 영상 영역에 겹치는 원거리
+배경점이 객체로 칠해지던 문제를 줄이기 위해 foreground에 추가 기하 선별을 적용한다.
+영상의 클래스별 connected component마다 가까운 깊이층을 찾고, 0.45 m를 넘는
+깊이 단절 뒤쪽과 클래스 최대 깊이 폭을 넘는 점을 제거한다. 가까운 층의 점이
+3개 미만이면 먼 벽으로 대신 채우지 않는다. 가까운 층의 중앙값 주변에서 클래스별
+폭·높이 상한을 적용한다. 독립된 영상 영역의 먼 객체는 별도로 선택한다.
+
+설정 원본은 `world_model_pkg/config/pointpainting.yaml`의 `foreground_surface`다.
+단위는 m이며 축은 camera optical의 가로·세로·깊이이다.
+
+| 클래스 | 폭 | 높이 | 깊이 폭 |
+|---|---:|---:|---:|
+| person | 1.2 | 2.5 | 1.0 |
+| animal | 2.5 | 2.0 | 2.5 |
+| box | 3.0 | 3.0 | 3.0 |
+| bollard | 0.8 | 2.0 | 0.8 |
+| barrier | 12.0 | 3.0 | 2.0 |
+
+이는 실측된 객체 크기나 안전 검증값이 아닌 조정 가능한 개발용 상한이다.
+잘못된 segmentation, 투영 보정 오차, 가까운 층의 부족한 반환점, 붙어 있는 여러
+객체는 여전히 누락·오선별을 만들 수 있다. 측정 점을 합성하거나 bounding box로
+대체하지 않으며 모든 선택점의 원본 field·LiDAR header와 camera stamp를 보존한다.
+전체 장식 점군의 진단 모드는 유지하고 내부 객체 입력과 foreground_only RViz 출력에
+동일한 mask를 적용한다. World Model의 unverified 및 planner_ready=false 제한도 유지한다.
+
+검증: World Model 패키지 37개 테스트(오류·실패 0), 합성 원거리 벽 제거·깊이 연속
+꼬리 제한·서로 다른 거리의 독립 사람 영역·폭/높이 이상점 제거·0.7 경계·원본
+레코드 보존과 ROS producer/consumer 경로를 통과했다. Live 동시측정 snapshot에서는
+0.6 기준 137점 → 0.7 기준 124점 → 기하 선별 후 93점으로 줄었고 선별 계산은
+약 43 ms였다. 이 수치는 제거 동작의 근거이며 인식 정확도 검증은 아니다.
+근거: `/home/paik/morai-artifacts/pidnet-surface-diagnosis/comparison.json`.

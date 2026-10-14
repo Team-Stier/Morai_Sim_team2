@@ -47,7 +47,8 @@ class PidnetPipelineTest(unittest.TestCase):
             localization.map_pose_valid = True; localization.reset_id = 1
             loc.publish(localization)
             data = np.array([(5., 0., 0., 41.), (5.1, 0., 0., 42.), (5.2, 0., 0., 43.),
-                             (-5., 0., 0., 99.)], dtype=[(n, '<f4') for n in ('x','y','z','intensity')])
+                             (-5., 0., 0., 99.), (15., 0., 0., 101.),
+                             (15.1, 0., 0., 102.), (15.2, 0., 0., 103.)], dtype=[(n, '<f4') for n in ('x','y','z','intensity')])
             cloud = array_to_pointcloud2(data, stamp=stamp, frame_id='lidar_link')
             probabilities = np.zeros((18,32,6), np.float32); probabilities[:,:,label] = 1
             image = CvBridge().cv2_to_imgmsg(probabilities); image.header.stamp = stamp

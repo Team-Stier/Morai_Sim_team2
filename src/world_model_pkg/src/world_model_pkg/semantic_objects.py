@@ -31,9 +31,14 @@ def foreground_mask(records, policy):
             & np.isin(labels, policy['classes']) & (confidence >= threshold))
 
 
-def foreground_cloud(cloud, policy):
+def foreground_cloud(cloud, policy, geometry_mask=None):
     records = cloud_records(cloud)
-    output = array_to_pointcloud2(records[foreground_mask(records, policy)])
+    mask = foreground_mask(records, policy)
+    if geometry_mask is not None:
+        if geometry_mask.shape != mask.shape:
+            raise ValueError("surface selection size does not match cloud")
+        mask &= geometry_mask
+    output = array_to_pointcloud2(records[mask])
     output.header = cloud.header
     return output
 

@@ -5,10 +5,12 @@ import message_filters
 import rospkg
 import rospy
 import yaml
+import numpy as np
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image, PointCloud2
-from world_model_pkg.pointpainting import camera_geometry, painted_cloud
+from world_model_pkg.pointpainting import camera_geometry, painted_cloud, cloud_records
 from world_model_pkg.semantic_objects import foreground_cloud
+from world_model_pkg.semantic_surface import surface_mask
 
 
 class PaintingNode:
@@ -18,6 +20,9 @@ class PaintingNode:
         contract = yaml.safe_load((self.config_root / 'messages/pointpainting.yaml').read_text())
         self.palette = contract['display_palette_rgb']
         self.foreground_policy = contract['foreground_selection']
+        self.classes = contract['classes']
+        self.surface_config = rospy.get_param('~foreground_surface')
+        rospy.set_param('~minimum_probability', self.foreground_policy['minimum_probability'])
         self.foreground_only = rospy.get_param('~foreground_only', False)
         self.max_age = rospy.get_param('~max_age_sec')
         self.slop = rospy.get_param('~sync_slop_sec')
@@ -54,7 +59,10 @@ class PaintingNode:
                 self.geometry[shape] = camera_geometry(self.config_root, *shape)
             transform, intrinsic = self.geometry[shape]
             output = painted_cloud(cloud, image, scores, transform, intrinsic, self.palette)
-            foreground = foreground_cloud(output, self.foreground_policy)
+            records = cloud_records(cloud)
+            xyz = np.column_stack([records[name] for name in ('x', 'y', 'z')])
+            geometry = surface_mask(xyz, scores, transform, intrinsic, self.classes, self.surface_config)
+            foreground = foreground_cloud(output, self.foreground_policy, geometry)
             self.foreground_publisher.publish(foreground)
             self.publisher.publish(foreground if self.foreground_only else output)
             self.last_stamps = stamps

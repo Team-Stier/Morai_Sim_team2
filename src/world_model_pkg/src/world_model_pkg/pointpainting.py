@@ -26,18 +26,24 @@ def camera_geometry(config_root, width, height):
     return lidar_to_camera, intrinsic
 
 
-def paint(xyz, scores, lidar_to_camera, intrinsic):
-    """Keep all points; append six probabilities and an observed/not-observed flag."""
-    if scores.ndim != 3 or scores.shape[2] != 6 or not np.isfinite(scores).all():
-        raise ValueError('expected finite HxWx6 probabilities')
+def project_points(xyz, image_shape, lidar_to_camera, intrinsic):
+    """Project original returns; validity includes positive optical depth and image bounds."""
     camera = xyz @ lidar_to_camera[:3, :3].T + lidar_to_camera[:3, 3]
     projected = camera @ intrinsic.T
     valid = np.isfinite(camera).all(1)
     valid[valid] &= camera[valid, 2] > 0
     uv = np.zeros((len(xyz), 2), np.float64)
     uv[valid] = projected[valid, :2] / projected[valid, 2:3]
-    height, width = scores.shape[:2]
+    height, width = image_shape
     valid &= (uv[:, 0] >= 0) & (uv[:, 0] < width) & (uv[:, 1] >= 0) & (uv[:, 1] < height)
+    return camera, uv, valid
+
+
+def paint(xyz, scores, lidar_to_camera, intrinsic):
+    """Keep all points; append six probabilities and an observed/not-observed flag."""
+    if scores.ndim != 3 or scores.shape[2] != 6 or not np.isfinite(scores).all():
+        raise ValueError('expected finite HxWx6 probabilities')
+    _, uv, valid = project_points(xyz, scores.shape[:2], lidar_to_camera, intrinsic)
     result = np.zeros((len(xyz), 6), np.float32)
     pixels = np.floor(uv[valid]).astype(np.int64)
     result[valid] = scores[pixels[:, 1], pixels[:, 0]]
