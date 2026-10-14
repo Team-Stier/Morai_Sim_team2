@@ -1,4 +1,7 @@
 <launch>
+  <arg name="pidnet_enabled" default="true"/>
+  <arg name="pidnet_weights" default="/home/paik/morai-artifacts/pidnet-training/output/Morai6/pidnet_s_morai6/best.pt"/>
+  <arg name="pidnet_python" default="/home/paik/venvs/morai-pidnet/bin/python"/>
   <!-- Existing MORAI sensors and Localization are prerequisites. -->
   <arg name="send_to_morai" default="false"/>
   <arg name="test_speed_cap_kph" default="0.0"/>
@@ -6,8 +9,19 @@
   <node pkg="global_route_manager_pkg" type="route_manager_node.py" name="global_route_manager_node" output="screen">
     <rosparam command="load" file="$(find global_route_manager_pkg)/config/route_manager.yaml"/>
   </node>
-  <include file="$(find lidar_perception_pkg)/launch/lidar_perception_pkg.launch"/>
-  <include file="$(find world_model_pkg)/launch/world_model_pkg.launch"/>
+  <include unless="$(arg pidnet_enabled)" file="$(find lidar_perception_pkg)/launch/lidar_perception_pkg.launch"/>
+  <group if="$(arg pidnet_enabled)">
+    <include file="$(find camera_perception_pkg)/launch/camera_perception_pkg.launch">
+      <arg name="weights" value="$(arg pidnet_weights)"/>
+      <arg name="python" value="$(arg pidnet_python)"/>
+    </include>
+    <include file="$(find world_model_pkg)/launch/pointpainting.launch">
+      <arg name="foreground_only" value="true"/>
+    </include>
+  </group>
+  <include file="$(find world_model_pkg)/launch/world_model_pkg.launch">
+    <arg name="pidnet_enabled" value="$(arg pidnet_enabled)"/>
+  </include>
   <include file="$(find path_planning_pkg)/launch/path_planner.launch">
     <arg name="test_speed_cap_kph" value="$(arg test_speed_cap_kph)"/>
   </include>

@@ -1077,7 +1077,7 @@ topics:
     consumers: [vehicle_rviz]
     status: development_pointpainting_static_scene_checked
     visibility: public
-    data_meaning: Raw LiDAR points decorated with six camera probabilities, class/confidence/RGB display fields, painted flag and original image stamp; see messages/pointpainting.yaml
+    data_meaning: LiDAR points decorated with six camera probabilities and original image stamp; foreground_only mode retains only selected PIDNet obstacle points; see messages/pointpainting.yaml
     diagram_description_ko: 카메라 클래스 확률과 영상 시각을 부착한 LiDAR 원본 점
     data_type: sensor_msgs/PointCloud2
     unit: original_sensor_fields_and_probability
@@ -1087,6 +1087,23 @@ topics:
     queue_policy: publisher_queue_1_bounded_approximate_time_sync
     timeout_sec: development_pair_max_age_0_5_sec_configurable
     invalid_data_policy: reject_stale_zero_regressing_or_mismatched_pairs_unobserved_points_have_zero_scores
+
+  - name: /molit/internal/world_model/pidnet_points
+    owner_package: world_model_pkg
+    producers: [pointpainting_node]
+    consumers: [world_model_node]
+    status: development_pidnet_foreground_fusion
+    visibility: package_internal
+    data_meaning: Selected PIDNet obstacle returns with original LiDAR coordinates, scores and both measurement stamps; grouping and tracking stay inside World Model
+    diagram_description_ko: PIDNet 장애물 점을 World Model 내부 군집·추적에 전달
+    data_type: sensor_msgs/PointCloud2
+    unit: original_sensor_fields_and_probability
+    frame: lidar_link
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_1_latest_pair
+    timeout_sec: development_pair_max_age_0_5_sec_configurable
+    invalid_data_policy: reject_stale_or_malformed_pairs_no_raw_lidar_fallback
 
 messages:
   - type: sensor_msgs/Image

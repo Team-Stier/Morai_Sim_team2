@@ -99,3 +99,46 @@ ROS clock reset에서는 synchronizer를 비우고 출력 순서 상태도 초�
 로컬 상세 증거: `/home/paik/morai-artifacts/pointpainting-verification/`의
 `replay.json`, `live-final.json`, `model_equivalence.json`, `offline_samples.json`, `projection_overlay.png`,
 `painted_sample.npz`. sensor probe와 임시 ROS master는 검증 후 종료했다.
+
+## PIDNet foreground 객체 처리 (2026-10-15)
+
+`frenet_all.launch`(`./run.sh`)와 `competition.launch`는 기본으로
+`pidnet_enabled:=true`를 사용한다. 전방 RGB → PIDNet 6채널 확률 →
+PointPainting → World Model 내부 장애물 군집/추적 → 기존 Planner 순서다.
+이 모드에서는 `lidar_perception_node`를 실행하지 않고 raw-only 검출로 되돌아가지 않는다.
+World Model의 내부 `/molit/internal/world_model/pidnet_points`는 다른 패키지가 구독하지 않는다.
+
+중앙 `config/messages/pointpainting.yaml`의 foreground 정책으로
+person/animal/box/bollard/barrier argmax 및 확률 0.6 이상인 실제 LiDAR 반환점만 선택한다.
+배경, 카메라 시야 밖, NaN과 낮은 확률 점은 제외한다. 모델에 차량/신호 클래스는 없다.
+Softmax는 보정된 객체 confidence가 아니므로 추적 객체 confidence는 -1을 유지한다.
+원본 LiDAR 좌표·field·측정시각과 카메라 측정시각을 보존한다.
+객체 군집은 World Model의 `config/world_model.yaml`에서 클래스별 0.4 m voxel
+인접성, 최소 3점으로 설정한다. 배경 지면 기반 기존 LiDAR 검출은 사용하지 않는다.
+
+RViz는 `pidnet_vehicle.rviz`로 PIDNet 장애물 점만 RGB로 표시한다.
+기존 LiDAR/World Model 장애물 marker 표시는 꺼지고 지도·차량·trajectory는 유지한다.
+입력 단절 시 마지막 점군을 재발행하지 않으며 RViz 점 표시의 유지 시간은 0.5초다.
+World Model은 측정시각과 상태 watchdog으로 stale 결과를 거부한다.
+객체가 없는 결과는 free-space 증거가 아니다. 개발 calibration/freshness와
+planner_ready 검증 제한은 유지한다.
+
+현재 PC의 가중치와 Python 기본값은 기존 검증된 경로다. 다른 PC에서는 인자로 지정한다.
+
+```bash
+./run.sh pidnet_weights:=/absolute/path/best.pt pidnet_python:=/absolute/path/python
+./run.sh send_to_morai:=false rviz:=false
+# 기존 LiDAR 검출을 명시적으로 사용하는 비교 실행:
+./run.sh pidnet_enabled:=false
+```
+
+두 launch를 중복 실행하지 않는다. 현재 작업은 별도 worktree에서 수행했으며
+원래 작업 폴더의 실행 중 노드를 재시작하지 않았다. 새 코드를 실행할 때 기존
+run.sh 터미널에서 Ctrl+C 후 새 worktree의 run.sh를 사용한다.
+
+검증: catkin build, 합성 ROS producer/consumer 통합에서 foreground 선별·map 추적·
+원본 stamp 보존·배경/후방 제외·카메라 단절 및 raw-only fallback 부재를 확인했다.
+실제 best.pt GPU 추론은 현재 live 입력 3쌍으로 확인했다. 첫 추론 워밍업 후
+추론은 약 58~70 ms, 전체 처리 약 123~143 ms였다. 당시 foreground는 0점이었으며
+실제 장애물 검출 성능, 동적 calibration과 MORAI closed-loop 주행은 검증하지 않았다.
+근거는 `/home/paik/morai-artifacts/pidnet-detection-live-probe.json`에 있다.

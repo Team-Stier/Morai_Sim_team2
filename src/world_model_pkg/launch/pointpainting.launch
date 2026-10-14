@@ -1,5 +1,7 @@
 <launch>
+  <arg name="foreground_only" default="false"/>
   <node pkg="world_model_pkg" type="pointpainting_node" name="pointpainting_node" ns="/" output="screen">
+    <param name="foreground_only" value="$(arg foreground_only)"/>
     <rosparam command="load" file="$(find world_model_pkg)/config/pointpainting.yaml"/>
   </node>
 </launch>

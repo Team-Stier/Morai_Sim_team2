@@ -1,0 +1,9 @@
+<launch>
+  <include file="$(find world_model_pkg)/launch/pointpainting.launch">
+    <arg name="foreground_only" value="true"/>
+  </include>
+  <include file="$(find world_model_pkg)/launch/world_model_pkg.launch">
+    <arg name="pidnet_enabled" value="true"/>
+  </include>
+  <test test-name="pidnet_pipeline" pkg="world_model_pkg" type="test_pidnet_pipeline.py" time-limit="30"/>
+</launch>

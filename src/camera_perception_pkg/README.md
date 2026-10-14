@@ -78,3 +78,7 @@ Camera mount/optical frame은 중앙 [`TF 계약`](../ros_architecture_pkg/confi
 `./run.sh`는 개발용 Camera3 YOLO 하우징 검출을 함께 시작한다.
 센서 프리셋 로드와 박스 영상 확인은 [실행 안내](docs/camera3_yolo.md)를 따른다.
 신호 후보는 private 진단 출력이며 주행 판단에 연결하지 않았다.
+
+본선/개발 전체 실행은 기본으로 이 PIDNet 추론을 활성화한다.
+World Model에서 foreground 선별과 LiDAR 융합·군집·추적을 수행한다.
+통합 실행 옵션은 `system_bringup_pkg/README.md`의 PIDNet 절을 따른다.

@@ -65,6 +65,7 @@ timestamp_source_registry:
     allowed_topics:
       - /molit/perception/camera/front/semantic_scores
       - /molit/world_model/painted_points
+      - /molit/internal/world_model/pidnet_points
       - /molit/perception/camera/front/observations
       - /molit/perception/camera/left/observations
       - /molit/perception/camera/right/observations

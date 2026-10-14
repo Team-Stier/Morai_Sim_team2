@@ -56,6 +56,21 @@ class VisualizationContractTest(unittest.TestCase):
             self.assertIn("vehicle_visualizer_node", topics[name]["consumers"])
             self.assertIn(name, boundaries["localization_pkg"]["outputs"])
 
+    def test_pidnet_rviz_shows_only_foreground_obstacles(self):
+        config = yaml.safe_load((PACKAGE / 'config/pidnet_vehicle.rviz').read_text())
+        displays = config['Visualization Manager']['Displays']
+        cloud = next(d for d in displays if d['Class'] == 'rviz/PointCloud2')
+        self.assertTrue(cloud['Enabled'])
+        self.assertEqual(cloud['Topic'], '/molit/world_model/painted_points')
+        self.assertEqual(cloud['Color Transformer'], 'RGB8')
+        self.assertGreater(cloud['Decay Time'], 0)
+        for item in displays:
+            if item.get('Marker Topic') in {
+                    '/molit/internal/visualization/lidar_markers',
+                    '/molit/internal/visualization/world_model_markers'}:
+                self.assertFalse(item['Enabled'])
+                self.assertFalse(item['Value'])
+
     def test_standalone_launch_has_no_tf_clock_or_driving_publishers(self):
         nodes = []
         for path in (PACKAGE / "launch").glob("*.launch"):

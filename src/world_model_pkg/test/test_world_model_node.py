@@ -81,10 +81,12 @@ class WorldModelPipelineTest(unittest.TestCase):
         while (
             self.observation_publisher.get_num_connections() == 0
             or self.localization_publisher.get_num_connections() == 0
+            or self.dynamic_broadcaster.pub_tf.get_num_connections() == 0
         ) and time.monotonic() < deadline:
             rospy.sleep(0.02)
         self.assertGreater(self.observation_publisher.get_num_connections(), 0)
         self.assertGreater(self.localization_publisher.get_num_connections(), 0)
+        self.assertGreater(self.dynamic_broadcaster.pub_tf.get_num_connections(), 0)
 
         # Publish both poses only after every subscriber is connected, then feed
         # the observations while they are still well inside the 0.5 s contract.

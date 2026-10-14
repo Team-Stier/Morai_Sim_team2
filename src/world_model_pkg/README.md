@@ -76,8 +76,8 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 
 `pointpainting_node`는 별도 실행 가능한 첫 Camera/LiDAR fusion 경로다.
 원본 LiDAR 점에 전방 영상의 6개 클래스 확률을 부착한다. 중앙 장착값의
-개발용 투영이며 카메라 TF를 발행하지 않는다. 기존 객체 추적과 Planner는
-이 출력을 아직 소비하지 않는다. [세부 계약과 검증](docs/pointpainting.md)을 따른다.
+개발용 투영이며 카메라 TF를 발행하지 않는다. PIDNet 통합 모드에서는 장애물 클래스만 선별하고 World Model이 클래스별
+공간 군집과 scan-time map 추적을 수행해 Planner에 제공한다. 기존 LiDAR 검출은 실행하지 않는다. [세부 계약과 검증](docs/pointpainting.md)을 따른다.
 
 좌표 변환에는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)에서 승인된 frame과 extrinsic만 사용한다. 시간 정렬에는 중앙 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)을 적용하고, 각 관측의 source stamp를 fusion publication time으로 교체하지 않는다.
 

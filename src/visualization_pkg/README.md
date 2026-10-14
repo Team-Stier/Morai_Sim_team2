@@ -205,3 +205,11 @@ HD Map의 원본 터널 벽 두 개를 기존 내부 `hd_map_markers`의 `static
 청록색=background, 빨강=person, 주황=animal, 노랑=box, 초록=bollard, 보라=barrier, 어두운 회색=카메라 미관측이다. RViz Select 도구로 점을 선택하면 Selection 패널에 `class_id`, `confidence`, `score_0`~`score_5`, 원본 LiDAR/영상 측정시각을 조회할 수 있다. `Confidence (optional)` 표시를 켜면 `confidence` 값을 색으로 확인한다. 카메라 TF는 발행하지 않는다.
 
 이 PC의 표준 압축영상 플러그인 준비와 실측 보정·출력 수치는 [PointPainting 검증 기록](../world_model_pkg/docs/pointpainting_calibration.md)을 참고한다.
+
+## PIDNet 전용 장애물 표시
+
+통합 launch의 `pidnet_enabled:=true`(기본값)는 `pidnet_vehicle.rviz`를 사용한다.
+foreground_only PointPainting의 `/molit/world_model/painted_points`만 장애물 점군으로
+표시하며 이전 LiDAR·World Model 장애물 marker 표시는 비활성화한다.
+지도·차량·trajectory 표시는 유지한다. 6클래스 RGB와 확률의 원본 의미는 중앙
+`ros_architecture_pkg/config/messages/pointpainting.yaml`을 따른다.

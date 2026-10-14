@@ -25,6 +25,14 @@ def detection(stamp_ns, x=10.0, y=5.0, local_id=0):
 
 
 class TrackerTest(unittest.TestCase):
+    def test_known_semantic_classes_do_not_share_a_track(self):
+        first = replace(detection(1_000_000_000), semantic_class=1)
+        initial = self.tracker.update([first], first.source_stamp_ns, 1)[0]
+        second = replace(detection(1_100_000_000), semantic_class=3)
+        views = self.tracker.update([second], second.source_stamp_ns, 1)
+        other = next(v for v in views if v.semantic_class == 3)
+        self.assertNotEqual(initial.track_id, other.track_id)
+
     def test_partial_static_surface_does_not_follow_centroid(self):
         points = np.column_stack((np.zeros(800), np.linspace(0,20,800), np.ones(800)))
         shift = translation(points[:600], points[80:680], max_points=160, iterations=8)

@@ -2,8 +2,8 @@
 # Workspace entry point for the complete MORAI development stack.
 set -eo pipefail
 if [[ ${1:-} == --help || ${1:-} == -h ]]; then
-  echo '사용법: ./run.sh [--check] [rviz:=false] [send_to_morai:=false] [test_speed_cap_kph:=10.0] [camera3_yolo:=false]'
-  echo '센서/Camera3 YOLO → Localization/RViz → Hybrid A*/Frenet Mode Manager → Controller/UDP 실행. 종료: Ctrl+C'
+  echo '사용법: ./run.sh [--check] [rviz:=false] [send_to_morai:=false] [test_speed_cap_kph:=10.0] [camera3_yolo:=false] [pidnet_enabled:=false] [pidnet_weights:=...] [pidnet_python:=...]'
+  echo '센서/Camera3 YOLO → PIDNet/PointPainting → World Model → Planner → Controller/UDP 실행. 종료: Ctrl+C'
   echo 'MORAI는 별도 실행하고 Cmd Control 127.0.0.1:9093을 Connect 상태로 둡니다.'
   exit 0
 fi

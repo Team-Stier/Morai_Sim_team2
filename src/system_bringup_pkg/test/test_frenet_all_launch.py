@@ -22,6 +22,11 @@ class FrenetAllLaunchTest(unittest.TestCase):
                      'path_planner_node', 'vehicle_controller_node', 'safety_supervisor_node',
                      'morai_control_sender'):
             self.assertIn('/' + name, names)
+        self.assertIn('/camera_perception_node', names)
+        self.assertIn('/pointpainting_node', names)
+        self.assertNotIn('/lidar_perception_node', names)
+        self.assertTrue(config.params['/world_model_node/pidnet_enabled'].value)
+        self.assertTrue(config.params['/pointpainting_node/foreground_only'].value)
         self.assertFalse(config.params['/use_sim_time'].value)
         self.assertEqual(config.params['/path_planner_node/test_speed_cap_kph'].value, 0.)
         self.assertEqual(config.params['/morai_control_sender/port'].value, 9093)
@@ -33,3 +38,11 @@ class FrenetAllLaunchTest(unittest.TestCase):
         self.assertNotIn('morai_control_sender', names)
         self.assertIn('vehicle_controller_node', names)
         self.assertEqual(config.params['/path_planner_node/test_speed_cap_kph'].value, 10.)
+
+    def test_explicit_legacy_mode_does_not_start_pidnet(self):
+        config = self.load(['pidnet_enabled:=false'])
+        names = {node.name for node in config.nodes}
+        self.assertIn('lidar_perception_node', names)
+        self.assertNotIn('camera_perception_node', names)
+        self.assertNotIn('pointpainting_node', names)
+        self.assertFalse(config.params['/world_model_node/pidnet_enabled'].value)

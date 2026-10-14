@@ -29,6 +29,7 @@ front_camera:
   input_mode: standard_RGB_camera_Ground_Truth_None
   note: Active standard Camera UI declares Horizontal FOV=90; focalLengthpixel=320 is an inactive Physical Camera setting. RGB input and measured projection checks are documented in world_model_pkg/docs/pointpainting_calibration.md.
 extrinsics:
+  calibration_id: pidnet-development-projection:2026-10-08
   source: tf/sensor_extrinsics.yaml
   method: inverse_base_camera_mount_times_optical_rotation_times_base_lidar_mount
   publish_tf: false
@@ -54,10 +55,17 @@ painted_cloud:
   image_time: original_score_image_stamp_repeated_per_point
   motion_compensated: false
   occlusion_filtered: false
-  driving_consumer: none
+  driving_consumer: world_model_node_development_only
+  foreground_only: optional_full_stack_default_true_preserve_selected_records_and_lidar_header
 timestamp_policy:
   clock_domain: canonical_message_clock
   pairing: bounded_approximate_time_sync
   input_loss: no_output_no_cached_pair_republication
   regression: reject_within_clock_epoch_clear_sync_on_ros_clock_reset
   scan_deskew: not_implemented
+
+foreground_selection:
+  classes: [1, 2, 3, 4, 5]
+  minimum_probability: 0.6
+  semantic_to_tracked_class: [0, 1, 3, 3, 3, 3]
+  note: Background, unobserved, nonfinite and low-score points are excluded. Softmax is not calibrated object confidence; tracked confidence remains -1.

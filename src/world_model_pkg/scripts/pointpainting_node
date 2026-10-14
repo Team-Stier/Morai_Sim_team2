@@ -8,19 +8,24 @@ import yaml
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image, PointCloud2
 from world_model_pkg.pointpainting import camera_geometry, painted_cloud
+from world_model_pkg.semantic_objects import foreground_cloud
 
 
 class PaintingNode:
     def __init__(self):
         self.bridge = CvBridge()
         self.config_root = Path(rospkg.RosPack().get_path('ros_architecture_pkg')) / 'config'
-        self.palette = yaml.safe_load((self.config_root / 'messages/pointpainting.yaml').read_text())['display_palette_rgb']
+        contract = yaml.safe_load((self.config_root / 'messages/pointpainting.yaml').read_text())
+        self.palette = contract['display_palette_rgb']
+        self.foreground_policy = contract['foreground_selection']
+        self.foreground_only = rospy.get_param('~foreground_only', False)
         self.max_age = rospy.get_param('~max_age_sec')
         self.slop = rospy.get_param('~sync_slop_sec')
         self.last_clock = rospy.Time.now()
         self.last_stamps = (rospy.Time(0), rospy.Time(0))
         self.geometry = {}
         self.publisher = rospy.Publisher('/molit/world_model/painted_points', PointCloud2, queue_size=1)
+        self.foreground_publisher = rospy.Publisher('/molit/internal/world_model/pidnet_points', PointCloud2, queue_size=1)
         self.cloud = message_filters.Subscriber('/molit/sensors/lidar/points', PointCloud2, queue_size=1)
         self.scores = message_filters.Subscriber('/molit/perception/camera/front/semantic_scores', Image,
                                                queue_size=1, buff_size=32 * 1024 * 1024)
@@ -49,7 +54,9 @@ class PaintingNode:
                 self.geometry[shape] = camera_geometry(self.config_root, *shape)
             transform, intrinsic = self.geometry[shape]
             output = painted_cloud(cloud, image, scores, transform, intrinsic, self.palette)
-            self.publisher.publish(output)
+            foreground = foreground_cloud(output, self.foreground_policy)
+            self.foreground_publisher.publish(foreground)
+            self.publisher.publish(foreground if self.foreground_only else output)
             self.last_stamps = stamps
         except (ValueError, RuntimeError) as error:
             rospy.logwarn_throttle(2, 'PointPainting pair rejected: %s', error)

@@ -19,3 +19,10 @@ tracking:
   motion_max_points: 96
   motion_iterations: 6
   motion_trim_fraction: 0.7
+
+# PIDNet-only object grouping; no raw-LiDAR fallback.
+semantic_grouping:
+  cell_size_m: 0.4
+  minimum_points: 3
+  maximum_points: 60000
+  maximum_image_delta_sec: 0.05
