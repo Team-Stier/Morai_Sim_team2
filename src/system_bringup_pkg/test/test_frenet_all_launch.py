@@ -43,6 +43,24 @@ class FrenetAllLaunchTest(unittest.TestCase):
         config = self.load(['pidnet_enabled:=false'])
         names = {node.name for node in config.nodes}
         self.assertIn('lidar_perception_node', names)
-        self.assertNotIn('camera_perception_node', names)
+        self.assertIn('camera_perception_node', names)
+        self.assertFalse(config.params['/camera_perception_node/enable_semantic'].value)
+        self.assertTrue(config.params['/camera_perception_node/enable_signal'].value)
         self.assertNotIn('pointpainting_node', names)
         self.assertFalse(config.params['/world_model_node/pidnet_enabled'].value)
+
+    def test_both_models_share_one_camera_node_and_yolo_environment(self):
+        config = self.load()
+        camera = [n for n in config.nodes if n.name == 'camera_perception_node']
+        self.assertEqual(len(camera), 1)
+        self.assertIn('morai-yolo/bin/python', camera[0].launch_prefix)
+        self.assertTrue(config.params['/camera_perception_node/enable_semantic'].value)
+        self.assertTrue(config.params['/camera_perception_node/enable_signal'].value)
+        for pidnet, yolo in ((True, False), (False, True), (False, False)):
+            config = self.load(['pidnet_enabled:='+str(pidnet).lower(),
+                                'camera3_yolo:='+str(yolo).lower()])
+            self.assertEqual(sum(n.name == 'camera_perception_node' for n in config.nodes),
+                             int(pidnet or yolo))
+            if pidnet or yolo:
+                self.assertEqual(config.params['/camera_perception_node/enable_semantic'].value, pidnet)
+                self.assertEqual(config.params['/camera_perception_node/enable_signal'].value, yolo)

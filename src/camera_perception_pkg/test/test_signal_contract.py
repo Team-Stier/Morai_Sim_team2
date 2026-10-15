@@ -34,7 +34,7 @@ class SignalContractTest(unittest.TestCase):
         self.assertEqual(names.count('morai_camera_signal'), 1)
         self.assertEqual(names.count('camera_perception_node'), 1)
         self.assertTrue(config.params['/camera_perception_node/enable_signal'].value)
-        self.assertFalse(config.params['/camera_perception_node/enable_semantic'].value)
+        self.assertTrue(config.params['/camera_perception_node/enable_semantic'].value)
         self.assertEqual(config.params['/morai_camera_signal/port'].value, 9297)
         disabled = roslaunch.config.load_config_default([(launch, ['camera3_yolo:=false'])], None)
         self.assertNotIn('morai_camera_signal', [n.name for n in disabled.nodes])

@@ -2,6 +2,7 @@
   <arg name="pidnet_enabled" default="true"/>
   <arg name="pidnet_weights" default="/home/paik/morai-artifacts/pidnet-training/output/Morai6/pidnet_s_morai6/best.pt"/>
   <arg name="pidnet_python" default="/home/paik/venvs/morai-pidnet/bin/python"/>
+  <arg name="start_camera_perception" default="true"/>
   <!-- Existing MORAI sensors and Localization are prerequisites. -->
   <arg name="send_to_morai" default="false"/>
   <arg name="test_speed_cap_kph" default="0.0"/>
@@ -11,7 +12,7 @@
   </node>
   <include unless="$(arg pidnet_enabled)" file="$(find lidar_perception_pkg)/launch/lidar_perception_pkg.launch"/>
   <group if="$(arg pidnet_enabled)">
-    <include file="$(find camera_perception_pkg)/launch/camera_perception_pkg.launch">
+    <include if="$(arg start_camera_perception)" file="$(find camera_perception_pkg)/launch/camera_perception_pkg.launch">
       <arg name="weights" value="$(arg pidnet_weights)"/>
       <arg name="python" value="$(arg pidnet_python)"/>
     </include>

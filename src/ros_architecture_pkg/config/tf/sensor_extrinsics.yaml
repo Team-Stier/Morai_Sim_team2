@@ -46,8 +46,8 @@ source_evidence:
   launcher_saved_profile_user_confirmed:
     logical_path: "MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
     observed_host_path: "/home/paik/MoraiLauncher_Stage/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
-    sha256: 048b27cbf573f6acb9804d69f5e9b8fc91801e3e459c5e4ef284778d96bf37fd
-    previous_sha256: 7e0ab155f6bdce9d9449eb74c0ec87a8194925b207dba947988126575d8b9ab2
+    sha256: bc7ec1b462a96c59fcc622f75a0c76b8da85743d93e939f5b372977ae58751a7
+    previous_sha256: 048b27cbf573f6acb9804d69f5e9b8fc91801e3e459c5e4ef284778d96bf37fd
     reobserved_on: "2026-10-15"
     reobservation_note: GPS/IMU scoped IDs, target IDs, positions, rotations, frames and periods rechecked unchanged against current saved profile. Camera settings differ from prior snapshot; no active loadout or physical alignment claim.
     active_loadout_verified: false

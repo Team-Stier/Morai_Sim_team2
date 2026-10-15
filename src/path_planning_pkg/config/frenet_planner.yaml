@@ -121,3 +121,6 @@ max_steering_rate_rps: 12.0
 input_age_sec: 0.5
 # 형상 전용 모드에서 World Model 입력에만 적용하는 최대 경과 시간 [s]. 일반 모드는 input_age_sec를 사용한다.
 world_model_input_age_sec: 1.0
+
+# World Model에 사람이 있으면 전방 거리/경로와 관계없이 적용하는 목표속도 상한 [km/h].
+pedestrian_speed_cap_kph: 20.0

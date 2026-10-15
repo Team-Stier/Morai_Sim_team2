@@ -320,6 +320,66 @@ class FrenetOutputTest(unittest.TestCase):
         node.selected_stamp = rospy.Time.from_sec(99.8)
         return node
 
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_person_caps_held_trajectory_and_preserves_lower_speeds(self, _):
+        for mode in ('frenet', HYBRID_ASTAR):
+            node = self.hybrid_node()
+            node.active_planner_mode = mode
+            node.selected.speed[:] = 12.
+            node.selected.speed[-2:] = 2.
+            node.world.objects = [TrackedObject(semantic_class=TrackedObject.CLASS_PEDESTRIAN,
+                source_stamp=rospy.Time(100), points=[Point(25., 10., 0.)])]
+            node.publish(None)
+            speeds = node.trajectory.message.speed_mps
+            self.assertAlmostEqual(max(speeds), 20./3.6)
+            self.assertEqual(speeds[-1], 2.)
+            self.assertFalse(node.trajectory.message.stop_required)
+            times = [t.to_sec() for t in node.trajectory.message.time_from_start]
+            self.assertTrue(np.all(np.diff(times) > 0))
+            self.assertTrue(np.all(node.selected.speed[:-2] == 12.))
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_person_cap_release_requires_fresh_valid_matching_scene(self, _):
+        node = self.hybrid_node()
+        for label in (TrackedObject.CLASS_OTHER, TrackedObject.CLASS_VEHICLE, TrackedObject.CLASS_UNKNOWN):
+            node.world.objects = [TrackedObject(semantic_class=label)]
+            self.assertTrue(math.isinf(node.pedestrian_speed_cap()))
+        node.world.objects = [TrackedObject(semantic_class=TrackedObject.CLASS_PEDESTRIAN)]
+        self.assertAlmostEqual(node.pedestrian_speed_cap(), 20./3.6)
+        node.world.objects = []
+        node.world.header.stamp = rospy.Time(99)
+        self.assertAlmostEqual(node.pedestrian_speed_cap(), 20./3.6)
+        node.world.header.stamp = rospy.Time(101)
+        self.assertAlmostEqual(node.pedestrian_speed_cap(), 20./3.6)
+        node.world.header.stamp = rospy.Time(100)
+        node.world.objects_valid = False
+        self.assertAlmostEqual(node.pedestrian_speed_cap(), 20./3.6)
+        node.world.objects_valid = True
+        node.world.localization_reset_id = 99
+        self.assertAlmostEqual(node.pedestrian_speed_cap(), 20./3.6)
+        node.world.localization_reset_id = 12
+        self.assertTrue(math.isinf(node.pedestrian_speed_cap()))
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_capped_retiming_rechecks_collision_in_first_segment(self, _):
+        node = self.hybrid_node()
+        node.selected.speed[:] = 12.
+        node.world.objects = [TrackedObject(semantic_class=TrackedObject.CLASS_PEDESTRIAN,
+            source_stamp=rospy.Time(100), points=[Point(25., 10., 0.)])]
+        with patch.object(node.planner, 'collision', return_value=0) as collision:
+            node.publish(None)
+        collision.assert_called_once()
+        self.assertTrue(node.trajectory.message.stop_required)
+        self.assertIn('pedestrian_speed_cap_collision', node.status.message.reason)
+
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
+    def test_person_cap_combines_with_lower_transition_cap(self, _):
+        node = self.hybrid_node()
+        node.world.objects = [TrackedObject(semantic_class=TrackedObject.CLASS_PEDESTRIAN)]
+        node.transition_speed = SimpleNamespace(caps=lambda *_:np.array([3., 8.]))
+        result = node.candidate_speed_caps(node.selected, HYBRID_ASTAR, None, node.world)
+        np.testing.assert_allclose(result, [3., 20./3.6])
+
     def hybrid_failure(self, status):
         plan = HybridPlanResult(status, (), 12, 20, 0, 0, .5)
         return HybridCandidateResult(None, plan)
@@ -886,6 +946,12 @@ class FrenetOutputTest(unittest.TestCase):
         self.assertEqual(config['minimum_active_path_hold_sec'], 0.5)
         self.assertEqual(config['minimum_active_path_hold_sec'], runtime['minimum_active_path_hold_sec'])
         self.assertEqual(config['world_model_input_age_sec'], runtime['world_model_max_input_age_sec'])
+        self.assertEqual(config['pedestrian_speed_cap_kph'],
+                         runtime['pedestrian_speed_policy']['default_maximum_target_speed_kph'])
+        painting = yaml.safe_load((root/'ros_architecture_pkg/config/messages/pointpainting.yaml').read_text())
+        self.assertEqual(painting['classes'][1], 'person')
+        self.assertEqual(painting['foreground_selection']['semantic_to_tracked_class'][1],
+                         TrackedObject.CLASS_PEDESTRIAN)
 
     @patch.object(rospy.Time, 'now', return_value=rospy.Time(100))
     def test_development_scene_jitter_tolerance_keeps_other_input_gates(self, _):
@@ -893,7 +959,8 @@ class FrenetOutputTest(unittest.TestCase):
             # geometry-only, scene age, ego age, scene valid, matching reset, accepted
             (True, .65, .1, True, True, True),
             (True, .7, .1, True, True, True),
-            (True, .701, .1, True, True, False),
+            (True, 1.0, .1, True, True, True),
+            (True, 1.001, .1, True, True, False),
             (False, .65, .1, True, True, False),
             (True, .65, .51, True, True, False),
             (True, .65, .1, False, True, False),

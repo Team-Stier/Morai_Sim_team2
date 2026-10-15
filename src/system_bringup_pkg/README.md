@@ -233,9 +233,8 @@ planner_ready 검증 제한은 유지한다.
 ./run.sh pidnet_enabled:=false
 ```
 
-두 launch를 중복 실행하지 않는다. 현재 작업은 별도 worktree에서 수행했으며
-원래 작업 폴더의 실행 중 노드를 재시작하지 않았다. 새 코드를 실행할 때 기존
-run.sh 터미널에서 Ctrl+C 후 새 worktree의 run.sh를 사용한다.
+두 launch를 중복 실행하지 않는다. PIDNet 구현은 `paik`으로 통합했다.
+새 코드는 기존 run.sh 터미널에서 Ctrl+C 후 이 작업 폴더에서 다시 실행한다.
 
 검증: catkin build 및 관련 catkin 테스트 137개(오류·실패 0), 중앙 계약/다이어그램 검사를 통과했다. 합성 ROS producer/consumer 통합에서 foreground 선별·map 추적·
 원본 stamp 보존·배경/후방 제외·카메라 단절 및 raw-only fallback 부재를 확인했다.
@@ -243,3 +242,23 @@ run.sh 터미널에서 Ctrl+C 후 새 worktree의 run.sh를 사용한다.
 추론은 약 58~70 ms, 전체 처리 약 123~143 ms였다. 당시 foreground는 0점이었으며
 실제 장애물 검출 성능, 동적 calibration과 MORAI closed-loop 주행은 검증하지 않았다.
 근거는 `/home/paik/morai-artifacts/pidnet-detection-live-probe.json`에 있다.
+
+### paik 통합 실행
+
+`./run.sh`는 PIDNet과 Camera3 YOLO를 기본으로 카메라 노드 하나에서 함께 실행한다.
+YOLO가 활성화되면 두 모델을 지원하는 `signal_python` 환경을 사용하고,
+YOLO를 끄면 `pidnet_python`을 사용한다. 두 모델은 별도 최신 영상 worker로 처리한다.
+`pidnet_enabled:=false`는 PIDNet만, `camera3_yolo:=false`는 YOLO만 끈다.
+사람 추적 객체를 받으면 Planner의 최대 목표속도는 20 km/h로 제한된다.
+YOLO 하우징 후보는 계속 진단 전용이며 신호 주행 판단에 연결하지 않는다.
+
+검증(2026-10-15): 의존성 underlay를 포함한 catkin 빌드, 관련 5개 패키지 테스트
+209개(오류·실패 0), launch/XML/YAML 및 중앙 계약·다이어그램 검사를 통과했다.
+격리 ROS master의 단일 카메라 노드에서 실제 가중치로 PIDNet 확률 영상 7개와
+YOLO 표시 영상 2개를 동시에 발행하고 원본 stamp 보존을 확인했다. 입력은 합성
+검정 영상이며 실제 사람 검출률이나 MORAI closed-loop 감속 성능 검증은 아니다.
+증거: `/home/paik/morai-artifacts/paik-pidnet-person-*.log`,
+`paik-pidnet-yolo-dual-probe.py` 및 `paik-pidnet-yolo-dual-probe.log`.
+기존 runtime의 World Model age 1.0초에 중앙 기록을 맞췄으며 실행 임계값은
+변경하지 않았다. 저장 센서 profile은 GPS/IMU scope의 ID·장착값·frame·주기를
+재확인한 뒤 근거 해시만 갱신했다. TF 장착값과 발행 설정은 바꾸지 않았다.

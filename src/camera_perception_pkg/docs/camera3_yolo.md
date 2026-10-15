@@ -32,7 +32,8 @@ rosrun rqt_image_view rqt_image_view /camera_perception_node/signal_image
 SHA256 `e2a5e1569913fbb7a16db4efc3e958875ab2abf9c862575f6e753ea40b223b17`.
 로컬 실행 사본은 workspace `weights/camera3_route_signal.pt`다.
 
-기본 Python은 `~/venvs/morai-yolo/bin/python`이다. 이 환경의 Ultralytics와
+기본 Python은 `~/venvs/morai-yolo/bin/python`이다. 통합 실행에서는 카메라 노드 하나가
+이 환경에서 PIDNet과 YOLO worker를 함께 실행한다. 이 환경의 Ultralytics와
 ROS Python 의존성은 `config/signal_requirements.txt`에 기록했다.
 다른 PC에서는 해당 환경을 준비하고 `signal_python:=... signal_weights:=...`를
 `run.sh`에 전달한다. 모델은 자동 다운로드하지 않는다.

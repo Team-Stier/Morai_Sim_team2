@@ -165,3 +165,16 @@ UDP 출력은 금지한다.
 Frenet은 현재 경로가 충돌로 거부돼도 대체 후보 평가를 마친 뒤 최종 정지를
 결정한다. 검사를 통과한 대체 경로는 기존 경로 유지·이득 확인 시간을 기다리지
 않고 즉시 선택하며, 선택 가능한 경로가 없으면 정지 trajectory를 발행한다.
+
+## 사람 인식 시 속도 제한
+
+World Model의 `CLASS_PEDESTRIAN` 객체가 하나라도 있으면 Frenet·Hybrid A* 모두
+`config/frenet_planner.yaml`의 `pedestrian_speed_cap_kph`(기본 20 km/h)를 적용한다.
+거리나 현재 경로와의 교차 여부로 사람을 제외하지 않는다. 기존 제한이 더 낮으면
+낮은 값을 유지하고 충돌에 따른 정지는 유지한다. 유지 중 경로·모드 전환 경로도
+발행마다 제한하고 시간 재계산 후 동적 충돌을 재검사한다. 충돌하면 정지한다.
+최신 유효 World Model에서 사람이 없어지면 해제하며 stale·무효·epoch 불일치
+장면은 이전 제한을 해제하지 않는다. 실제 속도는 Controller 제동을 통해 낮아진다.
+이는 World Model에 형성된 사람 객체 기준이며, 영상에서만 보이거나 LiDAR가
+부족해 군집이 만들어지지 않은 사람은 이 경로로 감속을 유발하지 못한다.
+중앙 의미는 `ros_architecture_pkg/config/messages/frenet_runtime.yaml`을 따른다.

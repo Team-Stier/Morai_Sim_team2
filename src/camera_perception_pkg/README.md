@@ -82,3 +82,6 @@ Camera mount/optical frame은 중앙 [`TF 계약`](../ros_architecture_pkg/confi
 본선/개발 전체 실행은 기본으로 이 PIDNet 추론을 활성화한다.
 World Model에서 foreground 선별과 LiDAR 융합·군집·추적을 수행한다.
 통합 실행 옵션은 `system_bringup_pkg/README.md`의 PIDNet 절을 따른다.
+
+`./run.sh`의 PIDNet·YOLO 동시 실행은 공개 `camera_perception_node` 하나에서
+두 worker로 수행한다. YOLO 환경에서 두 모델을 로드하며 중복 노드를 생성하지 않는다.
