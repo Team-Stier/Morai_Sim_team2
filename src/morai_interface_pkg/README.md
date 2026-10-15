@@ -176,7 +176,7 @@ Competition packet 호환이나 센서 축·단위의 실측 증거가 아니다
 
 ## 실제 Ego 제어 모드에 따른 UDP 송신
 
-Q 키 횟수를 세던 guard는 제거했다. `morai_vehicle_status_bridge`가 허용된
+Q 키 횟수로 모드를 추정하던 guard는 제거했다. `morai_vehicle_status_bridge`가 허용된
 181-byte **Competition Vehicle Status**의 `ctrl_mode`를 읽고, 같은 패키지의
 `morai_control_sender`가 Auto(2)일 때만 최종 명령을 송신한다.
 Keyboard(1), 미수신, 알 수 없는 모드, 파싱 실패 또는 0.5초 이상 지난 상태에서는
@@ -198,3 +198,9 @@ Destination IP=`127.0.0.1`, Port=`9099`로 맞춘다. 대회 2-PC 환경은 팀 
 `competition.launch`는 자체 상태 수신기를 한 번만 시작한다.
 수신 연결 전에는 Auto로 선택해도 송신하지 않는다. 창 포커스, Q 입력 누락,
 코드 재시작과 관계없이 마지막으로 수신한 실제 모드를 따른다.
+
+로컬 X11 개발 프로필에서는 Q를 누른 동안과 뗀 뒤 0.5초 동안 송신을 막는다.
+상태 패킷 도착 전에 이전 Auto 명령이 수동 전환을 덮어쓰는 경합을 막기 위한
+일시적 차단이다. 이때 이전 Auto 근거를 무효화하고 이후 새 UDP 모드를 확인한다.
+Q 횟수·홀짝으로 수동/자동을 추정하지 않는다. 다른 PC의 MORAI Q 입력은 이
+로컬 기능이 감지하지 못하며, 창 메뉴 등 Q 이외의 전환은 별도 검증이 필요하다.
