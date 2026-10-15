@@ -14,3 +14,6 @@ steering_normalized_per_rad: 1.0
 
 max_command_age_sec: 0.25
 future_tolerance_sec: 0.05
+
+# MORAI status must report Auto; missing/manual/stale status pauses UDP.
+control_mode_timeout_sec: 0.5

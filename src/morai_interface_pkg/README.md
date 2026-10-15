@@ -39,7 +39,7 @@ MORAI Sensor 설정도 같은 Destination Port와 팀 PC IP를 사용해야 한�
 | GPS | `sensor_msgs/NavSatFix` | 같은 epoch 중복 방지 GGA-only, 라이브 valid fix 확인 |
 | IMU | `sensor_msgs/Imu` | 공식 NetworkModule 24.R2.0 구조와 parser 일치, 라이브 축·단위 검증 대기 |
 | LiDAR | `sensor_msgs/PointCloud2` | 외부 Velodyne driver 방식, 라이브 packet·축 검증 대기 |
-| Vehicle Status | `geometry_msgs/TwistWithCovarianceStamped` | 구형 packet이라 사용 금지 상태 |
+| Vehicle Status | `geometry_msgs/TwistWithCovarianceStamped` | 대회 181-byte parser, 실제 모드 송신 gate 개발 적용 |
 
 ROS → MORAI 제어 sender는 이번 이식 범위가 아니다. 기존 센서 브리지 5종은
 다음 명령으로 한 번에 실행한다.
@@ -173,3 +173,28 @@ Competition packet 호환이나 센서 축·단위의 실측 증거가 아니다
 `config/camera3_signal_sensor.json`은 학습 때의 Camera3 자세와 해상도를
 보존하는 RGB 센서 프리셋이다. 실행 중인 MORAI 설정은 자동 변경하지 않는다.
 기존 Right Camera와 다른 개발용 카메라이며 [YOLO 실행 안내](../camera_perception_pkg/docs/camera3_yolo.md)를 따른다.
+
+## 실제 Ego 제어 모드에 따른 UDP 송신
+
+Q 키 횟수를 세던 guard는 제거했다. `morai_vehicle_status_bridge`가 허용된
+181-byte **Competition Vehicle Status**의 `ctrl_mode`를 읽고, 같은 패키지의
+`morai_control_sender`가 Auto(2)일 때만 최종 명령을 송신한다.
+Keyboard(1), 미수신, 알 수 없는 모드, 파싱 실패 또는 0.5초 이상 지난 상태에서는
+모든 제어 UDP 송신을 중단한다. 모드 변경 명령을 따로 보내지 않는다.
+이 동작은 자동 제동을 뜻하지 않으며, 수동 모드 제동은 운전자가 수행한다.
+
+내부 topic `/molit/internal/morai_interface/control_mode`는 `std_msgs/UInt64MultiArray`의
+`data=[ctrl_mode, ingress_monotonic_ns]`이며 queue=1, non-latched다.
+수신 직후 기록한 monotonic 시각을 보존하므로 지연된 ROS callback으로 freshness가
+갱신되지 않는다. 두 노드는 **같은 호스트·같은 부팅 세션**에서 실행해야 한다.
+공개 twist의 stamp·message type과 Controller/Safety 경계는 유지한다.
+중앙 정의는 `ros_architecture_pkg/config/morai_interface/udp_ros_bridge.yaml`을 따른다.
+모드 enum의 근거는 [MORAI 24.R2 UDP 문서](https://help-morai-sim.scrollhelp.site/ko/morai-sim-drive/24.R2/udp-1)의 CtrlMode 정보이며,
+대회 수신은 일반 Ego Vehicle Status가 아닌 Competition Vehicle Status만 사용한다.
+
+로컬 MORAI에서는 Network Settings의 Competition Vehicle Status를 Connect하고
+Destination IP=`127.0.0.1`, Port=`9099`로 맞춘다. 대회 2-PC 환경은 팀 PC의 IP를 사용한다.
+`frenet_rddf.launch`와 `global_path_demo.launch`는 송신 활성 시 상태 수신기도 시작한다.
+`competition.launch`는 자체 상태 수신기를 한 번만 시작한다.
+수신 연결 전에는 Auto로 선택해도 송신하지 않는다. 창 포커스, Q 입력 누락,
+코드 재시작과 관계없이 마지막으로 수신한 실제 모드를 따른다.
