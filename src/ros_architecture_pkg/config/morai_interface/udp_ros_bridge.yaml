@@ -250,6 +250,12 @@ channels:
       watchdog_timeout_sec: 0.5
       timeout_policy: suppress_all_control_udp
       cross_package_consumers_allowed: false
+      local_q_handover:
+        scope: same_host_X11_development_profile_only
+        enabled_in: morai_interface_pkg/config/global_path_demo.yaml
+        inhibit_sec: 0.5
+        mode_inference_allowed: false
+        policy: inhibit_on_Q_and_invalidate_previous_Auto_until_fresh_status
     bind_ip: 0.0.0.0
     port: 9099
     port_evidence: user_provided_competition_network_table_2026_10_01

@@ -53,6 +53,7 @@ class ControlModeGuardTest(unittest.TestCase):
         bridge._mode_publisher = Mock()
         sender = MoraiControlSender.__new__(MoraiControlSender)
         sender._mode_guard = ControlModeGuard(0.5)
+        sender._handover_guard = None
         sender._send_command = Mock()
         command = object()
         with patch('rospy.loginfo_throttle'):
@@ -117,6 +118,21 @@ class ControlModeGuardTest(unittest.TestCase):
                 sender._on_control_mode(UInt64MultiArray(data=[2, time.monotonic_ns()]))
                 command.valid = False
                 expect_suppressed()  # upstream validation is retained
+                command.valid = True
+                # Q pressed during validation must suppress an otherwise fresh Auto.
+                sender._handover_guard = Mock()
+                sender._handover_guard.blocked.side_effect = [False, True]
+                sender._on_control_mode(UInt64MultiArray(data=[2, time.monotonic_ns()]))
+                expect_suppressed()
+                sender._handover_guard.blocked.side_effect = None
+                sender._handover_guard.blocked.return_value = False
+                expect_suppressed()  # inhibition invalidated pre-Q Auto evidence
+                sender._on_control_mode(UInt64MultiArray(data=[1, time.monotonic_ns()]))
+                expect_suppressed()  # fresh actual Manual remains blocked
+                sender._on_control_mode(UInt64MultiArray(data=[2, time.monotonic_ns()]))
+                sender._on_command(command)
+                packet, _ = sink.recvfrom(2048)
+                self.assertEqual(parse_ego_ctrl_cmd(packet)['ctrl_mode'], 2)
             finally:
                 sender._on_shutdown()
                 sink.close()
