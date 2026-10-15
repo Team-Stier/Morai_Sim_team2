@@ -18,3 +18,5 @@ bool traffic_context_valid
 bool planner_ready
 common_msgs_pkg/TrackedObject[] objects
 string reason
+# Selected camera signal observations; each keeps its own source stamp.
+common_msgs_pkg/TrafficSignal[] traffic_signals

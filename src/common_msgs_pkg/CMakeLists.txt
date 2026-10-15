@@ -17,6 +17,8 @@ add_message_files(FILES
   Trajectory.msg
   ControllerStatus.msg
   TrackedObject.msg
+  TrafficSignal.msg
+  CameraSignalArray.msg
   WorldModel.msg
   StaticWallMap.msg
   HdMap.msg

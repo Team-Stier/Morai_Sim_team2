@@ -43,6 +43,7 @@
 | 입력 | `/molit/sensors/camera/right/image/compressed` | `sensor_msgs/CompressedImage` |
 | 입력 | `/molit/sensors/camera/signal/image/compressed` | `sensor_msgs/CompressedImage` |
 | 입력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` |
+| 출력 | `/molit/perception/camera/signal/observations` | `common_msgs_pkg/CameraSignalArray` |
 | 출력 | `/molit/perception/camera/front/semantic_scores` | `sensor_msgs/Image` |
 | 출력 | `/molit/perception/camera/front/observations` | `common_msgs_pkg/CameraObservationArray` |
 | 출력 | `/molit/perception/camera/left/observations` | `common_msgs_pkg/CameraObservationArray` |
@@ -78,7 +79,7 @@ Camera mount/optical frame은 중앙 [`TF 계약`](../ros_architecture_pkg/confi
 
 `./run.sh`는 개발용 Camera3 YOLO 하우징 검출을 함께 시작한다.
 센서 프리셋 로드와 박스 영상 확인은 [실행 안내](docs/camera3_yolo.md)를 따른다.
-신호 후보는 private 진단 출력이며 주행 판단에 연결하지 않았다.
+private 신호 후보는 진단용이며 공개 HSV 관측은 World Model을 거쳐 주행 판단에 연결한다.
 
 YOLO는 중앙 `config/map/signal_observation_policy.yaml`에 지정한 1·2·3·5번
 정지선의 **경로상 30m 전부터 정지선까지**만 추론·후보 출력을 허용한다.
@@ -95,3 +96,12 @@ World Model에서 foreground 선별과 LiDAR 융합·군집·추적을 수행한
 
 `./run.sh`의 PIDNet·YOLO 동시 실행은 공개 `camera_perception_node` 하나에서
 두 worker로 수행한다. YOLO 환경에서 두 모델을 로드하며 중복 노드를 생성하지 않는다.
+
+## HSV 신호 판독
+
+Camera3 YOLO의 3/4구 박스 내부 등 위치별 HSV 점등을 판독한다. 4구의 세 번째
+녹색은 LEFT, 네 번째는 GREEN이며 동시에 켜진 등은 bitmask로 유지한다. 임계값은
+`config/signal_hsv.yaml`에 둔다. 잘린 박스·소등·충돌하는 색은 UNKNOWN이다.
+공개 CameraSignalArray는 원본 영상 stamp와 픽셀 박스만 제공하며 지도 ID를 추측하지
+않는다. World Model이 측정시각 pose와 중앙 카메라 배치로 지도 신호를 선택하고
+Planner에 전달한다. 최초 구간 전에 CUDA/predictor warmup을 수행한다.

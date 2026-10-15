@@ -266,3 +266,7 @@ YOLO 표시 영상 2개를 동시에 발행하고 원본 stamp 보존을 확인�
 기존 runtime의 World Model age 1.0초에 중앙 기록을 맞췄으며 실행 임계값은
 변경하지 않았다. 저장 센서 profile은 GPS/IMU scope의 ID·장착값·frame·주기를
 재확인한 뒤 근거 해시만 갱신했다. TF 장착값과 발행 설정은 바꾸지 않았다.
+
+Camera3 공개 HSV 관측은 World Model에서 지도 head에 대응하고 두 Planner 모드의
+정지·재출발에 연결한다. RViz 기존 World Model marker 레이어에 같은 상태를 표시한다.
+WorldModel message 변경 후 전체 빌드와 모든 producer/consumer 재시작이 필요하다.

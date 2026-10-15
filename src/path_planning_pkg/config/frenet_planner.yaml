@@ -124,3 +124,10 @@ world_model_input_age_sec: 1.0
 
 # World Model에 사람이 있으면 전방 거리/경로와 관계없이 적용하는 목표속도 상한 [km/h].
 pedestrian_speed_cap_kph: 20.0
+# Stop base_link 8 m before the bar: front overhang 3.845 m plus camera-view/braking margin.
+signal_stop_buffer_m: 8.0
+signal_commit_distance_m: 8.0
+signal_left_stop_buffer_m: 14.0
+signal_left_commit_distance_m: 12.0
+signal_deceleration_mps2: 1.8
+signal_observation_timeout_sec: 0.5

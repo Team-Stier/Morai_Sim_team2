@@ -213,3 +213,10 @@ foreground_only PointPainting의 `/molit/world_model/painted_points`만 장애�
 표시하며 이전 LiDAR·World Model 장애물 marker 표시는 비활성화한다.
 지도·차량·trajectory 표시는 유지한다. 6클래스 RGB와 확률의 원본 의미는 중앙
 `ros_architecture_pkg/config/messages/pointpainting.yaml`을 따른다.
+
+## 신호 상태 표시
+
+기존 World Model marker 레이어에서 신호 정지선 옆에 RED/YELLOW/GREEN/LEFT/UNKNOWN과
+선택한 지도 head ID를 표시한다. 영상 측정 stamp가 0.5초 이상 오래되면 UNKNOWN으로
+표시하고 마커도 만료시킨다. 원본 정지선 ID 라벨은 유지한다. 제어와 같은
+WorldModel.traffic_signals를 사용하며 카메라 private topic을 직접 읽지 않는다.

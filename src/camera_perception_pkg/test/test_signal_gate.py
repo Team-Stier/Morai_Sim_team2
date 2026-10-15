@@ -94,6 +94,8 @@ class SignalGateTest(unittest.TestCase):
         for exit_during_inference in (False, True):
             node = node_type.__new__(node_type)
             node.gate = SignalRouteGate(self.policy)
+            node.hsv_config = yaml.safe_load((ROOT/"src/camera_perception_pkg/config/signal_hsv.yaml").read_text())
+            node.observations_pub = SimpleNamespace(publish=lambda m:None)
             node.pending = None
             node.invalidated_revision = None
             node.condition = threading.Condition()
@@ -103,7 +105,7 @@ class SignalGateTest(unittest.TestCase):
             def detect(_frame):
                 if exit_during_inference:
                     node.receive_route(self.context(self.stop+.1))
-                return frame, [dict(class_id=0, confidence=.9)]
+                return frame, [dict(class_id=0, confidence=.9,xyxy=[2.,2.,14.,14.])]
             node.detector = detect
             with patch.object(rospy.Time, 'now', return_value=rospy.Time(10)), \
                     patch('time.monotonic', return_value=100.), \

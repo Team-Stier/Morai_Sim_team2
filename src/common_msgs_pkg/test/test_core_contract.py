@@ -73,12 +73,19 @@ class CoreContractTest(unittest.TestCase):
             'Trajectory.msg', 'ControllerStatus.msg', 'TrackedObject.msg', 'WorldModel.msg',
             'HdMap.msg', 'SignalStopLine.msg', 'RouteLane.msg', 'LaneChangeWindow.msg', 'RouteContext.msg',
             'StaticWallMap.msg',
+            'TrafficSignal.msg', 'CameraSignalArray.msg',
         })
         manifest = ET.parse(PACKAGE / 'package.xml').getroot()
         self.assertIn('message_generation', [e.text for e in manifest.findall('build_depend')])
         self.assertIn('message_runtime', [e.text for e in manifest.findall('exec_depend')])
         for dependency in ('std_msgs', 'geometry_msgs'):
             self.assertIn(dependency, [e.text for e in manifest.findall('depend')])
+
+    def test_signal_schema_and_world_projection_are_exact(self):
+        schema=read(CONFIG/'messages/traffic_signal_messages.yaml')
+        for name,entry in schema['messages'].items():
+            self.assertEqual((PACKAGE/'msg'/f'{name}.msg').read_text(),entry['wire_definition'])
+        self.assertIn('common_msgs_pkg/TrafficSignal[] traffic_signals', (PACKAGE/'msg/WorldModel.msg').read_text())
 
     def test_producers_consumers_depend_on_shared_package(self):
         contract = read(CONFIG / 'interface_contract.yaml')

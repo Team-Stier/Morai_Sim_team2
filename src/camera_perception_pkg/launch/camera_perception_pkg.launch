@@ -10,6 +10,7 @@
         ns="/" output="screen" launch-prefix="$(arg python)">
     <rosparam command="load" file="$(find camera_perception_pkg)/config/pointpainting.yaml"/>
     <rosparam command="load" file="$(find camera_perception_pkg)/config/signal_yolo.yaml"/>
+    <rosparam command="load" param="signal_hsv" file="$(find camera_perception_pkg)/config/signal_hsv.yaml"/>
     <rosparam command="load" param="signal_policy" file="$(find ros_architecture_pkg)/config/map/signal_observation_policy.yaml"/>
     <param name="signal_route_gate" value="$(arg signal_route_gate)"/>
     <param name="weights" value="$(arg weights)"/>

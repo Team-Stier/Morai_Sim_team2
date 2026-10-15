@@ -26,7 +26,8 @@ context의 map frame, 경로 hash, 유한한 비음수 진행도, 원본 stamp�
 
 private `~signal_detections`의 `gate_active=false`와 빈 후보는 이전 결과 무효화다.
 활성 출력의 `route_scope.signal_ids`는 관측할 수 있는 정적 head 집합이다.
-`route_target_selected=false`, `driving_decision_valid=false`를 유지한다.
+private 후보는 `route_target_selected=false`, `driving_decision_valid=false`를 유지한다.
+공개 HSV 관측의 후속 World Model 선택·Planner 연결은 traffic_signal_hsv.md를 따른다.
 World Model이나 Planner가 private 진단 topic을 구독하는 연결은 추가하지 않는다.
 단독 영상 진단에만 명시적 `signal_route_gate:=false`를 사용할 수 있다.
 

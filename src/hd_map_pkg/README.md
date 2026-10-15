@@ -99,8 +99,8 @@ rosrun hd_map_pkg hd_map_tool build-all --open
 각 정지선 전방 30m의 YOLO 활성 구간이다. 같은 접근 차로에 연결된 복수 head는
 모두 표시한다. 전체 신호등과 터널 LCS는 별도 레이어로 켤 수 있다.
 이는 정적 지도 연결을 검토하는 화면이다. YOLO는 같은 중앙 정책과 RouteContext로
-추론 구간을 제한하며, 실제 신호 상태 판독·카메라에서의 대상 식별·주행 정지/진행
-판단은 연결하지 않는다.
+추론 구간을 제한한다. Camera HSV 판독, World Model의 지도 대상 선택과 Planner의
+정지/진행 연결은 중앙 traffic_signal_messages 계약을 따른다.
 
 ```bash
 hd_map_tool --output-dir /tmp/katri_lanelet build-all

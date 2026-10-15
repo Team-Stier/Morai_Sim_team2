@@ -31,6 +31,22 @@ class WorldModelDisplay:
 
     def _publish(self, message):
         markers = [Marker(action=Marker.DELETEALL)]
+        for index,signal in enumerate(getattr(message,'traffic_signals',[])):
+            age=(rospy.Time.now()-signal.header.stamp).to_sec()
+            valid=signal.valid and 0<=age<=.5
+            label='|'.join(name for bit,name in [(1,'RED'),(2,'YELLOW'),(4,'GREEN'),(8,'LEFT')] if signal.lamp_mask & bit) if valid else 'UNKNOWN'
+            marker=Marker(header=copy.deepcopy(signal.header),ns='signal_stop_line_labels',id=10000+index,
+                          type=Marker.TEXT_VIEW_FACING,action=Marker.ADD)
+            marker.pose.orientation.w=1.
+            marker.pose.position=copy.deepcopy(signal.position)
+            marker.pose.position.z=4.
+            marker.scale.z=2.
+            marker.color.a=1.
+            marker.color.r,marker.color.g,marker.color.b=((1.,.1,.1) if valid and signal.lamp_mask & 1
+                else (1.,.8,.1) if valid and signal.lamp_mask & 2 else (.1,1.,.2) if valid else (.7,.7,.7))
+            marker.text='%s: %s\n%s' % (signal.stop_line_id,label,','.join(signal.signal_ids))
+            marker.lifetime=rospy.Duration(.5)
+            markers.append(marker)
         for obj in message.objects:
             if obj.source_stamp != message.header.stamp:
                 continue  # Do not display coasted points as a new scan.
@@ -50,7 +66,7 @@ class WorldModelDisplay:
             markers.append(marker)
         self.publisher.publish(MarkerArray(markers=markers))
         self.shown_stamp = message.header.stamp
-        self.visible = bool(message.objects)
+        self.visible = bool(message.objects or getattr(message,'traffic_signals',[]))
 
     def update(self, now, wall):
         if self.last_clock is None or now != self.last_clock:

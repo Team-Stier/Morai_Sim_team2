@@ -25,6 +25,7 @@ from common_msgs_pkg.msg import (
     LocalizationStatus,
     TrackedObject,
     WorldModel,
+    CameraSignalArray, EgoState, RouteContext,
 )
 
 from world_model_pkg import Detection, MultiObjectTracker, TrackerConfig, transform_points
@@ -65,6 +66,8 @@ class WorldModelNode:
         self._pidnet = rospy.get_param("~pidnet_enabled", False)
         self._semantic_grouping = config["semantic_grouping"]
         root = Path(rospkg.RosPack().get_path("ros_architecture_pkg")) / "config"
+        from world_model_pkg.traffic_signals import SignalFusion
+        self._signals = SignalFusion(_load_config(root/'map/signal_observation_policy.yaml'),config['traffic_signals'])
         self._painting_contract = _load_config(root / "messages/pointpainting.yaml")
         self._reference_frame = str(config["reference_frame"])
         self._lidar_frame = str(config["lidar_frame"])
@@ -121,6 +124,10 @@ class WorldModelNode:
         self._tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(10.0))
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._scene_publisher = rospy.Publisher(SCENE_TOPIC, WorldModel, queue_size=2)
+        self._signal_subscribers = [
+            rospy.Subscriber('/molit/localization/ego_state',EgoState,self._signal_pose,queue_size=100),
+            rospy.Subscriber('/molit/route/context',RouteContext,self._signal_route,queue_size=2),
+            rospy.Subscriber('/molit/perception/camera/signal/observations',CameraSignalArray,self._signal_observation,queue_size=2)]
         self._status_publisher = rospy.Publisher(STATUS_TOPIC, ComponentStatus, queue_size=1, latch=True)
         if self._pidnet:
             self._observation_subscriber = rospy.Subscriber(
@@ -142,8 +149,20 @@ class WorldModelNode:
         self._publish_status()
         rospy.loginfo("World Model development tracker ready; planner_ready is fail-closed")
 
+    def _signal_pose(self,message):
+        with self._lock:self._signals.add_pose(message)
+
+    def _signal_route(self,message):
+        with self._lock:self._signals.route=message
+
+    def _signal_observation(self,message):
+        with self._lock:self._signals.ingest(message,rospy.Time.now().to_sec())
+
     def _reset_tracks(self, reason, reset_id=None):
         self._tracker.clear(reset_id)
+        if hasattr(self,'_signals'):
+            self._signals.latest = self._signals.confirmation = None
+            self._signals.poses.clear()
         self._pending.clear()
         self._last_received_stamp = rospy.Time()
         self._last_scene_stamp = rospy.Time()
@@ -361,6 +380,9 @@ class WorldModelNode:
         output.occupancy_valid = False
         output.free_space_valid = False
         output.traffic_context_valid = False
+        if hasattr(self,'_signals'):
+            output.traffic_signals=self._signals.states(rospy.Time.now().to_sec())
+            output.traffic_context_valid=bool(output.traffic_signals and output.traffic_signals[0].valid)
         output.planner_ready = False
         output.reason = (
             ("development PIDNet foreground map tracks; " if self._pidnet else "development map-frame LiDAR tracks; ")

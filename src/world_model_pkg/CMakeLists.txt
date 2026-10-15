@@ -27,6 +27,7 @@ catkin_install_python(PROGRAMS scripts/world_model_node scripts/pointpainting_no
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 if(CATKIN_ENABLE_TESTING)
+  catkin_add_nosetests(test/test_traffic_signals.py)
   find_package(rostest REQUIRED)
   catkin_add_nosetests(test/test_tracking.py)
   catkin_add_nosetests(test/test_transforms.py)

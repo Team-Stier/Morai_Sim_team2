@@ -29,6 +29,11 @@ def yaw(q):
 class Node:
     def __init__(self):
         self.c = rospy.get_param('~')
+        import rospkg,yaml
+        from pathlib import Path
+        from path_planning_pkg.signal_stop import SignalStopPolicy
+        root=Path(rospkg.RosPack().get_path('ros_architecture_pkg'))
+        self.signal_policy=SignalStopPolicy(yaml.safe_load((root/'config/map/signal_observation_policy.yaml').read_text()),self.c)
         if not math.isfinite(self.c['pedestrian_speed_cap_kph']) or self.c['pedestrian_speed_cap_kph'] <= 0:
             raise ValueError('pedestrian speed cap must be finite and positive')
         self.planner = Planner(self.c)
@@ -157,10 +162,20 @@ class Node:
         return cap
 
     def candidate_speed_caps(self, candidate, mode, lane, world):
-        return np.minimum(self.transition_speed.caps(candidate.route_s, mode, lane),
-                          self.pedestrian_speed_cap(world))
+        return np.minimum(np.minimum(self.transition_speed.caps(candidate.route_s, mode, lane),
+                          self.pedestrian_speed_cap(world)),self.signal_caps(candidate.route_s))
+
+    def signal_caps(self, stations):
+        if not hasattr(self,'signal_policy'):
+            return math.inf
+        return self.signal_policy.caps(stations,getattr(self,'route',None),
+            getattr(self,'world',None),
+            rospy.Time.now().to_sec(),
+            self.state[0].reset_id if self.state is not None else None)
 
     def report(self, reason, ready=False, latency=0.):
+        if hasattr(self,'signal_policy'):
+            reason += '; '+self.signal_policy.reason
         cap = self.pedestrian_speed_cap()
         if math.isfinite(cap):
             reason += '; pedestrian_speed_cap_kph=%g' % (cap*3.6)
@@ -776,6 +791,8 @@ class Node:
                 i = max(0, nearest-1)
                 xyz, speeds = chosen.xy[i:end].copy(), chosen.speed[i:end].copy()
         cap = self.pedestrian_speed_cap(now=now)
+        if xyz is not None and len(xyz)>=2:
+            cap=np.minimum(cap,self.signal_caps(chosen.route_s[i:end]))
         if xyz is not None and len(xyz) >= 2 and np.any(speeds > cap):
             # Apply on every publication, including held paths and mode handoffs.
             speeds = np.minimum(speeds, cap)

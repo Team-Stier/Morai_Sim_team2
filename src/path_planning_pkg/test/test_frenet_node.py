@@ -380,6 +380,20 @@ class FrenetOutputTest(unittest.TestCase):
         result = node.candidate_speed_caps(node.selected, HYBRID_ASTAR, None, node.world)
         np.testing.assert_allclose(result, [3., 20./3.6])
 
+    @patch.object(rospy.Time, 'now', return_value=rospy.Time(101))
+    def test_signal_cap_uses_current_world_and_clock_after_long_planning(self, _):
+        node = self.hybrid_node()
+        old_world = WorldModel()
+        calls = []
+        def caps(stations, route, world, now, reset):
+            calls.append((world, now))
+            return math.inf
+        node.signal_policy = SimpleNamespace(caps=caps)
+        node.transition_speed = SimpleNamespace(caps=lambda *_:math.inf)
+        node.candidate_speed_caps(node.selected, HYBRID_ASTAR, None, old_world)
+        self.assertIs(calls[0][0], node.world)
+        self.assertEqual(calls[0][1], 101.)
+
     def hybrid_failure(self, status):
         plan = HybridPlanResult(status, (), 12, 20, 0, 0, .5)
         return HybridCandidateResult(None, plan)

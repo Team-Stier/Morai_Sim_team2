@@ -50,6 +50,7 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 
 | 구분 | Topic | Type |
 |---|---|---|
+| 입력 | `/molit/perception/camera/signal/observations` | `common_msgs_pkg/CameraSignalArray` |
 | 입력 | `/molit/sensors/lidar/points` | `sensor_msgs/PointCloud2` |
 | 입력 | `/molit/perception/camera/front/semantic_scores` | `sensor_msgs/Image` |
 | 입력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
@@ -139,3 +140,12 @@ PIDNet foreground 출력은 확률 **0.7**과 영상 영역별 가까운 깊이�
 상한을 함께 적용한다. 뒤쪽 배경점을 그대로 객체로 칠하지 않도록 하는 개발용
 기하 선별이며, 설정은 `config/pointpainting.yaml`, 근거·한계는
 [PointPainting 문서](docs/pointpainting.md)의 뒤쪽 점 제거 절을 따른다.
+
+## 신호등 융합
+
+Camera3 HSV 관측은 측정시각의 EgoState pose 보간과 중앙 카메라 배치로 지도 head에
+대응한다. 1·2·3·5번만 사용하고 4번 우회전은 제외한다. WorldModel.traffic_signals는
+영상 원본 stamp를 보존한다. ROI와 투영 위치가 맞지 않거나 관측이 오래되면 유효한
+허용 신호를 만들지 않는다. 녹색/좌회전 허용은 연속 3프레임·0.25초 확인 후 제공한다.
+동시에 보이는 head들의 공통 점등만 사용한다. 이 개발 기능은 전체 scene의
+objects_verified/planner_ready를 승격하지 않는다. 파라미터는 config/world_model.yaml에 둔다.

@@ -106,6 +106,9 @@ contract_modules:
   course_speed_policy:
     path: map/course_speed_policy.yaml
     required_contract_version: 0.1.0
+  traffic_signal_messages:
+    path: messages/traffic_signal_messages.yaml
+    required_contract_version: 0.1.0
   signal_observation_policy:
     path: map/signal_observation_policy.yaml
     required_contract_version: 0.1.0
@@ -123,7 +126,7 @@ contract_modules:
     required_contract_version: 0.2.0
   world_model_messages:
     path: messages/world_model_messages.yaml
-    required_contract_version: 0.2.0
+    required_contract_version: 0.3.0
   core_messages:
     path: messages/core_messages.yaml
     required_contract_version: 0.1.0
@@ -1058,6 +1061,22 @@ topics:
     timeout_sec: display_only_configurable_not_driving_freshness
     invalid_data_policy: Delete tracks on invalid_stale_reset_or_clock_stall
 
+  - name: /molit/perception/camera/signal/observations
+    owner_package: camera_perception_pkg
+    producers: [camera_perception_node]
+    consumers: [world_model_node]
+    status: development_hsv_signal_observations
+    visibility: public
+    data_meaning: Camera3 HSV lamp masks and image ROIs without map identity or driving decision
+    diagram_description_ko: 신호등 HSV 점등 관측과 영상 영역
+    data_type: common_msgs_pkg/CameraSignalArray
+    unit: pixels_bitmask_and_confidence
+    frame: camera_signal_optical_frame
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 10.0
+    queue_policy: queue_1_drop_old
+    timeout_sec: 0.5
+    invalid_data_policy: unknown_on_clipped_missing_conflicting_or_stale_lamps
   - name: /molit/perception/camera/front/semantic_scores
     owner_package: camera_perception_pkg
     producers: [camera_perception_node]
@@ -1159,6 +1178,12 @@ messages:
     schema: messages/core_messages.yaml#LocalizationStatus
   - type: common_msgs_pkg/RouteContext
     status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/TrafficSignal
+    status: development_hsv_signal_observations
+    schema: messages/traffic_signal_messages.yaml#TrafficSignal
+  - type: common_msgs_pkg/CameraSignalArray
+    status: development_hsv_signal_observations
+    schema: messages/traffic_signal_messages.yaml#CameraSignalArray
   - type: common_msgs_pkg/WorldModel
     status: development_map_object_tracking_unverified
     schema: messages/world_model_messages.yaml#WorldModel
@@ -1301,6 +1326,7 @@ package_boundaries:
       - /molit/sensors/camera/signal/image/compressed
       - /molit/route/context
     outputs:
+      - /molit/perception/camera/signal/observations
       - /molit/perception/camera/front/semantic_scores
       - /molit/perception/camera/front/observations
       - /molit/perception/camera/left/observations
@@ -1353,6 +1379,7 @@ package_boundaries:
     runtime_status: development_map_object_tracking_unverified
     public_nodes: [world_model_node, pointpainting_node]
     inputs:
+      - /molit/perception/camera/signal/observations
       - /molit/sensors/lidar/points
       - /molit/perception/camera/front/semantic_scores
       - /molit/map/hd_map

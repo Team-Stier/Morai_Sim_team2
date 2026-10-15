@@ -70,3 +70,7 @@ HdMap MD5 변경과 생산자·소비자 재시작 범위는
 
 `StaticWallMap`과 `static_wall_validation`은 중앙 `static_wall_messages.yaml`의
 원본 벽 ID·열린 XYZ 벽선·출처 해시·수평 불확실성을 구현한다.
+
+CameraSignalArray/TrafficSignal은 중앙 traffic_signal_messages 계약을 따른다.
+WorldModel.traffic_signals에 선택 결과를 담으며 Camera 원본 stamp를 보존한다.
+WorldModel MD5가 변경되므로 producer/consumer와 RViz를 모두 빌드·재시작한다.

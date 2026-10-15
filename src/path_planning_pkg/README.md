@@ -178,3 +178,14 @@ World Model의 `CLASS_PEDESTRIAN` 객체가 하나라도 있으면 Frenet·Hybri
 이는 World Model에 형성된 사람 객체 기준이며, 영상에서만 보이거나 LiDAR가
 부족해 군집이 만들어지지 않은 사람은 이 경로로 감속을 유발하지 못한다.
 중앙 의미는 `ros_architecture_pkg/config/messages/frenet_runtime.yaml`을 따른다.
+
+## 신호 정지·재출발
+
+중앙 signal_observation_policy의 1·2·3·5번 30m 접근 구간에서 World Model의
+선택된 HSV 상태를 사용한다. 직진은 GREEN, 5번 좌회전은 LEFT를 요구한다. 적색·황색·
+불명·stale는 정지 상태를 유지한다. 신호 상태를 직접 Camera에서 구독하지 않는다.
+Frenet/Hybrid A*·전환 유지 경로 모두 발행마다 감속 상한을 적용하며, 기본 base_link
+정지 목표는 직진 8m 전, 좌회전 14m 전이다(전방 차체 3.845m와 카메라 시야 여유 포함).
+허용 신호가 확인되면 다시 계획한다. 유효한 허용 신호로 직진 8m/좌회전 12m 안까지 진행하면 교차 진입을 확정해
+이후 시야 이탈만으로 교차로 안에서 다시 멈추지 않는다. epoch/다음 회차에는 초기화한다.
+임계값은 config/frenet_planner.yaml의 signal_* 항목이다.

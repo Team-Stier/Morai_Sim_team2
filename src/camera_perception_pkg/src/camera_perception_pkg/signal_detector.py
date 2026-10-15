@@ -1,5 +1,6 @@
 """Ultralytics housing detector. Candidates carry no route ID or driving decision."""
 import cv2
+import numpy as np
 from pathlib import Path
 
 
@@ -13,6 +14,8 @@ class SignalDetector:
         if self.model.names != expected:
             raise ValueError('Camera3 requires the trained 3/4-lamp housing checkpoint')
         self.options = dict(device=device, imgsz=imgsz, conf=confidence, verbose=False)
+        # Initialize predictor/CUDA before the first 30 m window opens.
+        self.model.predict(np.zeros((1440, 1920, 3), dtype=np.uint8), **self.options)
 
     def __call__(self, bgr):
         result = self.model.predict(bgr, **self.options)[0]

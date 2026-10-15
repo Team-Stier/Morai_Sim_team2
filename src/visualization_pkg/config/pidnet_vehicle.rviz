@@ -56,9 +56,9 @@ Visualization Manager:
     Queue Size: 2
     Namespaces: {}
   - Class: rviz/MarkerArray
-    Name: World Model tracks (map-frame diagnostic)
-    Enabled: false
-    Value: false
+    Name: World Model tracks + signal state
+    Enabled: true
+    Value: true
     Marker Topic: /molit/internal/visualization/world_model_markers
     Queue Size: 2
     Namespaces: {}

@@ -63,6 +63,7 @@ timestamp_source_registry:
     message_stamp_carried: true
     downstream_overwrite_allowed: false
     allowed_topics:
+      - /molit/perception/camera/signal/observations
       - /molit/perception/camera/front/semantic_scores
       - /molit/world_model/painted_points
       - /molit/internal/world_model/pidnet_points

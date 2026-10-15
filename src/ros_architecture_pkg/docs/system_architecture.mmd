@@ -120,9 +120,10 @@ flowchart LR
     topic_039["/molit/internal/visualization/vehicle_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
     topic_040["/molit/internal/visualization/lidar_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
     topic_041["/molit/internal/visualization/world_model_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
-    topic_042["/molit/perception/camera/front/semantic_scores<br/>type: sensor_msgs/Image<br/>state: RESERVED"]
-    topic_043["/molit/world_model/painted_points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
-    topic_044["/molit/internal/world_model/pidnet_points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
+    topic_042["/molit/perception/camera/signal/observations<br/>type: common_msgs_pkg/CameraSignalArray<br/>state: RESERVED"]
+    topic_043["/molit/perception/camera/front/semantic_scores<br/>type: sensor_msgs/Image<br/>state: RESERVED"]
+    topic_044["/molit/world_model/painted_points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
+    topic_045["/molit/internal/world_model/pidnet_points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
 
     node_000 --> topic_000
     topic_000 --> node_015
@@ -272,11 +273,13 @@ flowchart LR
     node_026 --> topic_041
     topic_041 --> node_027
     node_015 --> topic_042
-    topic_042 --> node_028
-    node_028 --> topic_043
-    topic_043 --> node_027
+    topic_042 --> node_020
+    node_015 --> topic_043
+    topic_043 --> node_028
     node_028 --> topic_044
-    topic_044 --> node_020
+    topic_044 --> node_027
+    node_028 --> topic_045
+    topic_045 --> node_020
     external_ingress --> node_000
     external_ingress --> node_001
     external_ingress --> node_002
@@ -362,3 +365,4 @@ flowchart LR
     class topic_042 reservedTopic;
     class topic_043 reservedTopic;
     class topic_044 reservedTopic;
+    class topic_045 reservedTopic;

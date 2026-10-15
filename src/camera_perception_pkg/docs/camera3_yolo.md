@@ -24,7 +24,7 @@ roslaunch system_bringup_pkg camera3_signal.launch
 중앙 `signal_observation_policy.yaml`의 1·2·3·5번 정지선 전방 30m부터
 정지선까지 활성화하고 4번 우회전은 제외한다. 거리는 전역경로 XY 누적 거리이며
 원본 TXT hash가 일치해야 한다. 정지선 통과·경로 만료(0.5초)·시각 역행 시
-대기·진행 중 결과를 폐기한다. 빨강/초록 판독 및 주행 판단은 아직 미연결이다.
+대기·진행 중 결과를 폐기한다. 공개 HSV 관측은 World Model에서 지도 head에 대응하고 Planner가 정지·재출발을 판단한다.
 경로 정보 없이 영상 검출만 확인하는 명시적 진단 실행은
 `roslaunch system_bringup_pkg camera3_signal.launch signal_route_gate:=false`다.
 
@@ -48,11 +48,15 @@ ROS Python 의존성은 `config/signal_requirements.txt`에 기록했다.
 
 `~signal_detections` JSON과 `~signal_image`는 하우징 후보 진단 출력이다.
 원본 header/stamp를 보존하고 가장 최신 대기 영상 1장만 처리한다.
-이미지의 3/4등식 표시는 신호 상태가 아니다. 검출 후보가 다른 차선의 신호일 수
-있으며, 경로 대상 ID 선택·신호 상태와 World Model/Planner 연결은 이번 실행에서
-승인하지 않는다. 주행 제어로 후보를 넘기지 않는다.
+이미지의 3/4등식 표시는 하우징 종류이며 RED/GREEN/LEFT 텍스트는 HSV 점등 판독이다.
+검출 후보가 다른 차선의 신호일 수 있으므로 World Model이 지도 대상 ID를 선택한다.
+Planner 연결은 중앙 HSV 신호 계약을 따르며 private 후보를 직접 제어에 사용하지 않는다.
 
 중앙 공개 입력과 발행하지 않는 TF의 근거는
 [Camera3 입력 계약](../../ros_architecture_pkg/docs/camera3_signal_ingress.md)을 따른다.
 현재 raw ID3는 개발용 신호 카메라로 사용한다. 본선 고정 Right Camera를
 유지하려면 자유 카메라 배치/ID를 별도로 맞추고 센서 제출을 검토해야 한다.
+
+공개 연결 상세: `ros_architecture_pkg/docs/traffic_signal_hsv.md`.
+HSV 파라미터는 camera_perception_pkg/config/signal_hsv.yaml, 지도 대응·허용 확인은
+world_model_pkg/config/world_model.yaml, 제동 여유는 path_planning_pkg/config/frenet_planner.yaml을 따른다.
