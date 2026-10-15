@@ -29,6 +29,13 @@ Planner가 바뀌는 세 경계에서는 `frenet_planner.yaml`의
 2026-09-22 bag 기반 시간 단축 설정과 검증 한계는
 [분석 기록](docs/bag_tuning_20260922.md)을 참고한다.
 
+2026-10-15에 Hybrid A* core와 설정을 `origin/main`의 `99d137c`와 동일하게
+맞췄다. 위치/방향 격자는 1m/15°, corridor 반폭은 6m, 장애물 추가 여유는
+0.5m다. main의 충돌 검사 최적화와 대기 Hybrid 경로 재검증·활성화도 반영했다.
+공통 Planner의 신호 정지·출발 및 보행자 속도 제한은 유지한다. 이 조합은
+오프라인 회귀 검증 대상이며, 이전 320° 신호 주행 증거가 변경 후 Hybrid
+조합의 실제 주행 검증을 대신하지 않는다.
+
 ## Frenet RDDF 개발 구현
 
 [Frenet Planner](docs/frenet_rddf.md)는 지정한 RDDF 14개와 전역경로를 사용해
