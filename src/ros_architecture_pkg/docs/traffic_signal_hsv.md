@@ -63,7 +63,7 @@ RViz GREEN/LEFT MarkerArray 송수신은 run2의 3번 통과 로그로 확인했
 시험 종료 시 Q handover로 UDP를 일시정지하고 Manual-keyboard에서 제동하여
 GUI 0.00km/h를 확인했다. 표시와 센서 파이프라인은 켜둔다.
 
-catkin 전체 빌드, Camera 14·공유 메시지 43·World Model 41·Planner 132·
+catkin 전체 빌드, Camera 15·공유 메시지 43·World Model 41·Planner 132·
 Visualization 46·중앙 계약 46개 테스트 및 중앙 그림 hash 검사를 통과했다.
 World Model/Visualization ROS 수송 시험은 별도 master에서 실행했다.
 원래 stock 실행을 막던 `ros_numpy`는 공식 ROS deb에서 사용자 Python site에

@@ -19,9 +19,11 @@ Camera3 위치 [1.8,0,1.3]m, 자세 [0,340,0]deg와 FOV 90도를 보존한다.
 camera_signal의 mount/optical TF는 미검증이므로 발행하지 않는다.
 카메라 추가는 기존 front/left/right frame 의미를 변경하지 않는다.
 
-이번 변경은 개발용 Camera3 수신과 YOLO 신호등 하우징 후보 영상까지다.
+최초 입력 연결은 개발용 Camera3 수신과 YOLO 신호등 하우징 후보 영상까지였다.
 원본 측정시각을 유지하는 private `~signal_image`와 `~signal_detections`는
 진단용이며 경로 대상 ID, 신호 상태, 주행 가능 여부를 승인하지 않는다.
-기존 World Model·Planner의 공개 입력은 변경하지 않는다. 다른 차선 및
-보행자 신호 제외, 시간 동기화와 경로 대상 연결은 World Model 소유 경계에서
-추가 검증해야 한다. 본선 고정 3카메라의 ID와 자유 카메라 배치는 별도 확인한다.
+후속 [HSV 신호 연결](traffic_signal_hsv.md)에서 공개 CameraSignalArray와
+WorldModel.traffic_signals를 추가하고 World Model의 지도 대상 선택, Planner의
+정지·재출발 및 RViz 표시를 구현했다. 다른 차선 및 보행자 신호를 구분하는
+지도 대응과 시간 정렬은 World Model이 소유한다. 본선 고정 3카메라의 ID와
+자유 카메라 배치는 별도 확인한다.

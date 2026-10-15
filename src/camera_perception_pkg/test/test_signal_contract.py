@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import math
 import unittest
 import yaml
 import roslaunch.config
@@ -26,6 +27,23 @@ class SignalContractTest(unittest.TestCase):
         tf = yaml.safe_load((ROOT / 'src/ros_architecture_pkg/config/tf/frame_contract.yaml').read_text())
         self.assertTrue(all(not t['publish_enabled'] for t in tf['transforms']
                             if t['child'].startswith('camera_signal')))
+
+    def test_world_projection_matches_source_camera_geometry(self):
+        policy = yaml.safe_load((ROOT / 'src/ros_architecture_pkg/config/map/signal_observation_policy.yaml').read_text())
+        extrinsics = yaml.safe_load((ROOT / 'src/ros_architecture_pkg/config/tf/sensor_extrinsics.yaml').read_text())
+        mount = next(m for m in extrinsics['sensor_mounts'] if m['key'] == 'camera_signal')
+        profile = json.loads((ROOT / 'src/morai_interface_pkg/config/camera3_signal_sensor.json').read_text())
+        camera = next(c for c in profile['cameraList'] if c['m_SensorUniqueID'] == 3)
+        projection = policy['camera_projection']
+        source_xyz = [float(camera['pos'][k]) for k in ('x', 'y', 'z')]
+        self.assertEqual(projection['translation_m'], source_xyz)
+        self.assertEqual(mount['source_pose']['translation_m'], source_xyz)
+        source_pitch = math.radians((float(camera['rot']['pitch']) + 180.) % 360. - 180.)
+        self.assertAlmostEqual(projection['pitch_rad'], source_pitch)
+        self.assertAlmostEqual(mount['candidate_ros_pose']['rotation_rpy_rad'][1], source_pitch)
+        self.assertEqual(projection['horizontal_fov_deg'], camera['cc']['cameraFOV'])
+        self.assertFalse(projection['publish_tf'])
+        self.assertFalse(mount['publish_enabled'])
 
     def test_main_stack_starts_single_camera3_and_can_disable_it(self):
         launch = str(ROOT / 'src/system_bringup_pkg/launch/frenet_all.launch')
