@@ -14,6 +14,8 @@ source_evidence:
   user_camera3_saved_profile_20261015:
     path: src/morai_interface_pkg/config/camera3_signal_sensor.json
     scope: [camera_signal]
+    saved_rotation_reobserved_at: "2026-10-15T13:53:18+09:00"
+    observed_host_path: /home/paik/MoraiLauncher_Stage/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json
     active_loadout_verified: false
     note: Development Camera3 replaces raw ID3 right camera; fixed competition loadout not approved.
   user_confirmed_lidar_mount:
@@ -46,10 +48,12 @@ source_evidence:
   launcher_saved_profile_user_confirmed:
     logical_path: "MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
     observed_host_path: "/home/paik/MoraiLauncher_Stage/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Sensor/25.S4.MolitComp03/SensorInfo_2023_Hyundai_Ioniq5.json"
-    sha256: bc7ec1b462a96c59fcc622f75a0c76b8da85743d93e939f5b372977ae58751a7
+    sha256: 48af82d4efb3571d4ee6b32b4e51ec61df92423c976865c7bd77abae8bbfd2a3
     previous_sha256: 048b27cbf573f6acb9804d69f5e9b8fc91801e3e459c5e4ef284778d96bf37fd
+    resumed_pitch340_profile_sha256: bc7ec1b462a96c59fcc622f75a0c76b8da85743d93e939f5b372977ae58751a7
+    earlier_pitch320_profile_sha256: abd631965c027b71447b4c73d30faddbdf5c02e6f851f0c1f6acbf7921dc9ea0
     reobserved_on: "2026-10-15"
-    reobservation_note: GPS/IMU scoped IDs, target IDs, positions, rotations, frames and periods rechecked unchanged against current saved profile. Camera settings differ from prior snapshot; no active loadout or physical alignment claim.
+    reobservation_note: GPSList and IMUList exactly match the repository snapshot after the final pitch320 runtime; scoped GPS/IMU fields rechecked by contract test. Resumed profile initially held pitch340 and the final runtime saved pitch320. No GPS/IMU physical alignment claim.
     active_loadout_verified: false
     confirmed_on: "2026-09-10"
     user_confirmed_mount_position: true
@@ -162,10 +166,10 @@ sensor_mounts:
     source_evidence: user_camera3_saved_profile_20261015
     source_pose:
       translation_m: [1.8, 0.0, 1.3]
-      rotation_rpy_deg: [0.0, 340.0, 0.0]
+      rotation_rpy_deg: [0.0, 320.0, 0.0]
     candidate_ros_pose:
       translation_m: [1.8, 0.0, 1.3]
-      rotation_rpy_rad: [0.0, -0.3490658503988659, 0.0]
+      rotation_rpy_rad: [0.0, -0.6981317007977318, 0.0]
     configured_period_sec: 0.03333333507180214
     configured_rate_hz: 30.0
     measured_rate_hz: null

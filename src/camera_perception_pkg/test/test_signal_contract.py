@@ -19,7 +19,7 @@ class SignalContractTest(unittest.TestCase):
         profile = json.loads((ROOT / 'src/morai_interface_pkg/config/camera3_signal_sensor.json').read_text())
         camera = next(c for c in profile['cameraList'] if c['m_SensorUniqueID'] == 3)
         self.assertEqual([float(camera['pos'][k]) for k in ('x', 'y', 'z')], [1.8, 0., 1.3])
-        self.assertEqual(float(camera['rot']['pitch']), 340.)
+        self.assertEqual(float(camera['rot']['pitch']), 320.)
         self.assertEqual(camera['cc']['udpConfig']['destinationPort'], config['port'])
         self.assertEqual(camera['cc']['cameraType'], 0)
         self.assertFalse(camera['cc']['vizBoundingBox2D'])

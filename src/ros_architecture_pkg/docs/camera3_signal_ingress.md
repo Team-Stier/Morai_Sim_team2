@@ -14,10 +14,13 @@
 | rate / queue | 최대 30 Hz / publisher 2, inference 최신 1장 |
 | timeout / invalid | 청크 재조립 0.5초, 잘못된 JPEG·timestamp 폐기 |
 
-Camera3 위치 [1.8,0,1.3]m, 자세 [0,340,0]deg와 FOV 90도를 보존한다.
+Camera3 위치 [1.8,0,1.3]m, 자세 [0,320,0]deg와 FOV 90도를 보존한다.
 학습 RGB와 같은 1920×1440 해상도를 사용하며 Bounding Box 송출은 끈다.
 camera_signal의 mount/optical TF는 미검증이므로 발행하지 않는다.
 카메라 추가는 기존 front/left/right frame 의미를 변경하지 않는다.
+2026-10-15 13:53 저장 프로필에서 사용자가 pitch를 340°에서 320°로 변경한 것을
+확인해 중앙 source/candidate와 World Model 투영값을 함께 맞췄다. 새 설정의 실제 영상에서 YOLO 4구 하우징 검출(confidence 0.963)과 HSV 적색
+판독을 확인했다. 변경 후 주행 검증은 기존 340° 시험과 구분해 기록한다.
 
 최초 입력 연결은 개발용 Camera3 수신과 YOLO 신호등 하우징 후보 영상까지였다.
 원본 측정시각을 유지하는 private `~signal_image`와 `~signal_detections`는

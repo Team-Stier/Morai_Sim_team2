@@ -7,7 +7,7 @@ MORAI Sensor 프리셋 `camera3signal_yolo`를 Load하고 Camera3 UDP를
 Connect한다. 프리셋 파일은 `morai_interface_pkg/config/camera3_signal_sensor.json`에도
 저장돼 있다. 기존 실행 중인 시뮬레이터의 설정을 코드가 자동 조작하지 않는다.
 
-- Camera3: RGB, 위치 (1.8,0,1.3), pitch 340° (= -20°), FOV 90°
+- Camera3: RGB, 위치 (1.8,0,1.3), pitch 320° (= -40°, 2026-10-15 13:53 저장 설정), FOV 90°
 - 해상도 1920×1440, 최대 30 Hz, Bounding Box 송출 해제
 - 로컬 UDP: host 127.0.0.1:9296 → destination 127.0.0.1:9297
 - 원본 ROS 영상: `/molit/sensors/camera/signal/image/compressed`
