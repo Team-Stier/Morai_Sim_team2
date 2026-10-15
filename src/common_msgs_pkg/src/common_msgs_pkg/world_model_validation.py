@@ -41,6 +41,13 @@ def validate_world_model(message, for_planning=False):
 
     seen = set()
     fusion_stamp = _stamp_sec(message.header.stamp)
+    for signal in getattr(message,'traffic_signals',[]):
+        if (signal.header.frame_id != 'map' or _stamp_sec(signal.header.stamp) <= 0 or
+                not signal.stop_line_id or not _finite(signal.confidence,signal.position.x,
+                    signal.position.y,signal.position.z) or not 0<=signal.confidence<=1):
+            raise ValueError('invalid selected traffic signal metadata')
+        if signal.valid and (not signal.signal_ids or not 0<signal.lamp_mask<=15):
+            raise ValueError('valid traffic signal needs source head identity and lamp mask')
     for item in message.objects:
         if item.track_id == 0 or item.track_id in seen:
             raise ValueError("track IDs must be nonzero and unique")

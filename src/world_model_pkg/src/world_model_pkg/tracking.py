@@ -164,6 +164,9 @@ class MultiObjectTracker:
         candidates = []
         for identifier, point in predicted.items():
             for index, detection in enumerate(values):
+                source_class = self._tracks[identifier].detection.semantic_class
+                if source_class and detection.semantic_class and source_class != detection.semantic_class:
+                    continue
                 distance = math.hypot(point[0] - detection.center[0], point[1] - detection.center[1])
                 dt = (stamp_ns-self._tracks[identifier].state_stamp_ns)*1e-9
                 gate = self.config.association_distance_m + (self.config.velocity_stddev_mps if self._tracks[identifier].velocity_valid else self.config.maximum_speed_mps)*dt

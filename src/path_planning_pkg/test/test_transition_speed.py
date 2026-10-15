@@ -20,6 +20,8 @@ class TransitionSpeedPolicyTest(unittest.TestCase):
         self.config = yaml.safe_load((ROOT / 'config/frenet_planner.yaml').read_text())
         self.config['planner_mode'] = yaml.safe_load(
             (ROOT / 'config/planner_mode.yaml').read_text())['planner_mode']
+        # Fixed 30 km/h policy fixture; runtime tuning may use another boundary speed.
+        self.config['mode_transition_speed_kph'] = 30.0
         self.policy = TransitionSpeedPolicy(self.config)
         self.b1, self.b2, self.b3 = (
             self.config['planner_mode']['zones'][index]['end_s'] for index in (0, 1, 3))

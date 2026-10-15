@@ -90,6 +90,18 @@ rosrun hd_map_pkg hd_map_tool build-all --open
 부분 명령은 `inspect-source`, `convert`, `validate`, `view --open`이다. 다른 원본이나
 출력 위치를 시험할 때만 전역 옵션 `--source`, `--output-dir`, `--config`를 쓴다.
 
+미리보기는 기본으로 **경로 대상 신호등과 연결 정지선**을 노란색으로 강조한다.
+기존 `build_signal_stop_lines`의 경로 방향·접근 차로·정지선 교차 판정을 공유하며,
+승인된 추가 RDDF 차로도 포함한다. 반대 방향·보행 신호는 대상에서 제외한다.
+오른쪽 목록은 출발점부터 정지선까지의 경로 거리순이며 누르면 해당 지점을 확대한다.
+현재 중앙 신호 관측 정책에서는 정지선 4곳, 신호등 5개다. 기존 번호
+1·2·3·5를 유지하고 4번 우회전은 사용자 지정으로 제외한다. 주황 경로는
+각 정지선 전방 30m의 YOLO 활성 구간이다. 같은 접근 차로에 연결된 복수 head는
+모두 표시한다. 전체 신호등과 터널 LCS는 별도 레이어로 켤 수 있다.
+이는 정적 지도 연결을 검토하는 화면이다. YOLO는 같은 중앙 정책과 RouteContext로
+추론 구간을 제한한다. Camera HSV 판독, World Model의 지도 대상 선택과 Planner의
+정지/진행 연결은 중앙 traffic_signal_messages 계약을 따른다.
+
 ```bash
 hd_map_tool --output-dir /tmp/katri_lanelet build-all
 ```

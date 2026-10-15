@@ -13,7 +13,7 @@ from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker, MarkerArray
-from common_msgs_pkg.msg import ComponentStatus, EgoState, HdMap, LocalizationStatus, RouteContext, Trajectory, WorldModel
+from common_msgs_pkg.msg import ComponentStatus, EgoState, HdMap, LocalizationStatus, RouteContext, Trajectory, WorldModel, TrackedObject
 from path_planning_pkg.frenet import Planner, Lane, Window, Obstacle, ObstacleGrid, Candidate, geometry, geometry_windows, project
 from path_planning_pkg.hybrid_astar import HybridAStarConfig, HybridAStarPlanner, HybridPlanStatus, Pose2D
 from path_planning_pkg.hybrid_runtime import build_hybrid_candidate, flatten_obstacle_points, hybrid_path_clear
@@ -29,6 +29,13 @@ def yaw(q):
 class Node:
     def __init__(self):
         self.c = rospy.get_param('~')
+        import rospkg,yaml
+        from pathlib import Path
+        from path_planning_pkg.signal_stop import SignalStopPolicy
+        root=Path(rospkg.RosPack().get_path('ros_architecture_pkg'))
+        self.signal_policy=SignalStopPolicy(yaml.safe_load((root/'config/map/signal_observation_policy.yaml').read_text()),self.c)
+        if not math.isfinite(self.c['pedestrian_speed_cap_kph']) or self.c['pedestrian_speed_cap_kph'] <= 0:
+            raise ValueError('pedestrian speed cap must be finite and positive')
         self.planner = Planner(self.c)
         self.mode_manager = PlannerModeManager.from_mapping(self.c['planner_mode'])
         self.transition_speed = TransitionSpeedPolicy(self.c)
@@ -136,7 +143,42 @@ class Node:
                 boundaries.append(xyz)
         self.static_map = (message.map_id, lanes, windows, boundaries)
 
+    def pedestrian_speed_cap(self, world=None, now=None):
+        """Only a fresh valid scene can release the previous pedestrian cap."""
+        world = getattr(self, 'world', None) if world is None else world
+        now = rospy.Time.now() if now is None else now
+        cap = getattr(self, '_pedestrian_cap_mps', math.inf)
+        state = getattr(self, 'state', None)
+        age_limit = (self.c.get('world_model_input_age_sec', self.c['input_age_sec'])
+                     if self.c['rddf_geometry_only'] else self.c['input_age_sec'])
+        if (world is not None and world.objects_valid and state is not None
+                and world.localization_reset_id == state[0].reset_id
+                and not world.header.stamp.is_zero()
+                and 0 <= (now-world.header.stamp).to_sec() <= age_limit):
+            cap = (self.c['pedestrian_speed_cap_kph']/3.6
+                   if any(o.semantic_class == TrackedObject.CLASS_PEDESTRIAN for o in world.objects)
+                   else math.inf)
+            self._pedestrian_cap_mps = cap
+        return cap
+
+    def candidate_speed_caps(self, candidate, mode, lane, world):
+        return np.minimum(np.minimum(self.transition_speed.caps(candidate.route_s, mode, lane),
+                          self.pedestrian_speed_cap(world)),self.signal_caps(candidate.route_s))
+
+    def signal_caps(self, stations):
+        if not hasattr(self,'signal_policy'):
+            return math.inf
+        return self.signal_policy.caps(stations,getattr(self,'route',None),
+            getattr(self,'world',None),
+            rospy.Time.now().to_sec(),
+            self.state[0].reset_id if self.state is not None else None)
+
     def report(self, reason, ready=False, latency=0.):
+        if hasattr(self,'signal_policy'):
+            reason += '; '+self.signal_policy.reason
+        cap = self.pedestrian_speed_cap()
+        if math.isfinite(cap):
+            reason += '; pedestrian_speed_cap_kph=%g' % (cap*3.6)
         m = ComponentStatus(component='path_planning_pkg', state=ComponentStatus.READY if ready else ComponentStatus.DEGRADED,
                             ready=ready, stop_required=not ready, processing_latency_sec=latency, reason=reason)
         m.header.stamp = rospy.Time.now()
@@ -503,8 +545,8 @@ class Node:
                             self.pending_selection_set = False
                             self.hybrid_fallback_deadline = None
                 current_speed = max(0., current_state[1].twist.twist.linear.x)
-                candidate.speed_cap_mps = self.transition_speed.caps(
-                    candidate.route_s, selection.planner, lanes['global_route'])
+                candidate.speed_cap_mps = self.candidate_speed_caps(
+                    candidate, selection.planner, lanes['global_route'], current_world)
                 _distance, _heading, _curvature, speeds, times = self.planner.profile(
                     candidate, current_speed)
                 candidate.speed = speeds
@@ -590,8 +632,8 @@ class Node:
         obstacle_grid = ObstacleGrid(objects,self.c)
 
         def evaluate(candidate):
-            candidate.speed_cap_mps = self.transition_speed.caps(
-                candidate.route_s, selection.planner, lanes['global_route'])
+            candidate.speed_cap_mps = self.candidate_speed_caps(
+                candidate, selection.planner, lanes['global_route'], world)
             self.planner.evaluate(candidate, speed, obstacle_grid, boundaries, goal_s)
             index = min(np.searchsorted(candidate.route_s,goal_s),len(candidate.xy)-1)
             goal = route.comparison_goal
@@ -816,6 +858,23 @@ class Node:
                 nearest = int(np.argmin(np.linalg.norm(chosen.xy[:end, :2]-position[:2], axis=1)))
                 i = max(0, nearest-1)
                 xyz, speeds = chosen.xy[i:end].copy(), chosen.speed[i:end].copy()
+        cap = self.pedestrian_speed_cap(now=now)
+        if xyz is not None and len(xyz)>=2:
+            cap=np.minimum(cap,self.signal_caps(chosen.route_s[i:end]))
+        if xyz is not None and len(xyz) >= 2 and np.any(speeds > cap):
+            # Apply on every publication, including held paths and mode handoffs.
+            speeds = np.minimum(speeds, cap)
+            arc, angles, _ = geometry(xyz)
+            retimed = np.concatenate(([0.], np.cumsum(
+                2*np.diff(arc)/np.maximum(speeds[1:]+speeds[:-1], .01))))
+            world = self.world
+            obstacles = [Obstacle(np.array([[p.x, p.y, p.z] for p in obj.points]),
+                np.array([obj.twist.linear.x, obj.twist.linear.y]), obj.velocity_valid,
+                (now-obj.source_stamp).to_sec()) for obj in world.objects]
+            # Slower travel changes encounter times; recheck dynamic collisions.
+            if self.planner.collision(xyz, angles, retimed, ObstacleGrid(obstacles, self.c)) is not None:
+                xyz = speeds = None
+                fallback_stop_reason = 'pedestrian_speed_cap_collision'
         if xyz is None or len(xyz) < 2:
             output.valid = True
             output.stop_required = True

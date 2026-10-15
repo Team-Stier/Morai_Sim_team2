@@ -15,9 +15,12 @@ flowchart LR
         input_003["/molit/localization/local/odometry<br/>설명: 연속적인 차량 상대 이동이며 절대 지도 위치가 아님<br/>메시지: nav_msgs/Odometry<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
         input_004["/molit/localization/status<br/>설명: 위치추정 모드·품질·유효성<br/>메시지: common_msgs_pkg/LocalizationStatus<br/>상태: GPS·IMU 개발 추정 실행·주행 검증 전"]
         input_005["/molit/planning/status<br/>설명: 입력 신선도·계획 가능 여부·궤적 유효성<br/>메시지: common_msgs_pkg/ComponentStatus<br/>상태: 설계 예약·미구현"]
+        input_006["/molit/world_model/painted_points<br/>설명: 카메라 클래스 확률과 영상 시각을 부착한 LiDAR 원본 점<br/>메시지: sensor_msgs/PointCloud2<br/>상태: 설계 예약·미구현"]
+        input_007["/molit/sensors/camera/front/image/compressed<br/>설명: 전방 카메라 압축 영상<br/>메시지: sensor_msgs/CompressedImage<br/>상태: 개발 환경 동작 확인"]
     end
     subgraph PACKAGE["패키지 처리<br/>visualization_pkg<br/>위치 추정 차량·LiDAR 검출·map 추적 객체를 RViz에 표시"]
         local_node_000["vehicle_visualizer_node<br/>역할: 위치 추정값과 상태를 차량 사각형 표시로 변환<br/>실행: vehicle_visualizer_node.py<br/>상태: 시각화 개발 실행·추정 입력 대기"]
+        local_node_001["vehicle_rviz<br/>역할: RGB 영상과 클래스 확률이 부착된 점군을 읽기 전용으로 표시<br/>실행: rviz<br/>상태: 시각화 개발 실행·추정 입력 대기"]
     end
     subgraph OUTPUTS["출력 (발행)"]
         no_outputs["공개 ROS 출력 없음"]
@@ -30,11 +33,16 @@ flowchart LR
     input_003 --> local_node_000
     input_004 --> local_node_000
     input_005 --> local_node_000
+    input_006 --> local_node_001
+    input_007 --> local_node_001
 
     class local_node_000 reservedNode;
+    class local_node_001 reservedNode;
     class input_000 reservedTopic;
     class input_001 reservedTopic;
     class input_002 liveTopic;
     class input_003 liveTopic;
     class input_004 liveTopic;
     class input_005 reservedTopic;
+    class input_006 reservedTopic;
+    class input_007 liveTopic;

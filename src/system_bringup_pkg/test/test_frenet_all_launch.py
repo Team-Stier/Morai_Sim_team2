@@ -22,6 +22,11 @@ class FrenetAllLaunchTest(unittest.TestCase):
                      'path_planner_node', 'vehicle_controller_node', 'safety_supervisor_node',
                      'morai_control_sender'):
             self.assertIn('/' + name, names)
+        self.assertIn('/camera_perception_node', names)
+        self.assertIn('/pointpainting_node', names)
+        self.assertNotIn('/lidar_perception_node', names)
+        self.assertTrue(config.params['/world_model_node/pidnet_enabled'].value)
+        self.assertTrue(config.params['/pointpainting_node/foreground_only'].value)
         self.assertFalse(config.params['/use_sim_time'].value)
         self.assertEqual(config.params['/path_planner_node/test_speed_cap_kph'].value, 0.)
         self.assertEqual(config.params['/morai_control_sender/port'].value, 9093)
@@ -33,3 +38,50 @@ class FrenetAllLaunchTest(unittest.TestCase):
         self.assertNotIn('morai_control_sender', names)
         self.assertIn('vehicle_controller_node', names)
         self.assertEqual(config.params['/path_planner_node/test_speed_cap_kph'].value, 10.)
+
+    def test_default_model_files_are_bundled_for_all_entry_points(self):
+        root = Path(__file__).resolve().parents[3]
+        launches = (
+            ('system_bringup_pkg', 'frenet_all'),
+            ('system_bringup_pkg', 'frenet_rddf'),
+            ('system_bringup_pkg', 'competition'),
+            ('system_bringup_pkg', 'pointpainting'),
+            ('camera_perception_pkg', 'camera_perception_pkg'),
+        )
+        for package, name in launches:
+            with self.subTest(launch=name):
+                launch = str(root / 'src' / package / 'launch' / (name + '.launch'))
+                config = roslaunch.config.load_config_default([(launch, [])], None)
+                weights = Path(config.params['/camera_perception_node/weights'].value).resolve()
+                self.assertEqual(weights, root / 'weights/pidnet_s_morai6.pt')
+                self.assertTrue(weights.is_file())
+                if config.params['/camera_perception_node/enable_signal'].value:
+                    signal = Path(config.params['/camera_perception_node/signal_weights'].value).resolve()
+                    self.assertEqual(signal, root / 'weights/camera3_route_signal.pt')
+                    self.assertTrue(signal.is_file())
+
+    def test_explicit_legacy_mode_does_not_start_pidnet(self):
+        config = self.load(['pidnet_enabled:=false'])
+        names = {node.name for node in config.nodes}
+        self.assertIn('lidar_perception_node', names)
+        self.assertIn('camera_perception_node', names)
+        self.assertFalse(config.params['/camera_perception_node/enable_semantic'].value)
+        self.assertTrue(config.params['/camera_perception_node/enable_signal'].value)
+        self.assertNotIn('pointpainting_node', names)
+        self.assertFalse(config.params['/world_model_node/pidnet_enabled'].value)
+
+    def test_both_models_share_one_camera_node_and_yolo_environment(self):
+        config = self.load()
+        camera = [n for n in config.nodes if n.name == 'camera_perception_node']
+        self.assertEqual(len(camera), 1)
+        self.assertIn('morai-yolo/bin/python', camera[0].launch_prefix)
+        self.assertTrue(config.params['/camera_perception_node/enable_semantic'].value)
+        self.assertTrue(config.params['/camera_perception_node/enable_signal'].value)
+        for pidnet, yolo in ((True, False), (False, True), (False, False)):
+            config = self.load(['pidnet_enabled:='+str(pidnet).lower(),
+                                'camera3_yolo:='+str(yolo).lower()])
+            self.assertEqual(sum(n.name == 'camera_perception_node' for n in config.nodes),
+                             int(pidnet or yolo))
+            if pidnet or yolo:
+                self.assertEqual(config.params['/camera_perception_node/enable_semantic'].value, pidnet)
+                self.assertEqual(config.params['/camera_perception_node/enable_signal'].value, yolo)

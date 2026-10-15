@@ -6,6 +6,12 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass
+from types import SimpleNamespace
+from pathlib import Path
+import rospkg
+from sensor_msgs.msg import PointCloud2
+from world_model_pkg.pointpainting import cloud_records
+from world_model_pkg.semantic_objects import semantic_groups
 
 import rospy
 import tf2_ros
@@ -19,6 +25,7 @@ from common_msgs_pkg.msg import (
     LocalizationStatus,
     TrackedObject,
     WorldModel,
+    CameraSignalArray, EgoState, RouteContext,
 )
 
 from world_model_pkg import Detection, MultiObjectTracker, TrackerConfig, transform_points
@@ -56,6 +63,12 @@ def _time_from_ns(value):
 class WorldModelNode:
     def __init__(self):
         config = _load_config(rospy.get_param("~config_file"))
+        self._pidnet = rospy.get_param("~pidnet_enabled", False)
+        self._semantic_grouping = config["semantic_grouping"]
+        root = Path(rospkg.RosPack().get_path("ros_architecture_pkg")) / "config"
+        from world_model_pkg.traffic_signals import SignalFusion
+        self._signals = SignalFusion(_load_config(root/'map/signal_observation_policy.yaml'),config['traffic_signals'])
+        self._painting_contract = _load_config(root / "messages/pointpainting.yaml")
         self._reference_frame = str(config["reference_frame"])
         self._lidar_frame = str(config["lidar_frame"])
         self._status_period = float(config["status_period_sec"])
@@ -111,13 +124,20 @@ class WorldModelNode:
         self._tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(10.0))
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         self._scene_publisher = rospy.Publisher(SCENE_TOPIC, WorldModel, queue_size=2)
+        self._signal_subscribers = [
+            rospy.Subscriber('/molit/localization/ego_state',EgoState,self._signal_pose,queue_size=100),
+            rospy.Subscriber('/molit/route/context',RouteContext,self._signal_route,queue_size=2),
+            rospy.Subscriber('/molit/perception/camera/signal/observations',CameraSignalArray,self._signal_observation,queue_size=2)]
         self._status_publisher = rospy.Publisher(STATUS_TOPIC, ComponentStatus, queue_size=1, latch=True)
-        self._observation_subscriber = rospy.Subscriber(
-            OBSERVATION_TOPIC, LidarObservationArray, self._on_observation, queue_size=2
-        )
-        self._lidar_status_subscriber = rospy.Subscriber(
-            LIDAR_STATUS_TOPIC, ComponentStatus, self._on_lidar_status, queue_size=2
-        )
+        if self._pidnet:
+            self._observation_subscriber = rospy.Subscriber(
+                '/molit/internal/world_model/pidnet_points', PointCloud2, self._on_painted,
+                queue_size=1, buff_size=8 * 1024 * 1024)
+        else:
+            self._observation_subscriber = rospy.Subscriber(
+                OBSERVATION_TOPIC, LidarObservationArray, self._on_observation, queue_size=2)
+            self._lidar_status_subscriber = rospy.Subscriber(
+                LIDAR_STATUS_TOPIC, ComponentStatus, self._on_lidar_status, queue_size=2)
         self._localization_status_subscriber = rospy.Subscriber(
             LOCALIZATION_STATUS_TOPIC, LocalizationStatus, self._on_localization_status, queue_size=10
         )
@@ -129,8 +149,20 @@ class WorldModelNode:
         self._publish_status()
         rospy.loginfo("World Model development tracker ready; planner_ready is fail-closed")
 
+    def _signal_pose(self,message):
+        with self._lock:self._signals.add_pose(message)
+
+    def _signal_route(self,message):
+        with self._lock:self._signals.route=message
+
+    def _signal_observation(self,message):
+        with self._lock:self._signals.ingest(message,rospy.Time.now().to_sec())
+
     def _reset_tracks(self, reason, reset_id=None):
         self._tracker.clear(reset_id)
+        if hasattr(self,'_signals'):
+            self._signals.latest = self._signals.confirmation = None
+            self._signals.poses.clear()
         self._pending.clear()
         self._last_received_stamp = rospy.Time()
         self._last_scene_stamp = rospy.Time()
@@ -182,6 +214,41 @@ class WorldModelNode:
             self._scene_publisher.publish(output)
             self._last_scene_stamp = output.header.stamp
             self._last_scene_wall = time.monotonic()
+
+    def _on_painted(self, cloud):
+        # Internal adapter only: never publish synthetic LiDAR observations.
+        with self._lock:
+            try:
+                now = rospy.Time.now()
+                if (cloud.header.frame_id != self._lidar_frame or cloud.header.stamp.is_zero()
+                        or not 0 <= (now - cloud.header.stamp).to_sec() <= self._observation_timeout):
+                    raise ValueError('PIDNet cloud frame/stamp is invalid or stale')
+                records = cloud_records(cloud)
+                for name in ('image_stamp_sec', 'image_stamp_nsec'):
+                    if name not in records.dtype.names:
+                        raise ValueError('missing camera measurement time')
+                if len(records):
+                    image_ns = (records['image_stamp_sec'].astype('int64') * 1000000000
+                                + records['image_stamp_nsec'].astype('int64'))
+                    age = (_stamp_ns(now) - image_ns) * 1e-9
+                    delta = abs(image_ns - _stamp_ns(cloud.header.stamp)) * 1e-9
+                    if ((image_ns <= 0).any() or (age < 0).any()
+                            or (age > self._observation_timeout).any()
+                            or (delta > self._semantic_grouping['maximum_image_delta_sec']).any()):
+                        raise ValueError('PIDNet camera measurement is stale or misaligned')
+                policy = self._painting_contract['foreground_selection']
+                groups = semantic_groups(records, policy, self._semantic_grouping)
+                objects = [SimpleNamespace(scan_local_id=i, point_count=len(points),
+                           points=[Point(*p) for p in points], confidence=-1.0,
+                           semantic_class=policy['semantic_to_tracked_class'][label])
+                           for i, (label, points) in enumerate(groups)]
+                observation = SimpleNamespace(header=cloud.header, calibration_id=self._painting_contract['extrinsics']['calibration_id'],
+                    calibration_verified=False, freshness_verified=False, timestamp_provenance='ingress_fallback',
+                    objects_valid=True, objects=objects, ground_valid=False, free_space_valid=False,
+                    occupancy_valid=False, velocity_valid=False)
+                self._on_observation(observation)
+            except (ValueError, TypeError, KeyError, AttributeError) as error:
+                self._reject_observation(str(error), cloud, publish_invalid=True)
 
     def _on_observation(self, message):
         with self._lock:
@@ -313,9 +380,13 @@ class WorldModelNode:
         output.occupancy_valid = False
         output.free_space_valid = False
         output.traffic_context_valid = False
+        if hasattr(self,'_signals'):
+            output.traffic_signals=self._signals.states(rospy.Time.now().to_sec())
+            output.traffic_context_valid=bool(output.traffic_signals and output.traffic_signals[0].valid)
         output.planner_ready = False
         output.reason = (
-            "development map-frame LiDAR tracks; calibration/freshness/uncertainty "
+            ("development PIDNet foreground map tracks; " if self._pidnet else "development map-frame LiDAR tracks; ")
+            + "calibration/freshness/uncertainty "
             "unverified; no HD-map/route/free-space fusion"
         )
         for view in views:

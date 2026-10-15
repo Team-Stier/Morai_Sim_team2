@@ -1,4 +1,21 @@
 <?xml version="1.0"?>
 <launch>
-  <!-- Runtime entities will be added after central contract approval. -->
+  <arg name="weights" default="$(find camera_perception_pkg)/../../weights/pidnet_s_morai6.pt"/>
+  <arg name="python" default="python3"/>
+  <arg name="enable_semantic" default="true"/>
+  <arg name="enable_signal" default="false"/>
+  <arg name="signal_weights" default="$(find camera_perception_pkg)/../../weights/camera3_route_signal.pt"/>
+  <arg name="signal_route_gate" default="true"/>
+  <node pkg="camera_perception_pkg" type="camera_perception_node" name="camera_perception_node"
+        ns="/" output="screen" launch-prefix="$(arg python)">
+    <rosparam command="load" file="$(find camera_perception_pkg)/config/pointpainting.yaml"/>
+    <rosparam command="load" file="$(find camera_perception_pkg)/config/signal_yolo.yaml"/>
+    <rosparam command="load" param="signal_hsv" file="$(find camera_perception_pkg)/config/signal_hsv.yaml"/>
+    <rosparam command="load" param="signal_policy" file="$(find ros_architecture_pkg)/config/map/signal_observation_policy.yaml"/>
+    <param name="signal_route_gate" value="$(arg signal_route_gate)"/>
+    <param name="weights" value="$(arg weights)"/>
+    <param name="enable_semantic" value="$(arg enable_semantic)"/>
+    <param name="enable_signal" value="$(arg enable_signal)"/>
+    <param name="signal_weights" value="$(arg signal_weights)"/>
+  </node>
 </launch>

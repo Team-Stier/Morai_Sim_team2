@@ -1,8 +1,10 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="pidnet_enabled" default="false"/>
   <arg name="config_file" default="$(find world_model_pkg)/config/world_model.yaml"/>
   <node pkg="world_model_pkg" type="world_model_node"
         name="world_model_node" ns="/" output="screen" required="true">
+    <param name="pidnet_enabled" value="$(arg pidnet_enabled)"/>
     <param name="config_file" value="$(arg config_file)"/>
   </node>
 </launch>

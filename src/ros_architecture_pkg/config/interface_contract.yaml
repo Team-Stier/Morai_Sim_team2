@@ -91,6 +91,9 @@ runtime_readiness_policy:
     last_gps_fix_must_not_be_reused_as_current_position_truth: true
 
 contract_modules:
+  pointpainting:
+    path: messages/pointpainting.yaml
+    required_contract_version: 0.1.0
   static_wall_messages:
     path: messages/static_wall_messages.yaml
     required_contract_version: 0.1.0
@@ -102,6 +105,12 @@ contract_modules:
     required_contract_version: 0.4.0
   course_speed_policy:
     path: map/course_speed_policy.yaml
+    required_contract_version: 0.1.0
+  traffic_signal_messages:
+    path: messages/traffic_signal_messages.yaml
+    required_contract_version: 0.1.0
+  signal_observation_policy:
+    path: map/signal_observation_policy.yaml
     required_contract_version: 0.1.0
   global_path_demo:
     path: messages/global_path_demo.yaml
@@ -117,7 +126,7 @@ contract_modules:
     required_contract_version: 0.2.0
   world_model_messages:
     path: messages/world_model_messages.yaml
-    required_contract_version: 0.2.0
+    required_contract_version: 0.3.0
   core_messages:
     path: messages/core_messages.yaml
     required_contract_version: 0.1.0
@@ -160,6 +169,14 @@ nodes:
     external_transport_role: ingress_adapter
     status: development_live_transport_verified
     diagram_description_ko: 우측 카메라 UDP 영상을 ROS 압축 영상으로 변환
+    details: morai_interface/udp_ros_bridge.yaml
+  - name: morai_camera_signal
+    owner_package: morai_interface_pkg
+    executable: camera_receiver_node
+    visibility: public_boundary
+    external_transport_role: ingress_adapter
+    status: development_camera3_yolo_ingress
+    diagram_description_ko: 신호등용 Camera3 UDP 영상을 ROS 압축 영상으로 변환
     details: morai_interface/udp_ros_bridge.yaml
   - name: morai_gps_bridge
     owner_package: morai_interface_pkg
@@ -244,7 +261,7 @@ nodes:
     owner_package: camera_perception_pkg
     executable: camera_perception_node
     visibility: public_boundary
-    status: reserved_not_implemented
+    status: development_front_semantic_scores
     diagram_description_ko: 세 카메라 영상에서 객체와 차선 관측을 생성
   - name: lidar_perception_node
     owner_package: lidar_perception_pkg
@@ -327,14 +344,22 @@ nodes:
     owner_package: visualization_pkg
     implementation_package: rviz
     executable: rviz
-    visibility: package_internal
+    visibility: public_boundary
     status: development_visualization_only
+    diagram_description_ko: RGB 영상과 클래스 확률이 부착된 점군을 읽기 전용으로 표시
+
+  - name: pointpainting_node
+    owner_package: world_model_pkg
+    executable: pointpainting_node
+    status: development_pointpainting_static_scene_checked
+    visibility: public_boundary
+    diagram_description_ko: 카메라 클래스 확률을 LiDAR 원본 점에 부착
 
 topics:
   - name: /molit/sensors/camera/front/image/compressed
     owner_package: morai_interface_pkg
     producers: [morai_camera_front]
-    consumers: [camera_perception_node]
+    consumers: [camera_perception_node, vehicle_rviz]
     status: development_live_transport_verified
     visibility: public
     data_meaning: Front camera JPEG image observation
@@ -376,6 +401,22 @@ topics:
     frame: camera_right_optical_frame
     timestamp_source: morai_camera_packet_frame_time
     expected_rate_hz: 20.0
+    queue_policy: publisher_queue_2_drop_old
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: discard_incomplete_or_invalid_jpeg_frame
+  - name: /molit/sensors/camera/signal/image/compressed
+    owner_package: morai_interface_pkg
+    producers: [morai_camera_signal]
+    consumers: [camera_perception_node]
+    status: development_camera3_yolo_ingress
+    visibility: public
+    data_meaning: Signal camera JPEG image observation
+    diagram_description_ko: 신호등용 Camera3 압축 영상
+    data_type: sensor_msgs/CompressedImage
+    unit: encoded_jpeg_bytes
+    frame: camera_signal_optical_frame
+    timestamp_source: morai_camera_packet_frame_time
+    expected_rate_hz: 30.0
     queue_policy: publisher_queue_2_drop_old
     timeout_sec: pending_live_jitter_measurement
     invalid_data_policy: discard_incomplete_or_invalid_jpeg_frame
@@ -446,7 +487,7 @@ topics:
   - name: /molit/sensors/lidar/points
     owner_package: morai_interface_pkg
     producers: [morai_velodyne_cloud]
-    consumers: [morai_lidar_watchdog, lidar_perception_node, localization_node]
+    consumers: [morai_lidar_watchdog, lidar_perception_node, localization_node, pointpainting_node]
     runtime_graph_caller: morai_velodyne_manager
     status: provisional_disabled
     visibility: public
@@ -747,7 +788,7 @@ topics:
   - name: /molit/route/context
     owner_package: global_route_manager_pkg
     producers: [global_route_manager_node]
-    consumers: [world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node]
+    consumers: [world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node, camera_perception_node]
     status: development_frenet_rddf_unverified
     visibility: public
     data_meaning: Dynamic route progress current lane and comparison goal keyed by cached HdMap map_id; next_checkpoint is UINT32_MAX in user RDDF-only mode
@@ -1020,7 +1061,75 @@ topics:
     timeout_sec: display_only_configurable_not_driving_freshness
     invalid_data_policy: Delete tracks on invalid_stale_reset_or_clock_stall
 
+  - name: /molit/perception/camera/signal/observations
+    owner_package: camera_perception_pkg
+    producers: [camera_perception_node]
+    consumers: [world_model_node]
+    status: development_hsv_signal_observations
+    visibility: public
+    data_meaning: Camera3 HSV lamp masks and image ROIs without map identity or driving decision
+    diagram_description_ko: 신호등 HSV 점등 관측과 영상 영역
+    data_type: common_msgs_pkg/CameraSignalArray
+    unit: pixels_bitmask_and_confidence
+    frame: camera_signal_optical_frame
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 10.0
+    queue_policy: queue_1_drop_old
+    timeout_sec: 0.5
+    invalid_data_policy: unknown_on_clipped_missing_conflicting_or_stale_lamps
+  - name: /molit/perception/camera/front/semantic_scores
+    owner_package: camera_perception_pkg
+    producers: [camera_perception_node]
+    consumers: [pointpainting_node]
+    status: development_front_semantic_scores
+    visibility: public
+    data_meaning: Front RGB PIDNet six-class softmax probabilities; see messages/pointpainting.yaml
+    diagram_description_ko: 전방 영상의 픽셀별 6개 클래스 확률
+    data_type: sensor_msgs/Image
+    unit: probability
+    frame: camera_front_optical_frame
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 20.0
+    queue_policy: publisher_queue_1_latest_pending_frame
+    timeout_sec: pending_live_jitter_measurement
+    invalid_data_policy: discard_invalid_image_or_model_failure
+  - name: /molit/world_model/painted_points
+    owner_package: world_model_pkg
+    producers: [pointpainting_node]
+    consumers: [vehicle_rviz]
+    status: development_pointpainting_static_scene_checked
+    visibility: public
+    data_meaning: LiDAR points decorated with six camera probabilities and original image stamp; foreground_only mode retains only selected PIDNet obstacle points; see messages/pointpainting.yaml
+    diagram_description_ko: 카메라 클래스 확률과 영상 시각을 부착한 LiDAR 원본 점
+    data_type: sensor_msgs/PointCloud2
+    unit: original_sensor_fields_and_probability
+    frame: lidar_link
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_1_bounded_approximate_time_sync
+    timeout_sec: development_pair_max_age_0_5_sec_configurable
+    invalid_data_policy: reject_stale_zero_regressing_or_mismatched_pairs_unobserved_points_have_zero_scores
+
+  - name: /molit/internal/world_model/pidnet_points
+    owner_package: world_model_pkg
+    producers: [pointpainting_node]
+    consumers: [world_model_node]
+    status: development_pidnet_foreground_fusion
+    visibility: package_internal
+    data_meaning: Selected PIDNet obstacle returns with original LiDAR coordinates, scores and both measurement stamps; grouping and tracking stay inside World Model
+    diagram_description_ko: PIDNet 장애물 점을 World Model 내부 군집·추적에 전달
+    data_type: sensor_msgs/PointCloud2
+    unit: original_sensor_fields_and_probability
+    frame: lidar_link
+    timestamp_source: source_sensor_measurement_time
+    expected_rate_hz: 10.0
+    queue_policy: publisher_queue_1_latest_pair
+    timeout_sec: development_pair_max_age_0_5_sec_configurable
+    invalid_data_policy: reject_stale_or_malformed_pairs_no_raw_lidar_fallback
+
 messages:
+  - type: sensor_msgs/Image
+    status: external_standard
   - type: visualization_msgs/MarkerArray
     status: approved_standard_type_visualization_only
   - type: sensor_msgs/CompressedImage
@@ -1069,6 +1178,12 @@ messages:
     schema: messages/core_messages.yaml#LocalizationStatus
   - type: common_msgs_pkg/RouteContext
     status: type_name_reserved_schema_not_implemented
+  - type: common_msgs_pkg/TrafficSignal
+    status: development_hsv_signal_observations
+    schema: messages/traffic_signal_messages.yaml#TrafficSignal
+  - type: common_msgs_pkg/CameraSignalArray
+    status: development_hsv_signal_observations
+    schema: messages/traffic_signal_messages.yaml#CameraSignalArray
   - type: common_msgs_pkg/WorldModel
     status: development_map_object_tracking_unverified
     schema: messages/world_model_messages.yaml#WorldModel
@@ -1115,6 +1230,10 @@ frames:
   - name: camera_right_link
     details: tf/frame_contract.yaml
   - name: camera_right_optical_frame
+    details: tf/frame_contract.yaml
+  - name: camera_signal_link
+    details: tf/frame_contract.yaml
+  - name: camera_signal_optical_frame
     details: tf/frame_contract.yaml
   - name: lidar_link
     details: tf/frame_contract.yaml
@@ -1164,6 +1283,7 @@ package_boundaries:
       - morai_camera_front
       - morai_camera_left
       - morai_camera_right
+      - morai_camera_signal
       - morai_gps_bridge
       - morai_imu_bridge
       - morai_vehicle_status_bridge
@@ -1178,6 +1298,7 @@ package_boundaries:
       - /molit/sensors/camera/front/image/compressed
       - /molit/sensors/camera/left/image/compressed
       - /molit/sensors/camera/right/image/compressed
+      - /molit/sensors/camera/signal/image/compressed
       - /molit/sensors/gps/fix
       - /molit/sensors/imu/data
       - /molit/vehicle/twist
@@ -1196,13 +1317,17 @@ package_boundaries:
       - /molit/map/status
   camera_perception_pkg:
     diagram_summary_ko: 카메라 영상에서 객체·차선·신호·주행 가능 영역 관측 생성
-    runtime_status: public_contract_reserved_not_implemented
+    runtime_status: development_front_semantic_and_camera3_yolo_candidates
     public_nodes: [camera_perception_node]
     inputs:
       - /molit/sensors/camera/front/image/compressed
       - /molit/sensors/camera/left/image/compressed
       - /molit/sensors/camera/right/image/compressed
+      - /molit/sensors/camera/signal/image/compressed
+      - /molit/route/context
     outputs:
+      - /molit/perception/camera/signal/observations
+      - /molit/perception/camera/front/semantic_scores
       - /molit/perception/camera/front/observations
       - /molit/perception/camera/left/observations
       - /molit/perception/camera/right/observations
@@ -1252,8 +1377,11 @@ package_boundaries:
   world_model_pkg:
     diagram_summary_ko: 지도·차량 상태·센서 관측을 측정시각 기준으로 통합
     runtime_status: development_map_object_tracking_unverified
-    public_nodes: [world_model_node]
+    public_nodes: [world_model_node, pointpainting_node]
     inputs:
+      - /molit/perception/camera/signal/observations
+      - /molit/sensors/lidar/points
+      - /molit/perception/camera/front/semantic_scores
       - /molit/map/hd_map
       - /molit/map/status
       - /molit/perception/camera/front/observations
@@ -1268,6 +1396,7 @@ package_boundaries:
       - /molit/route/context
       - /molit/route/status
     outputs:
+      - /molit/world_model/painted_points
       - /molit/world_model/scene
       - /molit/world_model/status
   path_planning_pkg:
@@ -1369,7 +1498,7 @@ package_boundaries:
   visualization_pkg:
     diagram_summary_ko: 위치 추정 차량·LiDAR 검출·map 추적 객체를 RViz에 표시
     runtime_status: development_visualization_only
-    public_nodes: [vehicle_visualizer_node]
+    public_nodes: [vehicle_visualizer_node, vehicle_rviz]
     inputs:
       - /molit/perception/lidar/observations
       - /molit/world_model/scene
@@ -1377,6 +1506,8 @@ package_boundaries:
       - /molit/localization/local/odometry
       - /molit/localization/status
       - /molit/planning/status
+      - /molit/world_model/painted_points
+      - /molit/sensors/camera/front/image/compressed
     outputs: []
 
 architecture_views:
@@ -1388,6 +1519,7 @@ architecture_views:
       - morai_camera_front
       - morai_camera_left
       - morai_camera_right
+      - morai_camera_signal
       - morai_gps_bridge
       - morai_imu_bridge
       - morai_vehicle_status_bridge
@@ -1400,13 +1532,17 @@ architecture_views:
       - localization_node
       - global_route_manager_node
       - world_model_node
+      - pointpainting_node
       - path_planner_node
       - vehicle_controller_node
       - safety_supervisor_node
     topics:
+      - /molit/perception/camera/front/semantic_scores
+      - /molit/world_model/painted_points
       - /molit/sensors/camera/front/image/compressed
       - /molit/sensors/camera/left/image/compressed
       - /molit/sensors/camera/right/image/compressed
+      - /molit/sensors/camera/signal/image/compressed
       - /molit/sensors/gps/fix
       - /molit/internal/morai_interface/lidar/packets
       - /molit/sensors/imu/data
@@ -1441,6 +1577,8 @@ architecture_views:
         - /molit/sensors/camera/left/image/compressed
         - morai_camera_right
         - /molit/sensors/camera/right/image/compressed
+        - morai_camera_signal
+        - /molit/sensors/camera/signal/image/compressed
         - camera_perception_node
         - /molit/perception/camera/front/observations
         - /molit/perception/camera/left/observations
@@ -1573,6 +1711,7 @@ external_transport:
         - morai_camera_front
         - morai_camera_left
         - morai_camera_right
+        - morai_camera_signal
         - morai_gps_bridge
         - morai_imu_bridge
         - morai_vehicle_status_bridge

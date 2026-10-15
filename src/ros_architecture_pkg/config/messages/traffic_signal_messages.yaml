@@ -1,0 +1,67 @@
+schema_version: 1
+contract_version: 0.1.0
+authority: ros_architecture_pkg
+implementation_owner: common_msgs_pkg
+messages:
+  TrafficSignal:
+    wire_definition: '# Authority: ros_architecture_pkg/config/messages/traffic_signal_messages.yaml
+
+      # Camera: source measurement header, empty map IDs. World: same stamp, map frame
+      and selected IDs.
+
+      std_msgs/Header header
+
+      uint8 RED=1
+
+      uint8 YELLOW=2
+
+      uint8 GREEN=4
+
+      uint8 LEFT=8
+
+      uint8 lamp_mask
+
+      bool valid
+
+      uint8 layout
+
+      float32 confidence
+
+      float32[4] bbox
+
+      string stop_line_id
+
+      string[] signal_ids
+
+      geometry_msgs/Point position
+
+      string reason
+
+      '
+  CameraSignalArray:
+    wire_definition: '# Authority: ros_architecture_pkg/config/messages/traffic_signal_messages.yaml
+
+      std_msgs/Header header
+
+      uint32 image_width
+
+      uint32 image_height
+
+      common_msgs_pkg/TrafficSignal[] signals
+
+      '
+semantics:
+- Camera publishes layout 3 and layout 4 HSV hypotheses for each YOLO housing box,
+  sharing its confidence, bbox and measurement stamp. YOLO housing class is diagnostic
+  only. World Model selects the hypothesis matching the mapped head layout and
+  projection; alternative layouts are not independent frames or additional heads.
+- HSV observations retain camera measurement stamp; image pixels and lamp bits are
+  not map identity or a driving command.
+- World Model assigns stop-line and signal IDs using measurement-time ego pose and
+  source-backed camera projection.
+- GREEN authorizes straight; LEFT authorizes left. RED/YELLOW/unknown never authorize
+  straight. A left arrow can accompany red.
+- WorldModel.traffic_signals retains camera stamp independently of scene LiDAR stamp.
+  Reject stale, reset, wrong-route and ambiguous associations.
+- Planner applies approach stop policy in every planner mode and every publication;
+  no raw perception subscription.

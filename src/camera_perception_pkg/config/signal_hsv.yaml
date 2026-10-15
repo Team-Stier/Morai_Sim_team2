@@ -1,0 +1,12 @@
+# OpenCV HSV: H 0..179, S/V 0..255. Bulb order is validated against the source map.
+minimum_saturation: 100
+minimum_value: 120
+minimum_slot_fraction: 0.025
+minimum_pixels: 3
+red_hue_max: 10
+red_hue_min_wrap: 170
+yellow_hue_min: 15
+yellow_hue_max: 34
+green_hue_min: 35
+green_hue_max: 95
+clipping_margin_px: 1

@@ -6,7 +6,7 @@ import subprocess
 import webbrowser
 from pathlib import Path
 
-from .geometry import convex_hull, simplify_rdp
+from .geometry import convex_hull, simplify_rdp, progress_along_polyline, cumulative_lengths
 from .lanelet2_export import boundary_tags, surface_marking_maneuver
 
 
@@ -186,6 +186,49 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
         if len(transformed) >= 3:
             intersections.append({"id": junction_id, "p": transformed})
     global_route = load_global_route(reference_path)
+    route_signal_stops = []
+    observation_windows = []
+    if global_route['p'] and 'lane_rddf' in config:
+        from .stop_lines import build_signal_stop_lines
+        from .lane_rddf import read_route
+        route = read_route(reference_path)
+        route_signal_stops = build_signal_stop_lines(dataset, transformer, route, config)
+        for stop in route_signal_stops:
+            midpoint = [sum(v) / len(stop['points']) for v in zip(*stop['points'])]
+            stop['route_s_m'] = progress_along_polyline(midpoint, route)[0]
+        route_signal_stops.sort(key=lambda row: (row['route_s_m'], row['id']))
+        for number, stop in enumerate(route_signal_stops, 1):
+            stop['number'] = number
+        if config.get('course_speed_policy'):
+            import hashlib
+            import yaml
+            root = Path(__file__).resolve().parents[3] / 'ros_architecture_pkg'
+            if not root.is_dir():
+                import rospkg
+                root = Path(rospkg.RosPack().get_path('ros_architecture_pkg'))
+            policy = yaml.safe_load((root / 'config/map/signal_observation_policy.yaml').read_text())
+            if hashlib.sha256(Path(reference_path).read_bytes()).hexdigest() != policy['reference_sha256']:
+                raise ValueError('Signal observation policy reference hash mismatch')
+            targets = {row['stop_line_id']: row for row in policy['targets']}
+            route_signal_stops = [row for row in route_signal_stops if row['id'] in targets]
+            arc = cumulative_lengths(route)
+            for stop in route_signal_stops:
+                target = targets[stop['id']]
+                if stop['signal_ids'] != target['signal_ids']:
+                    raise ValueError('Signal observation policy source associations changed')
+                stop['number'] = target['number']
+                stop['route_s_m'] = target['stop_station_m']
+                end = target['stop_station_m']
+                start = end - policy['approach_distance_m']
+                def point_at(station):
+                    import bisect
+                    i = max(0, min(len(route)-2, bisect.bisect_right(arc, station)-1))
+                    fraction = (station-arc[i]) / (arc[i+1]-arc[i])
+                    return [a+(b-a)*fraction for a, b in zip(route[i], route[i+1])]
+                observation_windows.append(dict(number=stop['number'], p=[point_at(start)] +
+                    [point for point, station in zip(route, arc) if start < station < end] +
+                    [point_at(end)]))
+    route_signal_ids = {sid for stop in route_signal_stops for sid in stop['signal_ids']}
     speed_sections = []
     lane_rddf = {'lanes': [], 'crossings': [], 'counts': {}}
     if global_route['p'] and config.get('course_speed_policy'):
@@ -254,6 +297,8 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
                 "crosswalks": len(crosswalks),
                 "road_markings": len(surface_markings),
                 "traffic_lights": len(signals),
+                "route_signal_heads": len(route_signal_ids),
+                "route_signal_stops": len(route_signal_stops),
                 "tunnel_lane_control_signals": sum(
                     item["category"] == "tunnel_lane_control" for item in signals),
                 "intersections": len(intersections),
@@ -266,6 +311,9 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
         "crosswalks": crosswalks,
         "surfaceMarkings": surface_markings,
         "signals": signals,
+        "routeSignalStops": route_signal_stops,
+        "routeSignals": [item for item in signals if item['id'] in route_signal_ids],
+        "routeObservationWindows": observation_windows,
         "intersections": intersections,
         "globalRoute": global_route,
         "speedSections": speed_sections,
@@ -319,7 +367,7 @@ input { accent-color: #32d3a2; }
   <label><input data-layer="globalRoute" type="checkbox" checked><span class="swatch green"></span>전역경로 TXT</label>
   <label><span class="swatch magenta"></span><span id="highSpeedPolicy"></span></label>
   <label><span class="swatch green"></span><span id="normalSpeedPolicy"></span></label>
-  <label><input data-layer="laneRddf" type="checkbox" checked><span class="swatch sky"></span>추가 RDDF (고주로는 분홍색)</label>
+  <label><input data-layer="laneRddf" type="checkbox"><span class="swatch sky"></span>추가 RDDF (고주로는 분홍색)</label>
   <label><input data-layer="intersections" type="checkbox"><span class="swatch purple"></span>교차로 영역(파생)</label>
   <label><input data-layer="centerlines" type="checkbox" checked><span class="swatch cyan"></span>차선 중심선</label>
   <label><input data-layer="solid" type="checkbox" checked><span class="swatch"></span>실선 경계</label>
@@ -328,11 +376,13 @@ input { accent-color: #32d3a2; }
   <label><input data-layer="stopLines" type="checkbox" checked><span class="swatch red"></span>정지선</label>
   <label><input data-layer="crosswalks" type="checkbox" checked><span class="swatch blue"></span>횡단보도</label>
   <label><input data-layer="surfaceMarkings" type="checkbox"><span class="swatch cyan"></span>방향 화살표/노면표시</label>
-  <label><input data-layer="signals" type="checkbox" checked><span class="signal-icon">🚦</span>일반 신호등 + ID</label>
-  <label><input data-layer="laneControlSignals" type="checkbox" checked><span class="signal-icon lcs">◆</span>터널 차로제어신호(LCS) + ID</label>
+  <label><input data-layer="routeSignals" type="checkbox" checked><span class="signal-icon lcs">●</span>경로 대상 신호등 + 정지선</label>
+  <label><input data-layer="signals" type="checkbox"><span class="signal-icon">🚦</span>전체 일반 신호등 + ID</label>
+  <label><input data-layer="laneControlSignals" type="checkbox"><span class="signal-icon lcs">◆</span>터널 차로제어신호(LCS) + ID</label>
   <label><input data-layer="topology" type="checkbox">→ 선행/후행 연결</label>
   <label><input data-layer="labels" type="checkbox">원본 MGeo 속도/방향 (주행 정책과 별도)</label>
   <label><input data-layer="staticWalls" type="checkbox" checked><span class="swatch yellow"></span>터널 벽 · 원본 XY (높이 미측정)</label>
+  <h2>경로 신호 확인 지점</h2><div class="help">노란 원: 신호등 · 노란 선: 정지선 · 주황 경로: 30m 전부터 YOLO 활성.<br>1·2·3·5번만 사용하며 4번 우회전은 제외했습니다. 정지선 통과 시 비활성. 신호 색상·주행 판단은 미연결입니다.</div><div id="routeTargets"></div>
   <h2>Counts</h2><div class="stats" id="stats"></div>
   <h2>Inspector</h2><div id="inspect">지형지물을 클릭하면 MGeo ID와 속성이 표시됩니다.</div>
   <h2>Navigation</h2><div class="help">휠: 확대/축소 · 드래그: 이동 · 더블클릭: 전체 보기<br>좌표는 실행 중인 K-City scene의 local ENU(m) 기준입니다.</div>
@@ -344,6 +394,12 @@ const enabled = {}; document.querySelectorAll('[data-layer]').forEach(el => {
   enabled[el.dataset.layer] = el.checked; el.addEventListener('change',()=>{enabled[el.dataset.layer]=el.checked;draw();});
 });
 document.getElementById('title').textContent=MAP.metadata.title;
+MAP.routeSignalStops.forEach(stop=>{
+ const button=document.createElement('button');button.style.cssText='display:block;width:100%;margin:6px 0;padding:8px;text-align:left;background:#142c38;color:#ffe18a;border:1px solid #5c512b;border-radius:6px;cursor:pointer';
+ button.textContent=`${stop.number}. ${Math.round(stop.route_s_m)} m · ${stop.signal_ids.join(', ')}`;
+ button.onclick=()=>{const p=stop.points[Math.floor(stop.points.length/2)];scale=6;ox=canvas.clientWidth/2-p[0]*scale;oy=canvas.clientHeight/2+p[1]*scale;document.getElementById('inspect').textContent=JSON.stringify(stop,null,2);draw();};
+ document.getElementById('routeTargets').appendChild(button);
+});
 if(MAP.globalRoute.speed_policy){const policy=MAP.globalRoute.speed_policy;
  document.getElementById('highSpeedPolicy').textContent=`고주로 · 속도 제한 없음 · 목표 ${policy.high_speed.cruise_kph} km/h`;
  document.getElementById('normalSpeedPolicy').textContent=`일반 구간 · 최대 ${policy.normal_limit_kph} km/h`;}
@@ -371,6 +427,11 @@ function draw(){const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0
  if(enabled.laneRddf)MAP.laneRddf.lanes.forEach(lane=>lane.speed_sections.forEach(x=>stroke(x,x.speed_limit_kph===null?'#ff40db':'#19bfff',2.1)));
  if(enabled.signals){ctx.font='10px ui-monospace';MAP.signals.filter(x=>x.category!=='tunnel_lane_control').forEach(x=>{const p=s(x.p);ctx.fillStyle=x.category==='pedestrian'?'#55b7ff':'#ff5f65';ctx.beginPath();ctx.arc(p[0],p[1],3.3,0,Math.PI*2);ctx.fill();if(scale>.55){ctx.fillStyle='#f6d9dc';ctx.fillText(x.id,p[0]+5,p[1]-5);}});}
  if(enabled.laneControlSignals)MAP.signals.filter(x=>x.category==='tunnel_lane_control').forEach(laneControlSignal);
+ if(enabled.routeSignals){
+  MAP.routeObservationWindows.forEach(window=>stroke(window,'rgba(255,164,64,.75)',8));
+  MAP.routeSignalStops.forEach(stop=>{stroke({p:stop.points},'#ffe066',5);const p=s(stop.points[0]);ctx.fillStyle='#ffe066';ctx.font='bold 14px sans-serif';ctx.fillText(`${stop.number}`,p[0]+10,p[1]+17);});
+  MAP.routeSignals.forEach(x=>{const p=s(x.p);ctx.strokeStyle='#ffe066';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p[0],p[1],7,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#fff0b0';ctx.font='bold 11px monospace';ctx.fillText(x.id,p[0]+10,p[1]-9);});
+ }
  if(enabled.labels&&scale>.12){ctx.font='9px ui-monospace';ctx.fillStyle='#b8f3d0';MAP.centerlines.forEach(x=>{const p=s(x.p[Math.floor(x.p.length/2)]);ctx.fillText(`${x.speed||'?'} ${x.direction||''}`,p[0]+3,p[1]-3);});}
 }
 canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,wx=(mx-ox)/scale,wy=-(my-oy)/scale,f=Math.exp(-e.deltaY*.001);scale*=f;ox=mx-wx*scale;oy=my+wy*scale;draw();},{passive:false});
@@ -382,6 +443,7 @@ function segDist(p,a,b){const vx=b[0]-a[0],vy=b[1]-a[1],wx=p[0]-a[0],wy=p[1]-a[1
 canvas.addEventListener('click',e=>{if(last&&Math.hypot(e.clientX-last[0],e.clientY-last[1])>3)return;const r=canvas.getBoundingClientRect(),p=[e.clientX-r.left,e.clientY-r.top];let best=null,dist=12;
  const consider=(kind,item,points)=>{for(let i=1;i<points.length;i++){const d=segDist(p,s(points[i-1]),s(points[i]));if(d<dist){dist=d;best={kind,...item};}}};
  if(enabled.globalRoute&&MAP.globalRoute.p.length)consider('global_route',MAP.globalRoute,MAP.globalRoute.p);if(enabled.staticWalls)MAP.staticWalls.forEach(x=>consider('static_wall',x,x.p));MAP.boundaries.forEach(x=>consider('boundary',x,x.p));MAP.centerlines.forEach(x=>consider('lane/link',x,x.p));MAP.crosswalks.forEach(x=>consider('crosswalk',x,x.p));MAP.surfaceMarkings.forEach(x=>consider('surface_marking',x,x.p));MAP.signals.forEach(x=>{if((x.category==='tunnel_lane_control'&&!enabled.laneControlSignals)||(x.category!=='tunnel_lane_control'&&!enabled.signals))return;const d=Math.hypot(p[0]-s(x.p)[0],p[1]-s(x.p)[1]);if(d<dist){dist=d;best={kind:x.category==='tunnel_lane_control'?'tunnel_lane_control_signal':'traffic_light',...x};}});
+ if(enabled.routeSignals){MAP.routeSignalStops.forEach(x=>consider('route_signal_stop',x,x.points));MAP.routeSignals.forEach(x=>{const q=s(x.p),d=Math.hypot(p[0]-q[0],p[1]-q[1]);if(d<dist){dist=d;best={kind:'route_signal_head',...x};}});}
  document.getElementById('inspect').textContent=best?JSON.stringify(best,(k,v)=>k==='p'?undefined:v,2):'선택된 객체가 없습니다.';});
 window.addEventListener('resize',resize);resize();
 </script>

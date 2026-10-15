@@ -33,6 +33,10 @@ catkin_make
 source devel/setup.bash
 ```
 
+현재 전체 스택은 PIDNet 장애물 점 기반 인식을 기본으로 사용한다.
+PIDNet·YOLO 가중치는 저장소의 [`weights/`](weights/README.md)에 포함한다.
+실행 환경·가중치와 기존 LiDAR 비교 옵션은 [Bringup README](src/system_bringup_pkg/README.md)의 PIDNet 절을 따른다.
+
 현재 본선 전체 스택 실행:
 
 ```bash

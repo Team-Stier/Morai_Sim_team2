@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""Front PIDNet and optional Camera3 YOLO; each keeps only its newest frame."""
+import json
+import threading
+import time
+import cv2
+import numpy as np
+import rospy
+from sensor_msgs.msg import CompressedImage, Image
+from std_msgs.msg import String
+
+
+class CameraNode:
+    def __init__(self):
+        from cv_bridge import CvBridge
+        from camera_perception_pkg.semantic import Segmenter
+        self.segmenter = Segmenter(rospy.get_param('~weights'), rospy.get_param('~device'))
+        self.bridge = CvBridge()
+        self.pending = None
+        self.lock = threading.Lock()
+        self.publisher = rospy.Publisher('/molit/perception/camera/front/semantic_scores', Image, queue_size=1)
+        self.subscriber = rospy.Subscriber('/molit/sensors/camera/front/image/compressed', CompressedImage,
+                                          self.receive, queue_size=1, buff_size=4 * 1024 * 1024)
+        threading.Thread(target=self.process, daemon=True).start()
+
+    def receive(self, message):
+        with self.lock:
+            self.pending = message
+
+    def process(self):
+        while not rospy.is_shutdown():
+            with self.lock:
+                message, self.pending = self.pending, None
+            if message is None:
+                rospy.rostime.wallsleep(0.005)
+                continue
+            try:
+                bgr = cv2.imdecode(np.frombuffer(message.data, np.uint8), cv2.IMREAD_COLOR)
+                if bgr is None or message.header.stamp.is_zero():
+                    continue
+                scores = self.segmenter(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
+                output = self.bridge.cv2_to_imgmsg(scores, encoding='passthrough')
+                output.header = message.header
+                self.publisher.publish(output)
+            except (ValueError, RuntimeError, cv2.error) as error:
+                rospy.logwarn_throttle(2, 'PIDNet frame rejected: %s', error)
+
+
+class SignalNode:
+    def __init__(self):
+        from camera_perception_pkg.signal_detector import SignalDetector
+        from camera_perception_pkg.signal_gate import SignalRouteGate
+        self.gate = SignalRouteGate(rospy.get_param('~signal_policy'),
+                                    rospy.get_param('~signal_route_gate', True))
+        self.hsv_config = rospy.get_param('~signal_hsv')
+        self.detector = SignalDetector(rospy.get_param('~signal_weights'),
+                                       rospy.get_param('~signal_device'),
+                                       rospy.get_param('~signal_imgsz'),
+                                       rospy.get_param('~signal_confidence'))
+        self.pending = None
+        self.condition = threading.Condition()
+        self.invalidated_revision = None
+        self.image_pub = rospy.Publisher('~signal_image', Image, queue_size=1)
+        self.detections_pub = rospy.Publisher('~signal_detections', String, queue_size=1)
+        from common_msgs_pkg.msg import CameraSignalArray
+        self.observations_pub = rospy.Publisher('/molit/perception/camera/signal/observations',
+                                                 CameraSignalArray, queue_size=1)
+        if self.gate.enabled:
+            from common_msgs_pkg.msg import RouteContext
+            self.route_subscriber = rospy.Subscriber('/molit/route/context', RouteContext,
+                                                     self.receive_route, queue_size=1)
+        self.subscriber = rospy.Subscriber('/molit/sensors/camera/signal/image/compressed',
+                                          CompressedImage, self.receive, queue_size=1,
+                                          buff_size=8 * 1024 * 1024)
+        threading.Thread(target=self.process, daemon=True).start()
+        rospy.loginfo('Camera3 YOLO ready; route gate=%s; housing candidates only', self.gate.enabled)
+
+    def receive_route(self, message):
+        with self.condition:
+            self.gate.update(message, time.monotonic())
+            target, _ = self.gate.snapshot(rospy.Time.now().to_sec(), time.monotonic())
+            if target is None:
+                self.pending = None
+            self.condition.notify()
+
+    def receive(self, message):
+        with self.condition:
+            target, revision = self.gate.snapshot(rospy.Time.now().to_sec(), time.monotonic(),
+                                                   message.header.stamp.to_sec())
+            self.pending = (message, revision) if target is not None else None
+            self.condition.notify()
+
+    def process(self):
+        while not rospy.is_shutdown():
+            with self.condition:
+                target, revision = self.gate.snapshot(rospy.Time.now().to_sec(), time.monotonic())
+                if target is None:
+                    self.pending = None
+                    if self.invalidated_revision != revision:
+                        self.detections_pub.publish(String(data=json.dumps(dict(
+                            candidates=[], gate_active=False, route_target_selected=False,
+                            driving_decision_valid=False, reason='outside_window_or_invalid_route_context'))))
+                        self.invalidated_revision = revision
+                if self.pending is None:
+                    self.condition.wait(timeout=.1)
+                    continue
+                (message, input_revision), self.pending = self.pending, None
+                if input_revision != revision:
+                    continue
+            try:
+                if message.header.stamp.is_zero():
+                    continue
+                bgr = cv2.imdecode(np.frombuffer(message.data, np.uint8), cv2.IMREAD_COLOR)
+                if bgr is None:
+                    continue
+                annotated, candidates = self.detector(bgr)
+                from camera_perception_pkg.signal_hsv import classify_layout_hypotheses
+                from common_msgs_pkg.msg import CameraSignalArray, TrafficSignal
+                observations = CameraSignalArray(header=message.header,
+                    image_width=bgr.shape[1], image_height=bgr.shape[0])
+                for candidate in candidates:
+                    hypotheses = classify_layout_hypotheses(bgr, candidate['xyxy'], self.hsv_config)
+                    candidate['lamp_hypotheses'] = hypotheses
+                    # Retain the old private fields as YOLO-class diagnostics only.
+                    preferred = hypotheses[0 if candidate['class_id'] == 0 else 1]
+                    candidate.update(lamp_mask=preferred['lamp_mask'], lamp_valid=preferred['valid'],
+                                     lamp_reason=preferred['reason'])
+                    labels = []
+                    for hypothesis in hypotheses:
+                        observations.signals.append(TrafficSignal(header=message.header,
+                            confidence=candidate['confidence'], bbox=candidate['xyxy'], **hypothesis))
+                        mask = hypothesis['lamp_mask']
+                        text = '|'.join(name for bit, name in [(1,'RED'),(2,'YELLOW'),(4,'GREEN'),(8,'LEFT')]
+                                        if mask & bit) or 'UNKNOWN'
+                        labels.append('%d:%s' % (hypothesis['layout'], text))
+                    x, y = map(int, candidate['xyxy'][:2])
+                    cv2.putText(annotated, 'HSV '+ ' / '.join(labels), (x, max(20,y-22)),
+                                cv2.FONT_HERSHEY_SIMPLEX, .65, (0,200,255), 2)
+                output = Image(header=message.header, height=annotated.shape[0],
+                               width=annotated.shape[1], encoding='bgr8',
+                               is_bigendian=0, step=annotated.shape[1] * 3,
+                               data=annotated.tobytes())
+                # Route callbacks and publication share this lock: leaving a window
+                # invalidates a slow GPU result before it can reach subscribers.
+                with self.condition:
+                    target, revision = self.gate.snapshot(rospy.Time.now().to_sec(), time.monotonic(),
+                                                          message.header.stamp.to_sec())
+                    if target is None or revision != input_revision:
+                        continue
+                    self.image_pub.publish(output)
+                    self.observations_pub.publish(observations)
+                    self.detections_pub.publish(String(data=json.dumps(dict(
+                        stamp=dict(secs=message.header.stamp.secs,
+                                   nsecs=message.header.stamp.nsecs),
+                        frame_id=message.header.frame_id, candidates=candidates,
+                        gate_active=True, route_scope=target,
+                        route_target_selected=False, driving_decision_valid=False))))
+                rospy.loginfo_throttle(5, 'Camera3 YOLO: %d housing candidates', len(candidates))
+            except (ValueError, RuntimeError, cv2.error) as error:
+                rospy.logwarn_throttle(2, 'Camera3 YOLO frame rejected: %s', error)
+
+
+if __name__ == '__main__':
+    rospy.init_node('camera_perception_node')
+    nodes = []
+    if rospy.get_param('~enable_semantic', True):
+        nodes.append(CameraNode())
+    if rospy.get_param('~enable_signal', False):
+        nodes.append(SignalNode())
+    rospy.spin()

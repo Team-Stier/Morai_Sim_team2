@@ -1,0 +1,8 @@
+<launch>
+  <node pkg="rviz" type="rviz" name="vehicle_rviz" ns="/"
+        args="-d $(find visualization_pkg)/config/pointpainting.rviz" output="screen">
+    <!-- Upstream Image display's click helper is private, not a sensor output. -->
+    <remap from="/molit/sensors/camera/front/image/mouse_click" to="~front_image_click"/>
+    <env name="DISABLE_ROS1_EOL_WARNINGS" value="1"/>
+  </node>
+</launch>

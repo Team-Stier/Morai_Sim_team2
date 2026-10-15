@@ -64,6 +64,9 @@ Controller는 [Closedteam2 제어 통합 계약](docs/controller_integration.md)
 
 ## 주요 문서
 
+- [HSV 신호 판독·대상 선택·정지/재출발·RViz](docs/traffic_signal_hsv.md)
+
+- [경로별 YOLO 30m 관측 구간과 4번 우회전 제외](docs/signal_observation_gate.md)
 - [전체 시스템 아키텍처](docs/system_architecture.md)
 - [Nominal data/control 읽기 이미지](docs/system_nominal_flow.svg)
 - [Health/readiness/safety/evaluation 읽기 이미지](docs/system_health_safety_flow.svg)

@@ -1,0 +1,18 @@
+sync_slop_sec: 0.05
+sync_queue_size: 4
+max_age_sec: 0.5
+
+# Development geometric limits; actual sizes/occlusion accuracy remain unverified.
+# Select the nearest depth layer per connected image class region, then bound it.
+foreground_surface:
+  enabled: true
+  minimum_support_points: 3
+  depth_gap_m: 0.45
+  # [camera horizontal width, camera vertical height, camera depth span], metres.
+  # Bounds preserve selected returns; they do not create a bounding-box output.
+  class_extents_m:
+    person: [1.2, 2.5, 1.0]
+    animal: [2.5, 2.0, 2.5]
+    box: [3.0, 3.0, 3.0]
+    bollard: [0.8, 2.0, 0.8]
+    barrier: [12.0, 3.0, 2.0]

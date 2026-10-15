@@ -33,7 +33,7 @@ source_import:
 runtime_timestamp_parameter_mapping:
   packet:
     central_timestamp_source: morai_camera_packet_frame_time
-    allowed_channels: [camera_front, camera_left, camera_right]
+    allowed_channels: [camera_front, camera_left, camera_right, camera_signal]
   receive:
     central_timestamp_source: morai_interface_ingress_time
     allowed_channels: [gps, imu, vehicle_status]
@@ -130,6 +130,22 @@ live_observation:
       thresholds.
 
 channels:
+  camera_signal:
+    runtime_activation_allowed: true
+    competition_runtime_status: development_only_fixed_camera_loadout_pending
+    transport: morai_camera_mor_udp
+    bind_ip: 0.0.0.0
+    port: 9297
+    port_evidence: user_requested_camera3_dedicated_udp_2026_10_15
+    node_name: morai_camera_signal
+    topic: /molit/sensors/camera/signal/image/compressed
+    message_type: sensor_msgs/CompressedImage
+    frame_id: camera_signal_optical_frame
+    queue_size: 2
+    timestamp_source: morai_camera_packet_frame_time
+    timestamp_validation: reject_invalid_future_duplicate_or_regressing_stamp
+    chunk_validation: require_index_zero_then_contiguous_and_valid_jpeg_markers
+    configured_rate_hz: 30.0
   camera_front:
     runtime_activation_allowed: true
     competition_runtime_status: pending_final_network_confirmation

@@ -1,5 +1,7 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="pidnet_enabled" default="false"/>
+  <arg name="rviz_config" default="$(eval find('visualization_pkg') + ('/config/pidnet_vehicle.rviz' if arg('pidnet_enabled') else '/config/vehicle.rviz'))"/>
   <!-- Launch only visualization. Full system composition belongs to system_bringup_pkg. -->
   <arg name="reference_frame" default="map" doc="map: EgoState; odom: Local Odometry"/>
   <arg name="display_mode" default="footprint" doc="footprint or box (vertical center remains provisional)"/>
@@ -14,7 +16,7 @@
     <param name="display_mode" value="$(arg display_mode)"/>
   </node>
   <node if="$(arg rviz)" pkg="rviz" type="rviz" name="vehicle_rviz" ns="/"
-        args="-d $(find visualization_pkg)/config/vehicle.rviz -f $(arg reference_frame)"
+        args="-d $(arg rviz_config) -f $(arg reference_frame)"
         output="screen">
     <env name="DISABLE_ROS1_EOL_WARNINGS" value="1"/>
   </node>

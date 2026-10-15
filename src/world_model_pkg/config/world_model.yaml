@@ -1,5 +1,12 @@
 # Development-only map object tracking. These values do not approve driving readiness.
 reference_frame: map
+traffic_signals:
+  maximum_pose_delta_sec: 0.15
+  maximum_observation_age_sec: 0.5
+  minimum_detection_confidence: 0.35
+  maximum_projection_error_fraction: 0.07
+  green_confirmation_frames: 3
+  green_confirmation_sec: 0.25
 lidar_frame: lidar_link
 status_period_sec: 0.5
 observation_timeout_sec: 0.5
@@ -19,3 +26,10 @@ tracking:
   motion_max_points: 96
   motion_iterations: 6
   motion_trim_fraction: 0.7
+
+# PIDNet-only object grouping; no raw-LiDAR fallback.
+semantic_grouping:
+  cell_size_m: 0.4
+  minimum_points: 3
+  maximum_points: 60000
+  maximum_image_delta_sec: 0.05

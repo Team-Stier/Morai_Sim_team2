@@ -67,6 +67,10 @@ EXPECTED_FINAL_COMMAND_TIMEOUT_POLICY = (
     "never_repeat_last_nonzero_command_and_send_only_a_packet_verified_fail_closed_stop"
 )
 EXPECTED_TOPIC_FRAME_CONTRACT = {
+    "/molit/perception/camera/signal/observations": {"frame": "camera_signal_optical_frame"},
+    "/molit/internal/world_model/pidnet_points": {"frame": "lidar_link"},
+    "/molit/perception/camera/front/semantic_scores": {"frame": "camera_front_optical_frame"},
+    "/molit/world_model/painted_points": {"frame": "lidar_link"},
     "/molit/internal/visualization/planner_status": {"frame": "not_applicable"},
     "/molit/internal/visualization/vehicle_markers": {"frame": "not_applicable"},
     "/molit/internal/visualization/lidar_markers": {"frame": "not_applicable"},
@@ -74,6 +78,7 @@ EXPECTED_TOPIC_FRAME_CONTRACT = {
     "/molit/sensors/camera/front/image/compressed": {"frame": "camera_front_optical_frame"},
     "/molit/sensors/camera/left/image/compressed": {"frame": "camera_left_optical_frame"},
     "/molit/sensors/camera/right/image/compressed": {"frame": "camera_right_optical_frame"},
+    "/molit/sensors/camera/signal/image/compressed": {"frame": "camera_signal_optical_frame"},
     "/molit/sensors/gps/fix": {"frame": "gps_link"},
     "/molit/internal/morai_interface/lidar/packets": {"frame": "lidar_link"},
     "/molit/sensors/imu/data": {"frame": "imu_link"},
@@ -128,6 +133,7 @@ EXPECTED_EXTERNAL_ADAPTERS = {
         "morai_camera_front",
         "morai_camera_left",
         "morai_camera_right",
+        "morai_camera_signal",
         "morai_gps_bridge",
         "morai_imu_bridge",
         "morai_vehicle_status_bridge",

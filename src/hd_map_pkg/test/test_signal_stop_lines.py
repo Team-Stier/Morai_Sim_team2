@@ -1,6 +1,7 @@
 import copy
 import sys
 import unittest
+import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -59,6 +60,25 @@ class SignalStopLineTest(unittest.TestCase):
         self.assertEqual(first[0][0], 'stop')
         self.assertEqual(first, match_stop_lines(['incoming'], self.links, bars, 40., .75, cache))
         self.assertEqual(match_stop_lines(['incoming'], self.links, {'far': bars['far']}, 40., .75, {}), [])
+
+    def test_viewer_targets_use_direction_and_stop_associations(self):
+        from hd_map_pkg.viewer import build_viewer_data
+        for name in ('surface_markings', 'single_crosswalks', 'junctions',
+                     'links_by_road', 'predecessors', 'successors'):
+            setattr(self.dataset, name, {})
+        for signal in self.dataset.traffic_lights.values():
+            signal['point'] = [95., 0., 30.]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'route.txt'
+            path.write_text('0 0 28\n100 0 28\n')
+            result = build_viewer_data(self.dataset, self.transform, self.config,
+                                       reference_path=path)
+        self.assertEqual([s['id'] for s in result['routeSignals']], ['car_a', 'car_b'])
+        stop, = result['routeSignalStops']
+        self.assertEqual(stop['number'], 1)
+        self.assertAlmostEqual(stop['route_s_m'], 90.)
+        self.assertEqual(stop['signal_ids'], ['car_a', 'car_b'])
+        self.assertEqual(result['metadata']['counts']['route_signal_stops'], 1)
 
 
 if __name__ == '__main__':

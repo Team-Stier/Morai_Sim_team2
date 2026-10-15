@@ -1,5 +1,5 @@
 schema_version: 1
-contract_version: 0.2.0
+contract_version: 0.3.0
 authority: ros_architecture_pkg
 implementation_owner: common_msgs_pkg
 status: development_map_object_tracking_not_driving_verified
@@ -115,6 +115,10 @@ messages:
 
       string reason
 
+      # Selected camera signal observations; each keeps its own source stamp.
+
+      common_msgs_pkg/TrafficSignal[] traffic_signals
+
       '
 semantics:
 - WorldModel.header.stamp is the newest accepted LiDAR measurement time, never callback
@@ -128,3 +132,6 @@ semantics:
   and planner_ready remain false.
 - Missing detections may coast only for a bounded duration and never prove free space.
 - Localization reset clock reset or regressing observation clears every active track.
+- traffic_signals keep camera source stamps independently of the LiDAR scene stamp.
+- traffic_context_valid means the selected current route signal observation is valid;
+  it never elevates objects_verified or planner_ready.

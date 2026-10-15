@@ -29,6 +29,13 @@ Planner가 바뀌는 세 경계에서는 `frenet_planner.yaml`의
 2026-09-22 bag 기반 시간 단축 설정과 검증 한계는
 [분석 기록](docs/bag_tuning_20260922.md)을 참고한다.
 
+2026-10-15에 Hybrid A* core와 설정을 `origin/main`의 `99d137c`와 동일하게
+맞췄다. 위치/방향 격자는 1m/15°, corridor 반폭은 6m, 장애물 추가 여유는
+0.5m다. main의 충돌 검사 최적화와 대기 Hybrid 경로 재검증·활성화도 반영했다.
+공통 Planner의 신호 정지·출발 및 보행자 속도 제한은 유지한다. 이 조합은
+오프라인 회귀 검증 대상이며, 이전 320° 신호 주행 증거가 변경 후 Hybrid
+조합의 실제 주행 검증을 대신하지 않는다.
+
 ## Frenet RDDF 개발 구현
 
 [Frenet Planner](docs/frenet_rddf.md)는 지정한 RDDF 14개와 전역경로를 사용해
@@ -165,3 +172,27 @@ UDP 출력은 금지한다.
 Frenet은 현재 경로가 충돌로 거부돼도 대체 후보 평가를 마친 뒤 최종 정지를
 결정한다. 검사를 통과한 대체 경로는 기존 경로 유지·이득 확인 시간을 기다리지
 않고 즉시 선택하며, 선택 가능한 경로가 없으면 정지 trajectory를 발행한다.
+
+## 사람 인식 시 속도 제한
+
+World Model의 `CLASS_PEDESTRIAN` 객체가 하나라도 있으면 Frenet·Hybrid A* 모두
+`config/frenet_planner.yaml`의 `pedestrian_speed_cap_kph`(기본 20 km/h)를 적용한다.
+거리나 현재 경로와의 교차 여부로 사람을 제외하지 않는다. 기존 제한이 더 낮으면
+낮은 값을 유지하고 충돌에 따른 정지는 유지한다. 유지 중 경로·모드 전환 경로도
+발행마다 제한하고 시간 재계산 후 동적 충돌을 재검사한다. 충돌하면 정지한다.
+최신 유효 World Model에서 사람이 없어지면 해제하며 stale·무효·epoch 불일치
+장면은 이전 제한을 해제하지 않는다. 실제 속도는 Controller 제동을 통해 낮아진다.
+이는 World Model에 형성된 사람 객체 기준이며, 영상에서만 보이거나 LiDAR가
+부족해 군집이 만들어지지 않은 사람은 이 경로로 감속을 유발하지 못한다.
+중앙 의미는 `ros_architecture_pkg/config/messages/frenet_runtime.yaml`을 따른다.
+
+## 신호 정지·재출발
+
+중앙 signal_observation_policy의 1·2·3·5번 30m 접근 구간에서 World Model의
+선택된 HSV 상태를 사용한다. 직진은 GREEN, 5번 좌회전은 LEFT를 요구한다. 적색·황색·
+불명·stale는 정지 상태를 유지한다. 신호 상태를 직접 Camera에서 구독하지 않는다.
+Frenet/Hybrid A*·전환 유지 경로 모두 발행마다 감속 상한을 적용하며, 기본 base_link
+정지 목표는 직진 8m 전, 좌회전 14m 전이다(전방 차체 3.845m와 카메라 시야 여유 포함).
+허용 신호가 확인되면 다시 계획한다. 유효한 허용 신호로 직진 8m/좌회전 12m 안까지 진행하면 교차 진입을 확정해
+이후 시야 이탈만으로 교차로 안에서 다시 멈추지 않는다. epoch/다음 회차에는 초기화한다.
+임계값은 config/frenet_planner.yaml의 signal_* 항목이다.

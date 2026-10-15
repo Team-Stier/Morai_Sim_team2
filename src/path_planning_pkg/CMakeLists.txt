@@ -11,6 +11,7 @@ install(DIRECTORY config docs launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINAT
 catkin_install_python(PROGRAMS src/global_path_demo.py src/path_planner_node.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 if(CATKIN_ENABLE_TESTING)
+  catkin_add_nosetests(test/test_signal_stop.py)
   catkin_add_nosetests(test/test_global_path_demo.py)
   catkin_add_nosetests(test/test_route_speed_profile.py)
   catkin_add_nosetests(test/test_transition_speed.py)

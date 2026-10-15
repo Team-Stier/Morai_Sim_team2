@@ -1,0 +1,90 @@
+schema_version: 1
+contract_version: 0.1.0
+authority: ros_architecture_pkg
+status: user_requested_development_candidate_gate
+reference_sha256: 50658991e607d9339d76e4cd6cb169dfc733ea53b93de2c3e222460bb497cc05
+approach_distance_m: 30.0
+context_timeout_sec: 0.5
+semantics:
+  station: XY arc length from reference TXT start to original stop-bar intersection
+  interval: 0 <= stop_station_m - RouteContext.progress <= approach_distance_m
+  after_crossing: disabled_immediately_no_post_stop_extension
+  stale_or_missing_context: disabled_clear_pending_and_invalidate_candidates
+  inference_in_flight: discard_if_scope_changed_or_context_expired_before_publication
+  scope: development_HSV_states_selected_in_WorldModel_and_stop_go_in_Planner
+  standalone_preview: explicit_signal_route_gate_false_bypasses_gate_for_visual_diagnostics
+targets:
+- number: 1
+  stop_line_id: B2256W000556
+  stop_station_m: 208.4589412964077
+  signal_ids:
+  - C1256W000077
+  maneuver: straight
+  heads:
+  - id: C1256W000077
+    map_position:
+    - -88.36893999999984
+    - -249.34860000000003
+    - 34.15886
+    layout: 3
+- number: 2
+  stop_line_id: B2256W000447
+  stop_station_m: 315.9060983690472
+  signal_ids:
+  - C1256W000091
+  maneuver: straight
+  heads:
+  - id: C1256W000091
+    map_position:
+    - -61.083320000000185
+    - -154.8501000000001
+    - 34.13501
+    layout: 3
+- number: 3
+  stop_line_id: B2256W000235
+  stop_station_m: 436.7975661420194
+  signal_ids:
+  - C1256W000016
+  - C1256W000018
+  maneuver: straight
+  heads:
+  - id: C1256W000016
+    map_position:
+    - -64.09999999999991
+    - -25.3599999999999
+    - 34.25341
+    layout: 4
+  - id: C1256W000018
+    map_position:
+    - -61.63999999999987
+    - -14.36999999999989
+    - 34.33742
+    layout: 4
+- number: 5
+  stop_line_id: B2256W000252
+  stop_station_m: 609.8768382772473
+  signal_ids:
+  - C1256W000052
+  maneuver: left
+  heads:
+  - id: C1256W000052
+    map_position:
+    - -13.282200000000103
+    - 98.31818999999996
+    - 34.06081
+    layout: 4
+excluded:
+- number: 4
+  stop_line_id: B2256W000266
+  signal_ids:
+  - C1256W000123
+  reason: user_excluded_right_turn_2026_10_15_not_a_general_traffic_rule
+camera_projection:
+  translation_m:
+  - 1.8
+  - 0
+  - 1.3
+  pitch_rad: -0.6981317007977318
+  horizontal_fov_deg: 90.0
+  source: tf/sensor_extrinsics.yaml#camera_signal; morai_interface_pkg/config/camera3_signal_sensor.json
+  publish_tf: false

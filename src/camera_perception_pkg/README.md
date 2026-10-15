@@ -26,7 +26,7 @@
 
 ## 공개 ROS 입출력
 
-현재 상태는 **이름 승인, 구현 예약**이다. 내부 모델, 전처리와 보조 노드는
+현재 상태는 **전방 PIDNet 6채널 확률맵 구현, 객체·차선·신호 관측 예약**이다. 내부 모델, 전처리와 보조 노드는
 자유롭게 구성하되 공개 경계는 `camera_perception_node` 하나로 유지한다.
 
 ![Camera Perception 공개 입출력](docs/interface_io.svg)
@@ -41,12 +41,20 @@
 | 입력 | `/molit/sensors/camera/front/image/compressed` | `sensor_msgs/CompressedImage` |
 | 입력 | `/molit/sensors/camera/left/image/compressed` | `sensor_msgs/CompressedImage` |
 | 입력 | `/molit/sensors/camera/right/image/compressed` | `sensor_msgs/CompressedImage` |
+| 입력 | `/molit/sensors/camera/signal/image/compressed` | `sensor_msgs/CompressedImage` |
+| 입력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` |
+| 출력 | `/molit/perception/camera/signal/observations` | `common_msgs_pkg/CameraSignalArray` |
+| 출력 | `/molit/perception/camera/front/semantic_scores` | `sensor_msgs/Image` |
 | 출력 | `/molit/perception/camera/front/observations` | `common_msgs_pkg/CameraObservationArray` |
 | 출력 | `/molit/perception/camera/left/observations` | `common_msgs_pkg/CameraObservationArray` |
 | 출력 | `/molit/perception/camera/right/observations` | `common_msgs_pkg/CameraObservationArray` |
 | 출력 | `/molit/perception/camera/status` | `common_msgs_pkg/ComponentStatus` |
 
-`ComponentStatus` 스키마만 구현됐고 `CameraObservationArray`와 노드는 미구현이다.
+`camera_perception_node`는 전방 RGB와 학습한 PIDNet-S로 원본 해상도의
+`32FC6` softmax 확률맵을 발행한다. 원본 영상 header를 보존한다.
+클래스 순서는 중앙 [PointPainting 계약](../ros_architecture_pkg/config/messages/pointpainting.yaml)을 따른다.
+좌·우 영상 처리, `CameraObservationArray`, camera status 발행은 미구현이다.
+실행·의존성·검증은 [PointPainting 문서](docs/pointpainting.md)에 정리했다.
 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 
 World Model이 관측 시각의 pose를 사용해 좌표를 통합하므로 이 패키지는 최신 Localization pose로 검출 결과를 임의 투영하지 않는다.
@@ -66,3 +74,36 @@ Camera mount/optical frame은 중앙 [`TF 계약`](../ros_architecture_pkg/confi
 - `docs/`: 데이터셋, calibration, 모델 카드와 평가 근거
 - `launch/`: Camera Perception 단독 실행
 - `src/`: inference, preprocessing와 observation 변환 구현
+
+## Camera3 신호등 YOLO
+
+`./run.sh`는 개발용 Camera3 YOLO 하우징 검출을 함께 시작한다.
+센서 프리셋 로드와 박스 영상 확인은 [실행 안내](docs/camera3_yolo.md)를 따른다.
+private 신호 후보는 진단용이며 공개 HSV 관측은 World Model을 거쳐 주행 판단에 연결한다.
+각 박스를 3구·4구 두 방식으로 판독하며, YOLO의 등 개수 분류로 하나를 폐기하지 않는다.
+World Model이 지도 head의 layout·투영 위치에 맞는 가설을 선택한다.
+
+YOLO는 중앙 `config/map/signal_observation_policy.yaml`에 지정한 1·2·3·5번
+정지선의 **경로상 30m 전부터 정지선까지**만 추론·후보 출력을 허용한다.
+4번 우회전은 사용자 지정으로 제외한다. RouteContext가 없거나 0.5초 이상
+오래됐거나 경로 hash가 다르면 비활성화하며, 대기 프레임과 진행 중 추론 결과도
+구간 이탈·만료 시 폐기한다. private JSON의 `gate_active=false`, 빈 `candidates`는
+이전 후보 무효화를 뜻한다. `route_scope.signal_ids`는 정적 허용 후보 목록이며
+검출 박스와 지도 신호 ID의 대응이 확정됐다는 뜻은 아니다.
+명시적 `signal_route_gate:=false`는 위치 정보 없는 단독 시각 진단용이다.
+
+본선/개발 전체 실행은 기본으로 이 PIDNet 추론을 활성화한다.
+World Model에서 foreground 선별과 LiDAR 융합·군집·추적을 수행한다.
+통합 실행 옵션은 `system_bringup_pkg/README.md`의 PIDNet 절을 따른다.
+
+`./run.sh`의 PIDNet·YOLO 동시 실행은 공개 `camera_perception_node` 하나에서
+두 worker로 수행한다. YOLO 환경에서 두 모델을 로드하며 중복 노드를 생성하지 않는다.
+
+## HSV 신호 판독
+
+Camera3 YOLO의 3/4구 박스 내부 등 위치별 HSV 점등을 판독한다. 4구의 세 번째
+녹색은 LEFT, 네 번째는 GREEN이며 동시에 켜진 등은 bitmask로 유지한다. 임계값은
+`config/signal_hsv.yaml`에 둔다. 잘린 박스·소등·충돌하는 색은 UNKNOWN이다.
+공개 CameraSignalArray는 원본 영상 stamp와 픽셀 박스만 제공하며 지도 ID를 추측하지
+않는다. World Model이 측정시각 pose와 중앙 카메라 배치로 지도 신호를 선택하고
+Planner에 전달한다. 최초 구간 전에 CUDA/predictor warmup을 수행한다.

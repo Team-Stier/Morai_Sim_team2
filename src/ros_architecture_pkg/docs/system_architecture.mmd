@@ -26,255 +26,276 @@ flowchart LR
         node_000["morai_camera_front<br/>exec: camera_receiver_node<br/>state: LIVE (development_live_transport_verified)"]
         node_001["morai_camera_left<br/>exec: camera_receiver_node<br/>state: LIVE (development_live_transport_verified)"]
         node_002["morai_camera_right<br/>exec: camera_receiver_node<br/>state: LIVE (development_live_transport_verified)"]
-        node_003["morai_gps_bridge<br/>exec: gps_receiver_node<br/>state: LIVE (development_live_transport_verified)"]
-        node_004["morai_imu_bridge<br/>exec: imu_receiver_node<br/>state: RESERVED (provisional_disabled)"]
-        node_005["morai_vehicle_status_bridge<br/>exec: vehicle_status_receiver_node<br/>state: RESERVED (prohibited_until_competition_packet_verified)"]
-        node_006["morai_velodyne_manager<br/>exec: nodelet<br/>state: RESERVED (provisional_disabled)"]
-        node_007["morai_velodyne_driver<br/>exec: velodyne_driver<br/>state: RESERVED (provisional_disabled)"]
-        node_008["morai_velodyne_cloud<br/>exec: velodyne_pointcloud<br/>state: RESERVED (provisional_disabled)"]
-        node_009["morai_lidar_watchdog<br/>exec: lidar_watchdog_node<br/>state: RESERVED (development_diagnostic_disabled)"]
-        node_010["morai_collision_bridge<br/>exec: collision_receiver_node<br/>state: RESERVED (reserved_not_implemented)"]
-        node_011["morai_interface_status_node<br/>exec: interface_status_node<br/>state: RESERVED (reserved_not_implemented)"]
-        node_012["morai_control_sender<br/>exec: control_sender_node<br/>state: RESERVED (reserved_not_implemented_pending_competition_packet)"]
+        node_003["morai_camera_signal<br/>exec: camera_receiver_node<br/>state: RESERVED (development_camera3_yolo_ingress)"]
+        node_004["morai_gps_bridge<br/>exec: gps_receiver_node<br/>state: LIVE (development_live_transport_verified)"]
+        node_005["morai_imu_bridge<br/>exec: imu_receiver_node<br/>state: RESERVED (provisional_disabled)"]
+        node_006["morai_vehicle_status_bridge<br/>exec: vehicle_status_receiver_node<br/>state: RESERVED (prohibited_until_competition_packet_verified)"]
+        node_007["morai_velodyne_manager<br/>exec: nodelet<br/>state: RESERVED (provisional_disabled)"]
+        node_008["morai_velodyne_driver<br/>exec: velodyne_driver<br/>state: RESERVED (provisional_disabled)"]
+        node_009["morai_velodyne_cloud<br/>exec: velodyne_pointcloud<br/>state: RESERVED (provisional_disabled)"]
+        node_010["morai_lidar_watchdog<br/>exec: lidar_watchdog_node<br/>state: RESERVED (development_diagnostic_disabled)"]
+        node_011["morai_collision_bridge<br/>exec: collision_receiver_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_012["morai_interface_status_node<br/>exec: interface_status_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_013["morai_control_sender<br/>exec: control_sender_node<br/>state: RESERVED (reserved_not_implemented_pending_competition_packet)"]
     end
     subgraph pkg_003["hd_map_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_013["hd_map_server_node<br/>exec: hd_map_server_node<br/>state: RESERVED (development_frenet_rddf_unverified)"]
+        node_014["hd_map_server_node<br/>exec: hd_map_server_node<br/>state: RESERVED (development_frenet_rddf_unverified)"]
     end
-    subgraph pkg_004["camera_perception_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_014["camera_perception_node<br/>exec: camera_perception_node<br/>state: RESERVED (reserved_not_implemented)"]
+    subgraph pkg_004["camera_perception_pkg<br/>runtime: development_front_semantic_and_camera3_yolo_candidates"]
+        node_015["camera_perception_node<br/>exec: camera_perception_node<br/>state: RESERVED (development_front_semantic_scores)"]
     end
     subgraph pkg_005["lidar_perception_pkg<br/>runtime: development_not_runtime_verified"]
-        node_015["lidar_perception_node<br/>exec: lidar_perception_node<br/>state: RESERVED (development_not_runtime_verified)"]
+        node_016["lidar_perception_node<br/>exec: lidar_perception_node<br/>state: RESERVED (development_not_runtime_verified)"]
     end
     subgraph pkg_006["localization_pkg<br/>runtime: development_estimator_active"]
-        node_016["localization_node<br/>exec: localization_estimator_node.py<br/>state: LIVE (development_estimator_active)"]
+        node_017["localization_node<br/>exec: localization_estimator_node.py<br/>state: LIVE (development_estimator_active)"]
     end
     subgraph pkg_007["global_route_manager_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_018["global_route_manager_node<br/>exec: route_manager_node.py<br/>state: RESERVED (development_frenet_rddf_unverified)"]
+        node_019["global_route_manager_node<br/>exec: route_manager_node.py<br/>state: RESERVED (development_frenet_rddf_unverified)"]
     end
     subgraph pkg_008["world_model_pkg<br/>runtime: development_map_object_tracking_unverified"]
-        node_019["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (development_map_object_tracking_unverified)"]
+        node_020["world_model_node<br/>exec: world_model_node<br/>state: RESERVED (development_map_object_tracking_unverified)"]
+        node_028["pointpainting_node<br/>exec: pointpainting_node<br/>state: RESERVED (development_pointpainting_static_scene_checked)"]
     end
     subgraph pkg_009["path_planning_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_020["path_planner_node<br/>exec: path_planner_node.py<br/>state: RESERVED (development_frenet_rddf_unverified)"]
+        node_021["path_planner_node<br/>exec: path_planner_node.py<br/>state: RESERVED (development_frenet_rddf_unverified)"]
     end
     subgraph pkg_010["vehicle_control_pkg<br/>runtime: development_controller_unverified"]
-        node_021["vehicle_controller_node<br/>exec: vehicle_controller_node<br/>state: RESERVED (development_controller_unverified)"]
+        node_022["vehicle_controller_node<br/>exec: vehicle_controller_node<br/>state: RESERVED (development_controller_unverified)"]
     end
     subgraph pkg_011["system_bringup_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_017["sensor_tf_publisher<br/>exec: sensor_tf_publisher.py<br/>state: LIVE (development_static_tf_active)"]
-        node_022["system_readiness_node<br/>exec: system_readiness_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_018["sensor_tf_publisher<br/>exec: sensor_tf_publisher.py<br/>state: LIVE (development_static_tf_active)"]
+        node_023["system_readiness_node<br/>exec: system_readiness_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
     subgraph pkg_012["safety_supervisor_pkg<br/>runtime: public_contract_reserved_not_implemented"]
-        node_023["safety_supervisor_node<br/>exec: safety_supervisor_node<br/>state: RESERVED (reserved_not_implemented)"]
+        node_024["safety_supervisor_node<br/>exec: safety_supervisor_node<br/>state: RESERVED (reserved_not_implemented)"]
     end
     subgraph pkg_013["runtime_evaluation_pkg<br/>runtime: public_contract_reserved_not_implemented_read_only"]
-        node_024["runtime_evaluator_node<br/>exec: runtime_evaluator_node<br/>state: RESERVED (reserved_not_implemented_read_only)"]
+        node_025["runtime_evaluator_node<br/>exec: runtime_evaluator_node<br/>state: RESERVED (reserved_not_implemented_read_only)"]
     end
     subgraph pkg_014["visualization_pkg<br/>runtime: development_visualization_only"]
-        node_025["vehicle_visualizer_node<br/>exec: vehicle_visualizer_node.py<br/>state: RESERVED (development_visualization_only)"]
-        node_026["vehicle_rviz<br/>exec: rviz<br/>state: RESERVED (development_visualization_only)"]
+        node_026["vehicle_visualizer_node<br/>exec: vehicle_visualizer_node.py<br/>state: RESERVED (development_visualization_only)"]
+        node_027["vehicle_rviz<br/>exec: rviz<br/>state: RESERVED (development_visualization_only)"]
     end
 
     topic_000["/molit/sensors/camera/front/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: LIVE"]
     topic_001["/molit/sensors/camera/left/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: LIVE"]
     topic_002["/molit/sensors/camera/right/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: LIVE"]
-    topic_003["/molit/sensors/gps/fix<br/>type: sensor_msgs/NavSatFix<br/>state: LIVE"]
-    topic_004["/molit/internal/morai_interface/lidar/packets<br/>type: velodyne_msgs/VelodyneScan<br/>state: RESERVED"]
-    topic_005["/molit/sensors/imu/data<br/>type: sensor_msgs/Imu<br/>state: RESERVED"]
-    topic_006["/molit/vehicle/twist<br/>type: geometry_msgs/TwistWithCovarianceStamped<br/>state: RESERVED"]
-    topic_007["/molit/sensors/lidar/points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
-    topic_008["/molit/sensors/lidar/status<br/>type: std_msgs/Bool<br/>state: RESERVED"]
-    topic_009["/molit/events/collision<br/>type: common_msgs_pkg/CollisionEvent<br/>state: RESERVED"]
-    topic_010["/molit/interface/status<br/>type: common_msgs_pkg/InterfaceStatus<br/>state: RESERVED"]
-    topic_011["/molit/map/static_walls<br/>type: common_msgs_pkg/StaticWallMap<br/>state: RESERVED"]
-    topic_012["/molit/map/hd_map<br/>type: common_msgs_pkg/HdMap<br/>state: RESERVED"]
-    topic_013["/molit/map/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
-    topic_014["/molit/perception/camera/front/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
-    topic_015["/molit/perception/camera/left/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
-    topic_016["/molit/perception/camera/right/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
-    topic_017["/molit/perception/camera/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
-    topic_018["/molit/perception/lidar/observations<br/>type: common_msgs_pkg/LidarObservationArray<br/>state: RESERVED"]
-    topic_019["/molit/perception/lidar/cluster_points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
-    topic_020["/molit/perception/lidar/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
-    topic_021["/molit/localization/local/odometry<br/>type: nav_msgs/Odometry<br/>state: LIVE"]
-    topic_022["/molit/localization/ego_state<br/>type: common_msgs_pkg/EgoState<br/>state: LIVE"]
-    topic_023["/molit/localization/status<br/>type: common_msgs_pkg/LocalizationStatus<br/>state: LIVE"]
-    topic_024["/molit/route/global_path<br/>type: nav_msgs/Path<br/>state: RESERVED"]
-    topic_025["/molit/route/context<br/>type: common_msgs_pkg/RouteContext<br/>state: RESERVED"]
-    topic_026["/molit/route/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
-    topic_027["/molit/world_model/scene<br/>type: common_msgs_pkg/WorldModel<br/>state: RESERVED"]
-    topic_028["/molit/world_model/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
-    topic_029["/molit/planning/trajectory<br/>type: common_msgs_pkg/Trajectory<br/>state: RESERVED"]
-    topic_030["/molit/planning/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
-    topic_031["/molit/control/nominal_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
-    topic_032["/molit/control/status<br/>type: common_msgs_pkg/ControllerStatus<br/>state: RESERVED"]
-    topic_033["/molit/system/readiness<br/>type: common_msgs_pkg/SystemReadiness<br/>state: RESERVED"]
-    topic_034["/molit/safety/final_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
-    topic_035["/molit/safety/state<br/>type: common_msgs_pkg/SafetyState<br/>state: RESERVED"]
-    topic_036["/molit/evaluation/metrics<br/>type: common_msgs_pkg/RunMetrics<br/>state: RESERVED"]
-    topic_037["/molit/internal/visualization/planner_status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
-    topic_038["/molit/internal/visualization/vehicle_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
-    topic_039["/molit/internal/visualization/lidar_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
-    topic_040["/molit/internal/visualization/world_model_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_003["/molit/sensors/camera/signal/image/compressed<br/>type: sensor_msgs/CompressedImage<br/>state: RESERVED"]
+    topic_004["/molit/sensors/gps/fix<br/>type: sensor_msgs/NavSatFix<br/>state: LIVE"]
+    topic_005["/molit/internal/morai_interface/lidar/packets<br/>type: velodyne_msgs/VelodyneScan<br/>state: RESERVED"]
+    topic_006["/molit/sensors/imu/data<br/>type: sensor_msgs/Imu<br/>state: RESERVED"]
+    topic_007["/molit/vehicle/twist<br/>type: geometry_msgs/TwistWithCovarianceStamped<br/>state: RESERVED"]
+    topic_008["/molit/sensors/lidar/points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
+    topic_009["/molit/sensors/lidar/status<br/>type: std_msgs/Bool<br/>state: RESERVED"]
+    topic_010["/molit/events/collision<br/>type: common_msgs_pkg/CollisionEvent<br/>state: RESERVED"]
+    topic_011["/molit/interface/status<br/>type: common_msgs_pkg/InterfaceStatus<br/>state: RESERVED"]
+    topic_012["/molit/map/static_walls<br/>type: common_msgs_pkg/StaticWallMap<br/>state: RESERVED"]
+    topic_013["/molit/map/hd_map<br/>type: common_msgs_pkg/HdMap<br/>state: RESERVED"]
+    topic_014["/molit/map/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
+    topic_015["/molit/perception/camera/front/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
+    topic_016["/molit/perception/camera/left/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
+    topic_017["/molit/perception/camera/right/observations<br/>type: common_msgs_pkg/CameraObservationArray<br/>state: RESERVED"]
+    topic_018["/molit/perception/camera/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
+    topic_019["/molit/perception/lidar/observations<br/>type: common_msgs_pkg/LidarObservationArray<br/>state: RESERVED"]
+    topic_020["/molit/perception/lidar/cluster_points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
+    topic_021["/molit/perception/lidar/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
+    topic_022["/molit/localization/local/odometry<br/>type: nav_msgs/Odometry<br/>state: LIVE"]
+    topic_023["/molit/localization/ego_state<br/>type: common_msgs_pkg/EgoState<br/>state: LIVE"]
+    topic_024["/molit/localization/status<br/>type: common_msgs_pkg/LocalizationStatus<br/>state: LIVE"]
+    topic_025["/molit/route/global_path<br/>type: nav_msgs/Path<br/>state: RESERVED"]
+    topic_026["/molit/route/context<br/>type: common_msgs_pkg/RouteContext<br/>state: RESERVED"]
+    topic_027["/molit/route/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
+    topic_028["/molit/world_model/scene<br/>type: common_msgs_pkg/WorldModel<br/>state: RESERVED"]
+    topic_029["/molit/world_model/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
+    topic_030["/molit/planning/trajectory<br/>type: common_msgs_pkg/Trajectory<br/>state: RESERVED"]
+    topic_031["/molit/planning/status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
+    topic_032["/molit/control/nominal_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
+    topic_033["/molit/control/status<br/>type: common_msgs_pkg/ControllerStatus<br/>state: RESERVED"]
+    topic_034["/molit/system/readiness<br/>type: common_msgs_pkg/SystemReadiness<br/>state: RESERVED"]
+    topic_035["/molit/safety/final_command<br/>type: common_msgs_pkg/ActuatorCommand<br/>state: RESERVED"]
+    topic_036["/molit/safety/state<br/>type: common_msgs_pkg/SafetyState<br/>state: RESERVED"]
+    topic_037["/molit/evaluation/metrics<br/>type: common_msgs_pkg/RunMetrics<br/>state: RESERVED"]
+    topic_038["/molit/internal/visualization/planner_status<br/>type: common_msgs_pkg/ComponentStatus<br/>state: RESERVED"]
+    topic_039["/molit/internal/visualization/vehicle_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_040["/molit/internal/visualization/lidar_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_041["/molit/internal/visualization/world_model_markers<br/>type: visualization_msgs/MarkerArray<br/>state: RESERVED"]
+    topic_042["/molit/perception/camera/signal/observations<br/>type: common_msgs_pkg/CameraSignalArray<br/>state: RESERVED"]
+    topic_043["/molit/perception/camera/front/semantic_scores<br/>type: sensor_msgs/Image<br/>state: RESERVED"]
+    topic_044["/molit/world_model/painted_points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
+    topic_045["/molit/internal/world_model/pidnet_points<br/>type: sensor_msgs/PointCloud2<br/>state: RESERVED"]
 
     node_000 --> topic_000
-    topic_000 --> node_014
+    topic_000 --> node_015
+    topic_000 --> node_027
     node_001 --> topic_001
-    topic_001 --> node_014
+    topic_001 --> node_015
     node_002 --> topic_002
-    topic_002 --> node_014
+    topic_002 --> node_015
     node_003 --> topic_003
-    topic_003 --> node_016
-    node_007 --> topic_004
-    topic_004 --> node_008
-    node_004 --> topic_005
-    topic_005 --> node_016
+    topic_003 --> node_015
+    node_004 --> topic_004
+    topic_004 --> node_017
+    node_008 --> topic_005
+    topic_005 --> node_009
     node_005 --> topic_006
-    topic_006 --> node_016
-    node_008 --> topic_007
-    topic_007 --> node_009
-    topic_007 --> node_015
-    topic_007 --> node_016
+    topic_006 --> node_017
+    node_006 --> topic_007
+    topic_007 --> node_017
     node_009 --> topic_008
-    topic_008 --> node_015
-    topic_008 --> node_011
+    topic_008 --> node_010
+    topic_008 --> node_016
+    topic_008 --> node_017
+    topic_008 --> node_028
     node_010 --> topic_009
-    topic_009 --> node_023
-    topic_009 --> node_024
+    topic_009 --> node_016
+    topic_009 --> node_012
     node_011 --> topic_010
-    topic_010 --> node_022
-    topic_010 --> node_023
     topic_010 --> node_024
-    node_013 --> topic_011
-    topic_011 --> node_016
-    node_013 --> topic_012
-    topic_012 --> node_016
-    topic_012 --> node_018
-    topic_012 --> node_019
-    topic_012 --> node_020
-    node_013 --> topic_013
-    topic_013 --> node_016
-    topic_013 --> node_018
+    topic_010 --> node_025
+    node_012 --> topic_011
+    topic_011 --> node_023
+    topic_011 --> node_024
+    topic_011 --> node_025
+    node_014 --> topic_012
+    topic_012 --> node_017
+    node_014 --> topic_013
+    topic_013 --> node_017
     topic_013 --> node_019
-    topic_013 --> node_022
-    topic_013 --> node_023
+    topic_013 --> node_020
+    topic_013 --> node_021
     node_014 --> topic_014
+    topic_014 --> node_017
     topic_014 --> node_019
-    node_014 --> topic_015
-    topic_015 --> node_019
-    node_014 --> topic_016
-    topic_016 --> node_019
-    node_014 --> topic_017
-    topic_017 --> node_019
-    topic_017 --> node_022
-    topic_017 --> node_023
-    topic_017 --> node_024
+    topic_014 --> node_020
+    topic_014 --> node_023
+    topic_014 --> node_024
+    node_015 --> topic_015
+    topic_015 --> node_020
+    node_015 --> topic_016
+    topic_016 --> node_020
+    node_015 --> topic_017
+    topic_017 --> node_020
     node_015 --> topic_018
-    topic_018 --> node_019
+    topic_018 --> node_020
+    topic_018 --> node_023
+    topic_018 --> node_024
     topic_018 --> node_025
-    node_015 --> topic_019
-    node_015 --> topic_020
-    topic_020 --> node_019
-    topic_020 --> node_022
-    topic_020 --> node_023
-    topic_020 --> node_024
+    node_016 --> topic_019
+    topic_019 --> node_020
+    topic_019 --> node_026
+    node_016 --> topic_020
     node_016 --> topic_021
-    topic_021 --> node_019
     topic_021 --> node_020
-    topic_021 --> node_021
     topic_021 --> node_023
     topic_021 --> node_024
     topic_021 --> node_025
-    node_016 --> topic_022
-    topic_022 --> node_018
-    topic_022 --> node_019
+    node_017 --> topic_022
     topic_022 --> node_020
-    topic_022 --> node_023
+    topic_022 --> node_021
+    topic_022 --> node_022
     topic_022 --> node_024
     topic_022 --> node_025
-    topic_022 --> node_015
-    node_016 --> topic_023
-    topic_023 --> node_018
+    topic_022 --> node_026
+    node_017 --> topic_023
     topic_023 --> node_019
     topic_023 --> node_020
     topic_023 --> node_021
-    topic_023 --> node_022
-    topic_023 --> node_023
     topic_023 --> node_024
     topic_023 --> node_025
-    node_018 --> topic_024
+    topic_023 --> node_026
+    topic_023 --> node_016
+    node_017 --> topic_024
+    topic_024 --> node_019
+    topic_024 --> node_020
+    topic_024 --> node_021
+    topic_024 --> node_022
+    topic_024 --> node_023
     topic_024 --> node_024
-    node_018 --> topic_025
-    topic_025 --> node_019
-    topic_025 --> node_020
-    topic_025 --> node_023
-    topic_025 --> node_024
-    node_018 --> topic_026
-    topic_026 --> node_019
+    topic_024 --> node_025
+    topic_024 --> node_026
+    node_019 --> topic_025
+    topic_025 --> node_025
+    node_019 --> topic_026
     topic_026 --> node_020
-    topic_026 --> node_022
-    topic_026 --> node_023
+    topic_026 --> node_021
     topic_026 --> node_024
+    topic_026 --> node_025
+    topic_026 --> node_015
     node_019 --> topic_027
     topic_027 --> node_020
+    topic_027 --> node_021
     topic_027 --> node_023
     topic_027 --> node_024
     topic_027 --> node_025
-    node_019 --> topic_028
-    topic_028 --> node_020
-    topic_028 --> node_022
-    topic_028 --> node_023
+    node_020 --> topic_028
+    topic_028 --> node_021
     topic_028 --> node_024
+    topic_028 --> node_025
+    topic_028 --> node_026
     node_020 --> topic_029
     topic_029 --> node_021
     topic_029 --> node_023
     topic_029 --> node_024
-    node_020 --> topic_030
-    topic_030 --> node_021
+    topic_029 --> node_025
+    node_021 --> topic_030
     topic_030 --> node_022
-    topic_030 --> node_023
     topic_030 --> node_024
     topic_030 --> node_025
     node_021 --> topic_031
+    topic_031 --> node_022
     topic_031 --> node_023
     topic_031 --> node_024
-    node_021 --> topic_032
-    topic_032 --> node_022
-    topic_032 --> node_023
+    topic_031 --> node_025
+    topic_031 --> node_026
+    node_022 --> topic_032
     topic_032 --> node_024
+    topic_032 --> node_025
     node_022 --> topic_033
     topic_033 --> node_023
     topic_033 --> node_024
+    topic_033 --> node_025
     node_023 --> topic_034
-    topic_034 --> node_012
     topic_034 --> node_024
-    node_023 --> topic_035
-    topic_035 --> node_024
+    topic_034 --> node_025
+    node_024 --> topic_035
+    topic_035 --> node_013
+    topic_035 --> node_025
     node_024 --> topic_036
+    topic_036 --> node_025
     node_025 --> topic_037
-    topic_037 --> node_026
-    node_025 --> topic_038
-    topic_038 --> node_026
-    node_025 --> topic_039
-    topic_039 --> node_026
-    node_025 --> topic_040
-    topic_040 --> node_026
+    node_026 --> topic_038
+    topic_038 --> node_027
+    node_026 --> topic_039
+    topic_039 --> node_027
+    node_026 --> topic_040
+    topic_040 --> node_027
+    node_026 --> topic_041
+    topic_041 --> node_027
+    node_015 --> topic_042
+    topic_042 --> node_020
+    node_015 --> topic_043
+    topic_043 --> node_028
+    node_028 --> topic_044
+    topic_044 --> node_027
+    node_028 --> topic_045
+    topic_045 --> node_020
     external_ingress --> node_000
     external_ingress --> node_001
     external_ingress --> node_002
     external_ingress --> node_003
     external_ingress --> node_004
     external_ingress --> node_005
-    external_ingress --> node_007
-    external_ingress --> node_010
-    node_012 --> external_egress
+    external_ingress --> node_006
+    external_ingress --> node_008
+    external_ingress --> node_011
+    node_013 --> external_egress
 
     class node_000 liveNode;
     class node_001 liveNode;
     class node_002 liveNode;
-    class node_003 liveNode;
-    class node_004 reservedNode;
+    class node_003 reservedNode;
+    class node_004 liveNode;
     class node_005 reservedNode;
     class node_006 reservedNode;
     class node_007 reservedNode;
@@ -286,9 +307,9 @@ flowchart LR
     class node_013 reservedNode;
     class node_014 reservedNode;
     class node_015 reservedNode;
-    class node_016 liveNode;
+    class node_016 reservedNode;
     class node_017 liveNode;
-    class node_018 reservedNode;
+    class node_018 liveNode;
     class node_019 reservedNode;
     class node_020 reservedNode;
     class node_021 reservedNode;
@@ -297,11 +318,13 @@ flowchart LR
     class node_024 reservedNode;
     class node_025 reservedNode;
     class node_026 reservedNode;
+    class node_027 reservedNode;
+    class node_028 reservedNode;
     class topic_000 liveTopic;
     class topic_001 liveTopic;
     class topic_002 liveTopic;
-    class topic_003 liveTopic;
-    class topic_004 reservedTopic;
+    class topic_003 reservedTopic;
+    class topic_004 liveTopic;
     class topic_005 reservedTopic;
     class topic_006 reservedTopic;
     class topic_007 reservedTopic;
@@ -318,10 +341,10 @@ flowchart LR
     class topic_018 reservedTopic;
     class topic_019 reservedTopic;
     class topic_020 reservedTopic;
-    class topic_021 liveTopic;
+    class topic_021 reservedTopic;
     class topic_022 liveTopic;
     class topic_023 liveTopic;
-    class topic_024 reservedTopic;
+    class topic_024 liveTopic;
     class topic_025 reservedTopic;
     class topic_026 reservedTopic;
     class topic_027 reservedTopic;
@@ -338,3 +361,8 @@ flowchart LR
     class topic_038 reservedTopic;
     class topic_039 reservedTopic;
     class topic_040 reservedTopic;
+    class topic_041 reservedTopic;
+    class topic_042 reservedTopic;
+    class topic_043 reservedTopic;
+    class topic_044 reservedTopic;
+    class topic_045 reservedTopic;

@@ -188,3 +188,89 @@ RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 
 실제 상태와 실행·중지 방법은 [실행 기록](../ros_architecture_pkg/docs/global_path_demo.md)에 기록한다.
 
 `global_path_demo.launch`는 중앙 고정 코스 속도 규칙(일반 최대 58, 고주로 목표 150 km/h)과 곡률/감속 프로파일을 적용한다. 일반 순항 목표는 56 km/h다.
+
+## PointPainting + RViz
+
+`roslaunch system_bringup_pkg pointpainting.launch weights:=... python:=... rviz:=true`로 PIDNet 전방 추론, 점군 페인팅과 RViz를 실행한다. `rviz:=true`이면 기존 승인된 GPS/IMU/LiDAR static TF publisher를 함께 실행한다. 카메라 TF 발행과 LiDAR UDP 자동 활성화는 추가하지 않는다. 센서 입력과 표준 압축영상 플러그인 준비는 [보정·검증 기록](../world_model_pkg/docs/pointpainting_calibration.md)을 따른다.
+
+## Camera3 YOLO 기본 실행
+
+`./run.sh`는 Camera3 신호등 YOLO와 전용 UDP 수신을 기본 실행한다.
+`camera3_yolo:=false`로 제외할 수 있다. MORAI의 `camera3signal_yolo` 센서
+프리셋 로드가 필요하며 [설정·박스 영상 안내](../camera_perception_pkg/docs/camera3_yolo.md)를 따른다.
+단독 실행은 `roslaunch system_bringup_pkg camera3_signal.launch`다.
+기본 YOLO는 중앙 관측 정책의 1·2·3·5번 정지선 전방 30m부터 정지선까지
+유효한 `/molit/route/context`가 있을 때만 추론하며 4번 우회전은 제외한다.
+정지선 통과 또는 경로 정보 만료 시 후보를 무효화한다. 위치/Route 실행 없이
+영상만 보는 명시적 단독 진단은 `signal_route_gate:=false`를 전달한다.
+이번 연결은 개발용 하우징 후보 진단이며 주행 신호 판단은 포함하지 않는다.
+
+## PIDNet 장애물 점 기반 통합 실행 (2026-10-15)
+
+`frenet_all.launch`(`./run.sh`)와 `competition.launch`는 기본으로
+`pidnet_enabled:=true`를 사용한다. 전방 RGB → PIDNet 6채널 확률 →
+PointPainting → World Model 내부 장애물 군집/추적 → 기존 Planner 순서다.
+이 모드에서는 `lidar_perception_node`를 실행하지 않고 raw-only 검출로 되돌아가지 않는다.
+World Model의 내부 `/molit/internal/world_model/pidnet_points`는 다른 패키지가 구독하지 않는다.
+
+중앙 `config/messages/pointpainting.yaml`의 foreground 정책으로
+person/animal/box/bollard/barrier argmax 및 확률 0.7 이상인 실제 LiDAR 반환점만 선택한다.
+배경, 카메라 시야 밖, NaN과 낮은 확률 점은 제외한다. 모델에 차량/신호 클래스는 없다.
+Softmax는 보정된 객체 confidence가 아니므로 추적 객체 confidence는 -1을 유지한다.
+원본 LiDAR 좌표·field·측정시각과 카메라 측정시각을 보존한다.
+객체 군집은 World Model의 `config/world_model.yaml`에서 클래스별 0.4 m voxel
+인접성, 최소 3점으로 설정한다. 배경 지면 기반 기존 LiDAR 검출은 사용하지 않는다.
+
+RViz는 `pidnet_vehicle.rviz`로 PIDNet 장애물 점만 RGB로 표시한다.
+기존 LiDAR/World Model 장애물 marker 표시는 꺼지고 지도·차량·trajectory는 유지한다.
+입력 단절 시 마지막 점군을 재발행하지 않으며 RViz 점 표시의 유지 시간은 0.5초다.
+World Model은 측정시각과 상태 watchdog으로 stale 결과를 거부한다.
+객체가 없는 결과는 free-space 증거가 아니다. 개발 calibration/freshness와
+planner_ready 검증 제한은 유지한다.
+
+기본 PIDNet 가중치는 저장소의 `weights/pidnet_s_morai6.pt`이며, YOLO 가중치도
+같은 디렉터리에 포함한다. 외부 학습 폴더를 복사할 필요가 없다.
+[가중치 목록·환경 준비](../../weights/README.md)를 따른다.
+Python 기본값은 `~/venvs/morai-pidnet/bin/python`이고, YOLO 동시 실행은
+`~/venvs/morai-yolo/bin/python`을 사용한다. 다른 환경은 인자로 지정한다.
+
+```bash
+./run.sh pidnet_weights:=/absolute/path/best.pt pidnet_python:=/absolute/path/python
+./run.sh send_to_morai:=false rviz:=false
+# 기존 LiDAR 검출을 명시적으로 사용하는 비교 실행:
+./run.sh pidnet_enabled:=false
+```
+
+두 launch를 중복 실행하지 않는다. PIDNet 구현은 `paik`으로 통합했다.
+새 코드는 기존 run.sh 터미널에서 Ctrl+C 후 이 작업 폴더에서 다시 실행한다.
+
+검증: catkin build 및 관련 catkin 테스트 137개(오류·실패 0), 중앙 계약/다이어그램 검사를 통과했다. 합성 ROS producer/consumer 통합에서 foreground 선별·map 추적·
+원본 stamp 보존·배경/후방 제외·카메라 단절 및 raw-only fallback 부재를 확인했다.
+실제 best.pt GPU 추론은 현재 live 입력 3쌍으로 확인했다. 첫 추론 워밍업 후
+추론은 약 58~70 ms, 전체 처리 약 123~143 ms였다. 당시 foreground는 0점이었으며
+실제 장애물 검출 성능, 동적 calibration과 MORAI closed-loop 주행은 검증하지 않았다.
+근거는 `/home/paik/morai-artifacts/pidnet-detection-live-probe.json`에 있다.
+
+### paik 통합 실행
+
+`./run.sh`는 PIDNet과 Camera3 YOLO를 기본으로 카메라 노드 하나에서 함께 실행한다.
+YOLO가 활성화되면 두 모델을 지원하는 `signal_python` 환경을 사용하고,
+YOLO를 끄면 `pidnet_python`을 사용한다. 두 모델은 별도 최신 영상 worker로 처리한다.
+`pidnet_enabled:=false`는 PIDNet만, `camera3_yolo:=false`는 YOLO만 끈다.
+사람 추적 객체를 받으면 Planner의 최대 목표속도는 20 km/h로 제한된다.
+YOLO 하우징 후보는 계속 진단 전용이며 신호 주행 판단에 연결하지 않는다.
+
+검증(2026-10-15): 의존성 underlay를 포함한 catkin 빌드, 관련 5개 패키지 테스트
+209개(오류·실패 0), launch/XML/YAML 및 중앙 계약·다이어그램 검사를 통과했다.
+격리 ROS master의 단일 카메라 노드에서 실제 가중치로 PIDNet 확률 영상 7개와
+YOLO 표시 영상 2개를 동시에 발행하고 원본 stamp 보존을 확인했다. 입력은 합성
+검정 영상이며 실제 사람 검출률이나 MORAI closed-loop 감속 성능 검증은 아니다.
+증거: `/home/paik/morai-artifacts/paik-pidnet-person-*.log`,
+`paik-pidnet-yolo-dual-probe.py` 및 `paik-pidnet-yolo-dual-probe.log`.
+기존 runtime의 World Model age 1.0초에 중앙 기록을 맞췄으며 실행 임계값은
+변경하지 않았다. 저장 센서 profile은 GPS/IMU scope의 ID·장착값·frame·주기를
+재확인한 뒤 근거 해시만 갱신했다. TF 장착값과 발행 설정은 바꾸지 않았다.
+
+Camera3 공개 HSV 관측은 World Model에서 지도 head에 대응하고 두 Planner 모드의
+정지·재출발에 연결한다. RViz 기존 World Model marker 레이어에 같은 상태를 표시한다.
+WorldModel message 변경 후 전체 빌드와 모든 producer/consumer 재시작이 필요하다.

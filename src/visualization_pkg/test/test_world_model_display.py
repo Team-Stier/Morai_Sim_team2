@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 import rospy
-from common_msgs_pkg.msg import TrackedObject, WorldModel
+from common_msgs_pkg.msg import TrackedObject, WorldModel, TrafficSignal
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
 
@@ -57,6 +57,18 @@ class WorldModelDisplayTest(unittest.TestCase):
         self.assertEqual(marker.points, message.objects[0].points)
         self.assertEqual(marker.id, 42)
         self.assertFalse(marker.frame_locked)
+
+    @patch.object(rospy.Time,'now',return_value=rospy.Time(10))
+    def test_signal_state_colors_and_source_stamp_share_existing_marker_layer(self,_):
+        message=self.scene()
+        signal=TrafficSignal(stop_line_id='bar',signal_ids=['head'],valid=True,lamp_mask=1,confidence=.9)
+        signal.header.stamp=rospy.Time(10);signal.header.frame_id='map'
+        message.traffic_signals=[signal]
+        self.display.ingest(message,rospy.Time(10),1.)
+        markers=self.publisher.publish.call_args[0][0].markers
+        item=next(m for m in markers if m.ns=='signal_stop_line_labels')
+        self.assertIn('RED',item.text);self.assertGreater(item.color.r,item.color.g)
+        self.assertEqual(item.header.stamp,signal.header.stamp)
 
     def test_stale_invalid_and_reset_clear_existing_tracks(self):
         self.display.ingest(self.scene(), rospy.Time(10), 1.0)

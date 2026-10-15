@@ -46,10 +46,13 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 - [Mermaid 원본](docs/interface_io.mmd)
 - [PNG 이미지](docs/interface_io.png)
 
-**공개 node (exact):** `world_model_node`
+**공개 node (exact):** `world_model_node`, `pointpainting_node`
 
 | 구분 | Topic | Type |
 |---|---|---|
+| 입력 | `/molit/perception/camera/signal/observations` | `common_msgs_pkg/CameraSignalArray` |
+| 입력 | `/molit/sensors/lidar/points` | `sensor_msgs/PointCloud2` |
+| 입력 | `/molit/perception/camera/front/semantic_scores` | `sensor_msgs/Image` |
 | 입력 | `/molit/map/hd_map` | `common_msgs_pkg/HdMap` |
 | 입력 | `/molit/map/status` | `common_msgs_pkg/ComponentStatus` |
 | 입력 | `/molit/perception/camera/front/observations` | `common_msgs_pkg/CameraObservationArray` |
@@ -63,6 +66,7 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 | 입력 | `/molit/localization/status` | `common_msgs_pkg/LocalizationStatus` |
 | 입력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` |
 | 입력 | `/molit/route/status` | `common_msgs_pkg/ComponentStatus` |
+| 출력 | `/molit/world_model/painted_points` | `sensor_msgs/PointCloud2` |
 | 출력 | `/molit/world_model/scene` | `common_msgs_pkg/WorldModel` |
 | 출력 | `/molit/world_model/status` | `common_msgs_pkg/ComponentStatus` |
 
@@ -70,6 +74,11 @@ Camera/LiDAR 결과를 각 패키지가 임의로 HD Map 위에 투영하면 서
 `LidarObservationArray`, `TrackedObject`, `WorldModel` 스키마가 구현됐다.
 해당 타입을 사용하는 공개 I/O는 [기반 메시지 계약](../ros_architecture_pkg/docs/core_messages.md)을 따른다.
 `HdMap`과 `RouteContext` 스키마도 구현됐으며, 교차 센서 융합 계층은 미구현이다.
+
+`pointpainting_node`는 별도 실행 가능한 첫 Camera/LiDAR fusion 경로다.
+원본 LiDAR 점에 전방 영상의 6개 클래스 확률을 부착한다. 중앙 장착값의
+개발용 투영이며 카메라 TF를 발행하지 않는다. PIDNet 통합 모드에서는 장애물 클래스만 선별하고 World Model이 클래스별
+공간 군집과 scan-time map 추적을 수행해 Planner에 제공한다. 기존 LiDAR 검출은 실행하지 않는다. [세부 계약과 검증](docs/pointpainting.md)을 따른다.
 
 좌표 변환에는 중앙 [`TF 계약`](../ros_architecture_pkg/config/tf/frame_contract.yaml)에서 승인된 frame과 extrinsic만 사용한다. 시간 정렬에는 중앙 [`Timestamp 계약`](../ros_architecture_pkg/config/timestamp/timestamp_contract.yaml)을 적용하고, 각 관측의 source stamp를 fusion publication time으로 교체하지 않는다.
 
@@ -126,3 +135,19 @@ rostopic echo /molit/world_model/scene
 
 실행 전 Localization, 중앙 `base_link -> lidar_link` 정적 TF와 LiDAR Perception이
 동작해야 한다. HD Map의 RViz 마커는 표시 전용이며 이 첫 구현에는 융합되지 않는다.
+
+PIDNet foreground 출력은 확률 **0.7**과 영상 영역별 가까운 깊이층·클래스 크기
+상한을 함께 적용한다. 뒤쪽 배경점을 그대로 객체로 칠하지 않도록 하는 개발용
+기하 선별이며, 설정은 `config/pointpainting.yaml`, 근거·한계는
+[PointPainting 문서](docs/pointpainting.md)의 뒤쪽 점 제거 절을 따른다.
+
+## 신호등 융합
+
+Camera3 HSV 관측은 측정시각의 EgoState pose 보간과 중앙 카메라 배치로 지도 head에
+대응한다. 1·2·3·5번만 사용하고 4번 우회전은 제외한다. WorldModel.traffic_signals는
+영상 원본 stamp를 보존한다. ROI와 투영 위치가 맞지 않거나 관측이 오래되면 유효한
+허용 신호를 만들지 않는다. 녹색/좌회전 허용은 연속 3프레임·0.25초 확인 후 제공한다.
+한 박스의 3구·4구 가설 중 지도 layout에 맞는 것만 선택하며,
+가설 두 개를 추가 head나 추가 확인 프레임으로 세지 않는다.
+동시에 보이는 head들의 공통 점등만 사용한다. 이 개발 기능은 전체 scene의
+objects_verified/planner_ready를 승격하지 않는다. 파라미터는 config/world_model.yaml에 둔다.
