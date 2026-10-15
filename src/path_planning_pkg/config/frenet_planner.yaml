@@ -131,3 +131,7 @@ signal_left_stop_buffer_m: 14.0
 signal_left_commit_distance_m: 12.0
 signal_deceleration_mps2: 1.8
 signal_observation_timeout_sec: 0.5
+
+# MORAI 개발 실행: UNKNOWN(미검출·무효·오래된 신호 관측)은 신호 정지를 생략한다.
+# 빨강·노랑은 계속 정지하며, 실제 GREEN/LEFT로 판정하거나 진입 확정하지 않는다.
+signal_unknown_pass_enabled: true

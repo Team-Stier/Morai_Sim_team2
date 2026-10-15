@@ -59,9 +59,17 @@ semantics:
   not map identity or a driving command.
 - World Model assigns stop-line and signal IDs using measurement-time ego pose and
   source-backed camera projection.
-- GREEN authorizes straight; LEFT authorizes left. RED/YELLOW/unknown never authorize
-  straight. A left arrow can accompany red.
+- GREEN authorizes straight; LEFT authorizes left. RED/YELLOW/unknown are not
+  straight permission. The development UNKNOWN bypass below skips a stop cap
+  without producing permission. A left arrow can accompany red.
 - WorldModel.traffic_signals retains camera stamp independently of scene LiDAR stamp.
   Reject stale, reset, wrong-route and ambiguous associations.
 - Planner applies approach stop policy in every planner mode and every publication;
   no raw perception subscription.
+- >-
+  User-requested MORAI development exception (2026-10-15): Planner local
+  signal_unknown_pass_enabled bypasses only the signal stop cap for UNKNOWN
+  (missing, invalid or stale lamp observations) with fresh matching RouteContext.
+  This is not GREEN authorization and never commits intersection entry. Known
+  RED/YELLOW and other planning, control and safety constraints remain in force.
+  Current simulator YAML enables it; missing/false keeps the stop policy.

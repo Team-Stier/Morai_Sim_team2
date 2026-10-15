@@ -41,6 +41,10 @@ class SignalStopPolicy:
         label='LEFT' if mask & 8 else 'RED' if mask & 1 else 'YELLOW' if mask & 2 else 'GREEN' if mask & 4 else 'UNKNOWN'
         self.reason='signal=%s; signal_number=%d; signal_action=%s; signal_distance_m=%.2f' % (
             label,target['number'],'GO' if go else 'STOP',remaining)
+        # Simulator development bypass: do not treat unknown as a green or commit.
+        if mask == 0 and fresh_route and self.config.get('signal_unknown_pass_enabled', False):
+            self.reason = self.reason.replace('signal_action=STOP', 'signal_action=PASS_UNKNOWN')
+            return result
         if go:
             if remaining<=self.config['signal_left_commit_distance_m' if target['maneuver']=='left' else 'signal_commit_distance_m']:
                 self.committed.add(key)

@@ -209,3 +209,12 @@ head C1256W000091/stop B2256W000447에 RED/valid로 대응했다.
 테스트 결과나 제어 명령을 발행하지 않았다. 실행 중 노드를 재시작하지
 않았으므로 다음 run.sh 실행부터 새 producer가 적용된다. 새 코드의
 실제 차량 제동·재출발을 반복 검증했다는 의미는 아니다.
+
+## UNKNOWN 통과 개발 설정 (2026-10-15)
+
+사용자 요청에 따라 현재 MORAI 개발 설정의 `signal_unknown_pass_enabled`는 true다.
+미검출·무효·stale 관측을 포함한 UNKNOWN에서는 신호 정지 속도 상한만 생략한다.
+유효한 경로 입력이 필요하며 RED/YELLOW 및 다른 정지 조건은 유지한다.
+UNKNOWN은 GREEN 판정이나 교차 진입 확정 근거가 아니므로 이후 유효한 적색이면 다시 정지한다.
+Planner 상태는 `signal=UNKNOWN; ... signal_action=PASS_UNKNOWN`을 표시한다.
+false 또는 옵션 누락 시 기존 UNKNOWN 정지 정책을 적용한다.

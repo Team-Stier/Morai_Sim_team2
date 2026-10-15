@@ -14,6 +14,24 @@ class StopTest(unittest.TestCase):
   self.s.lamp_mask=4;self.assertTrue(np.isinf(self.cap()).all())
   self.assertTrue(np.isfinite(self.cap(11)).all())
   self.s.valid=False;self.assertTrue(np.isfinite(self.cap()).all())
+ def test_unknown_simulator_bypass_keeps_known_stops_and_no_commit(self):
+  self.c['signal_unknown_pass_enabled']=True
+  for mask in (1,2):
+   self.s.lamp_mask=mask;self.assertTrue(np.isfinite(self.cap()).all())
+  self.s.valid=False;self.r.progress=94.
+  self.assertTrue(np.isinf(self.cap()).all())
+  self.assertIn('signal_action=PASS_UNKNOWN',self.f.reason)
+  self.assertFalse(self.f.committed)
+  self.s.valid=True;self.s.lamp_mask=1
+  self.assertTrue(np.isfinite(self.cap()).all())
+ def test_unknown_bypass_missing_stale_and_wrong_route(self):
+  self.c['signal_unknown_pass_enabled']=True
+  self.w.traffic_signals=[];self.assertTrue(np.isinf(self.cap()).all())
+  self.w.traffic_signals=[self.s];self.s.header.stamp=rospy.Time(9)
+  self.assertTrue(np.isinf(self.cap()).all())
+  self.r.reference_sha256='wrong';self.assertTrue(np.isfinite(self.cap()).all())
+  self.r.reference_sha256='route';self.r.header.stamp=rospy.Time(9)
+  self.assertTrue(np.isfinite(self.cap()).all())
  def test_left_arrow_required_and_commit_only_on_fresh_permission(self):
   self.p['targets'][0]['maneuver']='left';self.s.lamp_mask=4;self.assertTrue(np.isfinite(self.cap()).all());self.assertEqual(self.cap()[1],0.)
   self.s.lamp_mask=9;self.assertTrue(np.isinf(self.cap()).all())

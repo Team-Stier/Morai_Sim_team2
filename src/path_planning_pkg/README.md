@@ -190,7 +190,11 @@ World Model의 `CLASS_PEDESTRIAN` 객체가 하나라도 있으면 Frenet·Hybri
 
 중앙 signal_observation_policy의 1·2·3·5번 30m 접근 구간에서 World Model의
 선택된 HSV 상태를 사용한다. 직진은 GREEN, 5번 좌회전은 LEFT를 요구한다. 적색·황색·
-불명·stale는 정지 상태를 유지한다. 신호 상태를 직접 Camera에서 구독하지 않는다.
+불명·stale는 기본 정책에서 정지 상태를 유지한다. 현재 MORAI 개발 설정은
+`signal_unknown_pass_enabled: true`로 UNKNOWN 신호 정지만 생략한다.
+이는 미검출·무효·오래된 신호 관측을 포함하며, 유효한 경로 입력이 필요하다.
+빨강·노랑 정지는 유지하고 UNKNOWN으로 교차 진입을 확정하지 않는다.
+상태에는 `signal_action=PASS_UNKNOWN`을 기록한다. 옵션을 false로 하면 기존 정지 정책으로 돌아간다. 신호 상태를 직접 Camera에서 구독하지 않는다.
 Frenet/Hybrid A*·전환 유지 경로 모두 발행마다 감속 상한을 적용하며, 기본 base_link
 정지 목표는 직진 8m 전, 좌회전 14m 전이다(전방 차체 3.845m와 카메라 시야 여유 포함).
 허용 신호가 확인되면 다시 계획한다. 유효한 허용 신호로 직진 8m/좌회전 12m 안까지 진행하면 교차 진입을 확정해
