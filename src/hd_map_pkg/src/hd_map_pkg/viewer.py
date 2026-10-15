@@ -6,7 +6,7 @@ import subprocess
 import webbrowser
 from pathlib import Path
 
-from .geometry import convex_hull, simplify_rdp, progress_along_polyline
+from .geometry import convex_hull, simplify_rdp, progress_along_polyline, cumulative_lengths
 from .lanelet2_export import boundary_tags, surface_marking_maneuver
 
 
@@ -187,6 +187,7 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
             intersections.append({"id": junction_id, "p": transformed})
     global_route = load_global_route(reference_path)
     route_signal_stops = []
+    observation_windows = []
     if global_route['p'] and 'lane_rddf' in config:
         from .stop_lines import build_signal_stop_lines
         from .lane_rddf import read_route
@@ -198,6 +199,35 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
         route_signal_stops.sort(key=lambda row: (row['route_s_m'], row['id']))
         for number, stop in enumerate(route_signal_stops, 1):
             stop['number'] = number
+        if config.get('course_speed_policy'):
+            import hashlib
+            import yaml
+            root = Path(__file__).resolve().parents[3] / 'ros_architecture_pkg'
+            if not root.is_dir():
+                import rospkg
+                root = Path(rospkg.RosPack().get_path('ros_architecture_pkg'))
+            policy = yaml.safe_load((root / 'config/map/signal_observation_policy.yaml').read_text())
+            if hashlib.sha256(Path(reference_path).read_bytes()).hexdigest() != policy['reference_sha256']:
+                raise ValueError('Signal observation policy reference hash mismatch')
+            targets = {row['stop_line_id']: row for row in policy['targets']}
+            route_signal_stops = [row for row in route_signal_stops if row['id'] in targets]
+            arc = cumulative_lengths(route)
+            for stop in route_signal_stops:
+                target = targets[stop['id']]
+                if stop['signal_ids'] != target['signal_ids']:
+                    raise ValueError('Signal observation policy source associations changed')
+                stop['number'] = target['number']
+                stop['route_s_m'] = target['stop_station_m']
+                end = target['stop_station_m']
+                start = end - policy['approach_distance_m']
+                def point_at(station):
+                    import bisect
+                    i = max(0, min(len(route)-2, bisect.bisect_right(arc, station)-1))
+                    fraction = (station-arc[i]) / (arc[i+1]-arc[i])
+                    return [a+(b-a)*fraction for a, b in zip(route[i], route[i+1])]
+                observation_windows.append(dict(number=stop['number'], p=[point_at(start)] +
+                    [point for point, station in zip(route, arc) if start < station < end] +
+                    [point_at(end)]))
     route_signal_ids = {sid for stop in route_signal_stops for sid in stop['signal_ids']}
     speed_sections = []
     lane_rddf = {'lanes': [], 'crossings': [], 'counts': {}}
@@ -283,6 +313,7 @@ def build_viewer_data(dataset, transformer, config, exporter=None,
         "signals": signals,
         "routeSignalStops": route_signal_stops,
         "routeSignals": [item for item in signals if item['id'] in route_signal_ids],
+        "routeObservationWindows": observation_windows,
         "intersections": intersections,
         "globalRoute": global_route,
         "speedSections": speed_sections,
@@ -351,7 +382,7 @@ input { accent-color: #32d3a2; }
   <label><input data-layer="topology" type="checkbox">→ 선행/후행 연결</label>
   <label><input data-layer="labels" type="checkbox">원본 MGeo 속도/방향 (주행 정책과 별도)</label>
   <label><input data-layer="staticWalls" type="checkbox" checked><span class="swatch yellow"></span>터널 벽 · 원본 XY (높이 미측정)</label>
-  <h2>경로 신호 확인 지점</h2><div class="help">주행 순서대로 번호 표시. 노란 원: 신호등, 굵은 노란 선: 연결 정지선.<br>지도 연결 기준 후보이며 신호 색상·YOLO 수신 구간은 아직 연결하지 않았습니다. 승인된 대체 차로도 포함합니다.</div><div id="routeTargets"></div>
+  <h2>경로 신호 확인 지점</h2><div class="help">노란 원: 신호등 · 노란 선: 정지선 · 주황 경로: 30m 전부터 YOLO 활성.<br>1·2·3·5번만 사용하며 4번 우회전은 제외했습니다. 정지선 통과 시 비활성. 신호 색상·주행 판단은 미연결입니다.</div><div id="routeTargets"></div>
   <h2>Counts</h2><div class="stats" id="stats"></div>
   <h2>Inspector</h2><div id="inspect">지형지물을 클릭하면 MGeo ID와 속성이 표시됩니다.</div>
   <h2>Navigation</h2><div class="help">휠: 확대/축소 · 드래그: 이동 · 더블클릭: 전체 보기<br>좌표는 실행 중인 K-City scene의 local ENU(m) 기준입니다.</div>
@@ -397,6 +428,7 @@ function draw(){const w=canvas.clientWidth,h=canvas.clientHeight;ctx.clearRect(0
  if(enabled.signals){ctx.font='10px ui-monospace';MAP.signals.filter(x=>x.category!=='tunnel_lane_control').forEach(x=>{const p=s(x.p);ctx.fillStyle=x.category==='pedestrian'?'#55b7ff':'#ff5f65';ctx.beginPath();ctx.arc(p[0],p[1],3.3,0,Math.PI*2);ctx.fill();if(scale>.55){ctx.fillStyle='#f6d9dc';ctx.fillText(x.id,p[0]+5,p[1]-5);}});}
  if(enabled.laneControlSignals)MAP.signals.filter(x=>x.category==='tunnel_lane_control').forEach(laneControlSignal);
  if(enabled.routeSignals){
+  MAP.routeObservationWindows.forEach(window=>stroke(window,'rgba(255,164,64,.75)',8));
   MAP.routeSignalStops.forEach(stop=>{stroke({p:stop.points},'#ffe066',5);const p=s(stop.points[0]);ctx.fillStyle='#ffe066';ctx.font='bold 14px sans-serif';ctx.fillText(`${stop.number}`,p[0]+10,p[1]+17);});
   MAP.routeSignals.forEach(x=>{const p=s(x.p);ctx.strokeStyle='#ffe066';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p[0],p[1],7,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#fff0b0';ctx.font='bold 11px monospace';ctx.fillText(x.id,p[0]+10,p[1]-9);});
  }

@@ -2,6 +2,7 @@
 """Front PIDNet and optional Camera3 YOLO; each keeps only its newest frame."""
 import json
 import threading
+import time
 import cv2
 import numpy as np
 import rospy
@@ -48,32 +49,60 @@ class CameraNode:
 class SignalNode:
     def __init__(self):
         from camera_perception_pkg.signal_detector import SignalDetector
+        from camera_perception_pkg.signal_gate import SignalRouteGate
+        self.gate = SignalRouteGate(rospy.get_param('~signal_policy'),
+                                    rospy.get_param('~signal_route_gate', True))
         self.detector = SignalDetector(rospy.get_param('~signal_weights'),
                                        rospy.get_param('~signal_device'),
                                        rospy.get_param('~signal_imgsz'),
                                        rospy.get_param('~signal_confidence'))
         self.pending = None
         self.condition = threading.Condition()
+        self.invalidated_revision = None
         self.image_pub = rospy.Publisher('~signal_image', Image, queue_size=1)
         self.detections_pub = rospy.Publisher('~signal_detections', String, queue_size=1)
+        if self.gate.enabled:
+            from common_msgs_pkg.msg import RouteContext
+            self.route_subscriber = rospy.Subscriber('/molit/route/context', RouteContext,
+                                                     self.receive_route, queue_size=1)
         self.subscriber = rospy.Subscriber('/molit/sensors/camera/signal/image/compressed',
                                           CompressedImage, self.receive, queue_size=1,
                                           buff_size=8 * 1024 * 1024)
         threading.Thread(target=self.process, daemon=True).start()
-        rospy.loginfo('Camera3 YOLO ready; diagnostic housing candidates only')
+        rospy.loginfo('Camera3 YOLO ready; route gate=%s; housing candidates only', self.gate.enabled)
+
+    def receive_route(self, message):
+        with self.condition:
+            self.gate.update(message, time.monotonic())
+            target, _ = self.gate.snapshot(rospy.Time.now().to_sec(), time.monotonic())
+            if target is None:
+                self.pending = None
+            self.condition.notify()
 
     def receive(self, message):
         with self.condition:
-            self.pending = message
+            target, revision = self.gate.snapshot(rospy.Time.now().to_sec(), time.monotonic(),
+                                                   message.header.stamp.to_sec())
+            self.pending = (message, revision) if target is not None else None
             self.condition.notify()
 
     def process(self):
         while not rospy.is_shutdown():
             with self.condition:
+                target, revision = self.gate.snapshot(rospy.Time.now().to_sec(), time.monotonic())
+                if target is None:
+                    self.pending = None
+                    if self.invalidated_revision != revision:
+                        self.detections_pub.publish(String(data=json.dumps(dict(
+                            candidates=[], gate_active=False, route_target_selected=False,
+                            driving_decision_valid=False, reason='outside_window_or_invalid_route_context'))))
+                        self.invalidated_revision = revision
                 if self.pending is None:
                     self.condition.wait(timeout=.1)
                     continue
-                message, self.pending = self.pending, None
+                (message, input_revision), self.pending = self.pending, None
+                if input_revision != revision:
+                    continue
             try:
                 if message.header.stamp.is_zero():
                     continue
@@ -85,12 +114,20 @@ class SignalNode:
                                width=annotated.shape[1], encoding='bgr8',
                                is_bigendian=0, step=annotated.shape[1] * 3,
                                data=annotated.tobytes())
-                self.image_pub.publish(output)
-                self.detections_pub.publish(String(data=json.dumps(dict(
-                    stamp=dict(secs=message.header.stamp.secs,
-                               nsecs=message.header.stamp.nsecs),
-                    frame_id=message.header.frame_id, candidates=candidates,
-                    route_target_selected=False, driving_decision_valid=False))))
+                # Route callbacks and publication share this lock: leaving a window
+                # invalidates a slow GPU result before it can reach subscribers.
+                with self.condition:
+                    target, revision = self.gate.snapshot(rospy.Time.now().to_sec(), time.monotonic(),
+                                                          message.header.stamp.to_sec())
+                    if target is None or revision != input_revision:
+                        continue
+                    self.image_pub.publish(output)
+                    self.detections_pub.publish(String(data=json.dumps(dict(
+                        stamp=dict(secs=message.header.stamp.secs,
+                                   nsecs=message.header.stamp.nsecs),
+                        frame_id=message.header.frame_id, candidates=candidates,
+                        gate_active=True, route_scope=target,
+                        route_target_selected=False, driving_decision_valid=False))))
                 rospy.loginfo_throttle(5, 'Camera3 YOLO: %d housing candidates', len(candidates))
             except (ValueError, RuntimeError, cv2.error) as error:
                 rospy.logwarn_throttle(2, 'Camera3 YOLO frame rejected: %s', error)

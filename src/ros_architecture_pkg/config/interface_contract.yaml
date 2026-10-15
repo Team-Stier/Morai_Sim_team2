@@ -106,6 +106,9 @@ contract_modules:
   course_speed_policy:
     path: map/course_speed_policy.yaml
     required_contract_version: 0.1.0
+  signal_observation_policy:
+    path: map/signal_observation_policy.yaml
+    required_contract_version: 0.1.0
   global_path_demo:
     path: messages/global_path_demo.yaml
     required_contract_version: 0.1.0
@@ -782,7 +785,7 @@ topics:
   - name: /molit/route/context
     owner_package: global_route_manager_pkg
     producers: [global_route_manager_node]
-    consumers: [world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node]
+    consumers: [world_model_node, path_planner_node, safety_supervisor_node, runtime_evaluator_node, camera_perception_node]
     status: development_frenet_rddf_unverified
     visibility: public
     data_meaning: Dynamic route progress current lane and comparison goal keyed by cached HdMap map_id; next_checkpoint is UINT32_MAX in user RDDF-only mode
@@ -1296,6 +1299,7 @@ package_boundaries:
       - /molit/sensors/camera/left/image/compressed
       - /molit/sensors/camera/right/image/compressed
       - /molit/sensors/camera/signal/image/compressed
+      - /molit/route/context
     outputs:
       - /molit/perception/camera/front/semantic_scores
       - /molit/perception/camera/front/observations

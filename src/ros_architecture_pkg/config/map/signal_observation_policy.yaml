@@ -1,0 +1,37 @@
+schema_version: 1
+contract_version: 0.1.0
+authority: ros_architecture_pkg
+status: user_requested_development_candidate_gate
+reference_sha256: 50658991e607d9339d76e4cd6cb169dfc733ea53b93de2c3e222460bb497cc05
+approach_distance_m: 30.0
+context_timeout_sec: 0.5
+semantics:
+  station: XY arc length from reference TXT start to original stop-bar intersection
+  interval: 0 <= stop_station_m - RouteContext.progress <= approach_distance_m
+  after_crossing: disabled_immediately_no_post_stop_extension
+  stale_or_missing_context: disabled_clear_pending_and_invalidate_candidates
+  inference_in_flight: discard_if_scope_changed_or_context_expired_before_publication
+  scope: housing_candidates_only_no_bulb_color_or_driving_decision
+  standalone_preview: explicit_signal_route_gate_false_bypasses_gate_for_visual_diagnostics
+targets:
+  - number: 1
+    stop_line_id: B2256W000556
+    stop_station_m: 208.4589412964077
+    signal_ids: [C1256W000077]
+  - number: 2
+    stop_line_id: B2256W000447
+    stop_station_m: 315.9060983690472
+    signal_ids: [C1256W000091]
+  - number: 3
+    stop_line_id: B2256W000235
+    stop_station_m: 436.7975661420194
+    signal_ids: [C1256W000016, C1256W000018]
+  - number: 5
+    stop_line_id: B2256W000252
+    stop_station_m: 609.8768382772473
+    signal_ids: [C1256W000052]
+excluded:
+  - number: 4
+    stop_line_id: B2256W000266
+    signal_ids: [C1256W000123]
+    reason: user_excluded_right_turn_2026_10_15_not_a_general_traffic_rule

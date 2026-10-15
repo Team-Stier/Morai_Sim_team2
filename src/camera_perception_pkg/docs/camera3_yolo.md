@@ -20,6 +20,14 @@ source devel/setup.bash
 roslaunch system_bringup_pkg camera3_signal.launch
 ```
 
+기본 실행은 `/molit/route/context`의 유효 진행도가 있어야 추론한다.
+중앙 `signal_observation_policy.yaml`의 1·2·3·5번 정지선 전방 30m부터
+정지선까지 활성화하고 4번 우회전은 제외한다. 거리는 전역경로 XY 누적 거리이며
+원본 TXT hash가 일치해야 한다. 정지선 통과·경로 만료(0.5초)·시각 역행 시
+대기·진행 중 결과를 폐기한다. 빨강/초록 판독 및 주행 판단은 아직 미연결이다.
+경로 정보 없이 영상 검출만 확인하는 명시적 진단 실행은
+`roslaunch system_bringup_pkg camera3_signal.launch signal_route_gate:=false`다.
+
 박스 영상은 별도 터미널에서 다음으로 볼 수 있다:
 
 ```bash

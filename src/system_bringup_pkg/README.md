@@ -199,6 +199,10 @@ RViz 지도 범위는 기존 HTML 미리보기와 동일한 전역경로 주변 
 `camera3_yolo:=false`로 제외할 수 있다. MORAI의 `camera3signal_yolo` 센서
 프리셋 로드가 필요하며 [설정·박스 영상 안내](../camera_perception_pkg/docs/camera3_yolo.md)를 따른다.
 단독 실행은 `roslaunch system_bringup_pkg camera3_signal.launch`다.
+기본 YOLO는 중앙 관측 정책의 1·2·3·5번 정지선 전방 30m부터 정지선까지
+유효한 `/molit/route/context`가 있을 때만 추론하며 4번 우회전은 제외한다.
+정지선 통과 또는 경로 정보 만료 시 후보를 무효화한다. 위치/Route 실행 없이
+영상만 보는 명시적 단독 진단은 `signal_route_gate:=false`를 전달한다.
 이번 연결은 개발용 하우징 후보 진단이며 주행 신호 판단은 포함하지 않는다.
 
 ## PIDNet 장애물 점 기반 통합 실행 (2026-10-15)

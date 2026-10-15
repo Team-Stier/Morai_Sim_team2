@@ -8,6 +8,7 @@ catkin_install_python(PROGRAMS scripts/camera_perception_node DESTINATION ${CATK
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_semantic_contract.py)
   catkin_add_nosetests(test/test_signal_contract.py)
+  catkin_add_nosetests(test/test_signal_gate.py)
 endif()
 
 install(FILES README.md DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

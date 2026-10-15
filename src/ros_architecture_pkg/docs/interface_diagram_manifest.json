@@ -2,11 +2,11 @@
   "artifacts": [
     {
       "png": "src/camera_perception_pkg/docs/interface_io.png",
-      "png_sha256": "60411eb719435494378f221dc7a13c99ba0970bf7da7e7d0fa4a633735a147b8",
+      "png_sha256": "cb586f8f9c4d674db0db89031bed7469b4a9b217a32c775f59bb6b2f7869a9a6",
       "source": "src/camera_perception_pkg/docs/interface_io.mmd",
-      "source_sha256": "2d782f387c6e0a374afbfb4c84115d02ad05c468ad905a1b278b72f0f3acc023",
+      "source_sha256": "d0ebe1f7842429227c1bd967d726b5904d6c557b2b48c4d5f09aae8c8a0294c6",
       "svg": "src/camera_perception_pkg/docs/interface_io.svg",
-      "svg_sha256": "8155d91e2e7eaa91b0f18fd176967b33942eb7e41a246aefc2a5a77cb6e4862d"
+      "svg_sha256": "e484b8c3d8eff22a1d715a9108531e6919596c8c548e7d0de74b850ade69bee7"
     },
     {
       "png": "src/common_msgs_pkg/docs/interface_io.png",
@@ -74,11 +74,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_architecture.png",
-      "png_sha256": "08ec97c66cf28d308adae0febb3b8f2f6e02fd901476753d7a03831b984e4af1",
+      "png_sha256": "c6318e3952e1096a11e65dee1cc2e5042c5d5f8fd282162ccc50f33617e083e3",
       "source": "src/ros_architecture_pkg/docs/system_architecture.mmd",
-      "source_sha256": "6b7558fd4ec4fb84f32f7b414c4256b03bb6a81a0c657fe677910fb5e1b5fe2b",
+      "source_sha256": "55bd415132e2b629a186fbe9069a53a68cd4063d340f189e7ac60f3619414647",
       "svg": "src/ros_architecture_pkg/docs/system_architecture.svg",
-      "svg_sha256": "b8228a23ca54770e5137432c01e52cc834ff159c2ff591c0d95de4cca8a2312a"
+      "svg_sha256": "04217a27ebbf5b5d98473b7cf2f4539d8cc247c2e89ca730f9e822afc17ff568"
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_health_safety_flow.png",
@@ -90,11 +90,11 @@
     },
     {
       "png": "src/ros_architecture_pkg/docs/system_nominal_flow.png",
-      "png_sha256": "11d9993bed215b76e81c4fc22e5d853a5d0b96e5652f6a17b07eae22b84b4964",
+      "png_sha256": "247c7e09bc05c2a5a4c39cdf071c5098756bef2e5f57f63a56719248a22dbcb5",
       "source": "src/ros_architecture_pkg/docs/system_nominal_flow.mmd",
-      "source_sha256": "88cc15b5caffba34120a03263a871ac46e1bfc8db29427e53aa684a4c20a3b76",
+      "source_sha256": "ff96836f4dff362352da229969ad523aa8abaac988d29e202a222ec725d56ad7",
       "svg": "src/ros_architecture_pkg/docs/system_nominal_flow.svg",
-      "svg_sha256": "4e00f3a447cf5dd99d9e6e2ccb11b47ad89f2fa9a46985fd7a49681a051832ad"
+      "svg_sha256": "973dd25547e6e66d72a16084a771959a2e7e7fa1ae76262077527df8c49f0698"
     },
     {
       "png": "src/runtime_evaluation_pkg/docs/interface_io.png",
@@ -150,5 +150,5 @@
   "renderer_config_sha256": "0f533f527fe557829a5670b3fb96f4f270f7096627209fa9d8549a13faa00e10",
   "schema_version": 1,
   "source_of_truth": "src/ros_architecture_pkg/config/interface_contract.yaml",
-  "source_of_truth_sha256": "743552f1f86dbea3be83d7d876777492e29fc2abe4ca1e85a7ba89a036845f68"
+  "source_of_truth_sha256": "9f78f3cc34e4e8323a95a80acc70f5ed2e99cd14ef208e67ebd48f7c51dcf6f6"
 }

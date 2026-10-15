@@ -1,6 +1,7 @@
 <launch>
   <arg name="python" default="$(env HOME)/venvs/morai-yolo/bin/python"/>
   <arg name="weights" default="$(find camera_perception_pkg)/../../weights/camera3_route_signal.pt"/>
+  <arg name="signal_route_gate" default="true"/>
   <arg name="start_perception" default="true"/>
   <arg name="start_receiver" default="true"/>
   <node if="$(arg start_receiver)" pkg="morai_interface_pkg" type="camera_receiver_node"
@@ -11,6 +12,7 @@
     <arg name="enable_semantic" value="false"/>
     <arg name="enable_signal" value="true"/>
     <arg name="signal_weights" value="$(arg weights)"/>
+    <arg name="signal_route_gate" value="$(arg signal_route_gate)"/>
     <arg name="python" value="$(arg python)"/>
   </include>
 </launch>

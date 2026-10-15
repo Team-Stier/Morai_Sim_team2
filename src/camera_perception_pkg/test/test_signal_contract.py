@@ -35,6 +35,9 @@ class SignalContractTest(unittest.TestCase):
         self.assertEqual(names.count('camera_perception_node'), 1)
         self.assertTrue(config.params['/camera_perception_node/enable_signal'].value)
         self.assertTrue(config.params['/camera_perception_node/enable_semantic'].value)
+        self.assertTrue(config.params['/camera_perception_node/signal_route_gate'].value)
+        policy = config.params['/camera_perception_node/signal_policy/targets'].value
+        self.assertEqual([t['number'] for t in policy], [1, 2, 3, 5])
         self.assertEqual(config.params['/morai_camera_signal/port'].value, 9297)
         disabled = roslaunch.config.load_config_default([(launch, ['camera3_yolo:=false'])], None)
         self.assertNotIn('morai_camera_signal', [n.name for n in disabled.nodes])
@@ -44,3 +47,15 @@ class SignalContractTest(unittest.TestCase):
         config = roslaunch.config.load_config_default([(launch, ['weights:=/tmp/test.pt'])], None)
         self.assertTrue(config.params['/camera_perception_node/enable_semantic'].value)
         self.assertFalse(config.params['/camera_perception_node/enable_signal'].value)
+
+    def test_route_gate_uses_approved_producer_and_explicit_preview_override(self):
+        contract = yaml.safe_load((ROOT/'src/ros_architecture_pkg/config/interface_contract.yaml').read_text())
+        route = next(t for t in contract['topics'] if t['name'] == '/molit/route/context')
+        self.assertEqual(route['producers'], ['global_route_manager_node'])
+        self.assertIn('camera_perception_node', route['consumers'])
+        self.assertIn(route['name'], contract['package_boundaries']['camera_perception_pkg']['inputs'])
+        launch = str(ROOT/'src/system_bringup_pkg/launch/camera3_signal.launch')
+        normal = roslaunch.config.load_config_default([(launch, [])], None)
+        preview = roslaunch.config.load_config_default([(launch, ['signal_route_gate:=false'])], None)
+        self.assertTrue(normal.params['/camera_perception_node/signal_route_gate'].value)
+        self.assertFalse(preview.params['/camera_perception_node/signal_route_gate'].value)

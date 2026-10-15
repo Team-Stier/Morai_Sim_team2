@@ -42,6 +42,7 @@
 | 입력 | `/molit/sensors/camera/left/image/compressed` | `sensor_msgs/CompressedImage` |
 | 입력 | `/molit/sensors/camera/right/image/compressed` | `sensor_msgs/CompressedImage` |
 | 입력 | `/molit/sensors/camera/signal/image/compressed` | `sensor_msgs/CompressedImage` |
+| 입력 | `/molit/route/context` | `common_msgs_pkg/RouteContext` |
 | 출력 | `/molit/perception/camera/front/semantic_scores` | `sensor_msgs/Image` |
 | 출력 | `/molit/perception/camera/front/observations` | `common_msgs_pkg/CameraObservationArray` |
 | 출력 | `/molit/perception/camera/left/observations` | `common_msgs_pkg/CameraObservationArray` |
@@ -78,6 +79,15 @@ Camera mount/optical frame은 중앙 [`TF 계약`](../ros_architecture_pkg/confi
 `./run.sh`는 개발용 Camera3 YOLO 하우징 검출을 함께 시작한다.
 센서 프리셋 로드와 박스 영상 확인은 [실행 안내](docs/camera3_yolo.md)를 따른다.
 신호 후보는 private 진단 출력이며 주행 판단에 연결하지 않았다.
+
+YOLO는 중앙 `config/map/signal_observation_policy.yaml`에 지정한 1·2·3·5번
+정지선의 **경로상 30m 전부터 정지선까지**만 추론·후보 출력을 허용한다.
+4번 우회전은 사용자 지정으로 제외한다. RouteContext가 없거나 0.5초 이상
+오래됐거나 경로 hash가 다르면 비활성화하며, 대기 프레임과 진행 중 추론 결과도
+구간 이탈·만료 시 폐기한다. private JSON의 `gate_active=false`, 빈 `candidates`는
+이전 후보 무효화를 뜻한다. `route_scope.signal_ids`는 정적 허용 후보 목록이며
+검출 박스와 지도 신호 ID의 대응이 확정됐다는 뜻은 아니다.
+명시적 `signal_route_gate:=false`는 위치 정보 없는 단독 시각 진단용이다.
 
 본선/개발 전체 실행은 기본으로 이 PIDNet 추론을 활성화한다.
 World Model에서 foreground 선별과 LiDAR 융합·군집·추적을 수행한다.
