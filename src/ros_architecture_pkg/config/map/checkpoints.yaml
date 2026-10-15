@@ -1,4 +1,6 @@
 source: https://morai.atlassian.net/wiki/external/ZDcwYmMyZGQ1ZTMxNDBjOTk3ODczODIxYzBjYzI2Mzc
+source_page_updated_on: "2026-10-07"
+verified_on: "2026-10-16"
 radius_m: 3.0
 points:
 - - -96.341945028
@@ -31,9 +33,9 @@ points:
 - - 62.073913683
   - 256.494927573
   - 28.268789437
-- - 75.414203703
-  - -217.855053961
-  - 28.382283641
+- - 73.55110931396484
+  - -238.7718963623047
+  - 28.71942138671875
 - - 70.214148834
   - -365.748476558
   - 28.301585315

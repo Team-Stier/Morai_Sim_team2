@@ -64,6 +64,8 @@ Controller는 [Closedteam2 제어 통합 계약](docs/controller_integration.md)
 
 ## 주요 문서
 
+- [2026-10-16 공식 규정 대조·변경점 및 패키지 영향](docs/rulebook_update_20261016.md)
+
 - [HSV 신호 판독·대상 선택·정지/재출발·RViz](docs/traffic_signal_hsv.md)
 
 - [경로별 YOLO 30m 관측 구간과 4번 우회전 제외](docs/signal_observation_gate.md)

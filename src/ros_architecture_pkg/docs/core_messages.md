@@ -12,7 +12,9 @@ v0.1.0에서 세 타입의 필드를 구현한다. 필드와 의미의 유일한
 ## 규정 반영 근거
 
 [규정] [공식 규정집 v1.2](https://morai.atlassian.net/wiki/external/ZDBiNmI0MGFiNTY2NDRkYWIyZTMzNWFkYzkwY2Q4NTU)의
-§2-6-2와 §2-8을 2026-10-01에 확인했다. 공개 메시지 필드와 의미는 변경되지 않는다.
+§2-6-2와 §2-8을 2026-10-01에 확인했고, 2026-10-16에 공개 페이지의
+2026-10-12 수정 표시 본문으로 재확인했다. 센서·허용 네트워크 내용과 공개 메시지
+필드·의미는 동일하다. 채점 기준 차이는 [규정 대조 기록](rulebook_update_20261016.md)을 따른다.
 
 - 올해 한시적으로 GPS·IMU에 Noise를 인가하지 않는다. GPS blackout 요구는 유지된다.
 - Competition Vehicle Status에는 pos_x/y/z, vel_y/z, accel_x/y/z 및 지정된
