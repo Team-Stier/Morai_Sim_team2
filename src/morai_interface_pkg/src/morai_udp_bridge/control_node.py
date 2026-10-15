@@ -14,7 +14,8 @@ import rospy
 from common_msgs_pkg.msg import ActuatorCommand
 from morai_udp_bridge.protocol import ego_ctrl_cmd_packet
 from morai_udp_bridge.udp_sender import UdpSender
-from morai_udp_bridge.q_key_guard import QKeyGuard
+from std_msgs.msg import UInt64MultiArray
+from morai_udp_bridge.control_mode_guard import ControlModeGuard, CONTROL_MODE_TOPIC
 
 
 class MoraiControlSender(object):
@@ -48,9 +49,13 @@ class MoraiControlSender(object):
         )
         self._sent_count = 0
         self._rejected_count = 0
-        self._q_guard = None
-        if not self.dry_run and rospy.get_param('~local_q_guard_enabled', False):
-            self._q_guard = QKeyGuard(float(rospy.get_param('~local_q_handover_sec', 0.5)))
+        self._mode_guard = ControlModeGuard(
+            float(rospy.get_param("~control_mode_timeout_sec", 0.5))
+        )
+        self._mode_subscriber = rospy.Subscriber(
+            CONTROL_MODE_TOPIC, UInt64MultiArray, self._on_control_mode,
+            queue_size=1, tcp_nodelay=True,
+        )
         self._subscriber = rospy.Subscriber(
             "/molit/safety/final_command",
             ActuatorCommand,
@@ -66,9 +71,12 @@ class MoraiControlSender(object):
             self.allow_motion_commands, self.steering_conversion_verified,
         )
 
+    def _on_control_mode(self, message):
+        self._mode_guard.update(message.data)
+
     def _on_command(self, message):
-        if self._q_guard is not None and self._q_guard.blocked():
-            rospy.loginfo_throttle(5.0, "[morai_control_sender] Q manual/handover: UDP paused")
+        if self._mode_guard.blocked():
+            rospy.loginfo_throttle(5.0, "[morai_control_sender] MORAI manual/unknown/stale mode: UDP paused")
             return
         self._send_command(message)
 
@@ -98,6 +106,9 @@ class MoraiControlSender(object):
             )
             return
 
+        # Recheck after validation in case a status callback changed the mode.
+        if self._mode_guard.blocked():
+            return
         self._sender.send(packet)
         self._sent_count += 1
         rospy.loginfo_throttle(
@@ -149,8 +160,6 @@ class MoraiControlSender(object):
         return normalized
 
     def _on_shutdown(self):
-        if self._q_guard is not None:
-            self._q_guard.close()
         if self._sender is not None:
             self._sender.close()
         rospy.loginfo(

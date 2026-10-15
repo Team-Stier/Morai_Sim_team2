@@ -15,3 +15,6 @@ future_tolerance_sec: 0.05
 # 실제 변환 비율 검증 전에는 non-zero steering을 송신하지 않는다.
 steering_conversion_verified: false
 steering_normalized_per_rad: 1.0
+
+# MORAI status must report Auto; missing/manual/stale status pauses UDP.
+control_mode_timeout_sec: 0.5

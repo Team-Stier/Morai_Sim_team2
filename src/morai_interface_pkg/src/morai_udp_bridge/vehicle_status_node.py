@@ -6,16 +6,20 @@ EgoVehicleStatus UDP example but explicitly withholds position, vel_y/vel_z,
 linear acceleration and tire-dynamics fields. This node therefore parses only
 the allowed subset and never reads the prohibited fields.
 
-Until a live competition datagram is observed, the 229-byte wire size remains a
-development candidate inferred from the referenced EgoVehicleStatus example.
-A different live datagram size is rejected and logged instead of guessed.
+The competition parser accepts the validated 181-byte layout only.
+The internal control-mode watchdog carries same-host monotonic ingress time;
+public twist timestamps keep their existing ROS-domain semantics.
 """
 
+import time
+
 import rospy
+from std_msgs.msg import UInt64MultiArray
 from geometry_msgs.msg import TwistWithCovarianceStamped
 
 from morai_udp_bridge.protocol import competition_vehicle_status_packet
 from morai_udp_bridge.udp_receiver import UdpReceiver
+from morai_udp_bridge.control_mode_guard import CONTROL_MODE_TOPIC
 
 _VELOCITY_SOURCES = ("vel_x", "signed_vel")
 
@@ -56,6 +60,9 @@ class MoraiVehicleStatusBridge(object):
         self._publisher = rospy.Publisher(
             "/molit/vehicle/twist", TwistWithCovarianceStamped, queue_size=10
         )
+        self._mode_publisher = rospy.Publisher(
+            CONTROL_MODE_TOPIC, UInt64MultiArray, queue_size=1, latch=False
+        )
         self._receiver = UdpReceiver(
             self.bind_ip, self.port, self.buffer_bytes, self.socket_timeout_sec
         )
@@ -95,6 +102,7 @@ class MoraiVehicleStatusBridge(object):
                 continue
             data, _sender = received
             self._recv_count += 1
+            ingress_ns = time.monotonic_ns()
             ingress_stamp = rospy.Time.now()
             self._last_recv_time = ingress_stamp
 
@@ -114,6 +122,7 @@ class MoraiVehicleStatusBridge(object):
                 )
             except competition_vehicle_status_packet.CompetitionVehicleStatusParseError as error:
                 self._parse_fail_count += 1
+                self._publish_mode(0, ingress_ns)
                 rospy.logwarn_throttle(
                     2.0,
                     "[morai_vehicle_status_bridge] Competition Status 파싱 실패: %s"
@@ -122,6 +131,7 @@ class MoraiVehicleStatusBridge(object):
                 continue
             except Exception as error:
                 self._parse_fail_count += 1
+                self._publish_mode(0, ingress_ns)
                 rospy.logwarn_throttle(
                     2.0,
                     "[morai_vehicle_status_bridge] 예상치 못한 오류: %s" % error,
@@ -134,7 +144,13 @@ class MoraiVehicleStatusBridge(object):
                     self.log_raw_period_sec,
                     "[morai_vehicle_status_bridge] raw %r" % reading,
                 )
+            self._publish_mode(reading.ctrl_mode, ingress_ns)
             self._publish(reading, ingress_stamp)
+
+    def _publish_mode(self, mode, ingress_ns):
+        message = UInt64MultiArray()
+        message.data = [mode if 0 <= mode <= 255 else 0, ingress_ns]
+        self._mode_publisher.publish(message)
 
     def _publish(self, reading, ingress_stamp):
         message = TwistWithCovarianceStamped()
