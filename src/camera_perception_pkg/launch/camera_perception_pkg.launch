@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="weights" default=""/>
+  <arg name="weights" default="$(find camera_perception_pkg)/../../weights/pidnet_s_morai6.pt"/>
   <arg name="python" default="python3"/>
   <arg name="enable_semantic" default="true"/>
   <arg name="enable_signal" default="false"/>
-  <arg name="signal_weights" default=""/>
+  <arg name="signal_weights" default="$(find camera_perception_pkg)/../../weights/camera3_route_signal.pt"/>
   <arg name="signal_route_gate" default="true"/>
   <node pkg="camera_perception_pkg" type="camera_perception_node" name="camera_perception_node"
         ns="/" output="screen" launch-prefix="$(arg python)">

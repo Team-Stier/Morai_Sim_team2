@@ -1,7 +1,7 @@
 <launch>
   <arg name="pidnet_enabled" default="true"/>
-  <arg name="pidnet_weights" default="/home/paik/morai-artifacts/pidnet-training/output/Morai6/pidnet_s_morai6/best.pt"/>
-  <arg name="pidnet_python" default="/home/paik/venvs/morai-pidnet/bin/python"/>
+  <arg name="pidnet_weights" default="$(find camera_perception_pkg)/../../weights/pidnet_s_morai6.pt"/>
+  <arg name="pidnet_python" default="$(env HOME)/venvs/morai-pidnet/bin/python"/>
   <!-- User's complete development driving stack; reuse package-owned launch files. -->
   <arg name="rviz" default="true"/>
   <arg name="send_to_morai" default="true"/>

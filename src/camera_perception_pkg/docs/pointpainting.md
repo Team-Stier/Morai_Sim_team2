@@ -1,6 +1,7 @@
 # 전방 PIDNet-S PointPainting
 
-학습 완료한 MORAI 6-class `best.pt`를 사용한다. 모델 구현은 공식
+학습 완료한 MORAI 6-class 가중치 `weights/pidnet_s_morai6.pt`를 기본 사용한다.
+가중치는 저장소에 포함하며 [목록·환경 준비](../../../weights/README.md)를 따른다. 모델 구현은 공식
 [XuJiacong/PIDNet](https://github.com/XuJiacong/PIDNet)의 commit
 `4c158cf24ce432f0a8cb43364fae38d93cee0dc3`에서 `pidnet.py`, `model_utils.py`만
 그대로 포함했다. 동봉한 MIT LICENSE를 유지한다. 모델 다운로드나 추가 학습은 없다.
@@ -16,10 +17,9 @@ ROS 의존성은 package.xml에 선언한 rospy, sensor_msgs, cv_bridge를 사�
 
 ```bash
 source /opt/ros/noetic/setup.bash
-source /home/paik/morai-artifacts/pointpainting-catkin/devel/setup.bash
+source devel/setup.bash
 roslaunch system_bringup_pkg pointpainting.launch \
-  python:=/home/paik/venvs/morai-pidnet/bin/python \
-  weights:=/home/paik/morai-artifacts/pidnet-training/output/Morai6/pidnet_s_morai6/best.pt
+  python:=$HOME/venvs/morai-pidnet/bin/python
 ```
 
 이 실행은 Camera inference와 PointPainting만 시작한다. 센서 수신은 기존

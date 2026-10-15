@@ -1,5 +1,5 @@
 <launch>
-  <arg name="weights"/>
+  <arg name="weights" default="$(find camera_perception_pkg)/../../weights/pidnet_s_morai6.pt"/>
   <arg name="python" default="python3"/>
   <arg name="use_sim_time" default="false"/>
   <arg name="rviz" default="false"/>

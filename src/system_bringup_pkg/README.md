@@ -228,7 +228,11 @@ World Model은 측정시각과 상태 watchdog으로 stale 결과를 거부한�
 객체가 없는 결과는 free-space 증거가 아니다. 개발 calibration/freshness와
 planner_ready 검증 제한은 유지한다.
 
-현재 PC의 가중치와 Python 기본값은 기존 검증된 경로다. 다른 PC에서는 인자로 지정한다.
+기본 PIDNet 가중치는 저장소의 `weights/pidnet_s_morai6.pt`이며, YOLO 가중치도
+같은 디렉터리에 포함한다. 외부 학습 폴더를 복사할 필요가 없다.
+[가중치 목록·환경 준비](../../weights/README.md)를 따른다.
+Python 기본값은 `~/venvs/morai-pidnet/bin/python`이고, YOLO 동시 실행은
+`~/venvs/morai-yolo/bin/python`을 사용한다. 다른 환경은 인자로 지정한다.
 
 ```bash
 ./run.sh pidnet_weights:=/absolute/path/best.pt pidnet_python:=/absolute/path/python

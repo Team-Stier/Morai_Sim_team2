@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="pidnet_enabled" default="true"/>
-  <arg name="pidnet_weights" default="/home/paik/morai-artifacts/pidnet-training/output/Morai6/pidnet_s_morai6/best.pt"/>
-  <arg name="pidnet_python" default="/home/paik/venvs/morai-pidnet/bin/python"/>
+  <arg name="pidnet_weights" default="$(find camera_perception_pkg)/../../weights/pidnet_s_morai6.pt"/>
+  <arg name="pidnet_python" default="$(env HOME)/venvs/morai-pidnet/bin/python"/>
   <!-- Competition full-stack bringup.
        본선 MORAI UDP I/O + Localization + Frenet 주행 스택을 한 번에 올린다.
        개발용 frenet_all.launch의 센서/제어 설정은 재사용하지 않는다. -->

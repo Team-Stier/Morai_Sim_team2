@@ -39,6 +39,27 @@ class FrenetAllLaunchTest(unittest.TestCase):
         self.assertIn('vehicle_controller_node', names)
         self.assertEqual(config.params['/path_planner_node/test_speed_cap_kph'].value, 10.)
 
+    def test_default_model_files_are_bundled_for_all_entry_points(self):
+        root = Path(__file__).resolve().parents[3]
+        launches = (
+            ('system_bringup_pkg', 'frenet_all'),
+            ('system_bringup_pkg', 'frenet_rddf'),
+            ('system_bringup_pkg', 'competition'),
+            ('system_bringup_pkg', 'pointpainting'),
+            ('camera_perception_pkg', 'camera_perception_pkg'),
+        )
+        for package, name in launches:
+            with self.subTest(launch=name):
+                launch = str(root / 'src' / package / 'launch' / (name + '.launch'))
+                config = roslaunch.config.load_config_default([(launch, [])], None)
+                weights = Path(config.params['/camera_perception_node/weights'].value).resolve()
+                self.assertEqual(weights, root / 'weights/pidnet_s_morai6.pt')
+                self.assertTrue(weights.is_file())
+                if config.params['/camera_perception_node/enable_signal'].value:
+                    signal = Path(config.params['/camera_perception_node/signal_weights'].value).resolve()
+                    self.assertEqual(signal, root / 'weights/camera3_route_signal.pt')
+                    self.assertTrue(signal.is_file())
+
     def test_explicit_legacy_mode_does_not_start_pidnet(self):
         config = self.load(['pidnet_enabled:=false'])
         names = {node.name for node in config.nodes}
