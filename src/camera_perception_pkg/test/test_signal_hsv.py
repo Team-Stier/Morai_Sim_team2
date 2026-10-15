@@ -1,7 +1,7 @@
 from pathlib import Path
 import unittest
 import cv2,numpy as np,yaml
-from camera_perception_pkg.signal_hsv import classify_lamps
+from camera_perception_pkg.signal_hsv import classify_lamps, classify_layout_hypotheses
 ROOT=Path(__file__).resolve().parents[1]
 class HSVTest(unittest.TestCase):
  def setUp(self):self.c=yaml.safe_load((ROOT/'config/signal_hsv.yaml').read_text())
@@ -19,4 +19,18 @@ class HSVTest(unittest.TestCase):
   self.assertFalse(self.read(4,[])[1])
   self.assertFalse(self.read(3,[(0,(0,0,255)),(2,(0,255,0))])[1])
   self.assertFalse(classify_lamps(np.zeros((100,240,3),np.uint8),[0,0,240,20],3,self.c)[1])
+ def test_layout_hypotheses_do_not_depend_on_yolo_class(self):
+  im=np.zeros((100,240,3),np.uint8);box=[20,20,220,80]
+  cv2.circle(im,(53,50),10,(0,0,255),-1)
+  hypotheses=classify_layout_hypotheses(im,box,self.c)
+  self.assertEqual([(h['layout'],h['lamp_mask'],h['valid']) for h in hypotheses],
+                   [(3,1,True),(4,1,True)])
+ def test_left_slot_is_not_a_straight_green_and_clipping_invalidates_both(self):
+  im=np.zeros((100,240,3),np.uint8);box=[20,20,220,80]
+  cv2.circle(im,(145,50),8,(0,255,0),-1)
+  hypotheses=classify_layout_hypotheses(im,box,self.c)
+  self.assertEqual([(h['layout'],h['lamp_mask'],h['valid']) for h in hypotheses],
+                   [(3,0,False),(4,8,True)])
+  self.assertTrue(all(not h['valid'] for h in
+      classify_layout_hypotheses(im,[0,20,220,80],self.c)))
 if __name__=='__main__':unittest.main()

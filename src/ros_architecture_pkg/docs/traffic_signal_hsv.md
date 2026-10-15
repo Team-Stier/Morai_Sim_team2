@@ -184,3 +184,28 @@ Controller→Safety→UDP 경로를 그대로 사용했다.
 GPSList/IMUList 전체가 저장소 snapshot과 동일함을 확인했고 GPS/IMU scope
 검증을 다시 수행하여 최종 hash를 중앙 증거에 반영했다. 재개 직후340°였던
 hash와13:53의320° hash는 과거 관측으로 별도 보존했다.
+
+
+## 3구/4구 YOLO 오분류 보완
+
+사용자 요청에 따라 같은 하우징의 3구·4구 HSV 가설을 각각 발행한다. 공개
+message 필드·MD5·topic·source stamp는 바꾸지 않는다. YOLO class는 하우징
+위치/신뢰도 및 진단값으로 사용하며 layout 선택을 강제하지 않는다. World
+Model의 기존 지도 layout·투영 위치 검사를 통과하는 가설을 head당 하나만
+선택한다. 두 가설을 추가 head나 추가 프레임으로 간주하지 않으며, 동일
+측정으로 허용 상태 확인 횟수가 늘지 않는다. 0.5초 만료, 잘림 거부,
+3프레임/0.25초 허용 확인, Planner 정지·출발 정책은 유지한다.
+
+원래 2번에서 화면의3구가 YOLO class1(4구), confidence≈0.89로 검출되어
+map layout3과 불일치했고 World 상태는 no_matching_visible_lamp였다.
+`/home/paik/morai-artifacts/signal-layout-hypotheses-20261015/`에 문제 영상
+재검출 및 실제 센서 읽기 전용 재처리 증거를 보관했다. 저장 영상에서
+3구·4구 가설 모두 RED/valid였고, 실제 source stamp1792047883.584의
+동일 영상·측정시각 pose·현재 RouteContext를 새 처리로 연결하면
+head C1256W000091/stop B2256W000447에 RED/valid로 대응했다.
+이 상태를 Planner 정책에 넣어 signal=RED/action=STOP/목표속도0m/s를
+확인했다. 원래 실행의 정지 위치는 s≈311.673m(정지선 약4.23m 전)이었다.
+이 검증은 ROS 관측을 구독하여 메모리 안에서 처리했으며 주행 topic에
+테스트 결과나 제어 명령을 발행하지 않았다. 실행 중 노드를 재시작하지
+않았으므로 다음 run.sh 실행부터 새 producer가 적용된다. 새 코드의
+실제 차량 제동·재출발을 반복 검증했다는 의미는 아니다.

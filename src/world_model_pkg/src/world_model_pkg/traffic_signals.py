@@ -92,6 +92,8 @@ class SignalFusion:
                     continue
                 candidates=[]
                 for observation in message.signals:
+                    # One box may carry both HSV layout hypotheses. Only the
+                    # map's layout participates; choose at most one per head.
                     if (not observation.valid or observation.layout != head['layout'] or
                             not math.isfinite(observation.confidence) or
                             observation.confidence < self.config['minimum_detection_confidence'] or

@@ -48,7 +48,11 @@ ROS Python 의존성은 `config/signal_requirements.txt`에 기록했다.
 
 `~signal_detections` JSON과 `~signal_image`는 하우징 후보 진단 출력이다.
 원본 header/stamp를 보존하고 가장 최신 대기 영상 1장만 처리한다.
-이미지의 3/4등식 표시는 하우징 종류이며 RED/GREEN/LEFT 텍스트는 HSV 점등 판독이다.
+이미지의 3/4등식 candidate 표시는 YOLO의 하우징 분류이며,
+`HSV 3:... / 4:...`는 같은 박스를 두 layout으로 판독한 가설이다.
+공개 배열에는 같은 bbox·confidence·원본 stamp로 layout3/4를 각각 발행한다.
+private JSON의 `lamp_hypotheses`에 두 판독을 싣고, 기존 `lamp_mask/lamp_valid/lamp_reason`은
+YOLO 분류에 해당하는 진단값만 유지한다. 지도 선택 결과나 출발 허가가 아니다.
 검출 후보가 다른 차선의 신호일 수 있으므로 World Model이 지도 대상 ID를 선택한다.
 Planner 연결은 중앙 HSV 신호 계약을 따르며 private 후보를 직접 제어에 사용하지 않는다.
 

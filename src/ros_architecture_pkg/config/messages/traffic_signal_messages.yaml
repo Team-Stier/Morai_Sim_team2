@@ -51,6 +51,10 @@ messages:
 
       '
 semantics:
+- Camera publishes layout 3 and layout 4 HSV hypotheses for each YOLO housing box,
+  sharing its confidence, bbox and measurement stamp. YOLO housing class is diagnostic
+  only. World Model selects the hypothesis matching the mapped head layout and
+  projection; alternative layouts are not independent frames or additional heads.
 - HSV observations retain camera measurement stamp; image pixels and lamp bits are
   not map identity or a driving command.
 - World Model assigns stop-line and signal IDs using measurement-time ego pose and

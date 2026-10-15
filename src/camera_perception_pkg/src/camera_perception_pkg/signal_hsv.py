@@ -3,6 +3,19 @@ import cv2
 import numpy as np
 
 
+def classify_layout_hypotheses(bgr, bbox, config):
+    """Observe both bulb layouts; World Model selects by mapped head geometry.
+
+    YOLO's housing class is diagnostic only. Hypotheses share one source box,
+    and must not count as multiple temporal confirmations or independent heads.
+    """
+    hypotheses = []
+    for layout in (3, 4):
+        mask, valid, reason = classify_lamps(bgr, bbox, layout, config)
+        hypotheses.append(dict(layout=layout, lamp_mask=mask, valid=valid, reason=reason))
+    return hypotheses
+
+
 def classify_lamps(bgr, bbox, layout, config):
     h, w = bgr.shape[:2]
     x1, y1, x2, y2 = map(float, bbox)

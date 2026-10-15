@@ -147,5 +147,7 @@ Camera3 HSV 관측은 측정시각의 EgoState pose 보간과 중앙 카메라 �
 대응한다. 1·2·3·5번만 사용하고 4번 우회전은 제외한다. WorldModel.traffic_signals는
 영상 원본 stamp를 보존한다. ROI와 투영 위치가 맞지 않거나 관측이 오래되면 유효한
 허용 신호를 만들지 않는다. 녹색/좌회전 허용은 연속 3프레임·0.25초 확인 후 제공한다.
+한 박스의 3구·4구 가설 중 지도 layout에 맞는 것만 선택하며,
+가설 두 개를 추가 head나 추가 확인 프레임으로 세지 않는다.
 동시에 보이는 head들의 공통 점등만 사용한다. 이 개발 기능은 전체 scene의
 objects_verified/planner_ready를 승격하지 않는다. 파라미터는 config/world_model.yaml에 둔다.

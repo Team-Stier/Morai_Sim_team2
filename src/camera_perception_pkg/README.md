@@ -80,6 +80,8 @@ Camera mount/optical frame은 중앙 [`TF 계약`](../ros_architecture_pkg/confi
 `./run.sh`는 개발용 Camera3 YOLO 하우징 검출을 함께 시작한다.
 센서 프리셋 로드와 박스 영상 확인은 [실행 안내](docs/camera3_yolo.md)를 따른다.
 private 신호 후보는 진단용이며 공개 HSV 관측은 World Model을 거쳐 주행 판단에 연결한다.
+각 박스를 3구·4구 두 방식으로 판독하며, YOLO의 등 개수 분류로 하나를 폐기하지 않는다.
+World Model이 지도 head의 layout·투영 위치에 맞는 가설을 선택한다.
 
 YOLO는 중앙 `config/map/signal_observation_policy.yaml`에 지정한 1·2·3·5번
 정지선의 **경로상 30m 전부터 정지선까지**만 추론·후보 출력을 허용한다.

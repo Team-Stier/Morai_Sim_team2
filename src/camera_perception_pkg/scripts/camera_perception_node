@@ -114,21 +114,28 @@ class SignalNode:
                 if bgr is None:
                     continue
                 annotated, candidates = self.detector(bgr)
-                from camera_perception_pkg.signal_hsv import classify_lamps
+                from camera_perception_pkg.signal_hsv import classify_layout_hypotheses
                 from common_msgs_pkg.msg import CameraSignalArray, TrafficSignal
                 observations = CameraSignalArray(header=message.header,
                     image_width=bgr.shape[1], image_height=bgr.shape[0])
                 for candidate in candidates:
-                    layout = 3 if candidate['class_id'] == 0 else 4
-                    mask, valid, reason = classify_lamps(bgr, candidate['xyxy'], layout, self.hsv_config)
-                    candidate.update(lamp_mask=mask, lamp_valid=valid, lamp_reason=reason)
-                    observations.signals.append(TrafficSignal(header=message.header,
-                        layout=layout, confidence=candidate['confidence'], bbox=candidate['xyxy'],
-                        lamp_mask=mask, valid=valid, reason=reason))
+                    hypotheses = classify_layout_hypotheses(bgr, candidate['xyxy'], self.hsv_config)
+                    candidate['lamp_hypotheses'] = hypotheses
+                    # Retain the old private fields as YOLO-class diagnostics only.
+                    preferred = hypotheses[0 if candidate['class_id'] == 0 else 1]
+                    candidate.update(lamp_mask=preferred['lamp_mask'], lamp_valid=preferred['valid'],
+                                     lamp_reason=preferred['reason'])
+                    labels = []
+                    for hypothesis in hypotheses:
+                        observations.signals.append(TrafficSignal(header=message.header,
+                            confidence=candidate['confidence'], bbox=candidate['xyxy'], **hypothesis))
+                        mask = hypothesis['lamp_mask']
+                        text = '|'.join(name for bit, name in [(1,'RED'),(2,'YELLOW'),(4,'GREEN'),(8,'LEFT')]
+                                        if mask & bit) or 'UNKNOWN'
+                        labels.append('%d:%s' % (hypothesis['layout'], text))
                     x, y = map(int, candidate['xyxy'][:2])
-                    text = '|'.join(name for bit, name in [(1,'RED'),(2,'YELLOW'),(4,'GREEN'),(8,'LEFT')] if mask & bit) or 'UNKNOWN'
-                    cv2.putText(annotated, text, (x, max(20,y-22)), cv2.FONT_HERSHEY_SIMPLEX,
-                                .65, (0,0,255) if mask & 1 else (0,255,0) if valid else (0,200,255), 2)
+                    cv2.putText(annotated, 'HSV '+ ' / '.join(labels), (x, max(20,y-22)),
+                                cv2.FONT_HERSHEY_SIMPLEX, .65, (0,200,255), 2)
                 output = Image(header=message.header, height=annotated.shape[0],
                                width=annotated.shape[1], encoding='bgr8',
                                is_bigendian=0, step=annotated.shape[1] * 3,
