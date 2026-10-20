@@ -17,7 +17,7 @@ def read(path):
 class CoreContractTest(unittest.TestCase):
     def test_rddf_wire_definitions_match_map_route_planner_contract(self):
         schema = read(CONFIG / 'messages/rddf_planning_messages.yaml')
-        self.assertEqual(set(schema['messages']), {'HdMap', 'SignalStopLine', 'RouteLane', 'LaneChangeWindow', 'RouteContext'})
+        self.assertEqual(set(schema['messages']), {'HdMap', 'StaticMapObstacle', 'SignalStopLine', 'RouteLane', 'LaneChangeWindow', 'RouteContext'})
         for name, entry in schema['messages'].items():
             self.assertEqual((PACKAGE / 'msg' / (name + '.msg')).read_text(), entry['wire_definition'])
 
@@ -71,7 +71,7 @@ class CoreContractTest(unittest.TestCase):
             'LidarObjectObservation.msg', 'LidarObservationArray.msg',
             'ActuatorCommand.msg', 'CollisionEvent.msg',
             'Trajectory.msg', 'ControllerStatus.msg', 'TrackedObject.msg', 'WorldModel.msg',
-            'HdMap.msg', 'SignalStopLine.msg', 'RouteLane.msg', 'LaneChangeWindow.msg', 'RouteContext.msg',
+            'HdMap.msg', 'StaticMapObstacle.msg', 'SignalStopLine.msg', 'RouteLane.msg', 'LaneChangeWindow.msg', 'RouteContext.msg',
             'StaticWallMap.msg',
             'TrafficSignal.msg', 'CameraSignalArray.msg',
         })

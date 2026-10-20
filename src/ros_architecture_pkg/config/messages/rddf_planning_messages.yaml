@@ -1,5 +1,5 @@
 schema_version: 1
-contract_version: 0.4.0
+contract_version: 0.5.0
 authority: ros_architecture_pkg
 implementation_owner: common_msgs_pkg
 status: development_frenet_rddf
@@ -18,6 +18,15 @@ messages:
       geometry_msgs/Polygon[] forbidden_boundaries
       # Original signal-controlled stop bars on same-direction course approaches, in map.
       common_msgs_pkg/SignalStopLine[] signal_stop_lines
+      # Source-backed fixed obstacles near the official global route.
+      common_msgs_pkg/StaticMapObstacle[] static_obstacles
+  StaticMapObstacle:
+    wire_definition: |
+      # Authority: ros_architecture_pkg/config/messages/rddf_planning_messages.yaml
+      string id
+      string kind
+      # Dense occupied XYZ samples, not polygon vertices; never join across samples.
+      geometry_msgs/Point[] points
   SignalStopLine:
     wire_definition: |
       # Authority: ros_architecture_pkg/config/messages/rddf_planning_messages.yaml
@@ -106,3 +115,18 @@ stop_line_semantics:
   signal_state: absent_dynamic_phase_requires_perception
   consumer_effect: static_geometry_only_no_automatic_stop_or_change_to_trajectory
   migration: HdMap_MD5_changes_rebuild_and_restart_all_HdMap_producers_and_consumers_together
+
+static_obstacle_semantics:
+  owner: hd_map_pkg
+  frame: parent_HdMap_header_map
+  unit: m
+  source: immutable_MGeo_object_set_only_never_sample_scene_or_hidden_simulator_state
+  selection: sampled_geometry_within_configured_XY_distance_of_official_route_and_height_tolerance
+  geometry: dense_occupied_XYZ_samples_with_configured_conservative_XY_padding_not_connected_vertices
+  supported_kinds: [wall, guardrail, concrete_barrier, light_pole, sign_pole]
+  unknown_dimensions: configured_padding_is_a_development_assumption_not_measured_object_size
+  physical_alignment_verified: false
+  timestamp: parent_static_map_version_load_time_not_sensor_time_no_stale_expiry
+  consumer_effect: always_include_in_Frenet_Hybrid_and_held_path_collision_checks_even_geometry_only_mode
+  exclusions: no_dynamic_NPC_or_random_mission_obstacles_and_no_perception_readiness_bypass
+  migration: rebuild_and_restart_all_HdMap_producers_and_consumers_together_MD5_changes

@@ -98,9 +98,33 @@ class Node:
                     self.clear_handoff_locked()
                 self.state = ego, odom
 
+    def collision_points(self, world):
+        dynamic = flatten_obstacle_points(world.objects)
+        static = getattr(self, 'map_obstacle_points', np.empty((0, 2)))
+        return np.concatenate((dynamic, static))
+
+    def collision_obstacles(self, world, now):
+        dynamic = [Obstacle(np.array([[p.x, p.y, p.z] for p in o.points]),
+            np.array([o.twist.linear.x, o.twist.linear.y]), o.velocity_valid,
+            (now-o.source_stamp).to_sec()) for o in world.objects]
+        return dynamic + list(getattr(self, 'map_collision_obstacles', ()))
+
     def on_map(self, message):
         if self.static_map is not None and self.static_map[0] == message.map_id:
             return
+        static_objects = []
+        for obstacle in message.static_obstacles:
+            # Bounded chunks avoid enormous per-object swept bounding boxes.
+            for begin in range(0, len(obstacle.points), 128):
+                obj = TrackedObject()
+                obj.points = obstacle.points[begin:begin+128]
+                obj.velocity_valid = False
+                static_objects.append(obj)
+        self.map_obstacles = static_objects
+        self.map_obstacle_points = flatten_obstacle_points(static_objects)
+        self.map_collision_obstacles = [Obstacle(
+            np.array([[p.x,p.y,p.z] for p in o.points]), np.zeros(2), False, 0.)
+            for o in static_objects]
         lanes = {}
         geometry_only = self.c['rddf_geometry_only']
         if geometry_only:
@@ -236,7 +260,7 @@ class Node:
         """Key only observed points close enough to affect this selected path."""
         if candidate is None or world is None:
             return None
-        points = flatten_obstacle_points(world.objects)
+        points = self.collision_points(world)
         if not np.isfinite(points).all():
             return None
         radius = self.hybrid_planner.obstacle_search_radius_m
@@ -319,7 +343,7 @@ class Node:
         position = np.array([p.x, p.y, p.z])
         progress = project(lane.xy, lane.s, position[:2])[0]
         return hybrid_path_clear(self.hybrid_planner, lane, progress, suffix,
-                                 flatten_obstacle_points(world.objects),
+                                 self.collision_points(world),
                                  self.hybrid_runtime_config,
                                  self.c.get('loop_route', False), boundaries)
 
@@ -386,7 +410,7 @@ class Node:
         p = state[0].pose.pose.position
         progress = project(lane.xy, lane.s, np.array([p.x, p.y]))[0]
         return hybrid_path_clear(self.hybrid_planner, lane, progress, suffix,
-            flatten_obstacle_points(world.objects), self.hybrid_runtime_config,
+            self.collision_points(world), self.hybrid_runtime_config,
             self.c.get('loop_route', False), boundaries)
 
     def plan(self, _):
@@ -518,7 +542,7 @@ class Node:
                 lanes['global_route'],
                 Pose2D(float(position[0]), float(position[1]), yaw(ego.pose.pose.orientation)),
                 progress,
-                flatten_obstacle_points(world.objects),
+                self.collision_points(world),
                 self.hybrid_runtime_config,
                 self.c.get('loop_route', False),
                 previous_path=previous_candidate.xy if previous_usable else None,
@@ -626,9 +650,7 @@ class Node:
                 candidates.append(held)
             else:
                 self.planner.committed = None
-        objects = [Obstacle(np.array([[p.x, p.y, p.z] for p in o.points]),
-                            np.array([o.twist.linear.x, o.twist.linear.y]), o.velocity_valid,
-                            (now-o.source_stamp).to_sec()) for o in world.objects]
+        objects = self.collision_obstacles(world, now)
         obstacle_grid = ObstacleGrid(objects,self.c)
 
         def evaluate(candidate):
@@ -868,9 +890,7 @@ class Node:
             retimed = np.concatenate(([0.], np.cumsum(
                 2*np.diff(arc)/np.maximum(speeds[1:]+speeds[:-1], .01))))
             world = self.world
-            obstacles = [Obstacle(np.array([[p.x, p.y, p.z] for p in obj.points]),
-                np.array([obj.twist.linear.x, obj.twist.linear.y]), obj.velocity_valid,
-                (now-obj.source_stamp).to_sec()) for obj in world.objects]
+            obstacles = self.collision_obstacles(world, now)
             # Slower travel changes encounter times; recheck dynamic collisions.
             if self.planner.collision(xyz, angles, retimed, ObstacleGrid(obstacles, self.c)) is not None:
                 xyz = speeds = None

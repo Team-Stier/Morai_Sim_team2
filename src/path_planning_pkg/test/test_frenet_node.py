@@ -925,6 +925,8 @@ class FrenetOutputTest(unittest.TestCase):
                       approach_link_ids=['source-approach'], signal_ids=['source-signal'])]
         data = build_static_map(reference, rddf, dict(points=[], radius_m=3., source='fixture'),
                                 policy, 'fixture-sha', stops)
+        data['static_obstacles'] = [dict(id='guardrail', kind='guardrail',
+            points=[[12., 0., 0.], [12., .2, 0.]])]
         message = producer.map_message(data, rospy.Time(1))
         wire = io.BytesIO()
         message.serialize(wire)
@@ -938,6 +940,22 @@ class FrenetOutputTest(unittest.TestCase):
             node.c['rddf_geometry_only'] = geometry_only
             node.static_map = None
             node.on_map(decoded)
+            self.assertEqual(decoded.static_obstacles[0].id, 'guardrail')
+            world = WorldModel(objects=[])
+            obstacles = node.map_obstacles
+            self.assertEqual(len(world.objects), 0)
+            self.assertFalse(obstacles[0].velocity_valid)
+            from path_planning_pkg.hybrid_runtime import flatten_obstacle_points
+            np.testing.assert_allclose(flatten_obstacle_points(obstacles), [[12.,0.],[12.,.2]])
+            path = np.array([[10.,0.,0.],[15.,0.,0.]])
+            self.assertIsNotNone(Planner(node.c).collision(path, np.zeros(2), np.array([0.,1.]),
+                [module.Obstacle(np.array([[p.x,p.y,p.z] for p in o.points]),
+                 np.zeros(2), False, 0.) for o in obstacles]))
+            np.testing.assert_allclose(node.collision_points(world), [[12.,0.],[12.,.2]])
+            self.assertEqual(len(node.collision_obstacles(world, rospy.Time(100))), 1)
+            self.assertFalse(node.collision_obstacles(world, rospy.Time(100))[0].velocity_valid)
+            hybrid = HybridAStarPlanner(HybridAStarConfig())
+            self.assertFalse(hybrid.path_clear(path, np.array(reference), node.collision_points(world)))
             lanes = node.static_map[1]
             connected = lanes['connected']
             np.testing.assert_allclose(connected.xy[[0,-1]], [[0.,0.,0.],[200.,0.,0.]])
@@ -1019,6 +1037,7 @@ class FrenetOutputTest(unittest.TestCase):
 
         route.config['rddf_geometry_only'] = True
         geometry_message = SimpleNamespace(map_id=message.map_id,reference_sha256=message.reference_sha256,
+            static_obstacles=message.static_obstacles,
             lanes=[SimpleNamespace(id=l.id,centerline=l.centerline,route_s=l.route_s) for l in message.lanes])
         route.on_map(geometry_message)
         route.publish_context(None)
@@ -1039,7 +1058,7 @@ class FrenetOutputTest(unittest.TestCase):
         node.static_map = None
         original = self.static_map()
         # Deliberately omit every HD Map road-attribute field.
-        message = SimpleNamespace(map_id='geometry-only',lanes=[SimpleNamespace(
+        message = SimpleNamespace(map_id='geometry-only',static_obstacles=[],lanes=[SimpleNamespace(
             id=l.id,centerline=l.centerline,route_s=l.route_s) for l in original.lanes])
         node.on_map(message)
         self.assertEqual(node.static_map[3],[])

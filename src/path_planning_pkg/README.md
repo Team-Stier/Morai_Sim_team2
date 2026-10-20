@@ -196,3 +196,13 @@ Frenet/Hybrid A*·전환 유지 경로 모두 발행마다 감속 상한을 적�
 허용 신호가 확인되면 다시 계획한다. 유효한 허용 신호로 직진 8m/좌회전 12m 안까지 진행하면 교차 진입을 확정해
 이후 시야 이탈만으로 교차로 안에서 다시 멈추지 않는다. epoch/다음 회차에는 초기화한다.
 임계값은 config/frenet_planner.yaml의 signal_* 항목이다.
+
+## 경로 주변 고정 장애물
+
+HdMap.static_obstacles는 원본 지도에서 전역경로 15 m 주변의 벽·가드레일·방호벽·
+가로등/표지판 기둥을 포함한다. Planner는 센서 검출 없이도 이 정적 장애물을
+Frenet/Hybrid A* 충돌 검사에 사용한다. geometry-only에서도 적용한다.
+샘플 간격 0.25 m, XY 각 축 확장 0.4 m는 개발 가정이며 물리 정합은 미검증이다.
+범위와 간격은 hd_map_pkg/config/map_conversion.yaml에서 관리한다.
+HdMap MD5 변경으로 공유 메시지와 전체 소비자의 재빌드·재시작이 필요하다.
+[중앙 의미와 영향](../ros_architecture_pkg/docs/route_static_obstacles.md)을 따른다.
