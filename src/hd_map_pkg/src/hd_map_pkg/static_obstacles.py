@@ -51,4 +51,3 @@ def build_static_obstacles(dataset, transformer, route, config):
         if occupied:
             result.append(dict(id=str(row['idx']), kind=row['name'], points=occupied))
     return result
-
