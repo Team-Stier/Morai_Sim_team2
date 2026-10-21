@@ -10,20 +10,6 @@ def lengths(points):
     return result
 
 
-def corridor_bounds(lanes, margin):
-    points = [point for lane in lanes for point in lane['points']]
-    return (min(point[0] for point in points)-margin, max(point[0] for point in points)+margin,
-            min(point[1] for point in points)-margin, max(point[1] for point in points)+margin)
-
-
-def overlaps_bounds(points, bounds):
-    """Keep complete source polylines, including those that traverse the envelope."""
-    return (max(point[0] for point in points) >= bounds[0]
-            and min(point[0] for point in points) <= bounds[1]
-            and max(point[1] for point in points) >= bounds[2]
-            and min(point[1] for point in points) <= bounds[3])
-
-
 def project(point, points, arc, start=0.0, end=None, heading=None):
     end = arc[-1] if end is None else end
     first = max(0, bisect.bisect_right(arc, start)-1)

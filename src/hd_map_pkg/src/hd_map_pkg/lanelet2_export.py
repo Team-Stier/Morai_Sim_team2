@@ -13,15 +13,12 @@ from xml.sax.saxutils import quoteattr
 
 from .geometry import (
     cumulative_lengths,
-    closest_polyline_distance,
     convex_hull,
     distance_2d,
     offset_polyline,
-    orient_and_stitch,
     point_at_progress,
     polyline_length,
     progress_along_polyline,
-    segment_distance_2d,
     simplify_rdp,
     slice_polyline,
 )

@@ -69,7 +69,6 @@ class SignalFusion:
 
     def ingest(self, message, now):
         from common_msgs_pkg.msg import TrafficSignal
-        import rospy
         target = self.target(now)
         if target is None:
             self.latest = self.confirmation = None

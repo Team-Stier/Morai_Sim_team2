@@ -81,10 +81,11 @@ raw 40문장 중 같은 epoch의 RMC 20건을 제외하고 GGA 20건만 발행�
 
 ## 금지 상태
 
-구형 `ego_status_packet.py`는 일반 EgoVehicleStatus 229-byte 레이아웃이며
-대회 `Competition Vehicle Status`에 없는 position과 lateral velocity도
-파싱한다. 현재 ROS 출력에는 position을 싣지 않지만, 공식 대회 packet 명세와
-일치하기 전에는 이 노드 자체를 실행하지 않는다.
+일반 EgoVehicleStatus 229-byte 레이아웃의 구형 파서는 2026-10-21 미사용 코드
+정리에서 제거했다. 대회에서 허용되지 않는 position과 lateral velocity를 읽던
+파서이며 과거 소스는 Git 이력에서만 확인한다. 현재 상태 수신기는
+`competition_vehicle_status_packet.py`의 검증된 181-byte Competition Vehicle Status
+파서만 사용한다. UDP loopback 테스트도 같은 대회 패킷으로 검증한다.
 
 IMU의 scale과 covariance는 원본 placeholder이고, LiDAR의 2368 port도
 Velodyne 예제값이다. 두 채널 모두 live 검증 전 system bringup에 포함하지 않는다.

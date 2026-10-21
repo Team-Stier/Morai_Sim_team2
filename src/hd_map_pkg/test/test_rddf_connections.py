@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'src'))
-from hd_map_pkg.geometry import cumulative_lengths, distance_2d
+from hd_map_pkg.geometry import distance_2d
 from hd_map_pkg.lane_rddf import SegmentIndex
 from hd_map_pkg.rddf_connections import connect_course_lanes, smooth_connection, round_source_joins
 

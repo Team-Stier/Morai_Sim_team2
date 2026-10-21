@@ -1,4 +1,4 @@
-import copy,unittest
+import unittest
 import rospy
 from common_msgs_pkg.msg import EgoState,RouteContext,CameraSignalArray,TrafficSignal
 from world_model_pkg.traffic_signals import SignalFusion

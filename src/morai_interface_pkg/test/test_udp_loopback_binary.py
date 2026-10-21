@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-IMU / EgoVehicleStatus 바이너리 패킷에 대한 UDP 수신기+파서 loopback 테스트.
+IMU / Competition Vehicle Status 바이너리 패킷에 대한 UDP 수신기+파서 loopback 테스트.
 ROS 불필요. 가짜 송신(소켓)→UdpReceiver→파서 경로를 검증한다.
 """
 
@@ -12,7 +12,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from morai_udp_bridge.protocol import imu_packet          # noqa: E402
-from morai_udp_bridge.protocol import ego_status_packet   # noqa: E402
+from morai_udp_bridge.protocol import competition_vehicle_status_packet as status_packet  # noqa: E402
 from morai_udp_bridge.udp_receiver import UdpReceiver     # noqa: E402
 
 
@@ -39,10 +39,13 @@ class BinaryUdpLoopbackTest(unittest.TestCase):
         reading = imu_packet.parse_imu_packet(data)
         self.assertAlmostEqual(reading.ang_vel_z, 0.3, places=6)
 
-    def test_ego_status_loopback(self):
-        self._send(ego_status_packet.build_ego_status_packet(vel=(2.5, 0.0, 0.0)))
+    def test_competition_status_loopback(self):
+        self._send(status_packet.build_competition_vehicle_status_packet(
+            sec=7, nsec=8, ctrl_mode=2, vel_x=2.5))
         data, _ = self.receiver.receive()
-        reading = ego_status_packet.parse_ego_status_packet(data)
+        self.assertEqual(len(data), 181)
+        reading = status_packet.parse_competition_vehicle_status_packet(data)
+        self.assertEqual((reading.sec, reading.nsec, reading.ctrl_mode), (7, 8, 2))
         self.assertAlmostEqual(reading.vel_x, 2.5, places=4)
 
     def test_corrupt_short_packet_raises_not_crash(self):

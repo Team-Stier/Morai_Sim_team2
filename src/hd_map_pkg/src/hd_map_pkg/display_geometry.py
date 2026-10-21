@@ -26,10 +26,6 @@ def display_layers(dataset, projection, tolerance=0.2):
     return layers
 
 
-def load_display_layers(source, projection, tolerance=0.2):
-    return display_layers(MGeoV3Dataset(source), projection, tolerance)
-
-
 def load_route_display_layers(source, projection, config, reference_path):
     """Use exactly the existing HTML preview's route crop and northern anchors."""
     from .coordinates import CoordinateTransformer

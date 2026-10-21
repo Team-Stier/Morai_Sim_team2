@@ -222,29 +222,6 @@ def footprint_hits(points, positions, headings, c, point_shifts=None):
     return result
 
 
-def boundary_hit(position, theta, lines, c):
-    """Segment/rectangle clipping catches wheel contact and whole-body crossing."""
-    segments = np.asarray(lines).reshape(-1, 2, 3)
-    if len(segments) == 0:
-        return False
-    delta = segments[:, :, :2]-position[:2]
-    radius = math.hypot(c['front_overhang_m'],c['vehicle_width_m']/2)
-    near = np.all(delta.min(axis=1) <= radius,axis=1)&np.all(delta.max(axis=1) >= -radius,axis=1)
-    delta = delta[near]
-    co, si = math.cos(theta), math.sin(theta)
-    local = np.stack((co*delta[:,:,0]+si*delta[:,:,1],-si*delta[:,:,0]+co*delta[:,:,1]),axis=2)
-    a, v = local[:,0], local[:,1]-local[:,0]
-    lo, hi = np.zeros(len(a)), np.ones(len(a))
-    for j, lower, upper in ((0,-c['rear_overhang_m'],c['front_overhang_m']),
-                            (1,-c['vehicle_width_m']/2,c['vehicle_width_m']/2)):
-        parallel = np.abs(v[:,j]) < 1e-12
-        hi[parallel & ((a[:,j]<lower)|(a[:,j]>upper))] = -1
-        t0 = np.divide(lower-a[:,j],v[:,j],out=np.full(len(a),-np.inf),where=~parallel)
-        t1 = np.divide(upper-a[:,j],v[:,j],out=np.full(len(a),np.inf),where=~parallel)
-        lo,hi = np.maximum(lo,np.minimum(t0,t1)),np.minimum(hi,np.maximum(t0,t1))
-    return bool(np.any(lo<=hi))
-
-
 class Planner:
     def __init__(self, config):
         self.c = config

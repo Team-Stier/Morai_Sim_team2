@@ -64,8 +64,10 @@ class CompetitionVehicleStatusPacketTest(unittest.TestCase):
         self.assertAlmostEqual(reading.steer, -1.31452417, places=6)
 
     def test_wrong_wire_size_is_rejected(self):
-        with self.assertRaises(CompetitionVehicleStatusParseError):
-            parse_competition_vehicle_status_packet(b"\x00" * 100)
+        # Reject truncated input and the retired referee-only 229-byte layout.
+        for size in (100, 182, 229):
+            with self.subTest(size=size), self.assertRaises(CompetitionVehicleStatusParseError):
+                parse_competition_vehicle_status_packet(b"\x00" * size)
 
     def test_wrong_header_is_rejected(self):
         packet = bytearray(build_competition_vehicle_status_packet())

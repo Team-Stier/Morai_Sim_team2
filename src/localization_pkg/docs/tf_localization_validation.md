@@ -21,8 +21,10 @@ IMU freshness 0.30 s, GPS 0.65 s, estimate 0.30 s, clock stall 0.50 s는
 상태는 wall loop에서 10 Hz로 발행하며 clock 정지에도 invalid를 전달한다.
 입력 큐·IMU 이력은 bounded이고 clock 역행에 clear/reset_id 증가를 수행한다.
 
-C++ 진단 모드와 legacy EKF는 보존했다. 진단 모드는 TF 활성 여부와 관계없이
-status만 발행한다. 기본 launch는 estimator이며 `mode:=diagnostic`으로 선택한다.
+당시 C++ 진단 모드와 legacy EKF를 보존했다. 구형 EKF와 사용하지 않는 ROS
+어댑터는 2026-10-21 미사용 코드 정리에서 제거했으며 C++ 진단 모드는 유지한다.
+진단 모드는 TF 활성 여부와 관계없이 status만 발행한다. 기본 launch는 estimator이며
+`mode:=diagnostic`으로 선택한다.
 
 ## 실행 근거
 

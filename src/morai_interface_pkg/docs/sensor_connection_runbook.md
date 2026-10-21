@@ -90,4 +90,6 @@ MORAI 공식
 [`EgoVehicleStatus.py`](https://github.com/MORAI-Autonomous/MORAI-NetworkModule/blob/24.R2.0/EgoNetwork/Publisher/EgoVehicleStatus.py)는
 일반 EgoVehicleStatus 수신 예시다. 연결된 구조에는 대회 Competition Vehicle
 Status에서 제공되지 않는 위치, 횡속도, 가속도와 타이어 정보가 포함된다. 따라서
-현재의 legacy Vehicle Status launch는 이 센서 시험에 포함하지 않는다.
+일반 EgoVehicleStatus 파서는 제거했으며 이 패킷은 수신하지 않는다. 현재
+`vehicle_status_bridge.launch`는 검증된 181-byte Competition Vehicle Status만 사용하며,
+활성화 범위는 중앙 UDP 계약과 [모드 전환 안내](control_mode_handover.md)를 따른다.

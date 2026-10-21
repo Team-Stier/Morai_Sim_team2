@@ -117,8 +117,10 @@ roslaunch system_bringup_pkg localization_visualization.launch
 ```
 
 진단 모드는 중앙 TF 활성화와 무관하게 pose/TF를 발행하지 않는다. 두 모드는
-같은 공개 node 이름을 쓰므로 동시에 실행하지 않는다. `src/ego_state_estimator_node.cpp`
-및 15-state EKF는 이식 참고용으로 보존한다. legacy adapter는 빌드/설치하지 않는다.
+같은 공개 node 이름을 쓰므로 동시에 실행하지 않는다. 실행 경로에 연결되지 않았던
+구형 15-state EKF와 ROS 어댑터는 제거했다. 현재 추정기는
+`src/localization_estimator_node.py`와 `src/localization_pkg/live_estimator.py`다.
+과거 이식 소스는 Git 이력에서 확인할 수 있다.
 
 검증 및 실제 실행 기록: [TF 개발 검증](docs/tf_localization_validation.md).
 

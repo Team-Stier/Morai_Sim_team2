@@ -7,7 +7,8 @@
   정지한 상태인지 확실하지 않아 두 경우를 모두 시험했다.
 - [파일] 기본 launch는 `localization_estimator_node.py`와
   `localization_pkg/live_estimator.py`를 실행한다. IDE에 열려 있던
-  `localization_ekf.cpp`는 기본 추정 경로에 연결되지 않은 과거 15-state 라이브러리다.
+  `localization_ekf.cpp`는 당시 기본 추정 경로에 연결되지 않은 과거 15-state 라이브러리였다.
+  해당 라이브러리와 구형 ROS 어댑터는 2026-10-21 미사용 코드 정리에서 제거했다.
 - [파일] 기존 실행 추정기는 위치·속도 6-state이며, 가속도 편향을 추정하지 않았다.
   자세로 회전한 가속도에서 중력을 뺀 값과 남은 속도를 그대로 적분했다.
 - [추론] 일정한 잔여 가속도 b가 있으면 위치 오차에 약 `0.5*b*t²`가 더해진다.

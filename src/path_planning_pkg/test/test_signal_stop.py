@@ -1,4 +1,4 @@
-import unittest,math
+import unittest
 import numpy as np,rospy
 from common_msgs_pkg.msg import WorldModel,TrafficSignal,RouteContext
 from path_planning_pkg.signal_stop import SignalStopPolicy

@@ -38,7 +38,6 @@ install(DIRECTORY config docs launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINAT
 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_camera_packet.py)
-  catkin_add_nosetests(test/test_ego_status_packet.py)
   catkin_add_nosetests(test/test_imu_packet.py)
   catkin_add_nosetests(test/test_nmea_gps.py)
   catkin_add_nosetests(test/test_udp_loopback.py)

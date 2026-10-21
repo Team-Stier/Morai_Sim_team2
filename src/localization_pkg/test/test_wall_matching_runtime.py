@@ -6,7 +6,7 @@ import numpy as np
 import rospy
 import rostest
 from pyproj import Transformer
-from sensor_msgs.msg import Imu, NavSatFix, PointField
+from sensor_msgs.msg import Imu, NavSatFix
 from sensor_msgs.point_cloud2 import create_cloud_xyz32
 from std_msgs.msg import Header
 from geometry_msgs.msg import Point32, Polygon

@@ -123,18 +123,6 @@ def point_segment_distance_2d(point, start, end):
     return math.sqrt(_segment_distance_squared(point, start, end))
 
 
-def polyline_distance_2d(first, second):
-    if not first or not second:
-        return float("inf")
-    if len(first) == 1:
-        return closest_polyline_distance(first[0], second)
-    if len(second) == 1:
-        return closest_polyline_distance(second[0], first)
-    return min(segment_distance_2d(a, b, c, d)
-               for a, b in zip(first, first[1:])
-               for c, d in zip(second, second[1:]))
-
-
 def simplify_rdp(points, tolerance):
     """Iterative Ramer-Douglas-Peucker simplification preserving endpoints."""
     if len(points) <= 2 or tolerance <= 0.0:
@@ -182,37 +170,6 @@ def progress_along_polyline(point, line):
             best_progress = progress + t * segment_length
         progress += segment_length
     return best_progress, best_distance
-
-
-def orient_and_stitch(polylines, reference):
-    """Orient and order boundary fragments in reference-line travel direction."""
-    parts = []
-    for source_id, points in polylines:
-        if len(points) < 2:
-            continue
-        start_progress, _ = progress_along_polyline(points[0], reference)
-        end_progress, _ = progress_along_polyline(points[-1], reference)
-        oriented = list(points)
-        if end_progress < start_progress:
-            oriented.reverse()
-            start_progress, end_progress = end_progress, start_progress
-        parts.append((start_progress, end_progress, source_id, oriented))
-    parts.sort(key=lambda value: (value[0], value[1], value[2]))
-    result = []
-    max_gap = 0.0
-    source_ids = []
-    for _, _, source_id, part in parts:
-        source_ids.append(source_id)
-        if not result:
-            result.extend(part)
-            continue
-        gap = distance_2d(result[-1], part[0])
-        max_gap = max(max_gap, gap)
-        if gap <= 0.001:
-            result.extend(part[1:])
-        else:
-            result.extend(part)
-    return result, source_ids, max_gap
 
 
 def offset_polyline(points, offset):
@@ -270,12 +227,3 @@ def convex_hull(points):
         upper.append(point)
     hull = lower[:-1] + upper[:-1]
     return hull + [list(hull[0])]
-
-
-def closest_polyline_distance(point, line):
-    if not line:
-        return float("inf")
-    if len(line) == 1:
-        return distance_2d(point, line[0])
-    return math.sqrt(min(_segment_distance_squared(point, a, b)
-                         for a, b in zip(line, line[1:])))

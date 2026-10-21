@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard the imported EKF's isolation and the future producer/consumer boundary."""
+"""Guard localization launch isolation and the approved producer/consumer boundary."""
 from pathlib import Path
 import unittest
 import xml.etree.ElementTree as ET

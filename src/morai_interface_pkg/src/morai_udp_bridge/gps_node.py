@@ -18,7 +18,6 @@ gps_node.py
 - port/ip/frame_id/topic은 모두 파라미터이며 코드에 하드코딩하지 않는다.
 """
 
-import math
 
 import rospy
 from sensor_msgs.msg import NavSatFix, NavSatStatus
