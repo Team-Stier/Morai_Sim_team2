@@ -20,7 +20,7 @@ class FrenetAllLaunchTest(unittest.TestCase):
                      'localization_node', 'sensor_tf_publisher', 'vehicle_rviz',
                      'hd_map_server_node', 'global_route_manager_node', 'world_model_node',
                      'path_planner_node', 'vehicle_controller_node', 'safety_supervisor_node',
-                     'morai_control_sender'):
+                     'morai_control_sender', 'morai_vehicle_status_bridge'):
             self.assertIn('/' + name, names)
         self.assertIn('/camera_perception_node', names)
         self.assertIn('/pointpainting_node', names)

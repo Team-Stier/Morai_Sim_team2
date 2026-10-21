@@ -21,6 +21,7 @@ add_message_files(FILES
   CameraSignalArray.msg
   WorldModel.msg
   StaticWallMap.msg
+  StaticMapObstacle.msg
   HdMap.msg
   SignalStopLine.msg
   RouteContext.msg
@@ -34,6 +35,7 @@ catkin_package(CATKIN_DEPENDS
 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_core_contract.py)
+  catkin_add_nosetests(test/test_static_map_contract.py)
   catkin_add_nosetests(test/test_static_wall_contract.py)
   catkin_add_nosetests(test/test_validation.py)
   catkin_add_nosetests(test/test_serialization.py)

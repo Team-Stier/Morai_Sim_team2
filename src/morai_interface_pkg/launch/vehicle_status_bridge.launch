@@ -1,6 +1,5 @@
 <launch>
-  <!-- Competition Vehicle Status 격리 통신 시험용 launch.
-       실제 competition datagram 길이 확인 전 system bringup에는 포함하지 않는다. -->
+  <!-- Validated 181-byte Competition Vehicle Status; explicit development activation. -->
   <arg name="enable" default="false"/>
   <arg name="config" default="$(find morai_interface_pkg)/config/vehicle_status_bridge.yaml"/>
 

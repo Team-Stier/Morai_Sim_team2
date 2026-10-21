@@ -102,7 +102,7 @@ contract_modules:
     required_contract_version: 0.2.0
   rddf_planning_messages:
     path: messages/rddf_planning_messages.yaml
-    required_contract_version: 0.4.0
+    required_contract_version: 0.5.0
   course_speed_policy:
     path: map/course_speed_policy.yaml
     required_contract_version: 0.1.0
@@ -572,7 +572,7 @@ topics:
     consumers: [localization_node, global_route_manager_node, world_model_node, path_planner_node]
     status: development_frenet_rddf_unverified
     visibility: public
-    data_meaning: Versioned immutable HD map layers topology and signal-controlled course stop-line geometry
+    data_meaning: Versioned immutable HD map layers topology signal-controlled stop lines and route-near fixed obstacle samples
     diagram_description_ko: 버전이 고정된 정적 지도와 연결 구조
     data_type: common_msgs_pkg/HdMap
     unit: m_rad_and_semantic_attributes
@@ -1167,6 +1167,9 @@ messages:
   - type: common_msgs_pkg/HdMap
     status: development_frenet_rddf_unverified
     schema: messages/rddf_planning_messages.yaml#HdMap
+  - type: common_msgs_pkg/StaticMapObstacle
+    status: development_route_static_obstacles_unverified
+    schema: messages/rddf_planning_messages.yaml#StaticMapObstacle
   - type: common_msgs_pkg/SignalStopLine
     status: development_frenet_rddf_unverified
     schema: messages/rddf_planning_messages.yaml#SignalStopLine

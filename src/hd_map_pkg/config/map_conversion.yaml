@@ -113,3 +113,11 @@ lane_rddf:
 static_walls:
   source_object_ids: [C3256W000003, C3256W000005]
   horizontal_stddev_m: 0.40  # Development model floor; physical alignment unverified.
+
+# Fixed source structures only. Padding models absent source dimensions/uncertainty.
+static_obstacles:
+  kinds: [wall, guardrail, concrete_barrier, light_pole, sign_pole]
+  route_distance_m: 15.0
+  maximum_height_difference_m: 1.5
+  sample_spacing_m: 0.25
+  padding_m: 0.4

@@ -10,3 +10,5 @@ float64 checkpoint_radius_m
 geometry_msgs/Polygon[] forbidden_boundaries
 # Original signal-controlled stop bars on same-direction course approaches, in map.
 common_msgs_pkg/SignalStopLine[] signal_stop_lines
+# Source-backed fixed obstacles near the official global route.
+common_msgs_pkg/StaticMapObstacle[] static_obstacles
