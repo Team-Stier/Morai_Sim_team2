@@ -73,6 +73,11 @@ def load_static_map(config_file, source, reference_path, checkpoints_file, polic
     stop_lines = build_signal_stop_lines(dataset, transform, route, config)
     from .static_walls import build_static_walls
     result = build_static_map(route, rddf, checkpoints, policy, digest, stop_lines)
+    from .static_obstacles import build_static_obstacles
+    result['static_obstacles'] = build_static_obstacles(dataset, transform, route, config)
+    result['static_obstacle_settings'] = config['static_obstacles']
+    result['map_id'] = 'katri-rddf-' + hashlib.sha256(
+        json.dumps(result, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     result['static_walls'] = build_static_walls(dataset, transform, config)
     result['wall_horizontal_stddev_m'] = float(config['static_walls']['horizontal_stddev_m'])
     return result

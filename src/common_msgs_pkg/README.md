@@ -74,3 +74,13 @@ HdMap MD5 변경과 생산자·소비자 재시작 범위는
 CameraSignalArray/TrafficSignal은 중앙 traffic_signal_messages 계약을 따른다.
 WorldModel.traffic_signals에 선택 결과를 담으며 Camera 원본 stamp를 보존한다.
 WorldModel MD5가 변경되므로 producer/consumer와 RViz를 모두 빌드·재시작한다.
+
+## 경로 주변 고정 장애물
+
+HdMap.static_obstacles는 원본 지도에서 전역경로 15 m 주변의 벽·가드레일·방호벽·
+가로등/표지판 기둥을 포함한다. 이번 변경은 지도 필드의 생성·발행까지 포함하며,
+Planner의 충돌 검사에 이 필드를 사용하는 변경은 포함하지 않는다.
+샘플 간격 0.25 m, XY 각 축 확장 0.4 m는 개발 가정이며 물리 정합은 미검증이다.
+범위와 간격은 hd_map_pkg/config/map_conversion.yaml에서 관리한다.
+HdMap MD5 변경으로 공유 메시지와 전체 소비자의 재빌드·재시작이 필요하다.
+[중앙 의미와 영향](../ros_architecture_pkg/docs/route_static_obstacles.md)을 따른다.
