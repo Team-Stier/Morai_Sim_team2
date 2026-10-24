@@ -1,0 +1,10 @@
+{
+  "central_config": "src/ros_architecture_pkg/config/timestamp/timestamp_contract.yaml",
+  "parameter": "development_localization_profile.max_dead_reckoning_sec",
+  "old_seconds": 15.0,
+  "new_seconds": 60.0,
+  "all_other_central_timestamp_values_unchanged": true,
+  "baseline_git_sha": "26a810f8127e32a0351a3b0fc8772807edcb96e8",
+  "branch": "feature/public-interface-contract-gps-60s",
+  "source_edits_other_than_central_timeout": false
+}

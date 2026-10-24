@@ -1,0 +1,34 @@
+{
+  "scope": "Changes during diagnostic campaign beginning 2026-10-24 14:28:48 KST",
+  "source_configuration_edits": false,
+  "tested_workspace": "/home/stier/바탕화면/국토부모라이심2팀/Tommy_1024",
+  "git_sha": "26a810f8127e32a0351a3b0fc8772807edcb96e8",
+  "tracked_worktree_status": "clean",
+  "scenario_source_edited_by_agent": false,
+  "gui_operations": [
+    "Loaded user-designated scenarios; prior round02 wrong load excluded",
+    "Before original-settings lock, NetworkData reload option was unchecked; this was an operator intervention",
+    "Clicked Cmd Control Connect manually in attempts02 and03; recorded exact times in operator_events.jsonl",
+    "Replacement Tommy_1024_2.json loaded with all six existing checkboxes unchanged, including NetworkData enabled; Connected observed without manual Connect",
+    "Q when required for manual initialization, then i and P before launching each trial",
+    "Launched and stopped only own ROS/test recording processes; F4 opened only to observe state"
+  ],
+  "rviz_queue_configuration_changed": false,
+  "artifacts_added": [
+    "Temporary read-only diagnostic/operator Python tools under /tmp",
+    "Ignored logs/z5_hour_20261024_142848 with ROS bags, sampled telemetry, screenshots, diagnostic plots/JSON and screen video"
+  ],
+  "pre_existing_other_worktree_changes": "Not edited or reverted by this diagnostic campaign",
+  "updated_kst": "2026-10-24T15:44:44.199956+09:00",
+  "final_runtime_parameter": {
+    "max_dead_reckoning_sec": 15.0
+  },
+  "temporary_experiment": {
+    "runtime_change": "max_dead_reckoning_sec 15->60 for attempt05; reverted to15 on user request",
+    "supporting_changes": "3 documentation files and test_wall_validity.py temporarily synchronized; exact saved patch reversed",
+    "new_commits": 0,
+    "push_performed": false,
+    "trial_branch_created_then_removed": true
+  },
+  "branch_final": "feature/public-interface-contract-restore-morai-comm"
+}

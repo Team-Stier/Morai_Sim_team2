@@ -1,0 +1,95 @@
+{
+  "attempt": "attempt_04",
+  "scenario_verification": {
+    "scenario": "/home/stier/MoraiLauncher_Lin/MoraiLauncher_Lin_Data/SaveFile/Scenario/R_KR_PR_K-city_2025/Tommy_1024_2.json",
+    "scenario_sha256": "117360de6d6ccec5536545b172f4cdca11ed47c86514259cba28d41b03ac0e29",
+    "file_selected_visually": true,
+    "scenario_layout_visually_verified": true,
+    "visible_layout": "Tunnel, staggered concrete barriers, stopped cars, downstream cones/barrels",
+    "loader_options_changed": false,
+    "manual_connect_or_disconnect_clicked": false,
+    "time_kst": "2026-10-24T15:15:59.663454+09:00"
+  },
+  "wall_sources": [
+    {
+      "id": "C3256W000003",
+      "points": 18216
+    },
+    {
+      "id": "C3256W000005",
+      "points": 17388
+    },
+    {
+      "id": "C3256W000316",
+      "points": 2304
+    }
+  ],
+  "examined_published_motion_trajectories": 345,
+  "localization_valid_published_motion_count": 342,
+  "localization_valid_wall_overlap_count": 94,
+  "gps_tracking_wall_overlap_count": 17,
+  "localization_invalid_published_motion_count": 3,
+  "first_valid_wall_overlap": {
+    "received_ros_time": 1792823039.3669374,
+    "time_kst": "2026-10-24T15:23:59.366+09:00",
+    "trajectory_source_stamp": 1792823039.3074098,
+    "localization_valid": true,
+    "localization_mode": 2,
+    "gps_age_sec": 0.06742453575134277,
+    "gps_fix_valid": true,
+    "map_position_stddev_m": 0.18479286008755547,
+    "wall_body_overlap_pose_count": 6,
+    "wall_config_margin_overlap_pose_count": 35,
+    "minimum_signed_wall_sample_clearance_m": -0.03394524133944277,
+    "world_count": 10,
+    "world_valid": true,
+    "planning_reason": "planner_mode=hybrid_astar; zone=Z5; status=success; selected=new; simulator_closed_loop_unverified; signal=outside_approach",
+    "trajectory_map_z_range_m": [
+      28.305402606737903,
+      28.33547553170421
+    ]
+  },
+  "minimum_valid_signed_clearance_m": -0.9459993730346017,
+  "wall_height_gate_m": 1.5,
+  "wall_sample_z_range_m": [
+    28.05825196,
+    28.884
+  ],
+  "semantics": [
+    "Actual published valid non-stop Trajectory messages, not unselected search candidates.",
+    "Wall points are the recorded public HdMap static_obstacles, source-backed dense occupied samples including 0.4m padding.",
+    "Overlap is against vehicle body 4.635x1.892m; extra configured 0.5m margin is counted separately.",
+    "Negative signed clearance means a sampled map wall point lies within the planned vehicle footprint; static physical alignment remains unverified.",
+    "Each wall overlap requires |wall sample z - path point z| <=1.5m; source wall top/bottom heights are absent, so this is a height gate rather than verified 3D wall geometry.",
+    "Clearances above 2m are clipped; negative footprint overlap values are calculated against all nearby height-compatible samples.",
+    "Raw LiDAR/map-wall proximity is an XY band count, not proof that every band return is a wall; painted semantic scores were not recorded.",
+    "Localization-invalid paths are counted separately; LOST tail drift is not evidence of physical wall crossing."
+  ],
+  "painted_scores_recorded": false,
+  "representative": {
+    "received_ros_time": 1792823045.1737344,
+    "time_kst": "2026-10-24T15:24:05.173+09:00",
+    "trajectory_source_stamp": 1792823045.1066353,
+    "localization_valid": true,
+    "localization_mode": 3,
+    "gps_age_sec": 2.9361727237701416,
+    "gps_fix_valid": false,
+    "map_position_stddev_m": 1.2251097350562956,
+    "wall_body_overlap_pose_count": 54,
+    "wall_config_margin_overlap_pose_count": 61,
+    "minimum_signed_wall_sample_clearance_m": -0.9459993730346017,
+    "world_count": 6,
+    "world_valid": true,
+    "planning_reason": "planner_mode=hybrid_astar; zone=Z5; status=success; selected=new; simulator_closed_loop_unverified; signal=outside_approach",
+    "trajectory_map_z_range_m": [
+      28.30126201417553,
+      28.386198559804342
+    ],
+    "world_point_count": 255,
+    "world_points_within_0_3m_of_mapwall": 0,
+    "raw_lidar_points_in_plot_region": 21479,
+    "raw_lidar_points_within_0_3m_of_mapwall": 16018,
+    "raw_lidar_stamp_delta_sec": -0.27062344551086426,
+    "raw_lidar_world_source_stamp_delta_sec": 0.0
+  }
+}

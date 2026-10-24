@@ -1,0 +1,501 @@
+{
+  "attempts": [
+    {
+      "attempt": "attempt_04",
+      "budget_sec": 15,
+      "bag_closed": true,
+      "last_gps_stamp": 1792823042.1789412,
+      "last_gps_kst": "2026-10-24T15:24:02.178+09:00",
+      "first_lost": {
+        "time_kst": "2026-10-24T15:24:17.189+09:00",
+        "received_ros_time": 1792823057.189893,
+        "seconds_after_last_gps": 15.01095175743103,
+        "gps_age_sec": 15.00860595703125,
+        "map_position_stddev_m": 11.99988403060479,
+        "map_pose_valid": false,
+        "local_odometry_valid": false,
+        "mode": 5,
+        "reason": "development only; ingress fallback; physical alignment unverified; estimate stale or dead reckoning budget expired; wall matched lateral=+0.012m rms=0.131m points=[296, 391]; along-tunnel unobserved; acceleration bias norm=0.0432 m/s^2",
+        "estimate_stamp": 1792823057.115368,
+        "status_stamp": 1792823057.1875472
+      },
+      "last_valid": {
+        "time_kst": "2026-10-24T15:24:17.133+09:00",
+        "received_ros_time": 1792823057.1335952,
+        "seconds_after_last_gps": 14.954653978347778,
+        "gps_age_sec": 14.954149723052979,
+        "map_position_stddev_m": 11.933455335595848,
+        "map_pose_valid": true,
+        "local_odometry_valid": true,
+        "mode": 3,
+        "reason": "development only; ingress fallback; physical alignment unverified; GPS blackout; bias-compensated inertial prediction; no independent speed observation; wall matched lateral=-0.013m rms=0.126m points=[340, 360]; along-tunnel unobserved; acceleration bias norm=0.0431 m/s^2",
+        "estimate_stamp": 1792823057.0603056,
+        "status_stamp": 1792823057.133091
+      },
+      "boundaries": {
+        "15": {
+          "last_before": {
+            "time_kst": "2026-10-24T15:24:17.133+09:00",
+            "received_ros_time": 1792823057.1335952,
+            "seconds_after_last_gps": 14.954653978347778,
+            "gps_age_sec": 14.954149723052979,
+            "map_position_stddev_m": 11.933455335595848,
+            "map_pose_valid": true,
+            "local_odometry_valid": true,
+            "mode": 3,
+            "reason": "development only; ingress fallback; physical alignment unverified; GPS blackout; bias-compensated inertial prediction; no independent speed observation; wall matched lateral=-0.013m rms=0.126m points=[340, 360]; along-tunnel unobserved; acceleration bias norm=0.0431 m/s^2",
+            "estimate_stamp": 1792823057.0603056,
+            "status_stamp": 1792823057.133091
+          },
+          "first_after": {
+            "time_kst": "2026-10-24T15:24:17.189+09:00",
+            "received_ros_time": 1792823057.189893,
+            "seconds_after_last_gps": 15.01095175743103,
+            "gps_age_sec": 15.00860595703125,
+            "map_position_stddev_m": 11.99988403060479,
+            "map_pose_valid": false,
+            "local_odometry_valid": false,
+            "mode": 5,
+            "reason": "development only; ingress fallback; physical alignment unverified; estimate stale or dead reckoning budget expired; wall matched lateral=+0.012m rms=0.131m points=[296, 391]; along-tunnel unobserved; acceleration bias norm=0.0432 m/s^2",
+            "estimate_stamp": 1792823057.115368,
+            "status_stamp": 1792823057.1875472
+          }
+        },
+        "60": {
+          "last_before": {
+            "time_kst": "2026-10-24T15:25:02.152+09:00",
+            "received_ros_time": 1792823102.1520364,
+            "seconds_after_last_gps": 59.973095178604126,
+            "gps_age_sec": 59.97261452674866,
+            "map_position_stddev_m": 129.58993905665838,
+            "map_pose_valid": false,
+            "local_odometry_valid": false,
+            "mode": 5,
+            "reason": "development only; ingress fallback; physical alignment unverified; estimate stale or dead reckoning budget expired; wall rejected: predicted pose is not between both walls; acceleration bias norm=0.0513 m/s^2",
+            "estimate_stamp": 1792823101.9709163,
+            "status_stamp": 1792823102.1515558
+          },
+          "first_after": {
+            "time_kst": "2026-10-24T15:25:02.206+09:00",
+            "received_ros_time": 1792823102.206263,
+            "seconds_after_last_gps": 60.02732181549072,
+            "gps_age_sec": 60.024742603302,
+            "map_position_stddev_m": 130.2807797713302,
+            "map_pose_valid": false,
+            "local_odometry_valid": false,
+            "mode": 5,
+            "reason": "development only; ingress fallback; physical alignment unverified; estimate stale or dead reckoning budget expired; wall rejected: predicted pose is not between both walls; acceleration bias norm=0.0513 m/s^2",
+            "estimate_stamp": 1792823102.1387374,
+            "status_stamp": 1792823102.2036839
+          }
+        }
+      },
+      "phases": {
+        "age_0_to_15": {
+          "trajectory_messages": 157,
+          "published_stop": 34,
+          "published_valid_motion": 123,
+          "search_status_counts": {
+            "success": 62,
+            "no_path": 1
+          },
+          "search_accepted": 56,
+          "search_activated": 33,
+          "valid_positive_brake": 161,
+          "invalid_positive_brake": 0
+        },
+        "age_15_to_60": {
+          "trajectory_messages": 675,
+          "published_stop": 673,
+          "published_valid_motion": 2,
+          "search_status_counts": {
+            "success": 2
+          },
+          "search_accepted": 1,
+          "search_activated": 0,
+          "valid_positive_brake": 0,
+          "invalid_positive_brake": 2251
+        },
+        "age_over_60": {
+          "trajectory_messages": 317,
+          "published_stop": 317,
+          "published_valid_motion": 0,
+          "search_status_counts": {},
+          "search_accepted": 0,
+          "search_activated": 0,
+          "valid_positive_brake": 0,
+          "invalid_positive_brake": 1057
+        }
+      },
+      "first_published_stop_after_last_gps": {
+        "time_kst": "2026-10-24T15:24:02.245+09:00",
+        "received_ros_time": 1792823042.245755,
+        "seconds_after_last_gps": 0.06681370735168457,
+        "gps_age_sec": 0.06821560859680176,
+        "map_position_stddev_m": 0.17697028735316125,
+        "map_pose_valid": true,
+        "local_odometry_valid": true,
+        "mode": 2,
+        "reason": "development only; ingress fallback; physical alignment unverified; GPS correction accepted; wall matched lateral=+0.045m rms=0.153m points=[233, 223]; along-tunnel unobserved; acceleration bias norm=0.0517 m/s^2",
+        "estimate_stamp": 1792823042.0993416,
+        "status_stamp": 1792823042.167555,
+        "planning_reason": "planner_mode=hybrid_astar; zone=Z5; status=success; selected=pending; simulator_closed_loop_unverified; signal=outside_approach"
+      },
+      "first_sustained_stop": {
+        "time_kst": "2026-10-24T15:24:17.470+09:00",
+        "received_ros_time": 1792823057.4704506,
+        "seconds_after_last_gps": 15.29150938987732,
+        "gps_age_sec": 15.283118486404419,
+        "map_position_stddev_m": 12.337518621431004,
+        "map_pose_valid": false,
+        "local_odometry_valid": false,
+        "mode": 5,
+        "reason": "development only; ingress fallback; physical alignment unverified; estimate stale or dead reckoning budget expired; wall matched lateral=+0.122m rms=0.169m points=[279, 366]; along-tunnel unobserved; acceleration bias norm=0.0436 m/s^2",
+        "estimate_stamp": 1792823057.3912494,
+        "status_stamp": 1792823057.4620597,
+        "duration_sec": 65.84005117416382,
+        "messages": 990,
+        "planning_reason": "planner_mode=hybrid_astar; status=active_path_invalidated; selected=stop; signal=outside_approach; pedestrian_speed_cap_kph=20"
+      },
+      "stop_intervals": [
+        {
+          "time_kst": "2026-10-24T15:24:17.470+09:00",
+          "received_ros_time": 1792823057.4704506,
+          "seconds_after_last_gps": 15.29150938987732,
+          "gps_age_sec": 15.283118486404419,
+          "map_position_stddev_m": 12.337518621431004,
+          "map_pose_valid": false,
+          "local_odometry_valid": false,
+          "mode": 5,
+          "reason": "development only; ingress fallback; physical alignment unverified; estimate stale or dead reckoning budget expired; wall matched lateral=+0.122m rms=0.169m points=[279, 366]; along-tunnel unobserved; acceleration bias norm=0.0436 m/s^2",
+          "estimate_stamp": 1792823057.3912494,
+          "status_stamp": 1792823057.4620597,
+          "duration_sec": 65.84005117416382,
+          "messages": 990,
+          "planning_reason": "planner_mode=hybrid_astar; status=active_path_invalidated; selected=stop; signal=outside_approach; pedestrian_speed_cap_kph=20"
+        }
+      ],
+      "first_search_no_path": {
+        "time_kst": "2026-10-24T15:24:02.482+09:00",
+        "received_ros_time": 1792823042.4823258,
+        "seconds_after_last_gps": 0.30338454246520996,
+        "gps_age_sec": 0.24406695365905762,
+        "map_position_stddev_m": 0.22739304863969445,
+        "map_pose_valid": true,
+        "local_odometry_valid": true,
+        "mode": 2,
+        "reason": "development only; ingress fallback; physical alignment unverified; GPS fix outside the approved UTM zone 52N; wall rejected: wall support span too short; acceleration bias norm=0.0525 m/s^2",
+        "estimate_stamp": 1792823042.3549752,
+        "status_stamp": 1792823042.4230082,
+        "audit": {
+          "planner": "hybrid_astar",
+          "zone": "Z5",
+          "status": "no_path",
+          "expanded_nodes": 3,
+          "generated_nodes": 2,
+          "rejected_by_corridor": 2,
+          "rejected_by_obstacle": 11,
+          "elapsed_sec": 0.012705625034868717,
+          "accepted": false,
+          "activated": false,
+          "held": false,
+          "handoff_held": false,
+          "rejected_after_search": false
+        }
+      },
+      "tf_after_first_lost": {
+        "map->odom": {
+          "count": 1997,
+          "last_source_stamp": 1792823123.2317808
+        },
+        "odom->base_link": {
+          "count": 1997,
+          "last_source_stamp": 1792823123.2317808
+        }
+      },
+      "planning_reasons_after_last_gps": {
+        "planner_mode=hybrid_astar; zone=Z5; selected=stop; replanning; signal=outside_approach": 3,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=new; simulator_closed_loop_unverified; signal=outside_approach": 31,
+        "planner_mode=hybrid_astar; zone=Z5; status=no_path; selected=stop; simulator_closed_loop_unverified; signal=outside_approach": 1,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=pending; simulator_closed_loop_unverified; signal=outside_approach": 18,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=held; simulator_closed_loop_unverified; signal=outside_approach": 3,
+        "planner_mode=hybrid_astar; status=transient_hold_expired; selected=stop; signal=outside_approach": 3,
+        "planner_mode=hybrid_astar; status=active_path_invalidated; selected=stop; signal=outside_approach": 5,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=stop; simulator_closed_loop_unverified; signal=outside_approach": 3,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=pending; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20": 6,
+        "planner_mode=hybrid_astar; status=active_path_invalidated; selected=stop; signal=outside_approach; pedestrian_speed_cap_kph=20": 2,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=new; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20": 2,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=stop; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20": 1,
+        "unusable_or_stale_planning_inputs; signal=outside_approach; pedestrian_speed_cap_kph=20": 329
+      },
+      "physical_progress_or_completion": null,
+      "limitations": [
+        "No zone filtering after dropout: projected zone can change through drift.",
+        "Estimated pose/speed/covariance are not simulator truth or evidence of actual movement.",
+        "Search no_path, actual published stop, final command validity are separate metrics.",
+        "HUD stop and physical course completion require separate operator screen evidence."
+      ]
+    },
+    {
+      "attempt": "attempt_05",
+      "budget_sec": 60,
+      "bag_closed": true,
+      "last_gps_stamp": 1792823802.156567,
+      "last_gps_kst": "2026-10-24T15:36:42.156+09:00",
+      "first_lost": {
+        "time_kst": "2026-10-24T15:37:42.200+09:00",
+        "received_ros_time": 1792823862.2002566,
+        "seconds_after_last_gps": 60.043689489364624,
+        "gps_age_sec": 60.042888879776,
+        "map_position_stddev_m": 115.6038495904778,
+        "map_pose_valid": false,
+        "local_odometry_valid": false,
+        "mode": 5,
+        "reason": "development only; ingress fallback; physical alignment unverified; estimate stale or dead reckoning budget expired; wall rejected: both wall sides need enough returns; acceleration bias norm=0.0660 m/s^2",
+        "estimate_stamp": 1792823862.1358347,
+        "status_stamp": 1792823862.199456
+      },
+      "last_valid": {
+        "time_kst": "2026-10-24T15:37:42.138+09:00",
+        "received_ros_time": 1792823862.1384537,
+        "seconds_after_last_gps": 59.98188662528992,
+        "gps_age_sec": 59.981473445892334,
+        "map_position_stddev_m": 115.37055394278903,
+        "map_pose_valid": true,
+        "local_odometry_valid": true,
+        "mode": 3,
+        "reason": "development only; ingress fallback; physical alignment unverified; GPS blackout; bias-compensated inertial prediction; no independent speed observation; wall rejected: both wall sides need enough returns; acceleration bias norm=0.0660 m/s^2",
+        "estimate_stamp": 1792823862.0709326,
+        "status_stamp": 1792823862.1380405
+      },
+      "boundaries": {
+        "15": {
+          "last_before": {
+            "time_kst": "2026-10-24T15:36:57.142+09:00",
+            "received_ros_time": 1792823817.1421895,
+            "seconds_after_last_gps": 14.98562240600586,
+            "gps_age_sec": 14.983604669570923,
+            "map_position_stddev_m": 11.688858033374506,
+            "map_pose_valid": true,
+            "local_odometry_valid": true,
+            "mode": 3,
+            "reason": "development only; ingress fallback; physical alignment unverified; GPS blackout; bias-compensated inertial prediction; no independent speed observation; wall matched lateral=-0.198m rms=0.142m points=[236, 356]; along-tunnel unobserved; acceleration bias norm=0.0696 m/s^2",
+            "estimate_stamp": 1792823817.0656762,
+            "status_stamp": 1792823817.1401718
+          },
+          "first_after": {
+            "time_kst": "2026-10-24T15:36:57.194+09:00",
+            "received_ros_time": 1792823817.1946363,
+            "seconds_after_last_gps": 15.038069248199463,
+            "gps_age_sec": 15.037811756134033,
+            "map_position_stddev_m": 11.751431438073956,
+            "map_pose_valid": true,
+            "local_odometry_valid": true,
+            "mode": 3,
+            "reason": "development only; ingress fallback; physical alignment unverified; GPS blackout; bias-compensated inertial prediction; no independent speed observation; wall matched lateral=-0.154m rms=0.159m points=[236, 363]; along-tunnel unobserved; acceleration bias norm=0.0694 m/s^2",
+            "estimate_stamp": 1792823817.1187725,
+            "status_stamp": 1792823817.1943789
+          }
+        },
+        "60": {
+          "last_before": {
+            "time_kst": "2026-10-24T15:37:42.138+09:00",
+            "received_ros_time": 1792823862.1384537,
+            "seconds_after_last_gps": 59.98188662528992,
+            "gps_age_sec": 59.981473445892334,
+            "map_position_stddev_m": 115.37055394278903,
+            "map_pose_valid": true,
+            "local_odometry_valid": true,
+            "mode": 3,
+            "reason": "development only; ingress fallback; physical alignment unverified; GPS blackout; bias-compensated inertial prediction; no independent speed observation; wall rejected: both wall sides need enough returns; acceleration bias norm=0.0660 m/s^2",
+            "estimate_stamp": 1792823862.0709326,
+            "status_stamp": 1792823862.1380405
+          },
+          "first_after": {
+            "time_kst": "2026-10-24T15:37:42.200+09:00",
+            "received_ros_time": 1792823862.2002566,
+            "seconds_after_last_gps": 60.043689489364624,
+            "gps_age_sec": 60.042888879776,
+            "map_position_stddev_m": 115.6038495904778,
+            "map_pose_valid": false,
+            "local_odometry_valid": false,
+            "mode": 5,
+            "reason": "development only; ingress fallback; physical alignment unverified; estimate stale or dead reckoning budget expired; wall rejected: both wall sides need enough returns; acceleration bias norm=0.0660 m/s^2",
+            "estimate_stamp": 1792823862.1358347,
+            "status_stamp": 1792823862.199456
+          }
+        }
+      },
+      "phases": {
+        "age_0_to_15": {
+          "trajectory_messages": 165,
+          "published_stop": 49,
+          "published_valid_motion": 116,
+          "search_status_counts": {
+            "success": 62,
+            "no_path": 5
+          },
+          "search_accepted": 52,
+          "search_activated": 33,
+          "valid_positive_brake": 199,
+          "invalid_positive_brake": 0
+        },
+        "age_15_to_60": {
+          "trajectory_messages": 610,
+          "published_stop": 519,
+          "published_valid_motion": 91,
+          "search_status_counts": {
+            "success": 100,
+            "time_limit": 1,
+            "no_path": 117
+          },
+          "search_accepted": 64,
+          "search_activated": 48,
+          "valid_positive_brake": 1855,
+          "invalid_positive_brake": 0
+        },
+        "age_over_60": {
+          "trajectory_messages": 1626,
+          "published_stop": 1626,
+          "published_valid_motion": 0,
+          "search_status_counts": {
+            "no_path": 1
+          },
+          "search_accepted": 0,
+          "search_activated": 0,
+          "valid_positive_brake": 0,
+          "invalid_positive_brake": 5422
+        }
+      },
+      "first_published_stop_after_last_gps": {
+        "time_kst": "2026-10-24T15:36:42.385+09:00",
+        "received_ros_time": 1792823802.385771,
+        "seconds_after_last_gps": 0.2292039394378662,
+        "gps_age_sec": 0.20302772521972656,
+        "map_position_stddev_m": 0.2053648736874173,
+        "map_pose_valid": true,
+        "local_odometry_valid": true,
+        "mode": 2,
+        "reason": "development only; ingress fallback; physical alignment unverified; GPS fix outside the approved UTM zone 52N; wall rejected: wall support span too short; acceleration bias norm=0.0787 m/s^2",
+        "estimate_stamp": 1792823802.2944055,
+        "status_stamp": 1792823802.3595948,
+        "planning_reason": "planner_mode=hybrid_astar; zone=Z5; status=success; selected=stop; simulator_closed_loop_unverified; signal=outside_approach"
+      },
+      "first_sustained_stop": {
+        "time_kst": "2026-10-24T15:37:07.337+09:00",
+        "received_ros_time": 1792823827.3370817,
+        "seconds_after_last_gps": 25.180514574050903,
+        "gps_age_sec": 25.10773730278015,
+        "map_position_stddev_m": 26.06101135480876,
+        "map_pose_valid": true,
+        "local_odometry_valid": true,
+        "mode": 3,
+        "reason": "development only; ingress fallback; physical alignment unverified; GPS blackout; bias-compensated inertial prediction; no independent speed observation; wall matched lateral=-0.099m rms=0.108m points=[260, 394]; along-tunnel unobserved; acceleration bias norm=0.0665 m/s^2",
+        "estimate_stamp": 1792823827.1977296,
+        "status_stamp": 1792823827.2643044,
+        "duration_sec": 4.756091594696045,
+        "messages": 64,
+        "planning_reason": "planner_mode=hybrid_astar; zone=Z5; status=success; selected=pending; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20"
+      },
+      "stop_intervals": [
+        {
+          "time_kst": "2026-10-24T15:37:07.337+09:00",
+          "received_ros_time": 1792823827.3370817,
+          "seconds_after_last_gps": 25.180514574050903,
+          "gps_age_sec": 25.10773730278015,
+          "map_position_stddev_m": 26.06101135480876,
+          "map_pose_valid": true,
+          "local_odometry_valid": true,
+          "mode": 3,
+          "reason": "development only; ingress fallback; physical alignment unverified; GPS blackout; bias-compensated inertial prediction; no independent speed observation; wall matched lateral=-0.099m rms=0.108m points=[260, 394]; along-tunnel unobserved; acceleration bias norm=0.0665 m/s^2",
+          "estimate_stamp": 1792823827.1977296,
+          "status_stamp": 1792823827.2643044,
+          "duration_sec": 4.756091594696045,
+          "messages": 64,
+          "planning_reason": "planner_mode=hybrid_astar; zone=Z5; status=success; selected=pending; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20"
+        },
+        {
+          "time_kst": "2026-10-24T15:37:20.227+09:00",
+          "received_ros_time": 1792823840.2276042,
+          "seconds_after_last_gps": 38.07103705406189,
+          "gps_age_sec": 38.05908918380737,
+          "map_position_stddev_m": 51.33167903715885,
+          "map_pose_valid": true,
+          "local_odometry_valid": true,
+          "mode": 3,
+          "reason": "development only; ingress fallback; physical alignment unverified; GPS blackout; bias-compensated inertial prediction; no independent speed observation; wall rejected: both wall sides need enough returns; acceleration bias norm=0.0660 m/s^2",
+          "estimate_stamp": 1792823840.1413457,
+          "status_stamp": 1792823840.2156563,
+          "duration_sec": 130.36459589004517,
+          "messages": 1959,
+          "planning_reason": "planner_mode=hybrid_astar; status=active_path_invalidated; selected=stop; signal=outside_approach; pedestrian_speed_cap_kph=20"
+        }
+      ],
+      "first_search_no_path": {
+        "time_kst": "2026-10-24T15:36:42.408+09:00",
+        "received_ros_time": 1792823802.4082663,
+        "seconds_after_last_gps": 0.25169920921325684,
+        "gps_age_sec": 0.20302772521972656,
+        "map_position_stddev_m": 0.2053648736874173,
+        "map_pose_valid": true,
+        "local_odometry_valid": true,
+        "mode": 2,
+        "reason": "development only; ingress fallback; physical alignment unverified; GPS fix outside the approved UTM zone 52N; wall rejected: wall support span too short; acceleration bias norm=0.0787 m/s^2",
+        "estimate_stamp": 1792823802.2944055,
+        "status_stamp": 1792823802.3595948,
+        "audit": {
+          "planner": "hybrid_astar",
+          "zone": "Z5",
+          "status": "no_path",
+          "expanded_nodes": 3,
+          "generated_nodes": 2,
+          "rejected_by_corridor": 1,
+          "rejected_by_obstacle": 12,
+          "elapsed_sec": 0.020016868016682565,
+          "accepted": false,
+          "activated": false,
+          "held": false,
+          "handoff_held": false,
+          "rejected_after_search": false
+        }
+      },
+      "tf_after_first_lost": {
+        "map->odom": {
+          "count": 3374,
+          "last_source_stamp": 1792823970.542999
+        },
+        "odom->base_link": {
+          "count": 3374,
+          "last_source_stamp": 1792823970.542999
+        }
+      },
+      "planning_reasons_after_last_gps": {
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=new; simulator_closed_loop_unverified; signal=outside_approach": 35,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=stop; simulator_closed_loop_unverified; signal=outside_approach": 9,
+        "planner_mode=hybrid_astar; zone=Z5; status=no_path; selected=stop; simulator_closed_loop_unverified; signal=outside_approach": 5,
+        "planner_mode=hybrid_astar; status=active_path_invalidated; selected=stop; signal=outside_approach": 6,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=pending; simulator_closed_loop_unverified; signal=outside_approach": 23,
+        "planner_mode=hybrid_astar; zone=Z5; selected=stop; replanning; signal=outside_approach": 1,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=held; simulator_closed_loop_unverified; signal=outside_approach": 2,
+        "planner_mode=hybrid_astar; status=transient_hold_expired; selected=stop; signal=outside_approach": 2,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=pending; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20": 12,
+        "planner_mode=hybrid_astar; status=active_path_invalidated; selected=stop; signal=outside_approach; pedestrian_speed_cap_kph=20": 19,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=new; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20": 46,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=stop; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20": 33,
+        "planner_mode=hybrid_astar; zone=Z5; status=success; selected=held; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20": 2,
+        "planner_mode=hybrid_astar; status=transient_hold_expired; selected=stop; signal=outside_approach; pedestrian_speed_cap_kph=20": 2,
+        "planner_mode=hybrid_astar; zone=Z5; selected=stop; replanning; signal=outside_approach; pedestrian_speed_cap_kph=20": 8,
+        "planner_mode=hybrid_astar; zone=Z5; status=time_limit; selected=stop; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20": 1,
+        "planner_mode=hybrid_astar; zone=Z5; status=no_path; selected=stop; simulator_closed_loop_unverified; signal=outside_approach; pedestrian_speed_cap_kph=20": 118,
+        "unusable_or_stale_planning_inputs; signal=outside_approach; pedestrian_speed_cap_kph=20": 541
+      },
+      "physical_progress_or_completion": null,
+      "limitations": [
+        "No zone filtering after dropout: projected zone can change through drift.",
+        "Estimated pose/speed/covariance are not simulator truth or evidence of actual movement.",
+        "Search no_path, actual published stop, final command validity are separate metrics.",
+        "HUD stop and physical course completion require separate operator screen evidence."
+      ]
+    }
+  ]
+}

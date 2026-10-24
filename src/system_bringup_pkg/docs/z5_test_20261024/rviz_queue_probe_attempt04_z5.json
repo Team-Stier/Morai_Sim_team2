@@ -1,0 +1,60 @@
+{
+  "observed_kst": "2026-10-24T15:23:31.664946+09:00",
+  "duration_sec": 20.011648112908006,
+  "topic": "/path_planner_node/trajectory_markers",
+  "fixed_frame": "map",
+  "array_count": 217,
+  "array_rate_hz": 10.829684776275586,
+  "marker_count_per_array": [
+    2,
+    3
+  ],
+  "max_individual_markers_awaiting_tf": 6,
+  "unresolved_markers_at_end": 4,
+  "tf_ready_wait_sec": {
+    "p50": 0.10057728097308427,
+    "p95": 0.13875361355021598,
+    "max": 0.192675736034289
+  },
+  "marker_header_age_at_receipt_sec": {
+    "p50": 0.010820627,
+    "p95": 0.027724886199999986,
+    "max": 0.093464613
+  },
+  "queue_simulation": {
+    "1": {
+      "passed": 104,
+      "dropped": 184,
+      "dropped_by_namespace": {
+        "planner_selected": 131,
+        "planner_stop": 53
+      },
+      "max_pending": 1
+    },
+    "2": {
+      "passed": 177,
+      "dropped": 110,
+      "dropped_by_namespace": {
+        "planner_selected": 60,
+        "planner_stop": 50
+      },
+      "max_pending": 2
+    },
+    "5": {
+      "passed": 273,
+      "dropped": 12,
+      "dropped_by_namespace": {
+        "planner_selected": 12
+      },
+      "max_pending": 5
+    },
+    "10": {
+      "passed": 285,
+      "dropped": 0,
+      "dropped_by_namespace": {},
+      "max_pending": 6
+    }
+  },
+  "semantics": "Passive TF-readiness simulation; actual RViz rendering latency and GUI queue value are not observed. Polling resolution 0.02 seconds.",
+  "read_only": true
+}

@@ -1,0 +1,119 @@
+{
+  "input_folder": "/home/stier/바탕화면/국토부모라이심2팀/Tommy_1024/logs/z5_hour_20261024_142848/attempt_04",
+  "scope": "Offline code reconstruction using original sparse ROS messages. Static wall candidates are identified using estimated ego pose, not simulator ground truth.",
+  "pairs": [
+    {
+      "pair_number": 1,
+      "raw_header_epoch": 1792823034.930911,
+      "camera_header_epoch": 1792823034.922,
+      "pair_is_actual_published_image": true,
+      "raw_points": 14164,
+      "all_points_projected_to_camera": 3848,
+      "all_points_foreground_score_pass": 30,
+      "all_points_surface_pass": 13,
+      "actual_published_points": 13,
+      "reconstruction_matches_published_original_points": true,
+      "group_count": 1,
+      "grouped_point_count": 9,
+      "ego_source_delta_sec": -0.001255751,
+      "localization_map_pose_valid": true,
+      "gps_age_sec": 0.06695961952209473,
+      "wall_candidates": {
+        "raw_elevated_near_static_wall": 0,
+        "outside_camera_fov_or_behind_camera": 0,
+        "in_camera": 0,
+        "in_camera_argmax_background": 0,
+        "in_camera_foreground_below_probability": 0,
+        "foreground_probability_pass": 0,
+        "rejected_by_nearest_surface_or_class_extent": 0,
+        "after_surface_expected": 0,
+        "actual_published": 0,
+        "after_semantic_grouping_expected": 0,
+        "image_argmax_class_counts": {
+          "background": 0,
+          "person": 0,
+          "animal": 0,
+          "box": 0,
+          "bollard": 0,
+          "barrier": 0
+        }
+      }
+    },
+    {
+      "pair_number": 2,
+      "raw_header_epoch": 1792823038.9862406,
+      "camera_header_epoch": 1792823038.98,
+      "pair_is_actual_published_image": true,
+      "raw_points": 15608,
+      "all_points_projected_to_camera": 5560,
+      "all_points_foreground_score_pass": 212,
+      "all_points_surface_pass": 147,
+      "actual_published_points": 147,
+      "reconstruction_matches_published_original_points": true,
+      "group_count": 8,
+      "grouped_point_count": 147,
+      "ego_source_delta_sec": -0.001245976,
+      "localization_map_pose_valid": true,
+      "gps_age_sec": 0.12595200538635254,
+      "wall_candidates": {
+        "raw_elevated_near_static_wall": 237,
+        "outside_camera_fov_or_behind_camera": 0,
+        "in_camera": 237,
+        "in_camera_argmax_background": 237,
+        "in_camera_foreground_below_probability": 0,
+        "foreground_probability_pass": 0,
+        "rejected_by_nearest_surface_or_class_extent": 0,
+        "after_surface_expected": 0,
+        "actual_published": 0,
+        "after_semantic_grouping_expected": 0,
+        "image_argmax_class_counts": {
+          "background": 237,
+          "person": 0,
+          "animal": 0,
+          "box": 0,
+          "bollard": 0,
+          "barrier": 0
+        }
+      }
+    },
+    {
+      "pair_number": 3,
+      "raw_header_epoch": 1792823043.0090542,
+      "camera_header_epoch": 1792823043.0,
+      "pair_is_actual_published_image": true,
+      "raw_points": 24548,
+      "all_points_projected_to_camera": 7574,
+      "all_points_foreground_score_pass": 404,
+      "all_points_surface_pass": 133,
+      "actual_published_points": 133,
+      "reconstruction_matches_published_original_points": true,
+      "group_count": 2,
+      "grouped_point_count": 133,
+      "ego_source_delta_sec": -0.002929688,
+      "localization_map_pose_valid": true,
+      "gps_age_sec": 0.8191957473754883,
+      "wall_candidates": {
+        "raw_elevated_near_static_wall": 4381,
+        "outside_camera_fov_or_behind_camera": 3365,
+        "in_camera": 1016,
+        "in_camera_argmax_background": 1016,
+        "in_camera_foreground_below_probability": 0,
+        "foreground_probability_pass": 0,
+        "rejected_by_nearest_surface_or_class_extent": 0,
+        "after_surface_expected": 0,
+        "actual_published": 0,
+        "after_semantic_grouping_expected": 0,
+        "image_argmax_class_counts": {
+          "background": 1016,
+          "person": 0,
+          "animal": 0,
+          "box": 0,
+          "bollard": 0,
+          "barrier": 0
+        }
+      }
+    }
+  ],
+  "analysis_wall_time_sec": 0.9559368600603193,
+  "figure": "/tmp/morai_attempt04_wall_stage_analysis.png"
+}

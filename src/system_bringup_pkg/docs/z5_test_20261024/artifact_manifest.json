@@ -1,0 +1,68 @@
+{
+  "archived_kst": "2026-10-24T15:50:43.387611+09:00",
+  "branch": "Tommy_1024_Z5test",
+  "code_base_commit": "26a810f8127e32a0351a3b0fc8772807edcb96e8",
+  "final_max_dead_reckoning_sec": 15.0,
+  "temporary_60_second_changes_fully_reverted": true,
+  "runtime_source_changes_from_base": false,
+  "source_campaign": "logs/z5_hour_20261024_142848",
+  "raw_bag_and_desktop_video": "preserved locally under source_campaign; not included in Git snapshot",
+  "historical_records": "Copied byte-for-byte; embedded absolute paths, branch names and temporary60 values describe their original trial, not the final branch settings.",
+  "evidence": [
+    {
+      "relative_path": "change_inventory.json",
+      "bytes": 1953,
+      "sha256": "fe0e5a3edf1a6d399e9689b9869536b07e92b94245e0492dace5618c62f0a900"
+    },
+    {
+      "relative_path": "operator_events.jsonl",
+      "bytes": 5167,
+      "sha256": "f572767c1b37fab3492b8dfe97df35e81198d800be30770c7efd78a4232d08d8"
+    },
+    {
+      "relative_path": "attempt_02/scenario_validity.json",
+      "bytes": 382,
+      "sha256": "876a52462404cd17132155c1e877450c216c0285339f07d3759c25a9c97a4a74"
+    },
+    {
+      "relative_path": "attempt_05/configuration_trial.json",
+      "bytes": 443,
+      "sha256": "523dc020ea5784c121e116601e6e7b535539a82765b15e741c084f0c5d8e3b2d"
+    },
+    {
+      "relative_path": "attempt_04/wall_path_diagnosis.json",
+      "bytes": 4198,
+      "sha256": "80128bf11c6e9768333f802ba7317875fcb3311d5f675d6e0accff68e1e3b089"
+    },
+    {
+      "relative_path": "attempt_04/wall_path_diagnosis.png",
+      "bytes": 474114,
+      "sha256": "6f68a3934405fe07f60562ed06cefa8cf47bd628cea67ac4c60b5ff247aa78fd"
+    },
+    {
+      "relative_path": "attempt_04/wall_filter_stage_analysis.json",
+      "bytes": 4252,
+      "sha256": "0eaf8445134c0aba185916d1ad454d4cd275b8f4e593e202a049772151d760cc"
+    },
+    {
+      "relative_path": "attempt_04/wall_filter_stage_analysis.png",
+      "bytes": 271333,
+      "sha256": "f432a15cff64b6f626e9a9234839bc6aded7d0c106a69f5ce2dec0ddccb8af7d"
+    },
+    {
+      "relative_path": "rviz_queue_probe_attempt04_z5.json",
+      "bytes": 1447,
+      "sha256": "df6c5e099771040feea92417463817f1ec27fc4bb385b581d7f66ea445b408cf"
+    },
+    {
+      "relative_path": "gps_budget_15_vs_60.json",
+      "bytes": 26826,
+      "sha256": "a70267579a7653d3f5f3ed76526a9faa6ab28eee595155481b3679d915f2cc28"
+    },
+    {
+      "relative_path": "gps_budget_15_vs_60.png",
+      "bytes": 115925,
+      "sha256": "21d4d8dcaa1f019fe7cfc9c237f564e5f36921de607f95056d9555038f8f466f"
+    }
+  ]
+}

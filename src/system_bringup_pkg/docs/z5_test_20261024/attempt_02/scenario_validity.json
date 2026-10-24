@@ -1,0 +1,8 @@
+{
+  "event": "attempt_invalidated_for_cone_avoidance",
+  "attempt": 2,
+  "epoch": 1792821103.5791838,
+  "time_kst": "2026-10-24T14:51:43.579189+09:00",
+  "reason": "User and MORAI screen confirmed expected Z5 cones absent. Scenario load not verified; exclude from obstacle-avoidance success rate. Retain GPS blackout and communication diagnostics only.",
+  "operator_error": true
+}
