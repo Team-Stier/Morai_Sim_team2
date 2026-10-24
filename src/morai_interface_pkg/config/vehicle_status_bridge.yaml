@@ -1,6 +1,6 @@
 # Competition Vehicle Status UDP Bridge 개발용 파라미터.
 # 공식 규정은 MORAI 24.R2.0 EgoVehicleStatus UDP 예제 활용을 지시하지만,
-# 2026-10-01/16 현장 Competition Vehicle Status 181-byte packet을 확인했다.
+# Competition Vehicle Status의 실제 datagram 길이는 현장 packet으로 최종 확인한다.
 
 bind_ip: "0.0.0.0"
 port: 9099

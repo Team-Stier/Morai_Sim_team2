@@ -32,11 +32,6 @@
   </include>
   <node pkg="safety_supervisor_pkg" type="global_path_demo_relay.py" name="safety_supervisor_node" output="screen"/>
   <param name="/vehicle_controller_node/longitudinal/reference_preview_sec" value="0.5"/>
-  <!-- One receiver per stack; competition.launch supplies its own receiver. -->
-  <include file="$(find morai_interface_pkg)/launch/vehicle_status_bridge.launch">
-    <arg name="enable" value="$(arg send_to_morai)"/>
-    <arg name="config" value="$(find morai_interface_pkg)/config/competition/vehicle_status.yaml"/>
-  </include>
   <include file="$(find morai_interface_pkg)/launch/control_sender.launch">
     <arg name="enable" value="$(arg send_to_morai)"/>
     <arg name="config" value="$(find morai_interface_pkg)/config/global_path_demo.yaml"/>

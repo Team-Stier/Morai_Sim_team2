@@ -148,7 +148,7 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
         enabled = {name for name, channel in self.contract["channels"].items()
                    if channel["runtime_activation_allowed"]}
         self.assertEqual(enabled, {
-            "camera_front", "camera_left", "camera_right", "camera_signal", "gps", "imu", "vehicle_status",
+            "camera_front", "camera_left", "camera_right", "camera_signal", "gps", "imu",
         })
         probe_enabled = {name for name, channel in self.contract["channels"].items()
                          if channel.get("isolated_probe_activation_allowed")}
@@ -259,7 +259,7 @@ class InterfaceContractAlignmentTest(unittest.TestCase):
             self.contract["channels"]["control"]["runtime_activation_allowed"])
         self.assertFalse(
             self.contract["channels"]["collision"]["runtime_activation_allowed"])
-        self.assertTrue(
+        self.assertFalse(
             self.contract["channels"]["vehicle_status"]["runtime_activation_allowed"])
 
     def test_entrypoints_fail_closed_on_namespace_collision(self):

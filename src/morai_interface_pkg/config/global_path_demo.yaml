@@ -7,11 +7,6 @@ max_command_age_sec: 0.25
 future_tolerance_sec: 0.05
 steering_conversion_verified: true
 steering_normalized_per_rad: 1.432394487827058
-
-# MORAI status must report Auto; missing/manual/stale status pauses UDP.
-control_mode_timeout_sec: 0.5
-
-# Prevent the previous Auto packet from undoing Q before fresh status arrives.
-# This only inhibits transmission; actual UDP status owns the selected mode.
-local_handover_enabled: true
-local_handover_sec: 0.5
+# Local MORAI window: let Q complete its handover before sending Auto commands.
+local_q_guard_enabled: true
+local_q_handover_sec: 0.5

@@ -83,7 +83,7 @@ launch는 MORAI 앱 자체를 켜거나 UI의
 LiDAR 관측, World Model, Frenet Planner와 Controller→Safety 연결을 추가한다.
 기존 global_path_demo와 중복 실행하지 않는다. 송신 기본값은 false이며,
 `send_to_morai:=true`로 개발 주행을 활성화한다. 시험 상한은 기본적으로 해제하며
-송신 활성 시 Competition Vehicle Status 수신기를 함께 시작하며, sender는 실제 Auto 상태가 최근 0.5초 내 수신될 때만 송신한다. Q 키 횟수 추정은 사용하지 않는다.
+Q 전환은 기존 MORAI sender 동작을 유지한다.
 [중앙 개발 프로필](../ros_architecture_pkg/config/messages/frenet_runtime.yaml)과
 [통합 Planner 검증 범위](../path_planning_pkg/docs/planner_mode_integration.md)를 따른다.
 

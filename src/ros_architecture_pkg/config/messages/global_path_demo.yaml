@@ -12,7 +12,6 @@ exceptions:
   vehicle_controller_node: accepts_development_localization_stop_required_but_preserves_local_odometry_valid
   safety_supervisor_node: transparent_nominal_to_final_relay_for_this_simulator_test_only
   morai_control_sender: local_simulator_command_probe_and_motion_enabled_by_user
-  morai_vehicle_status_bridge: validated_competition_181_byte_status_for_actual_mode_gate
 nodes:
   route: global_route_manager_node
   planner: path_planner_node
